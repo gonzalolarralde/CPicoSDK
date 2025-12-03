@@ -67,4 +67,4 @@ mkdir -p "$OUTPUT_DIR/include"
 echo "#pragma GCC system_header" > "$OUTPUT_DIR/include/CPicoSDK.h"
 cat "$BUILD_DIR/CPicoSDK.h" >> "$OUTPUT_DIR/include/CPicoSDK.h"
 
-cp -rf "$OUTPUT_DIR/" "$3/Sources/CPicoSDK"
+cp -rf "$OUTPUT_DIR/" "$3/Sources/_CPicoSDK"
