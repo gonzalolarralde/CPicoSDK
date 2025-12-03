@@ -1,0 +1,4 @@
+module CPicoSDK {
+    umbrella header "includes/CPicoSDK.h"
+    export *
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "swiftCompiler": {
+    "extraCLIOptions": [
+      "-Xfrontend", "-disable-stack-protector",
+      "-enable-experimental-feature", "Embedded",
+      "-sdk", "~/.pico-sdk/toolchain/14_2_Rel1/arm-none-eabi"
+    ]
+  },
+  "linker": {
+    "path": "~/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-ld",
+    "extraCLIOptions": [
+      "-static", "-L~/.pico-sdk/toolchain/14_2_Rel1/arm-none-eabi/lib",
+    ]
+  }
+}
