@@ -3,7 +3,7 @@
 if [[ -n "$VSCODE_PICO_SDK_PATH" ]]; then
     export PICO_SDK_PATH="$VSCODE_PICO_SDK_PATH/sdk/$SDK_VERSION/"
     export PICO_TOOLCHAIN_PATH="$VSCODE_PICO_SDK_PATH/toolchain/$TOOLCHAIN_VERSION/"
-    export PICOTOOL_EXECUTABLE="$VSCODE_PICO_SDK_PATH/picotool/$SDK_VERSION/picotool/picotool"
+    export PICOTOOL_EXECUTABLE="$VSCODE_PICO_SDK_PATH/picotool/$PICOTOOL_VERSION/picotool/picotool"
 else
     missing=""
 
