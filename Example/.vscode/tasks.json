@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Project",
+            "type": "process",
+            "command": "${workspaceFolder}/build.sh",
+            "args": ["Example"],
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": "$swiftc",
+        },
+        {
+            "label": "Compile and Flash Project",
+            "type": "process",
+            "command": "${workspaceFolder}/build.sh",
+            "args": ["Example", "--flash"],
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "problemMatcher": "$swiftc",
+        },
+    ]
+}

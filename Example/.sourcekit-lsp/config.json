@@ -1,0 +1,10 @@
+{
+  "swiftPM": {
+    "configuration": "release",
+    "triple": "armv7em-none-none-eabi",
+    "toolsets": ["toolset.json"],
+    "swiftCompilerFlags": [
+      "-enable-experimental-feature", "Embedded"
+    ]
+  }
+}
