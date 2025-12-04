@@ -12,7 +12,6 @@ swift package generate-cpicosdk
 # swift build \
 #     --build-system native \
 #     --configuration release \
-#     --triple armv7em-apple-none-macho \
 #     --toolset toolset.json \
 #     --triple armv7em-none-none-eabi
 
