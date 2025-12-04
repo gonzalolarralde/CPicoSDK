@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 if [[ -n "$VSCODE_PICO_SDK_PATH" ]]; then
-    export PICO_SDK_PATH="$VSCODE_PICO_SDK_PATH/sdk/2.2.0/"
-    export PICO_TOOLCHAIN_PATH="$VSCODE_PICO_SDK_PATH/toolchain/14_2_Rel1/"
-    export PICOTOOL_EXECUTABLE="$VSCODE_PICO_SDK_PATH/picotool/2.2.0/picotool/picotool"
+    export PICO_SDK_PATH="$VSCODE_PICO_SDK_PATH/sdk/$SDK_VERSION/"
+    export PICO_TOOLCHAIN_PATH="$VSCODE_PICO_SDK_PATH/toolchain/$TOOLCHAIN_VERSION/"
+    export PICOTOOL_EXECUTABLE="$VSCODE_PICO_SDK_PATH/picotool/$SDK_VERSION/picotool/picotool"
 else
     missing=""
 
@@ -27,8 +27,7 @@ OUTPUT_DIR="$1/output"
 
 mkdir -p "$OUTPUT_DIR"
 
-# TODO: Figure out a better way to find Ninja
-export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin:$PATH"
+export PATH="$CMAKE_PATH:$NINJA_PATH:$PATH"
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
@@ -60,8 +59,10 @@ cmake \
   -DCMAKE_BUILD_TYPE=RelWithDebug \
   -DPICO_SDK_PATH="${PICO_SDK_PATH:-}" \
   -DPICOTOOL_EXECUTABLE="${PICOTOOL_EXECUTABLE}" \
-  -DBOARD_TYPE="pico2_w" \
-  -DPROJECT_NAME="$4"
+  -DBOARD_TYPE="${BOARD}" \
+  -DPROJECT_NAME="$4" \
+  -DTOOLCHAIN_VERSION="${TOOLCHAIN_VERSION}" \
+  -DSDK_VERSION="${SDK_VERSION}"
 
 cmake --build "$BUILD_DIR"
 

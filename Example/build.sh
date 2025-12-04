@@ -1,6 +1,7 @@
 #!/usr/bin/env /bin/bash
 set -euxo pipefail
 
+cat env.json.tmpl | sed "s#<HOME-PATH-HERE>#$( dirname ~/. )#g" > env.json
 rm -rf .build
 
 ~/.swiftly/bin/swiftly run swift build -v \

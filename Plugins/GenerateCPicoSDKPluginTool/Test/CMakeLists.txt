@@ -15,9 +15,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
-set(sdkVersion 2.2.0)
-set(toolchainVersion 14_2_Rel1)
-set(picotoolVersion 2.2.0-a4)
+set(sdkVersion "${SDK_VERSION}")
+set(toolchainVersion "${TOOLCHAIN_VERSION}")
+set(picotoolVersion "${SDK_VERSION}")
 
 set(PICO_BOARD "${BOARD_TYPE}" CACHE STRING "Board type")
 
@@ -37,8 +37,8 @@ pico_set_program_name(Test "Test")
 pico_set_program_version(Test "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(Test 0)
-pico_enable_stdio_usb(Test 1)
+pico_enable_stdio_uart(Test 1)
+pico_enable_stdio_usb(Test 0)
 
 # Add the standard library to the build
 target_link_libraries(Test

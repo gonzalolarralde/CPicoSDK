@@ -15,9 +15,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
-set(sdkVersion 2.2.0)
-set(toolchainVersion 14_2_Rel1)
-set(picotoolVersion 2.2.0-a4)
+set(sdkVersion "${SDK_VERSION}")
+set(toolchainVersion "${TOOLCHAIN_VERSION}")
+set(picotoolVersion "${SDK_VERSION}")
 
 set(PICO_BOARD "${BOARD_TYPE}" CACHE STRING "Board type")
 

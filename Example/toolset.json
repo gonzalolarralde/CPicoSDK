@@ -10,7 +10,7 @@
   "linker": {
     "path": "~/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-ld",
     "extraCLIOptions": [
-      "-static", "-L~/.pico-sdk/toolchain/14_2_Rel1/arm-none-eabi/lib",
+      "-static", "-L~/.pico-sdk/toolchain/14_2_Rel1/arm-none-eabi/lib"
     ]
   }
 }

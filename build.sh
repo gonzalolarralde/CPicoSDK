@@ -1,6 +1,7 @@
 #!/usr/bin/bash
-
 set -euxo pipefail
+
+cat env.json.tmpl | sed "s#<HOME-PATH-HERE>#$( dirname ~/. )#g" > env.json
 
 rm -rf .build
 rm -rf Sources/_CPicoSDK
