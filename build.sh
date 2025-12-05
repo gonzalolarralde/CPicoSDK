@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 set -euxo pipefail
 
-cat env.json.tmpl | sed "s#<HOME-PATH-HERE>#$( dirname ~/. )#g" | sed "s#<PICOTOOL-VERSION>#$PICOTOOL_VERSION#g" > env.json
+cat env.json.tmpl | sed "s#<HOME>#$( dirname ~/. )#g" > env.json
 
 rm -rf .build
 rm -rf Sources/_CPicoSDK

@@ -40,6 +40,21 @@ pico_set_program_version("${PROJECT_NAME}" "0.1")
 pico_enable_stdio_uart("${PROJECT_NAME}" 1)
 pico_enable_stdio_usb("${PROJECT_NAME}" 0)
 
+add_library(Output STATIC IMPORTED)
+set_target_properties(Output PROPERTIES
+    IMPORTED_LOCATION "${IMPORTED_LOCATION}"
+)
+target_link_libraries("${PROJECT_NAME}" Output)
+
+string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
+target_link_libraries("${PROJECT_NAME}" ${IMPORTED_LIBS_LIST})
+
+target_link_libraries("${PROJECT_NAME}"
+    pico_stdlib
+    pico_status_led
+    Output
+)
+
 # Add the standard include files to the build
 target_include_directories("${PROJECT_NAME}" PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}

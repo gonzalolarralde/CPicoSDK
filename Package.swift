@@ -41,7 +41,6 @@ let package = Package(
                 intent: .custom(verb: "generate-cpicosdk", description: "Generates CPicoSDK target files"),
                 permissions: [
                     .writeToPackageDirectory(reason: "Needs to write CPicoSDK target files, can't generate using prebuildCommand yet because it's a .h header file."),
-                    // .allowNetworkConnections(scope: .all(ports: [80, 443, 22]), reason: "Fetch picotool if needed.")
                 ]
             )
         ),
@@ -50,8 +49,7 @@ let package = Package(
             capability: .command(
                 intent: .custom(verb: "finalize-pi-binary", description: "Generates CPicoSDK target files"),
                 permissions: [
-                    .writeToPackageDirectory(reason: "Generates CPicoSDK target files."),
-                    // .allowNetworkConnections(scope: .all(ports: [80, 443, 22]), reason: "Fetch picotool if needed.")
+                    .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
                 ]
             )
         ),

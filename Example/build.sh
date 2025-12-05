@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 PICOTOOL_VERSION=2.2.0-a4
-cat env.json.tmpl | sed "s#<HOME-PATH-HERE>#$( dirname ~/. )#g" | sed "s#<PICOTOOL-VERSION>#$PICOTOOL_VERSION#g" > env.json
+cat env.json.tmpl | sed "s#<HOME>#$( dirname ~/. )#g" > env.json
 rm -rf .build
 
 ~/.swiftly/bin/swiftly run swift build -v \

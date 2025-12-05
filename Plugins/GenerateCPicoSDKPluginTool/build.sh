@@ -1,22 +1,4 @@
 #!/usr/bin/env bash
-
-if [[ -n "$VSCODE_PICO_SDK_PATH" ]]; then
-    export PICO_SDK_PATH="$VSCODE_PICO_SDK_PATH/sdk/$SDK_VERSION/"
-    export PICO_TOOLCHAIN_PATH="$VSCODE_PICO_SDK_PATH/toolchain/$TOOLCHAIN_VERSION/"
-    export PICOTOOL_EXECUTABLE="$VSCODE_PICO_SDK_PATH/picotool/$PICOTOOL_VERSION/picotool/picotool"
-else
-    missing=""
-
-    [[ -z "$PICO_SDK_PATH" ]]        && missing+=" PICO_SDK_PATH"
-    [[ -z "$PICO_TOOLCHAIN_PATH" ]]  && missing+=" PICO_TOOLCHAIN_PATH"
-    [[ -z "$PICOTOOL_EXECUTABLE" ]]  && missing+=" PICOTOOL_EXECUTABLE"
-
-    if [[ -n "$missing" ]]; then
-        echo "Missing required variables:$missing" >&2
-        exit 1
-    fi
-fi
-
 set -euxo pipefail
 
 cp -r "$2" "$1"
@@ -35,11 +17,26 @@ mkdir -p "$BUILD_DIR"
 
 echo "Writing source h file in $SRC_DIR/CPicoSDK.source.h"
 
-# TODO: Only include libraries enabled by Traits here.
-cat <<- "EOF" > "$SRC_DIR/CPicoSDK.source.h"
-#include <pico/stdlib.h>
-#include <pico/status_led.h>
-EOF
+# // TODO: Only include libraries enabled by Traits here.
+{
+    echo "#define __ARM_ARCH_8M_MAIN__ 1"
+    for lib in ${IMPORTED_LIBS//,/ }; do
+        LIB_BASE="$( find "${PICO_SDK_PATH}/src/" -type d -name "$lib" | grep -v "/host/" | head -1 || echo "not-found" )/include"
+
+        echo
+        echo "// MARK: - ${lib} headers"
+
+        if [ -d "$LIB_BASE" ]; then
+            while IFS= read -r hdr; do
+                fname=${hdr##$LIB_BASE/}     # strip directory → file name only
+                echo "#include <$fname>"
+            done < <(find "$LIB_BASE" -type f -name '*.h')
+        else
+            echo "// No headers found -- \$ find \"$LIB_BASE\" -type f -name '*.h')"
+        fi
+    done
+} > "$SRC_DIR/CPicoSDK.source.h"
+cat "$SRC_DIR/CPicoSDK.source.h"
 
 cmake \
   -S "$SRC_DIR" \
@@ -50,7 +47,8 @@ cmake \
   -DPICOTOOL_EXECUTABLE="${PICOTOOL_EXECUTABLE}" \
   -DBOARD_TYPE="${BOARD}" \
   -DTOOLCHAIN_VERSION="${TOOLCHAIN_VERSION}" \
-  -DSDK_VERSION="${SDK_VERSION}"
+  -DSDK_VERSION="${SDK_VERSION}" \
+  -DIMPORTED_LIBS="${IMPORTED_LIBS}"
 
 cmake --build "$BUILD_DIR"
 

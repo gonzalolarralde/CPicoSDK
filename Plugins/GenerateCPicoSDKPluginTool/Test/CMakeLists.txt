@@ -40,17 +40,13 @@ pico_set_program_version(Test "0.1")
 pico_enable_stdio_uart(Test 1)
 pico_enable_stdio_usb(Test 0)
 
-# Add the standard library to the build
-target_link_libraries(Test
-        pico_stdlib
-        pico_status_led)
+string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
+target_link_libraries(Test ${IMPORTED_LIBS_LIST})
 
 # Add the standard include files to the build
 target_include_directories(Test PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
-
-#pico_add_extra_outputs(Test)
 
 # ----
 include(flatten_target_header.cmake)
@@ -61,6 +57,5 @@ flatten_target_header(
     ${CMAKE_BINARY_DIR}/CPicoSDK.h
 )
 
-# If you want the flattened header to always exist when Test is built:
 add_dependencies(Test Test_flatten_header)
 # ----

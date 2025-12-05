@@ -456,18 +456,25 @@
 #define LIB_PICO_STDLIB 1
 #define LIB_PICO_STATUS_LED 1
 #define CYW43_LWIP_DEFAULT 0
+#define LIB_PICO_MULTICORE 1
+#define LIB_PICO_CYW43_ARCH 1
+#define LIB_PICO_STDIO_USB 1
 #define LIB_PICO_TIME 1
 #define LIB_PICO_UTIL 1
 #define LIB_PICO_PLATFORM 1
 #define LIB_PICO_RUNTIME 1
 #define LIB_PICO_STDIO 1
 #define LIB_PICO_ASYNC_CONTEXT_THREADSAFE_BACKGROUND 1
+#define CYW43_LWIP 1
+#define LIB_PICO_SYNC 1
+#define LIB_PICO_UNIQUE_ID 1
+#define PICO_RP2040_USB_DEVICE_UFRAME_FIX 1
+#define LIB_PICO_RAND 1
 #define PICO_NO_HARDWARE 0
 #define PICO_ON_DEVICE 1
 #define PICO_BUILD 1
 #define PICO_RP2350 1
 #define PICO_32BIT 1
-#define LIB_PICO_SYNC 1
 #define LIB_PICO_TIME_ADAPTER 1
 #define LIB_PICO_PLATFORM_COMMON 1
 #define LIB_PICO_PLATFORM_COMPILER 1
@@ -490,15 +497,21 @@
 #define LIB_PICO_PRINTF 1
 #define LIB_PICO_CRT0 1
 #define LIB_PICO_CLIB_INTERFACE 1
-#define LIB_PICO_UNIQUE_ID 1
 #define PICO_BOARD "pico2_w"
+#define PICO_CYW43_ARCH_THREADSAFE_BACKGROUND 1
 #define LIB_PICO_SYNC_SEM 1
 #define LIB_PICO_SYNC_MUTEX 1
 #define LIB_PICO_SYNC_CRITICAL_SECTION 1
+#define LIB_PICO_FIX_RP2040_USB_DEVICE_ENUMERATION 1
 #define LIB_BOOT_STAGE2_HEADERS 1
 #define LIB_PICO_NEWLIB_INTERFACE 1
+#define CFG_TUSB_MCU OPT_MCU_RP2040
+#define CFG_TUSB_OS OPT_OS_PICO
+#define CFG_TUSB_DEBUG 1
 #define LIB_PICO_FLASH 1
-#define _PICO_STDLIB_H 
+#define __ARM_ARCH_8M_MAIN__ 1
+#define _PICO_STATUS_LED_H 
+#define _HARDWARE_GPIO_H 
 #define _PICO_H 
 #define __PICO_STRING(x) #x
 #define __PICO_XSTRING(x) __PICO_STRING(x)
@@ -2514,59 +2527,7 @@ enum pico_error_codes {
     PICO_ERROR_VERSION_MISMATCH = -20,
     PICO_ERROR_RESOURCE_IN_USE = -21
 };
-#define _PICO_STDIO_H 
-#define PICO_STDOUT_MUTEX 1
-#define PICO_STDIO_ENABLE_CRLF_SUPPORT 1
-#define PICO_STDIO_DEFAULT_CRLF 1
-#define PICO_STDIO_STACK_BUFFER_SIZE 128
-#define PICO_STDIO_DEADLOCK_TIMEOUT_MS 1000
-#define PICO_STDIO_SHORT_CIRCUIT_CLIB_FUNCS 1
-#define _STDARG_H 
-#define _ANSI_STDARG_H_ 
-#undef __need___va_list
-#define __GNUC_VA_LIST 
-typedef __builtin_va_list __gnuc_va_list;
-#define va_start(v,l) __builtin_va_start(v,l)
-#define va_end(v) __builtin_va_end(v)
-#define va_arg(v,l) __builtin_va_arg(v,l)
-#define va_copy(d,s) __builtin_va_copy(d,s)
-#define __va_copy(d,s) __builtin_va_copy(d,s)
-typedef __gnuc_va_list va_list;
-#define _VA_LIST_ 
-#define _VA_LIST 
-#define _VA_LIST_DEFINED 
-#define _VA_LIST_T_H 
-#define __va_list__ 
-typedef struct stdio_driver stdio_driver_t;
-_Bool stdio_init_all(void);
-_Bool stdio_deinit_all(void);
-void stdio_flush(void);
-int stdio_getchar_timeout_us(uint32_t timeout_us);
-static inline int getchar_timeout_us(uint32_t timeout_us) {
-    return stdio_getchar_timeout_us(timeout_us);
-}
-void stdio_set_driver_enabled(stdio_driver_t *driver, _Bool enabled);
-void stdio_filter_driver(stdio_driver_t *driver);
-void stdio_set_translate_crlf(stdio_driver_t *driver, _Bool translate);
-int stdio_putchar_raw(int c);
-static inline int putchar_raw(int c) {
-    return stdio_putchar_raw(c);
-}
-int stdio_puts_raw(const char *s);
-static inline int puts_raw(const char *s) {
-    return stdio_puts_raw(s);
-}
-void stdio_set_chars_available_callback(void (*fn)(void*), void *param);
-int stdio_get_until(char *buf, int len, absolute_time_t until);
-int stdio_put_string(const char *s, int len, _Bool newline, _Bool cr_translation);
-int stdio_getchar(void);
-int stdio_putchar(int);
-int stdio_puts(const char *s);
-int stdio_vprintf(const char *format, va_list va);
-int __attribute__((__format__ (__printf__, 1, 0))) stdio_printf(const char* format, ...);
-#define _PICO_TIME_H 
-#define _HARDWARE_TIMER_H 
-#define _HARDWARE_STRUCTS_TIMER_H 
+#define _HARDWARE_STRUCTS_SIO_H 
 #define _HARDWARE_ADDRESS_MAPPED_H 
 #define check_hw_layout(type,member,offset) static_assert(offsetof(type, member) == (offset), "hw offset mismatch")
 #define check_hw_size(type,size) static_assert(sizeof(type) == (size), "hw size mismatch")
@@ -5096,552 +5057,6 @@ typedef struct {
 } accessctrl_hw_t;
 #define accessctrl_hw ((accessctrl_hw_t *)ACCESSCTRL_BASE)
 _Static_assert(sizeof (accessctrl_hw_t) == 0x00ec, "");
-#define _HARDWARE_REGS_TIMER_H 
-#define TIMER_TIMEHW_OFFSET _u(0x00000000)
-#define TIMER_TIMEHW_BITS _u(0xffffffff)
-#define TIMER_TIMEHW_RESET _u(0x00000000)
-#define TIMER_TIMEHW_MSB _u(31)
-#define TIMER_TIMEHW_LSB _u(0)
-#define TIMER_TIMEHW_ACCESS "WF"
-#define TIMER_TIMELW_OFFSET _u(0x00000004)
-#define TIMER_TIMELW_BITS _u(0xffffffff)
-#define TIMER_TIMELW_RESET _u(0x00000000)
-#define TIMER_TIMELW_MSB _u(31)
-#define TIMER_TIMELW_LSB _u(0)
-#define TIMER_TIMELW_ACCESS "WF"
-#define TIMER_TIMEHR_OFFSET _u(0x00000008)
-#define TIMER_TIMEHR_BITS _u(0xffffffff)
-#define TIMER_TIMEHR_RESET _u(0x00000000)
-#define TIMER_TIMEHR_MSB _u(31)
-#define TIMER_TIMEHR_LSB _u(0)
-#define TIMER_TIMEHR_ACCESS "RO"
-#define TIMER_TIMELR_OFFSET _u(0x0000000c)
-#define TIMER_TIMELR_BITS _u(0xffffffff)
-#define TIMER_TIMELR_RESET _u(0x00000000)
-#define TIMER_TIMELR_MSB _u(31)
-#define TIMER_TIMELR_LSB _u(0)
-#define TIMER_TIMELR_ACCESS "RO"
-#define TIMER_ALARM0_OFFSET _u(0x00000010)
-#define TIMER_ALARM0_BITS _u(0xffffffff)
-#define TIMER_ALARM0_RESET _u(0x00000000)
-#define TIMER_ALARM0_MSB _u(31)
-#define TIMER_ALARM0_LSB _u(0)
-#define TIMER_ALARM0_ACCESS "RW"
-#define TIMER_ALARM1_OFFSET _u(0x00000014)
-#define TIMER_ALARM1_BITS _u(0xffffffff)
-#define TIMER_ALARM1_RESET _u(0x00000000)
-#define TIMER_ALARM1_MSB _u(31)
-#define TIMER_ALARM1_LSB _u(0)
-#define TIMER_ALARM1_ACCESS "RW"
-#define TIMER_ALARM2_OFFSET _u(0x00000018)
-#define TIMER_ALARM2_BITS _u(0xffffffff)
-#define TIMER_ALARM2_RESET _u(0x00000000)
-#define TIMER_ALARM2_MSB _u(31)
-#define TIMER_ALARM2_LSB _u(0)
-#define TIMER_ALARM2_ACCESS "RW"
-#define TIMER_ALARM3_OFFSET _u(0x0000001c)
-#define TIMER_ALARM3_BITS _u(0xffffffff)
-#define TIMER_ALARM3_RESET _u(0x00000000)
-#define TIMER_ALARM3_MSB _u(31)
-#define TIMER_ALARM3_LSB _u(0)
-#define TIMER_ALARM3_ACCESS "RW"
-#define TIMER_ARMED_OFFSET _u(0x00000020)
-#define TIMER_ARMED_BITS _u(0x0000000f)
-#define TIMER_ARMED_RESET _u(0x00000000)
-#define TIMER_ARMED_MSB _u(3)
-#define TIMER_ARMED_LSB _u(0)
-#define TIMER_ARMED_ACCESS "WC"
-#define TIMER_TIMERAWH_OFFSET _u(0x00000024)
-#define TIMER_TIMERAWH_BITS _u(0xffffffff)
-#define TIMER_TIMERAWH_RESET _u(0x00000000)
-#define TIMER_TIMERAWH_MSB _u(31)
-#define TIMER_TIMERAWH_LSB _u(0)
-#define TIMER_TIMERAWH_ACCESS "RO"
-#define TIMER_TIMERAWL_OFFSET _u(0x00000028)
-#define TIMER_TIMERAWL_BITS _u(0xffffffff)
-#define TIMER_TIMERAWL_RESET _u(0x00000000)
-#define TIMER_TIMERAWL_MSB _u(31)
-#define TIMER_TIMERAWL_LSB _u(0)
-#define TIMER_TIMERAWL_ACCESS "RO"
-#define TIMER_DBGPAUSE_OFFSET _u(0x0000002c)
-#define TIMER_DBGPAUSE_BITS _u(0x00000006)
-#define TIMER_DBGPAUSE_RESET _u(0x00000007)
-#define TIMER_DBGPAUSE_DBG1_RESET _u(0x1)
-#define TIMER_DBGPAUSE_DBG1_BITS _u(0x00000004)
-#define TIMER_DBGPAUSE_DBG1_MSB _u(2)
-#define TIMER_DBGPAUSE_DBG1_LSB _u(2)
-#define TIMER_DBGPAUSE_DBG1_ACCESS "RW"
-#define TIMER_DBGPAUSE_DBG0_RESET _u(0x1)
-#define TIMER_DBGPAUSE_DBG0_BITS _u(0x00000002)
-#define TIMER_DBGPAUSE_DBG0_MSB _u(1)
-#define TIMER_DBGPAUSE_DBG0_LSB _u(1)
-#define TIMER_DBGPAUSE_DBG0_ACCESS "RW"
-#define TIMER_PAUSE_OFFSET _u(0x00000030)
-#define TIMER_PAUSE_BITS _u(0x00000001)
-#define TIMER_PAUSE_RESET _u(0x00000000)
-#define TIMER_PAUSE_MSB _u(0)
-#define TIMER_PAUSE_LSB _u(0)
-#define TIMER_PAUSE_ACCESS "RW"
-#define TIMER_LOCKED_OFFSET _u(0x00000034)
-#define TIMER_LOCKED_BITS _u(0x00000001)
-#define TIMER_LOCKED_RESET _u(0x00000000)
-#define TIMER_LOCKED_MSB _u(0)
-#define TIMER_LOCKED_LSB _u(0)
-#define TIMER_LOCKED_ACCESS "RW"
-#define TIMER_SOURCE_OFFSET _u(0x00000038)
-#define TIMER_SOURCE_BITS _u(0x00000001)
-#define TIMER_SOURCE_RESET _u(0x00000000)
-#define TIMER_SOURCE_CLK_SYS_RESET _u(0x0)
-#define TIMER_SOURCE_CLK_SYS_BITS _u(0x00000001)
-#define TIMER_SOURCE_CLK_SYS_MSB _u(0)
-#define TIMER_SOURCE_CLK_SYS_LSB _u(0)
-#define TIMER_SOURCE_CLK_SYS_ACCESS "RW"
-#define TIMER_SOURCE_CLK_SYS_VALUE_TICK _u(0x0)
-#define TIMER_SOURCE_CLK_SYS_VALUE_CLK_SYS _u(0x1)
-#define TIMER_INTR_OFFSET _u(0x0000003c)
-#define TIMER_INTR_BITS _u(0x0000000f)
-#define TIMER_INTR_RESET _u(0x00000000)
-#define TIMER_INTR_ALARM_3_RESET _u(0x0)
-#define TIMER_INTR_ALARM_3_BITS _u(0x00000008)
-#define TIMER_INTR_ALARM_3_MSB _u(3)
-#define TIMER_INTR_ALARM_3_LSB _u(3)
-#define TIMER_INTR_ALARM_3_ACCESS "WC"
-#define TIMER_INTR_ALARM_2_RESET _u(0x0)
-#define TIMER_INTR_ALARM_2_BITS _u(0x00000004)
-#define TIMER_INTR_ALARM_2_MSB _u(2)
-#define TIMER_INTR_ALARM_2_LSB _u(2)
-#define TIMER_INTR_ALARM_2_ACCESS "WC"
-#define TIMER_INTR_ALARM_1_RESET _u(0x0)
-#define TIMER_INTR_ALARM_1_BITS _u(0x00000002)
-#define TIMER_INTR_ALARM_1_MSB _u(1)
-#define TIMER_INTR_ALARM_1_LSB _u(1)
-#define TIMER_INTR_ALARM_1_ACCESS "WC"
-#define TIMER_INTR_ALARM_0_RESET _u(0x0)
-#define TIMER_INTR_ALARM_0_BITS _u(0x00000001)
-#define TIMER_INTR_ALARM_0_MSB _u(0)
-#define TIMER_INTR_ALARM_0_LSB _u(0)
-#define TIMER_INTR_ALARM_0_ACCESS "WC"
-#define TIMER_INTE_OFFSET _u(0x00000040)
-#define TIMER_INTE_BITS _u(0x0000000f)
-#define TIMER_INTE_RESET _u(0x00000000)
-#define TIMER_INTE_ALARM_3_RESET _u(0x0)
-#define TIMER_INTE_ALARM_3_BITS _u(0x00000008)
-#define TIMER_INTE_ALARM_3_MSB _u(3)
-#define TIMER_INTE_ALARM_3_LSB _u(3)
-#define TIMER_INTE_ALARM_3_ACCESS "RW"
-#define TIMER_INTE_ALARM_2_RESET _u(0x0)
-#define TIMER_INTE_ALARM_2_BITS _u(0x00000004)
-#define TIMER_INTE_ALARM_2_MSB _u(2)
-#define TIMER_INTE_ALARM_2_LSB _u(2)
-#define TIMER_INTE_ALARM_2_ACCESS "RW"
-#define TIMER_INTE_ALARM_1_RESET _u(0x0)
-#define TIMER_INTE_ALARM_1_BITS _u(0x00000002)
-#define TIMER_INTE_ALARM_1_MSB _u(1)
-#define TIMER_INTE_ALARM_1_LSB _u(1)
-#define TIMER_INTE_ALARM_1_ACCESS "RW"
-#define TIMER_INTE_ALARM_0_RESET _u(0x0)
-#define TIMER_INTE_ALARM_0_BITS _u(0x00000001)
-#define TIMER_INTE_ALARM_0_MSB _u(0)
-#define TIMER_INTE_ALARM_0_LSB _u(0)
-#define TIMER_INTE_ALARM_0_ACCESS "RW"
-#define TIMER_INTF_OFFSET _u(0x00000044)
-#define TIMER_INTF_BITS _u(0x0000000f)
-#define TIMER_INTF_RESET _u(0x00000000)
-#define TIMER_INTF_ALARM_3_RESET _u(0x0)
-#define TIMER_INTF_ALARM_3_BITS _u(0x00000008)
-#define TIMER_INTF_ALARM_3_MSB _u(3)
-#define TIMER_INTF_ALARM_3_LSB _u(3)
-#define TIMER_INTF_ALARM_3_ACCESS "RW"
-#define TIMER_INTF_ALARM_2_RESET _u(0x0)
-#define TIMER_INTF_ALARM_2_BITS _u(0x00000004)
-#define TIMER_INTF_ALARM_2_MSB _u(2)
-#define TIMER_INTF_ALARM_2_LSB _u(2)
-#define TIMER_INTF_ALARM_2_ACCESS "RW"
-#define TIMER_INTF_ALARM_1_RESET _u(0x0)
-#define TIMER_INTF_ALARM_1_BITS _u(0x00000002)
-#define TIMER_INTF_ALARM_1_MSB _u(1)
-#define TIMER_INTF_ALARM_1_LSB _u(1)
-#define TIMER_INTF_ALARM_1_ACCESS "RW"
-#define TIMER_INTF_ALARM_0_RESET _u(0x0)
-#define TIMER_INTF_ALARM_0_BITS _u(0x00000001)
-#define TIMER_INTF_ALARM_0_MSB _u(0)
-#define TIMER_INTF_ALARM_0_LSB _u(0)
-#define TIMER_INTF_ALARM_0_ACCESS "RW"
-#define TIMER_INTS_OFFSET _u(0x00000048)
-#define TIMER_INTS_BITS _u(0x0000000f)
-#define TIMER_INTS_RESET _u(0x00000000)
-#define TIMER_INTS_ALARM_3_RESET _u(0x0)
-#define TIMER_INTS_ALARM_3_BITS _u(0x00000008)
-#define TIMER_INTS_ALARM_3_MSB _u(3)
-#define TIMER_INTS_ALARM_3_LSB _u(3)
-#define TIMER_INTS_ALARM_3_ACCESS "RO"
-#define TIMER_INTS_ALARM_2_RESET _u(0x0)
-#define TIMER_INTS_ALARM_2_BITS _u(0x00000004)
-#define TIMER_INTS_ALARM_2_MSB _u(2)
-#define TIMER_INTS_ALARM_2_LSB _u(2)
-#define TIMER_INTS_ALARM_2_ACCESS "RO"
-#define TIMER_INTS_ALARM_1_RESET _u(0x0)
-#define TIMER_INTS_ALARM_1_BITS _u(0x00000002)
-#define TIMER_INTS_ALARM_1_MSB _u(1)
-#define TIMER_INTS_ALARM_1_LSB _u(1)
-#define TIMER_INTS_ALARM_1_ACCESS "RO"
-#define TIMER_INTS_ALARM_0_RESET _u(0x0)
-#define TIMER_INTS_ALARM_0_BITS _u(0x00000001)
-#define TIMER_INTS_ALARM_0_MSB _u(0)
-#define TIMER_INTS_ALARM_0_LSB _u(0)
-#define TIMER_INTS_ALARM_0_ACCESS "RO"
-typedef struct {
-   
-    io_wo_32 timehw;
-   
-    io_wo_32 timelw;
-   
-    io_ro_32 timehr;
-   
-    io_ro_32 timelr;
-   
-    io_rw_32 alarm[4];
-   
-    io_rw_32 armed;
-   
-    io_ro_32 timerawh;
-   
-    io_ro_32 timerawl;
-   
-    io_rw_32 dbgpause;
-   
-    io_rw_32 pause;
-   
-    io_rw_32 locked;
-   
-    io_rw_32 source;
-   
-    io_rw_32 intr;
-   
-    io_rw_32 inte;
-   
-    io_rw_32 intf;
-   
-    io_ro_32 ints;
-} timer_hw_t;
-#define timer0_hw ((timer_hw_t *)TIMER0_BASE)
-#define timer1_hw ((timer_hw_t *)TIMER1_BASE)
-_Static_assert(sizeof (timer_hw_t) == 0x004c, "");
-#define _INTCTRL_H 
-typedef enum irq_num_rp2350 {
-    TIMER0_IRQ_0 = 0,
-    TIMER0_IRQ_1 = 1,
-    TIMER0_IRQ_2 = 2,
-    TIMER0_IRQ_3 = 3,
-    TIMER1_IRQ_0 = 4,
-    TIMER1_IRQ_1 = 5,
-    TIMER1_IRQ_2 = 6,
-    TIMER1_IRQ_3 = 7,
-    PWM_IRQ_WRAP_0 = 8,
-    PWM_IRQ_WRAP_1 = 9,
-    DMA_IRQ_0 = 10,
-    DMA_IRQ_1 = 11,
-    DMA_IRQ_2 = 12,
-    DMA_IRQ_3 = 13,
-    USBCTRL_IRQ = 14,
-    PIO0_IRQ_0 = 15,
-    PIO0_IRQ_1 = 16,
-    PIO1_IRQ_0 = 17,
-    PIO1_IRQ_1 = 18,
-    PIO2_IRQ_0 = 19,
-    PIO2_IRQ_1 = 20,
-    IO_IRQ_BANK0 = 21,
-    IO_IRQ_BANK0_NS = 22,
-    IO_IRQ_QSPI = 23,
-    IO_IRQ_QSPI_NS = 24,
-    SIO_IRQ_FIFO = 25,
-    SIO_IRQ_BELL = 26,
-    SIO_IRQ_FIFO_NS = 27,
-    SIO_IRQ_BELL_NS = 28,
-    SIO_IRQ_MTIMECMP = 29,
-    CLOCKS_IRQ = 30,
-    SPI0_IRQ = 31,
-    SPI1_IRQ = 32,
-    UART0_IRQ = 33,
-    UART1_IRQ = 34,
-    ADC_IRQ_FIFO = 35,
-    I2C0_IRQ = 36,
-    I2C1_IRQ = 37,
-    OTP_IRQ = 38,
-    TRNG_IRQ = 39,
-    PROC0_IRQ_CTI = 40,
-    PROC1_IRQ_CTI = 41,
-    PLL_SYS_IRQ = 42,
-    PLL_USB_IRQ = 43,
-    POWMAN_IRQ_POW = 44,
-    POWMAN_IRQ_TIMER = 45,
-    SPARE_IRQ_0 = 46,
-    SPARE_IRQ_1 = 47,
-    SPARE_IRQ_2 = 48,
-    SPARE_IRQ_3 = 49,
-    SPARE_IRQ_4 = 50,
-    SPARE_IRQ_5 = 51,
-    IRQ_COUNT
-} irq_num_t;
-#define isr_timer0_0 isr_irq0
-#define isr_timer0_1 isr_irq1
-#define isr_timer0_2 isr_irq2
-#define isr_timer0_3 isr_irq3
-#define isr_timer1_0 isr_irq4
-#define isr_timer1_1 isr_irq5
-#define isr_timer1_2 isr_irq6
-#define isr_timer1_3 isr_irq7
-#define isr_pwm_wrap_0 isr_irq8
-#define isr_pwm_wrap_1 isr_irq9
-#define isr_dma_0 isr_irq10
-#define isr_dma_1 isr_irq11
-#define isr_dma_2 isr_irq12
-#define isr_dma_3 isr_irq13
-#define isr_usbctrl isr_irq14
-#define isr_pio0_0 isr_irq15
-#define isr_pio0_1 isr_irq16
-#define isr_pio1_0 isr_irq17
-#define isr_pio1_1 isr_irq18
-#define isr_pio2_0 isr_irq19
-#define isr_pio2_1 isr_irq20
-#define isr_io_bank0 isr_irq21
-#define isr_io_bank0_ns isr_irq22
-#define isr_io_qspi isr_irq23
-#define isr_io_qspi_ns isr_irq24
-#define isr_sio_fifo isr_irq25
-#define isr_sio_bell isr_irq26
-#define isr_sio_fifo_ns isr_irq27
-#define isr_sio_bell_ns isr_irq28
-#define isr_sio_mtimecmp isr_irq29
-#define isr_clocks isr_irq30
-#define isr_spi0 isr_irq31
-#define isr_spi1 isr_irq32
-#define isr_uart0 isr_irq33
-#define isr_uart1 isr_irq34
-#define isr_adc_fifo isr_irq35
-#define isr_i2c0 isr_irq36
-#define isr_i2c1 isr_irq37
-#define isr_otp isr_irq38
-#define isr_trng isr_irq39
-#define isr_proc0_cti isr_irq40
-#define isr_proc1_cti isr_irq41
-#define isr_pll_sys isr_irq42
-#define isr_pll_usb isr_irq43
-#define isr_powman_pow isr_irq44
-#define isr_powman_timer isr_irq45
-#define isr_spare_0 isr_irq46
-#define isr_spare_1 isr_irq47
-#define isr_spare_2 isr_irq48
-#define isr_spare_3 isr_irq49
-#define isr_spare_4 isr_irq50
-#define isr_spare_5 isr_irq51
-#define PARAM_ASSERTIONS_ENABLED_HARDWARE_TIMER 0
-#define TIMER_NUM(timer) ((timer) == timer1_hw)
-#define TIMER_INSTANCE(num) ((num) ? timer1_hw : timer0_hw)
-_Static_assert(TIMER1_IRQ_3 == TIMER0_IRQ_0 + 7, "");
-#define TIMER_ALARM_IRQ_NUM(timer,alarm_num) (TIMER0_IRQ_0 + TIMER_NUM(timer) * NUM_ALARMS + (alarm_num))
-_Static_assert(TIMER1_IRQ_3 == TIMER0_IRQ_0 + 7, "");
-#define TIMER_ALARM_NUM_FROM_IRQ(irq_num) (((irq_num) - TIMER0_IRQ_0) & 3u)
-_Static_assert(TIMER1_IRQ_3 == TIMER0_IRQ_0 + 7, "");
-#define TIMER_NUM_FROM_IRQ(irq_num) (((irq_num) - TIMER0_IRQ_0) >> 2)
-#define PICO_DEFAULT_TIMER 0
-#define PICO_DEFAULT_TIMER_INSTANCE() (__CONCAT(__CONCAT(timer,PICO_DEFAULT_TIMER), _hw))
-#define timer_hw PICO_DEFAULT_TIMER_INSTANCE()
-static inline void check_hardware_alarm_num_param(__attribute__((__unused__)) uint alarm_num) {
-    ({if (((0 || 0) && !0)) ((!(alarm_num >= 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_timer/include/hardware/timer.h", 189, __func__, "!(alarm_num >= 4u)"));});
-}
-static inline uint32_t timer_time_us_32(timer_hw_t *timer) {
-    return timer->timerawl;
-}
-static inline uint32_t time_us_32(void) {
-    return timer_time_us_32((((timer_hw_t *)0x400b0000u)));
-}
-uint64_t timer_time_us_64(timer_hw_t *timer);
-uint64_t time_us_64(void);
-void timer_busy_wait_us_32(timer_hw_t *timer, uint32_t delay_us);
-void busy_wait_us_32(uint32_t delay_us);
-void timer_busy_wait_us(timer_hw_t *timer, uint64_t delay_us);
-void busy_wait_us(uint64_t delay_us);
-void timer_busy_wait_ms(timer_hw_t *timer, uint32_t delay_ms);
-void busy_wait_ms(uint32_t delay_ms);
-void timer_busy_wait_until(timer_hw_t *timer, absolute_time_t t);
-void busy_wait_until(absolute_time_t t);
-static inline _Bool timer_time_reached(timer_hw_t *timer, absolute_time_t t) {
-    uint64_t target = to_us_since_boot(t);
-    uint32_t hi_target = (uint32_t)(target >> 32u);
-    uint32_t hi = timer->timerawh;
-    return (hi >= hi_target && (timer->timerawl >= (uint32_t) target || hi != hi_target));
-}
-static inline _Bool time_reached(absolute_time_t t) {
-    return timer_time_reached((((timer_hw_t *)0x400b0000u)), t);
-}
-typedef void (*hardware_alarm_callback_t)(uint alarm_num);
-void timer_hardware_alarm_claim(timer_hw_t *timer, uint alarm_num);
-void hardware_alarm_claim(uint alarm_num);
-int timer_hardware_alarm_claim_unused(timer_hw_t *timer, _Bool required);
-int hardware_alarm_claim_unused(_Bool required);
-void timer_hardware_alarm_unclaim(timer_hw_t *timer, uint alarm_num);
-void hardware_alarm_unclaim(uint alarm_num);
-_Bool timer_hardware_alarm_is_claimed(timer_hw_t *timer, uint alarm_num);
-_Bool hardware_alarm_is_claimed(uint alarm_num);
-void timer_hardware_alarm_set_callback(timer_hw_t *timer, uint alarm_num, hardware_alarm_callback_t callback);
-void hardware_alarm_set_callback(uint alarm_num, hardware_alarm_callback_t callback);
-_Bool timer_hardware_alarm_set_target(timer_hw_t *timer, uint alarm_num, absolute_time_t t);
-_Bool hardware_alarm_set_target(uint alarm_num, absolute_time_t t);
-void timer_hardware_alarm_cancel(timer_hw_t *timer, uint alarm_num);
-void hardware_alarm_cancel(uint alarm_num);
-void timer_hardware_alarm_force_irq(timer_hw_t *timer, uint alarm_num);
-void hardware_alarm_force_irq(uint alarm_num);
-static inline uint timer_hardware_alarm_get_irq_num(timer_hw_t *timer, uint alarm_num) {
-    check_hardware_alarm_num_param(alarm_num);
-    return (TIMER0_IRQ_0 + ((timer) == ((timer_hw_t *)0x400b8000u)) * 4u + (alarm_num));
-}
-static inline uint hardware_alarm_get_irq_num(uint alarm_num) {
-    return timer_hardware_alarm_get_irq_num((((timer_hw_t *)0x400b0000u)), alarm_num);
-}
-static inline uint timer_get_index(timer_hw_t *timer) {
-    return ((timer) == ((timer_hw_t *)0x400b8000u));
-}
-static inline timer_hw_t *timer_get_instance(uint timer_num) {
-    ({if (((0 || 0) && !0)) ((!(timer_num >= 2u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_timer/include/hardware/timer.h", 591, __func__, "!(timer_num >= 2u)"));});
-    return ((timer_num) ? ((timer_hw_t *)0x400b8000u) : ((timer_hw_t *)0x400b0000u));
-}
-#define PARAM_ASSERTIONS_ENABLED_PICO_TIME 0
-#define PICO_TIME_SLEEP_OVERHEAD_ADJUST_US 6
-static inline absolute_time_t get_absolute_time(void) {
-    absolute_time_t t;
-    update_us_since_boot(&t, time_us_64());
-    return t;
-}
-static inline uint32_t us_to_ms(uint64_t us) {
-    if (us >> 32u) {
-        return (uint32_t)(us / 1000u);
-    } else {
-        return ((uint32_t)us) / 1000u;
-    }
-}
-static inline uint32_t to_ms_since_boot(absolute_time_t t) {
-    uint64_t us = to_us_since_boot(t);
-    return us_to_ms(us);
-}
-static inline absolute_time_t delayed_by_us(const absolute_time_t t, uint64_t us) {
-    absolute_time_t t2;
-    uint64_t base = to_us_since_boot(t);
-    uint64_t delayed = base + us;
-    if ((int64_t)delayed < 0) {
-        delayed = (0x7fffffffffffffffLL);
-    }
-    update_us_since_boot(&t2, delayed);
-    return t2;
-}
-static inline absolute_time_t delayed_by_ms(const absolute_time_t t, uint32_t ms) {
-    absolute_time_t t2;
-    uint64_t base = to_us_since_boot(t);
-    uint64_t delayed = base + ms * 1000ull;
-    if ((int64_t)delayed < 0) {
-        delayed = (0x7fffffffffffffffLL);
-    }
-    update_us_since_boot(&t2, delayed);
-    return t2;
-}
-static inline absolute_time_t make_timeout_time_us(uint64_t us) {
-    return delayed_by_us(get_absolute_time(), us);
-}
-static inline absolute_time_t make_timeout_time_ms(uint32_t ms) {
-    return delayed_by_ms(get_absolute_time(), ms);
-}
-static inline int64_t absolute_time_diff_us(absolute_time_t from, absolute_time_t to) {
-    return (int64_t)(to_us_since_boot(to) - to_us_since_boot(from));
-}
-static inline absolute_time_t absolute_time_min(absolute_time_t a, absolute_time_t b) {
-    return to_us_since_boot(a) < to_us_since_boot(b) ? a : b;
-}
-extern const absolute_time_t at_the_end_of_time;
-static inline _Bool is_at_the_end_of_time(absolute_time_t t) {
-    return to_us_since_boot(t) == to_us_since_boot(at_the_end_of_time);
-}
-extern const absolute_time_t nil_time;
-static inline _Bool is_nil_time(absolute_time_t t) {
-    return !to_us_since_boot(t);
-}
-void sleep_until(absolute_time_t target);
-void sleep_us(uint64_t us);
-void sleep_ms(uint32_t ms);
-_Bool best_effort_wfe_or_timeout(absolute_time_t timeout_timestamp);
-#define PICO_TIME_DEFAULT_ALARM_POOL_DISABLED 0
-#define PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM 3
-#define PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS 16
-typedef int32_t alarm_id_t;
-typedef int64_t (*alarm_callback_t)(alarm_id_t id, void *user_data);
-typedef struct alarm_pool alarm_pool_t;
-typedef void alarm_pool_timer_t;
-void alarm_pool_init_default(void);
-void runtime_init_default_alarm_pool(void);
-alarm_pool_t *alarm_pool_get_default(void);
-alarm_pool_t *alarm_pool_create_on_timer(alarm_pool_timer_t *timer, uint timer_alarm_num, uint max_timers);
-alarm_pool_timer_t *alarm_pool_timer_for_timer_num(uint timer_num);
-alarm_pool_timer_t *alarm_pool_get_default_timer(void);
-static inline alarm_pool_t *alarm_pool_create(uint timer_alarm_num, uint max_timers) {
-    return alarm_pool_create_on_timer(alarm_pool_get_default_timer(), timer_alarm_num, max_timers);
-}
-alarm_pool_t *alarm_pool_create_on_timer_with_unused_hardware_alarm(alarm_pool_timer_t *timer, uint max_timers);
-static inline alarm_pool_t *alarm_pool_create_with_unused_hardware_alarm(uint max_timers) {
-    return alarm_pool_create_on_timer_with_unused_hardware_alarm(alarm_pool_get_default_timer(), max_timers);
-}
-uint alarm_pool_timer_alarm_num(alarm_pool_t *pool);
-static inline uint alarm_pool_hardware_alarm_num(alarm_pool_t *pool) {
-    return alarm_pool_timer_alarm_num(pool);
-}
-uint alarm_pool_core_num(alarm_pool_t *pool);
-void alarm_pool_destroy(alarm_pool_t *pool);
-alarm_id_t alarm_pool_add_alarm_at(alarm_pool_t *pool, absolute_time_t time, alarm_callback_t callback, void *user_data, _Bool fire_if_past);
-alarm_id_t alarm_pool_add_alarm_at_force_in_context(alarm_pool_t *pool, absolute_time_t time, alarm_callback_t callback,
-                                                    void *user_data);
-static inline alarm_id_t alarm_pool_add_alarm_in_us(alarm_pool_t *pool, uint64_t us, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
-    return alarm_pool_add_alarm_at(pool, delayed_by_us(get_absolute_time(), us), callback, user_data, fire_if_past);
-}
-static inline alarm_id_t alarm_pool_add_alarm_in_ms(alarm_pool_t *pool, uint32_t ms, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
-    return alarm_pool_add_alarm_at(pool, delayed_by_ms(get_absolute_time(), ms), callback, user_data, fire_if_past);
-}
-int64_t alarm_pool_remaining_alarm_time_us(alarm_pool_t *pool, alarm_id_t alarm_id);
-int32_t alarm_pool_remaining_alarm_time_ms(alarm_pool_t *pool, alarm_id_t alarm_id);
-_Bool alarm_pool_cancel_alarm(alarm_pool_t *pool, alarm_id_t alarm_id);
-static inline alarm_id_t add_alarm_at(absolute_time_t time, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
-    return alarm_pool_add_alarm_at(alarm_pool_get_default(), time, callback, user_data, fire_if_past);
-}
-static inline alarm_id_t add_alarm_in_us(uint64_t us, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
-    return alarm_pool_add_alarm_in_us(alarm_pool_get_default(), us, callback, user_data, fire_if_past);
-}
-static inline alarm_id_t add_alarm_in_ms(uint32_t ms, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
-    return alarm_pool_add_alarm_in_ms(alarm_pool_get_default(), ms, callback, user_data, fire_if_past);
-}
-static inline _Bool cancel_alarm(alarm_id_t alarm_id) {
-    return alarm_pool_cancel_alarm(alarm_pool_get_default(), alarm_id);
-}
-int64_t remaining_alarm_time_us(alarm_id_t alarm_id);
-int32_t remaining_alarm_time_ms(alarm_id_t alarm_id);
-typedef struct repeating_timer repeating_timer_t;
-typedef _Bool (*repeating_timer_callback_t)(repeating_timer_t *rt);
-struct repeating_timer {
-    int64_t delay_us;
-    alarm_pool_t *pool;
-    alarm_id_t alarm_id;
-    repeating_timer_callback_t callback;
-    void *user_data;
-};
-_Bool alarm_pool_add_repeating_timer_us(alarm_pool_t *pool, int64_t delay_us, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out);
-static inline _Bool alarm_pool_add_repeating_timer_ms(alarm_pool_t *pool, int32_t delay_ms, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out) {
-    return alarm_pool_add_repeating_timer_us(pool, delay_ms * (int64_t)1000, callback, user_data, out);
-}
-static inline _Bool add_repeating_timer_us(int64_t delay_us, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out) {
-    return alarm_pool_add_repeating_timer_us(alarm_pool_get_default(), delay_us, callback, user_data, out);
-}
-static inline _Bool add_repeating_timer_ms(int32_t delay_ms, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out) {
-    return alarm_pool_add_repeating_timer_us(alarm_pool_get_default(), delay_ms * (int64_t)1000, callback, user_data, out);
-}
-_Bool cancel_repeating_timer(repeating_timer_t *timer);
-#define _HARDWARE_GPIO_H 
-#define _HARDWARE_STRUCTS_SIO_H 
 #define _HARDWARE_STRUCTS_INTERP_H 
 typedef struct {
    
@@ -23204,6 +22619,114 @@ _Static_assert(sizeof (io_bank0_hw_t) == 0x0320, "");
 #define PICO_MAX_SHARED_IRQ_HANDLERS 4
 #define PICO_DISABLE_SHARED_IRQ_HANDLERS 0
 #define PICO_VTABLE_PER_CORE 0
+#define _INTCTRL_H 
+typedef enum irq_num_rp2350 {
+    TIMER0_IRQ_0 = 0,
+    TIMER0_IRQ_1 = 1,
+    TIMER0_IRQ_2 = 2,
+    TIMER0_IRQ_3 = 3,
+    TIMER1_IRQ_0 = 4,
+    TIMER1_IRQ_1 = 5,
+    TIMER1_IRQ_2 = 6,
+    TIMER1_IRQ_3 = 7,
+    PWM_IRQ_WRAP_0 = 8,
+    PWM_IRQ_WRAP_1 = 9,
+    DMA_IRQ_0 = 10,
+    DMA_IRQ_1 = 11,
+    DMA_IRQ_2 = 12,
+    DMA_IRQ_3 = 13,
+    USBCTRL_IRQ = 14,
+    PIO0_IRQ_0 = 15,
+    PIO0_IRQ_1 = 16,
+    PIO1_IRQ_0 = 17,
+    PIO1_IRQ_1 = 18,
+    PIO2_IRQ_0 = 19,
+    PIO2_IRQ_1 = 20,
+    IO_IRQ_BANK0 = 21,
+    IO_IRQ_BANK0_NS = 22,
+    IO_IRQ_QSPI = 23,
+    IO_IRQ_QSPI_NS = 24,
+    SIO_IRQ_FIFO = 25,
+    SIO_IRQ_BELL = 26,
+    SIO_IRQ_FIFO_NS = 27,
+    SIO_IRQ_BELL_NS = 28,
+    SIO_IRQ_MTIMECMP = 29,
+    CLOCKS_IRQ = 30,
+    SPI0_IRQ = 31,
+    SPI1_IRQ = 32,
+    UART0_IRQ = 33,
+    UART1_IRQ = 34,
+    ADC_IRQ_FIFO = 35,
+    I2C0_IRQ = 36,
+    I2C1_IRQ = 37,
+    OTP_IRQ = 38,
+    TRNG_IRQ = 39,
+    PROC0_IRQ_CTI = 40,
+    PROC1_IRQ_CTI = 41,
+    PLL_SYS_IRQ = 42,
+    PLL_USB_IRQ = 43,
+    POWMAN_IRQ_POW = 44,
+    POWMAN_IRQ_TIMER = 45,
+    SPARE_IRQ_0 = 46,
+    SPARE_IRQ_1 = 47,
+    SPARE_IRQ_2 = 48,
+    SPARE_IRQ_3 = 49,
+    SPARE_IRQ_4 = 50,
+    SPARE_IRQ_5 = 51,
+    IRQ_COUNT
+} irq_num_t;
+#define isr_timer0_0 isr_irq0
+#define isr_timer0_1 isr_irq1
+#define isr_timer0_2 isr_irq2
+#define isr_timer0_3 isr_irq3
+#define isr_timer1_0 isr_irq4
+#define isr_timer1_1 isr_irq5
+#define isr_timer1_2 isr_irq6
+#define isr_timer1_3 isr_irq7
+#define isr_pwm_wrap_0 isr_irq8
+#define isr_pwm_wrap_1 isr_irq9
+#define isr_dma_0 isr_irq10
+#define isr_dma_1 isr_irq11
+#define isr_dma_2 isr_irq12
+#define isr_dma_3 isr_irq13
+#define isr_usbctrl isr_irq14
+#define isr_pio0_0 isr_irq15
+#define isr_pio0_1 isr_irq16
+#define isr_pio1_0 isr_irq17
+#define isr_pio1_1 isr_irq18
+#define isr_pio2_0 isr_irq19
+#define isr_pio2_1 isr_irq20
+#define isr_io_bank0 isr_irq21
+#define isr_io_bank0_ns isr_irq22
+#define isr_io_qspi isr_irq23
+#define isr_io_qspi_ns isr_irq24
+#define isr_sio_fifo isr_irq25
+#define isr_sio_bell isr_irq26
+#define isr_sio_fifo_ns isr_irq27
+#define isr_sio_bell_ns isr_irq28
+#define isr_sio_mtimecmp isr_irq29
+#define isr_clocks isr_irq30
+#define isr_spi0 isr_irq31
+#define isr_spi1 isr_irq32
+#define isr_uart0 isr_irq33
+#define isr_uart1 isr_irq34
+#define isr_adc_fifo isr_irq35
+#define isr_i2c0 isr_irq36
+#define isr_i2c1 isr_irq37
+#define isr_otp isr_irq38
+#define isr_trng isr_irq39
+#define isr_proc0_cti isr_irq40
+#define isr_proc1_cti isr_irq41
+#define isr_pll_sys isr_irq42
+#define isr_pll_usb isr_irq43
+#define isr_powman_pow isr_irq44
+#define isr_powman_timer isr_irq45
+#define isr_spare_0 isr_irq46
+#define isr_spare_1 isr_irq47
+#define isr_spare_2 isr_irq48
+#define isr_spare_3 isr_irq49
+#define isr_spare_4 isr_irq50
+#define isr_spare_5 isr_irq51
 #define _PICO_PLATFORM_CPU_REGS_H 
 #define _HARDWARE_REGS_M33_H 
 #define M33_ITM_STIM0_OFFSET _u(0x00000000)
@@ -29171,6 +28694,3970 @@ extern void gpio_debug_pins_init(void);
 #define DEBUG_PINS_SET(p,v) if (DEBUG_PINS_ENABLED(p)) gpio_set_mask((unsigned)(v)<<PICO_DEBUG_PIN_BASE)
 #define DEBUG_PINS_CLR(p,v) if (DEBUG_PINS_ENABLED(p)) gpio_clr_mask((unsigned)(v)<<PICO_DEBUG_PIN_BASE)
 #define DEBUG_PINS_XOR(p,v) if (DEBUG_PINS_ENABLED(p)) gpio_xor_mask((unsigned)(v)<<PICO_DEBUG_PIN_BASE)
+#define CYW43_INCLUDED_CYW43_H 
+#define _CYW43_CONFIGPORT_H 
+#define _PICO_TIME_H 
+#define _HARDWARE_TIMER_H 
+#define _HARDWARE_STRUCTS_TIMER_H 
+#define _HARDWARE_REGS_TIMER_H 
+#define TIMER_TIMEHW_OFFSET _u(0x00000000)
+#define TIMER_TIMEHW_BITS _u(0xffffffff)
+#define TIMER_TIMEHW_RESET _u(0x00000000)
+#define TIMER_TIMEHW_MSB _u(31)
+#define TIMER_TIMEHW_LSB _u(0)
+#define TIMER_TIMEHW_ACCESS "WF"
+#define TIMER_TIMELW_OFFSET _u(0x00000004)
+#define TIMER_TIMELW_BITS _u(0xffffffff)
+#define TIMER_TIMELW_RESET _u(0x00000000)
+#define TIMER_TIMELW_MSB _u(31)
+#define TIMER_TIMELW_LSB _u(0)
+#define TIMER_TIMELW_ACCESS "WF"
+#define TIMER_TIMEHR_OFFSET _u(0x00000008)
+#define TIMER_TIMEHR_BITS _u(0xffffffff)
+#define TIMER_TIMEHR_RESET _u(0x00000000)
+#define TIMER_TIMEHR_MSB _u(31)
+#define TIMER_TIMEHR_LSB _u(0)
+#define TIMER_TIMEHR_ACCESS "RO"
+#define TIMER_TIMELR_OFFSET _u(0x0000000c)
+#define TIMER_TIMELR_BITS _u(0xffffffff)
+#define TIMER_TIMELR_RESET _u(0x00000000)
+#define TIMER_TIMELR_MSB _u(31)
+#define TIMER_TIMELR_LSB _u(0)
+#define TIMER_TIMELR_ACCESS "RO"
+#define TIMER_ALARM0_OFFSET _u(0x00000010)
+#define TIMER_ALARM0_BITS _u(0xffffffff)
+#define TIMER_ALARM0_RESET _u(0x00000000)
+#define TIMER_ALARM0_MSB _u(31)
+#define TIMER_ALARM0_LSB _u(0)
+#define TIMER_ALARM0_ACCESS "RW"
+#define TIMER_ALARM1_OFFSET _u(0x00000014)
+#define TIMER_ALARM1_BITS _u(0xffffffff)
+#define TIMER_ALARM1_RESET _u(0x00000000)
+#define TIMER_ALARM1_MSB _u(31)
+#define TIMER_ALARM1_LSB _u(0)
+#define TIMER_ALARM1_ACCESS "RW"
+#define TIMER_ALARM2_OFFSET _u(0x00000018)
+#define TIMER_ALARM2_BITS _u(0xffffffff)
+#define TIMER_ALARM2_RESET _u(0x00000000)
+#define TIMER_ALARM2_MSB _u(31)
+#define TIMER_ALARM2_LSB _u(0)
+#define TIMER_ALARM2_ACCESS "RW"
+#define TIMER_ALARM3_OFFSET _u(0x0000001c)
+#define TIMER_ALARM3_BITS _u(0xffffffff)
+#define TIMER_ALARM3_RESET _u(0x00000000)
+#define TIMER_ALARM3_MSB _u(31)
+#define TIMER_ALARM3_LSB _u(0)
+#define TIMER_ALARM3_ACCESS "RW"
+#define TIMER_ARMED_OFFSET _u(0x00000020)
+#define TIMER_ARMED_BITS _u(0x0000000f)
+#define TIMER_ARMED_RESET _u(0x00000000)
+#define TIMER_ARMED_MSB _u(3)
+#define TIMER_ARMED_LSB _u(0)
+#define TIMER_ARMED_ACCESS "WC"
+#define TIMER_TIMERAWH_OFFSET _u(0x00000024)
+#define TIMER_TIMERAWH_BITS _u(0xffffffff)
+#define TIMER_TIMERAWH_RESET _u(0x00000000)
+#define TIMER_TIMERAWH_MSB _u(31)
+#define TIMER_TIMERAWH_LSB _u(0)
+#define TIMER_TIMERAWH_ACCESS "RO"
+#define TIMER_TIMERAWL_OFFSET _u(0x00000028)
+#define TIMER_TIMERAWL_BITS _u(0xffffffff)
+#define TIMER_TIMERAWL_RESET _u(0x00000000)
+#define TIMER_TIMERAWL_MSB _u(31)
+#define TIMER_TIMERAWL_LSB _u(0)
+#define TIMER_TIMERAWL_ACCESS "RO"
+#define TIMER_DBGPAUSE_OFFSET _u(0x0000002c)
+#define TIMER_DBGPAUSE_BITS _u(0x00000006)
+#define TIMER_DBGPAUSE_RESET _u(0x00000007)
+#define TIMER_DBGPAUSE_DBG1_RESET _u(0x1)
+#define TIMER_DBGPAUSE_DBG1_BITS _u(0x00000004)
+#define TIMER_DBGPAUSE_DBG1_MSB _u(2)
+#define TIMER_DBGPAUSE_DBG1_LSB _u(2)
+#define TIMER_DBGPAUSE_DBG1_ACCESS "RW"
+#define TIMER_DBGPAUSE_DBG0_RESET _u(0x1)
+#define TIMER_DBGPAUSE_DBG0_BITS _u(0x00000002)
+#define TIMER_DBGPAUSE_DBG0_MSB _u(1)
+#define TIMER_DBGPAUSE_DBG0_LSB _u(1)
+#define TIMER_DBGPAUSE_DBG0_ACCESS "RW"
+#define TIMER_PAUSE_OFFSET _u(0x00000030)
+#define TIMER_PAUSE_BITS _u(0x00000001)
+#define TIMER_PAUSE_RESET _u(0x00000000)
+#define TIMER_PAUSE_MSB _u(0)
+#define TIMER_PAUSE_LSB _u(0)
+#define TIMER_PAUSE_ACCESS "RW"
+#define TIMER_LOCKED_OFFSET _u(0x00000034)
+#define TIMER_LOCKED_BITS _u(0x00000001)
+#define TIMER_LOCKED_RESET _u(0x00000000)
+#define TIMER_LOCKED_MSB _u(0)
+#define TIMER_LOCKED_LSB _u(0)
+#define TIMER_LOCKED_ACCESS "RW"
+#define TIMER_SOURCE_OFFSET _u(0x00000038)
+#define TIMER_SOURCE_BITS _u(0x00000001)
+#define TIMER_SOURCE_RESET _u(0x00000000)
+#define TIMER_SOURCE_CLK_SYS_RESET _u(0x0)
+#define TIMER_SOURCE_CLK_SYS_BITS _u(0x00000001)
+#define TIMER_SOURCE_CLK_SYS_MSB _u(0)
+#define TIMER_SOURCE_CLK_SYS_LSB _u(0)
+#define TIMER_SOURCE_CLK_SYS_ACCESS "RW"
+#define TIMER_SOURCE_CLK_SYS_VALUE_TICK _u(0x0)
+#define TIMER_SOURCE_CLK_SYS_VALUE_CLK_SYS _u(0x1)
+#define TIMER_INTR_OFFSET _u(0x0000003c)
+#define TIMER_INTR_BITS _u(0x0000000f)
+#define TIMER_INTR_RESET _u(0x00000000)
+#define TIMER_INTR_ALARM_3_RESET _u(0x0)
+#define TIMER_INTR_ALARM_3_BITS _u(0x00000008)
+#define TIMER_INTR_ALARM_3_MSB _u(3)
+#define TIMER_INTR_ALARM_3_LSB _u(3)
+#define TIMER_INTR_ALARM_3_ACCESS "WC"
+#define TIMER_INTR_ALARM_2_RESET _u(0x0)
+#define TIMER_INTR_ALARM_2_BITS _u(0x00000004)
+#define TIMER_INTR_ALARM_2_MSB _u(2)
+#define TIMER_INTR_ALARM_2_LSB _u(2)
+#define TIMER_INTR_ALARM_2_ACCESS "WC"
+#define TIMER_INTR_ALARM_1_RESET _u(0x0)
+#define TIMER_INTR_ALARM_1_BITS _u(0x00000002)
+#define TIMER_INTR_ALARM_1_MSB _u(1)
+#define TIMER_INTR_ALARM_1_LSB _u(1)
+#define TIMER_INTR_ALARM_1_ACCESS "WC"
+#define TIMER_INTR_ALARM_0_RESET _u(0x0)
+#define TIMER_INTR_ALARM_0_BITS _u(0x00000001)
+#define TIMER_INTR_ALARM_0_MSB _u(0)
+#define TIMER_INTR_ALARM_0_LSB _u(0)
+#define TIMER_INTR_ALARM_0_ACCESS "WC"
+#define TIMER_INTE_OFFSET _u(0x00000040)
+#define TIMER_INTE_BITS _u(0x0000000f)
+#define TIMER_INTE_RESET _u(0x00000000)
+#define TIMER_INTE_ALARM_3_RESET _u(0x0)
+#define TIMER_INTE_ALARM_3_BITS _u(0x00000008)
+#define TIMER_INTE_ALARM_3_MSB _u(3)
+#define TIMER_INTE_ALARM_3_LSB _u(3)
+#define TIMER_INTE_ALARM_3_ACCESS "RW"
+#define TIMER_INTE_ALARM_2_RESET _u(0x0)
+#define TIMER_INTE_ALARM_2_BITS _u(0x00000004)
+#define TIMER_INTE_ALARM_2_MSB _u(2)
+#define TIMER_INTE_ALARM_2_LSB _u(2)
+#define TIMER_INTE_ALARM_2_ACCESS "RW"
+#define TIMER_INTE_ALARM_1_RESET _u(0x0)
+#define TIMER_INTE_ALARM_1_BITS _u(0x00000002)
+#define TIMER_INTE_ALARM_1_MSB _u(1)
+#define TIMER_INTE_ALARM_1_LSB _u(1)
+#define TIMER_INTE_ALARM_1_ACCESS "RW"
+#define TIMER_INTE_ALARM_0_RESET _u(0x0)
+#define TIMER_INTE_ALARM_0_BITS _u(0x00000001)
+#define TIMER_INTE_ALARM_0_MSB _u(0)
+#define TIMER_INTE_ALARM_0_LSB _u(0)
+#define TIMER_INTE_ALARM_0_ACCESS "RW"
+#define TIMER_INTF_OFFSET _u(0x00000044)
+#define TIMER_INTF_BITS _u(0x0000000f)
+#define TIMER_INTF_RESET _u(0x00000000)
+#define TIMER_INTF_ALARM_3_RESET _u(0x0)
+#define TIMER_INTF_ALARM_3_BITS _u(0x00000008)
+#define TIMER_INTF_ALARM_3_MSB _u(3)
+#define TIMER_INTF_ALARM_3_LSB _u(3)
+#define TIMER_INTF_ALARM_3_ACCESS "RW"
+#define TIMER_INTF_ALARM_2_RESET _u(0x0)
+#define TIMER_INTF_ALARM_2_BITS _u(0x00000004)
+#define TIMER_INTF_ALARM_2_MSB _u(2)
+#define TIMER_INTF_ALARM_2_LSB _u(2)
+#define TIMER_INTF_ALARM_2_ACCESS "RW"
+#define TIMER_INTF_ALARM_1_RESET _u(0x0)
+#define TIMER_INTF_ALARM_1_BITS _u(0x00000002)
+#define TIMER_INTF_ALARM_1_MSB _u(1)
+#define TIMER_INTF_ALARM_1_LSB _u(1)
+#define TIMER_INTF_ALARM_1_ACCESS "RW"
+#define TIMER_INTF_ALARM_0_RESET _u(0x0)
+#define TIMER_INTF_ALARM_0_BITS _u(0x00000001)
+#define TIMER_INTF_ALARM_0_MSB _u(0)
+#define TIMER_INTF_ALARM_0_LSB _u(0)
+#define TIMER_INTF_ALARM_0_ACCESS "RW"
+#define TIMER_INTS_OFFSET _u(0x00000048)
+#define TIMER_INTS_BITS _u(0x0000000f)
+#define TIMER_INTS_RESET _u(0x00000000)
+#define TIMER_INTS_ALARM_3_RESET _u(0x0)
+#define TIMER_INTS_ALARM_3_BITS _u(0x00000008)
+#define TIMER_INTS_ALARM_3_MSB _u(3)
+#define TIMER_INTS_ALARM_3_LSB _u(3)
+#define TIMER_INTS_ALARM_3_ACCESS "RO"
+#define TIMER_INTS_ALARM_2_RESET _u(0x0)
+#define TIMER_INTS_ALARM_2_BITS _u(0x00000004)
+#define TIMER_INTS_ALARM_2_MSB _u(2)
+#define TIMER_INTS_ALARM_2_LSB _u(2)
+#define TIMER_INTS_ALARM_2_ACCESS "RO"
+#define TIMER_INTS_ALARM_1_RESET _u(0x0)
+#define TIMER_INTS_ALARM_1_BITS _u(0x00000002)
+#define TIMER_INTS_ALARM_1_MSB _u(1)
+#define TIMER_INTS_ALARM_1_LSB _u(1)
+#define TIMER_INTS_ALARM_1_ACCESS "RO"
+#define TIMER_INTS_ALARM_0_RESET _u(0x0)
+#define TIMER_INTS_ALARM_0_BITS _u(0x00000001)
+#define TIMER_INTS_ALARM_0_MSB _u(0)
+#define TIMER_INTS_ALARM_0_LSB _u(0)
+#define TIMER_INTS_ALARM_0_ACCESS "RO"
+typedef struct {
+   
+    io_wo_32 timehw;
+   
+    io_wo_32 timelw;
+   
+    io_ro_32 timehr;
+   
+    io_ro_32 timelr;
+   
+    io_rw_32 alarm[4];
+   
+    io_rw_32 armed;
+   
+    io_ro_32 timerawh;
+   
+    io_ro_32 timerawl;
+   
+    io_rw_32 dbgpause;
+   
+    io_rw_32 pause;
+   
+    io_rw_32 locked;
+   
+    io_rw_32 source;
+   
+    io_rw_32 intr;
+   
+    io_rw_32 inte;
+   
+    io_rw_32 intf;
+   
+    io_ro_32 ints;
+} timer_hw_t;
+#define timer0_hw ((timer_hw_t *)TIMER0_BASE)
+#define timer1_hw ((timer_hw_t *)TIMER1_BASE)
+_Static_assert(sizeof (timer_hw_t) == 0x004c, "");
+#define PARAM_ASSERTIONS_ENABLED_HARDWARE_TIMER 0
+#define TIMER_NUM(timer) ((timer) == timer1_hw)
+#define TIMER_INSTANCE(num) ((num) ? timer1_hw : timer0_hw)
+_Static_assert(TIMER1_IRQ_3 == TIMER0_IRQ_0 + 7, "");
+#define TIMER_ALARM_IRQ_NUM(timer,alarm_num) (TIMER0_IRQ_0 + TIMER_NUM(timer) * NUM_ALARMS + (alarm_num))
+_Static_assert(TIMER1_IRQ_3 == TIMER0_IRQ_0 + 7, "");
+#define TIMER_ALARM_NUM_FROM_IRQ(irq_num) (((irq_num) - TIMER0_IRQ_0) & 3u)
+_Static_assert(TIMER1_IRQ_3 == TIMER0_IRQ_0 + 7, "");
+#define TIMER_NUM_FROM_IRQ(irq_num) (((irq_num) - TIMER0_IRQ_0) >> 2)
+#define PICO_DEFAULT_TIMER 0
+#define PICO_DEFAULT_TIMER_INSTANCE() (__CONCAT(__CONCAT(timer,PICO_DEFAULT_TIMER), _hw))
+#define timer_hw PICO_DEFAULT_TIMER_INSTANCE()
+static inline void check_hardware_alarm_num_param(__attribute__((__unused__)) uint alarm_num) {
+    ({if (((0 || 0) && !0)) ((!(alarm_num >= 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_timer/include/hardware/timer.h", 189, __func__, "!(alarm_num >= 4u)"));});
+}
+static inline uint32_t timer_time_us_32(timer_hw_t *timer) {
+    return timer->timerawl;
+}
+static inline uint32_t time_us_32(void) {
+    return timer_time_us_32((((timer_hw_t *)0x400b0000u)));
+}
+uint64_t timer_time_us_64(timer_hw_t *timer);
+uint64_t time_us_64(void);
+void timer_busy_wait_us_32(timer_hw_t *timer, uint32_t delay_us);
+void busy_wait_us_32(uint32_t delay_us);
+void timer_busy_wait_us(timer_hw_t *timer, uint64_t delay_us);
+void busy_wait_us(uint64_t delay_us);
+void timer_busy_wait_ms(timer_hw_t *timer, uint32_t delay_ms);
+void busy_wait_ms(uint32_t delay_ms);
+void timer_busy_wait_until(timer_hw_t *timer, absolute_time_t t);
+void busy_wait_until(absolute_time_t t);
+static inline _Bool timer_time_reached(timer_hw_t *timer, absolute_time_t t) {
+    uint64_t target = to_us_since_boot(t);
+    uint32_t hi_target = (uint32_t)(target >> 32u);
+    uint32_t hi = timer->timerawh;
+    return (hi >= hi_target && (timer->timerawl >= (uint32_t) target || hi != hi_target));
+}
+static inline _Bool time_reached(absolute_time_t t) {
+    return timer_time_reached((((timer_hw_t *)0x400b0000u)), t);
+}
+typedef void (*hardware_alarm_callback_t)(uint alarm_num);
+void timer_hardware_alarm_claim(timer_hw_t *timer, uint alarm_num);
+void hardware_alarm_claim(uint alarm_num);
+int timer_hardware_alarm_claim_unused(timer_hw_t *timer, _Bool required);
+int hardware_alarm_claim_unused(_Bool required);
+void timer_hardware_alarm_unclaim(timer_hw_t *timer, uint alarm_num);
+void hardware_alarm_unclaim(uint alarm_num);
+_Bool timer_hardware_alarm_is_claimed(timer_hw_t *timer, uint alarm_num);
+_Bool hardware_alarm_is_claimed(uint alarm_num);
+void timer_hardware_alarm_set_callback(timer_hw_t *timer, uint alarm_num, hardware_alarm_callback_t callback);
+void hardware_alarm_set_callback(uint alarm_num, hardware_alarm_callback_t callback);
+_Bool timer_hardware_alarm_set_target(timer_hw_t *timer, uint alarm_num, absolute_time_t t);
+_Bool hardware_alarm_set_target(uint alarm_num, absolute_time_t t);
+void timer_hardware_alarm_cancel(timer_hw_t *timer, uint alarm_num);
+void hardware_alarm_cancel(uint alarm_num);
+void timer_hardware_alarm_force_irq(timer_hw_t *timer, uint alarm_num);
+void hardware_alarm_force_irq(uint alarm_num);
+static inline uint timer_hardware_alarm_get_irq_num(timer_hw_t *timer, uint alarm_num) {
+    check_hardware_alarm_num_param(alarm_num);
+    return (TIMER0_IRQ_0 + ((timer) == ((timer_hw_t *)0x400b8000u)) * 4u + (alarm_num));
+}
+static inline uint hardware_alarm_get_irq_num(uint alarm_num) {
+    return timer_hardware_alarm_get_irq_num((((timer_hw_t *)0x400b0000u)), alarm_num);
+}
+static inline uint timer_get_index(timer_hw_t *timer) {
+    return ((timer) == ((timer_hw_t *)0x400b8000u));
+}
+static inline timer_hw_t *timer_get_instance(uint timer_num) {
+    ({if (((0 || 0) && !0)) ((!(timer_num >= 2u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_timer/include/hardware/timer.h", 591, __func__, "!(timer_num >= 2u)"));});
+    return ((timer_num) ? ((timer_hw_t *)0x400b8000u) : ((timer_hw_t *)0x400b0000u));
+}
+#define PARAM_ASSERTIONS_ENABLED_PICO_TIME 0
+#define PICO_TIME_SLEEP_OVERHEAD_ADJUST_US 6
+static inline absolute_time_t get_absolute_time(void) {
+    absolute_time_t t;
+    update_us_since_boot(&t, time_us_64());
+    return t;
+}
+static inline uint32_t us_to_ms(uint64_t us) {
+    if (us >> 32u) {
+        return (uint32_t)(us / 1000u);
+    } else {
+        return ((uint32_t)us) / 1000u;
+    }
+}
+static inline uint32_t to_ms_since_boot(absolute_time_t t) {
+    uint64_t us = to_us_since_boot(t);
+    return us_to_ms(us);
+}
+static inline absolute_time_t delayed_by_us(const absolute_time_t t, uint64_t us) {
+    absolute_time_t t2;
+    uint64_t base = to_us_since_boot(t);
+    uint64_t delayed = base + us;
+    if ((int64_t)delayed < 0) {
+        delayed = (0x7fffffffffffffffLL);
+    }
+    update_us_since_boot(&t2, delayed);
+    return t2;
+}
+static inline absolute_time_t delayed_by_ms(const absolute_time_t t, uint32_t ms) {
+    absolute_time_t t2;
+    uint64_t base = to_us_since_boot(t);
+    uint64_t delayed = base + ms * 1000ull;
+    if ((int64_t)delayed < 0) {
+        delayed = (0x7fffffffffffffffLL);
+    }
+    update_us_since_boot(&t2, delayed);
+    return t2;
+}
+static inline absolute_time_t make_timeout_time_us(uint64_t us) {
+    return delayed_by_us(get_absolute_time(), us);
+}
+static inline absolute_time_t make_timeout_time_ms(uint32_t ms) {
+    return delayed_by_ms(get_absolute_time(), ms);
+}
+static inline int64_t absolute_time_diff_us(absolute_time_t from, absolute_time_t to) {
+    return (int64_t)(to_us_since_boot(to) - to_us_since_boot(from));
+}
+static inline absolute_time_t absolute_time_min(absolute_time_t a, absolute_time_t b) {
+    return to_us_since_boot(a) < to_us_since_boot(b) ? a : b;
+}
+extern const absolute_time_t at_the_end_of_time;
+static inline _Bool is_at_the_end_of_time(absolute_time_t t) {
+    return to_us_since_boot(t) == to_us_since_boot(at_the_end_of_time);
+}
+extern const absolute_time_t nil_time;
+static inline _Bool is_nil_time(absolute_time_t t) {
+    return !to_us_since_boot(t);
+}
+void sleep_until(absolute_time_t target);
+void sleep_us(uint64_t us);
+void sleep_ms(uint32_t ms);
+_Bool best_effort_wfe_or_timeout(absolute_time_t timeout_timestamp);
+#define PICO_TIME_DEFAULT_ALARM_POOL_DISABLED 0
+#define PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM 3
+#define PICO_TIME_DEFAULT_ALARM_POOL_MAX_TIMERS 16
+typedef int32_t alarm_id_t;
+typedef int64_t (*alarm_callback_t)(alarm_id_t id, void *user_data);
+typedef struct alarm_pool alarm_pool_t;
+typedef void alarm_pool_timer_t;
+void alarm_pool_init_default(void);
+void runtime_init_default_alarm_pool(void);
+alarm_pool_t *alarm_pool_get_default(void);
+alarm_pool_t *alarm_pool_create_on_timer(alarm_pool_timer_t *timer, uint timer_alarm_num, uint max_timers);
+alarm_pool_timer_t *alarm_pool_timer_for_timer_num(uint timer_num);
+alarm_pool_timer_t *alarm_pool_get_default_timer(void);
+static inline alarm_pool_t *alarm_pool_create(uint timer_alarm_num, uint max_timers) {
+    return alarm_pool_create_on_timer(alarm_pool_get_default_timer(), timer_alarm_num, max_timers);
+}
+alarm_pool_t *alarm_pool_create_on_timer_with_unused_hardware_alarm(alarm_pool_timer_t *timer, uint max_timers);
+static inline alarm_pool_t *alarm_pool_create_with_unused_hardware_alarm(uint max_timers) {
+    return alarm_pool_create_on_timer_with_unused_hardware_alarm(alarm_pool_get_default_timer(), max_timers);
+}
+uint alarm_pool_timer_alarm_num(alarm_pool_t *pool);
+static inline uint alarm_pool_hardware_alarm_num(alarm_pool_t *pool) {
+    return alarm_pool_timer_alarm_num(pool);
+}
+uint alarm_pool_core_num(alarm_pool_t *pool);
+void alarm_pool_destroy(alarm_pool_t *pool);
+alarm_id_t alarm_pool_add_alarm_at(alarm_pool_t *pool, absolute_time_t time, alarm_callback_t callback, void *user_data, _Bool fire_if_past);
+alarm_id_t alarm_pool_add_alarm_at_force_in_context(alarm_pool_t *pool, absolute_time_t time, alarm_callback_t callback,
+                                                    void *user_data);
+static inline alarm_id_t alarm_pool_add_alarm_in_us(alarm_pool_t *pool, uint64_t us, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
+    return alarm_pool_add_alarm_at(pool, delayed_by_us(get_absolute_time(), us), callback, user_data, fire_if_past);
+}
+static inline alarm_id_t alarm_pool_add_alarm_in_ms(alarm_pool_t *pool, uint32_t ms, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
+    return alarm_pool_add_alarm_at(pool, delayed_by_ms(get_absolute_time(), ms), callback, user_data, fire_if_past);
+}
+int64_t alarm_pool_remaining_alarm_time_us(alarm_pool_t *pool, alarm_id_t alarm_id);
+int32_t alarm_pool_remaining_alarm_time_ms(alarm_pool_t *pool, alarm_id_t alarm_id);
+_Bool alarm_pool_cancel_alarm(alarm_pool_t *pool, alarm_id_t alarm_id);
+static inline alarm_id_t add_alarm_at(absolute_time_t time, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
+    return alarm_pool_add_alarm_at(alarm_pool_get_default(), time, callback, user_data, fire_if_past);
+}
+static inline alarm_id_t add_alarm_in_us(uint64_t us, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
+    return alarm_pool_add_alarm_in_us(alarm_pool_get_default(), us, callback, user_data, fire_if_past);
+}
+static inline alarm_id_t add_alarm_in_ms(uint32_t ms, alarm_callback_t callback, void *user_data, _Bool fire_if_past) {
+    return alarm_pool_add_alarm_in_ms(alarm_pool_get_default(), ms, callback, user_data, fire_if_past);
+}
+static inline _Bool cancel_alarm(alarm_id_t alarm_id) {
+    return alarm_pool_cancel_alarm(alarm_pool_get_default(), alarm_id);
+}
+int64_t remaining_alarm_time_us(alarm_id_t alarm_id);
+int32_t remaining_alarm_time_ms(alarm_id_t alarm_id);
+typedef struct repeating_timer repeating_timer_t;
+typedef _Bool (*repeating_timer_callback_t)(repeating_timer_t *rt);
+struct repeating_timer {
+    int64_t delay_us;
+    alarm_pool_t *pool;
+    alarm_id_t alarm_id;
+    repeating_timer_callback_t callback;
+    void *user_data;
+};
+_Bool alarm_pool_add_repeating_timer_us(alarm_pool_t *pool, int64_t delay_us, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out);
+static inline _Bool alarm_pool_add_repeating_timer_ms(alarm_pool_t *pool, int32_t delay_ms, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out) {
+    return alarm_pool_add_repeating_timer_us(pool, delay_ms * (int64_t)1000, callback, user_data, out);
+}
+static inline _Bool add_repeating_timer_us(int64_t delay_us, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out) {
+    return alarm_pool_add_repeating_timer_us(alarm_pool_get_default(), delay_us, callback, user_data, out);
+}
+static inline _Bool add_repeating_timer_ms(int32_t delay_ms, repeating_timer_callback_t callback, void *user_data, repeating_timer_t *out) {
+    return alarm_pool_add_repeating_timer_us(alarm_pool_get_default(), delay_ms * (int64_t)1000, callback, user_data, out);
+}
+_Bool cancel_repeating_timer(repeating_timer_t *timer);
+#define CYW43_HOST_NAME "PicoW"
+#define CYW43_GPIO 1
+#define CYW43_LOGIC_DEBUG 0
+#define CYW43_USE_OTP_MAC 1
+#define CYW43_NO_NETUTILS 1
+#define CYW43_IOCTL_TIMEOUT_US 1000000
+#define CYW43_USE_STATS 0
+#define CYW43_HAL_MAC_WLAN0 0
+#define STATIC static
+#define CYW43_USE_SPI 1
+#define CYW43_SPI_PIO 1
+#define CYW43_CHIPSET_FIRMWARE_INCLUDE_FILE "w43439A0_7_95_49_00_combined.h"
+#define CYW43_WIFI_NVRAM_INCLUDE_FILE "wifi_nvram_43439.h"
+#define CYW43_EPERM (-PICO_ERROR_NOT_PERMITTED)
+#define CYW43_EIO (-PICO_ERROR_IO)
+#define CYW43_EINVAL (-PICO_ERROR_INVALID_ARG)
+#define CYW43_ETIMEDOUT (-PICO_ERROR_TIMEOUT)
+#define CYW43_NUM_GPIOS CYW43_WL_GPIO_COUNT
+#define cyw43_hal_pin_obj_t uint
+#define CYW43_ARRAY_SIZE(a) count_of(a)
+static inline uint32_t cyw43_hal_ticks_us(void) {
+    return time_us_32();
+}
+static inline uint32_t cyw43_hal_ticks_ms(void) {
+    return to_ms_since_boot(get_absolute_time());
+}
+#define CYW43_PIN_WL_REG_ON CYW43_DEFAULT_PIN_WL_REG_ON
+#define CYW43_PIN_WL_DATA_OUT CYW43_DEFAULT_PIN_WL_DATA_OUT
+#define CYW43_PIN_WL_DATA_IN CYW43_DEFAULT_PIN_WL_DATA_IN
+#define CYW43_PIN_WL_HOST_WAKE CYW43_DEFAULT_PIN_WL_HOST_WAKE
+#define CYW43_PIN_WL_CLOCK CYW43_DEFAULT_PIN_WL_CLOCK
+#define CYW43_PIN_WL_CS CYW43_DEFAULT_PIN_WL_CS
+static inline int cyw43_hal_pin_read(uint pin) {
+    return gpio_get(pin);
+}
+static inline void cyw43_hal_pin_low(uint pin) {
+    gpio_put(pin, 0);
+}
+static inline void cyw43_hal_pin_high(uint pin) {
+    gpio_put(pin, 1);
+}
+#define CYW43_HAL_PIN_MODE_INPUT (GPIO_IN)
+#define CYW43_HAL_PIN_MODE_OUTPUT (GPIO_OUT)
+#define CYW43_HAL_PIN_PULL_NONE (0)
+#define CYW43_HAL_PIN_PULL_UP (1)
+#define CYW43_HAL_PIN_PULL_DOWN (2)
+static inline void cyw43_hal_pin_config(uint pin, uint32_t mode, uint32_t pull, __attribute__((__unused__)) uint32_t alt) {
+    (((mode == (GPIO_IN) || mode == (GPIO_OUT)) && alt == 0) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/pico_cyw43_driver/include/cyw43_configport.h", 155, __func__, "(mode == CYW43_HAL_PIN_MODE_INPUT || mode == CYW43_HAL_PIN_MODE_OUTPUT) && alt == 0"));
+    gpio_set_dir(pin, mode);
+    gpio_set_pulls(pin, pull == (1), pull == (2));
+}
+void cyw43_hal_get_mac(int idx, uint8_t buf[6]);
+void cyw43_hal_generate_laa_mac(int idx, uint8_t buf[6]);
+void cyw43_thread_enter(void);
+void cyw43_thread_exit(void);
+#define CYW43_THREAD_ENTER cyw43_thread_enter();
+#define CYW43_THREAD_EXIT cyw43_thread_exit();
+void cyw43_thread_lock_check(void);
+#define cyw43_arch_lwip_check() cyw43_thread_lock_check()
+#define CYW43_THREAD_LOCK_CHECK cyw43_arch_lwip_check();
+void cyw43_await_background_or_timeout_us(uint32_t timeout_us);
+#define CYW43_SDPCM_SEND_COMMON_WAIT cyw43_await_background_or_timeout_us(1000);
+#define CYW43_DO_IOCTL_WAIT cyw43_await_background_or_timeout_us(1000);
+void cyw43_delay_ms(uint32_t ms);
+void cyw43_delay_us(uint32_t us);
+void cyw43_schedule_internal_poll_dispatch(void (*func)(void));
+void cyw43_post_poll_hook(void);
+#define CYW43_POST_POLL_HOOK cyw43_post_poll_hook();
+#define cyw43_malloc malloc
+#define cyw43_free free
+#define PICO_CYW43_LOGGING_ENABLED 1
+#define CYW43_CLEAR_SDIO_INT (0)
+#define CYW43_INCLUDE_LEGACY_F1_OVERFLOW_WORKAROUND_VARIABLES (0)
+#define CYW43_ENABLE_BLUETOOTH (0)
+#define CYW43_ENABLE_BLUETOOTH_OVER_UART (0)
+#define CYW43_RESOURCE_ATTRIBUTE __attribute__((aligned(4)))
+#define CYW43_RESOURCE_VERIFY_DOWNLOAD (0)
+#define CYW43_SLEEP_MAX (50)
+#define CYW43_HAL_UART_READCHAR_BLOCKING_WAIT cyw43_delay_us(10)
+#define CYW43_NETUTILS (0)
+#define _STDIO_H_ 
+#define _FSTDIO 
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __need___va_list 
+#undef __need___va_list
+#define __GNUC_VA_LIST 
+typedef __builtin_va_list __gnuc_va_list;
+typedef __gnuc_va_list va_list;
+#define _VA_LIST_DEFINED 
+#define _SYS_REENT_H_ 
+#define _SYS__TYPES_H 
+#define __need_size_t 
+#define __need_wint_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#define _WINT_T 
+typedef unsigned int wint_t;
+#undef __need_wint_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _MACHINE__TYPES_H 
+typedef long __blkcnt_t;
+typedef long __blksize_t;
+typedef __uint64_t __fsblkcnt_t;
+typedef __uint32_t __fsfilcnt_t;
+typedef long _off_t;
+typedef int __pid_t;
+typedef short __dev_t;
+typedef unsigned short __uid_t;
+typedef unsigned short __gid_t;
+typedef __uint32_t __id_t;
+typedef unsigned short __ino_t;
+typedef __uint32_t __mode_t;
+__extension__ typedef long long _off64_t;
+typedef _off_t __off_t;
+typedef _off64_t __loff_t;
+typedef long __key_t;
+typedef long _fpos_t;
+#undef __size_t
+typedef unsigned int __size_t;
+#define unsigned signed
+typedef signed int _ssize_t;
+#undef unsigned
+typedef _ssize_t __ssize_t;
+typedef struct
+{
+  int __count;
+  union
+  {
+    wint_t __wch;
+    unsigned char __wchb[4];
+  } __value;
+} _mbstate_t;
+typedef void *_iconv_t;
+#define _CLOCK_T_ unsigned long
+typedef unsigned long __clock_t;
+#define _TIME_T_ __int_least64_t
+typedef __int_least64_t __time_t;
+#define _CLOCKID_T_ unsigned long
+typedef unsigned long __clockid_t;
+typedef long __daddr_t;
+#define _TIMER_T_ unsigned long
+typedef unsigned long __timer_t;
+typedef __uint8_t __sa_family_t;
+typedef __uint32_t __socklen_t;
+typedef int __nl_item;
+typedef unsigned short __nlink_t;
+typedef long __suseconds_t;
+typedef unsigned long __useconds_t;
+typedef __builtin_va_list __va_list;
+#define _NULL 0
+#define __Long long
+typedef unsigned long __ULong;
+#define __SYS_LOCK_H__ 
+struct __lock;
+typedef struct __lock * _LOCK_T;
+#define _LOCK_RECURSIVE_T _LOCK_T
+#define __LOCK_INIT(class,lock) extern struct __lock __lock_ ## lock; class _LOCK_T lock = &__lock_ ## lock
+#define __LOCK_INIT_RECURSIVE(class,lock) __LOCK_INIT(class,lock)
+extern void __retarget_lock_init(_LOCK_T *lock);
+#define __lock_init(lock) __retarget_lock_init(&lock)
+extern void __retarget_lock_init_recursive(_LOCK_T *lock);
+#define __lock_init_recursive(lock) __retarget_lock_init_recursive(&lock)
+extern void __retarget_lock_close(_LOCK_T lock);
+#define __lock_close(lock) __retarget_lock_close(lock)
+extern void __retarget_lock_close_recursive(_LOCK_T lock);
+#define __lock_close_recursive(lock) __retarget_lock_close_recursive(lock)
+extern void __retarget_lock_acquire(_LOCK_T lock);
+#define __lock_acquire(lock) __retarget_lock_acquire(lock)
+extern void __retarget_lock_acquire_recursive(_LOCK_T lock);
+#define __lock_acquire_recursive(lock) __retarget_lock_acquire_recursive(lock)
+extern int __retarget_lock_try_acquire(_LOCK_T lock);
+#define __lock_try_acquire(lock) __retarget_lock_try_acquire(lock)
+extern int __retarget_lock_try_acquire_recursive(_LOCK_T lock);
+#define __lock_try_acquire_recursive(lock) __retarget_lock_try_acquire_recursive(lock)
+extern void __retarget_lock_release(_LOCK_T lock);
+#define __lock_release(lock) __retarget_lock_release(lock)
+extern void __retarget_lock_release_recursive(_LOCK_T lock);
+#define __lock_release_recursive(lock) __retarget_lock_release_recursive(lock)
+typedef _LOCK_T _flock_t;
+struct _reent;
+struct __locale_t;
+struct _Bigint
+{
+  struct _Bigint *_next;
+  int _k, _maxwds, _sign, _wds;
+  __ULong _x[1];
+};
+struct __tm
+{
+  int __tm_sec;
+  int __tm_min;
+  int __tm_hour;
+  int __tm_mday;
+  int __tm_mon;
+  int __tm_year;
+  int __tm_wday;
+  int __tm_yday;
+  int __tm_isdst;
+};
+#define _ATEXIT_SIZE 32
+struct _on_exit_args {
+ void * _fnargs[32];
+ void * _dso_handle[32];
+ __ULong _fntypes;
+ __ULong _is_cxa;
+};
+struct _atexit {
+ struct _atexit *_next;
+ int _ind;
+ void (*_fns[32])(void);
+        struct _on_exit_args _on_exit_args;
+};
+#define _ATEXIT_INIT {_NULL, 0, {_NULL}, {{_NULL}, {_NULL}, 0, 0}}
+struct __sbuf {
+ unsigned char *_base;
+ int _size;
+};
+#define _REENT_SMALL_CHECK_INIT(ptr) 
+struct __sFILE {
+  unsigned char *_p;
+  int _r;
+  int _w;
+  short _flags;
+  short _file;
+  struct __sbuf _bf;
+  int _lbfsize;
+  void * _cookie;
+  int (*_read) (struct _reent *, void *,
+        char *, int);
+  int (*_write) (struct _reent *, void *,
+         const char *,
+         int);
+  _fpos_t (*_seek) (struct _reent *, void *, _fpos_t, int);
+  int (*_close) (struct _reent *, void *);
+  struct __sbuf _ub;
+  unsigned char *_up;
+  int _ur;
+  unsigned char _ubuf[3];
+  unsigned char _nbuf[1];
+  struct __sbuf _lb;
+  int _blksize;
+  _off_t _offset;
+  struct _reent *_data;
+  _flock_t _lock;
+  _mbstate_t _mbstate;
+  int _flags2;
+};
+typedef struct __sFILE __FILE;
+extern __FILE __sf[3];
+struct _glue
+{
+  struct _glue *_next;
+  int _niobs;
+  __FILE *_iobs;
+};
+extern struct _glue __sglue;
+#define _RAND48_SEED_0 (0x330e)
+#define _RAND48_SEED_1 (0xabcd)
+#define _RAND48_SEED_2 (0x1234)
+#define _RAND48_MULT_0 (0xe66d)
+#define _RAND48_MULT_1 (0xdeec)
+#define _RAND48_MULT_2 (0x0005)
+#define _RAND48_ADD (0x000b)
+struct _rand48 {
+  unsigned short _seed[3];
+  unsigned short _mult[3];
+  unsigned short _add;
+};
+#define _REENT_EMERGENCY_SIZE 25
+#define _REENT_ASCTIME_SIZE 26
+#define _REENT_SIGNAL_SIZE 24
+#define _REENT_INIT_RESERVED_0 
+#define _REENT_INIT_RESERVED_1 
+#define _REENT_INIT_RESERVED_2 
+#define _REENT_INIT_RESERVED_6_7 
+#define _REENT_INIT_RESERVED_8 
+struct _reent
+{
+  int _errno;
+  __FILE *_stdin, *_stdout, *_stderr;
+  int _inc;
+  char _emergency[25];
+  struct __locale_t *_locale;
+  void (*__cleanup) (struct _reent *);
+  struct _Bigint *_result;
+  int _result_k;
+  struct _Bigint *_p5s;
+  struct _Bigint **_freelist;
+  int _cvtlen;
+  char *_cvtbuf;
+  union
+    {
+      struct
+        {
+          char * _strtok_last;
+          char _asctime_buf[26];
+          struct __tm _localtime_buf;
+          int _gamma_signgam;
+          __extension__ unsigned long long _rand_next;
+          struct _rand48 _r48;
+          _mbstate_t _mblen_state;
+          _mbstate_t _mbtowc_state;
+          _mbstate_t _wctomb_state;
+          char _l64a_buf[8];
+          char _signal_buf[24];
+          int _getdate_err;
+          _mbstate_t _mbrlen_state;
+          _mbstate_t _mbrtowc_state;
+          _mbstate_t _mbsrtowcs_state;
+          _mbstate_t _wcrtomb_state;
+          _mbstate_t _wcsrtombs_state;
+   int _h_errno;
+   char _getlocalename_l_buf[32 ];
+        } _reent;
+    } _new;
+  void (**_sig_func)(int);
+};
+#define _REENT_INIT(var) { 0, &__sf[0], &__sf[1], &__sf[2], 0, "", _REENT_INIT_RESERVED_1 _NULL, _REENT_INIT_RESERVED_0 _NULL, _NULL, 0, _NULL, _NULL, 0, _NULL, { { _REENT_INIT_RESERVED_2 _NULL, "", {0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 1, { {_RAND48_SEED_0, _RAND48_SEED_1, _RAND48_SEED_2}, {_RAND48_MULT_0, _RAND48_MULT_1, _RAND48_MULT_2}, _RAND48_ADD }, {0, {0}}, {0, {0}}, {0, {0}}, "", "", 0, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}} } }, _REENT_INIT_RESERVED_6_7 _NULL }
+#define _REENT_INIT_PTR_ZEROED(var) { (var)->_stdin = &__sf[0]; (var)->_stdout = &__sf[1]; (var)->_stderr = &__sf[2]; (var)->_new._reent._rand_next = 1; (var)->_new._reent._r48._seed[0] = _RAND48_SEED_0; (var)->_new._reent._r48._seed[1] = _RAND48_SEED_1; (var)->_new._reent._r48._seed[2] = _RAND48_SEED_2; (var)->_new._reent._r48._mult[0] = _RAND48_MULT_0; (var)->_new._reent._r48._mult[1] = _RAND48_MULT_1; (var)->_new._reent._r48._mult[2] = _RAND48_MULT_2; (var)->_new._reent._r48._add = _RAND48_ADD; }
+#define _REENT_CHECK_RAND48(ptr) 
+#define _REENT_CHECK_MP(ptr) 
+#define _REENT_CHECK_TM(ptr) 
+#define _REENT_CHECK_ASCTIME_BUF(ptr) 
+#define _REENT_CHECK_EMERGENCY(ptr) 
+#define _REENT_CHECK_MISC(ptr) 
+#define _REENT_CHECK_SIGNAL_BUF(ptr) 
+#define _REENT_SIGNGAM(ptr) ((ptr)->_new._reent._gamma_signgam)
+#define _REENT_RAND_NEXT(ptr) ((ptr)->_new._reent._rand_next)
+#define _REENT_RAND48_SEED(ptr) ((ptr)->_new._reent._r48._seed)
+#define _REENT_RAND48_MULT(ptr) ((ptr)->_new._reent._r48._mult)
+#define _REENT_RAND48_ADD(ptr) ((ptr)->_new._reent._r48._add)
+#define _REENT_MP_RESULT(ptr) ((ptr)->_result)
+#define _REENT_MP_RESULT_K(ptr) ((ptr)->_result_k)
+#define _REENT_MP_P5S(ptr) ((ptr)->_p5s)
+#define _REENT_MP_FREELIST(ptr) ((ptr)->_freelist)
+#define _REENT_ASCTIME_BUF(ptr) ((ptr)->_new._reent._asctime_buf)
+#define _REENT_TM(ptr) (&(ptr)->_new._reent._localtime_buf)
+#define _REENT_STRTOK_LAST(ptr) ((ptr)->_new._reent._strtok_last)
+#define _REENT_MBLEN_STATE(ptr) ((ptr)->_new._reent._mblen_state)
+#define _REENT_MBTOWC_STATE(ptr) ((ptr)->_new._reent._mbtowc_state)
+#define _REENT_WCTOMB_STATE(ptr) ((ptr)->_new._reent._wctomb_state)
+#define _REENT_MBRLEN_STATE(ptr) ((ptr)->_new._reent._mbrlen_state)
+#define _REENT_MBRTOWC_STATE(ptr) ((ptr)->_new._reent._mbrtowc_state)
+#define _REENT_MBSRTOWCS_STATE(ptr) ((ptr)->_new._reent._mbsrtowcs_state)
+#define _REENT_WCRTOMB_STATE(ptr) ((ptr)->_new._reent._wcrtomb_state)
+#define _REENT_WCSRTOMBS_STATE(ptr) ((ptr)->_new._reent._wcsrtombs_state)
+#define _REENT_L64A_BUF(ptr) ((ptr)->_new._reent._l64a_buf)
+#define _REENT_SIGNAL_BUF(ptr) ((ptr)->_new._reent._signal_buf)
+#define _REENT_GETDATE_ERR_P(ptr) (&((ptr)->_new._reent._getdate_err))
+#define _REENT_GETLOCALENAME_L_BUF(ptr) ((ptr)->_new._reent._getlocalename_l_buf)
+#define _REENT_CLEANUP(_ptr) ((_ptr)->__cleanup)
+#define _REENT_CVTBUF(_ptr) ((_ptr)->_cvtbuf)
+#define _REENT_CVTLEN(_ptr) ((_ptr)->_cvtlen)
+#define _REENT_EMERGENCY(_ptr) ((_ptr)->_emergency)
+#define _REENT_ERRNO(_ptr) ((_ptr)->_errno)
+#define _REENT_INC(_ptr) ((_ptr)->_inc)
+#define _REENT_LOCALE(_ptr) ((_ptr)->_locale)
+#define _REENT_SIG_FUNC(_ptr) ((_ptr)->_sig_func)
+#define _REENT_STDIN(_ptr) ((_ptr)->_stdin)
+#define _REENT_STDOUT(_ptr) ((_ptr)->_stdout)
+#define _REENT_STDERR(_ptr) ((_ptr)->_stderr)
+#define _REENT_INIT_PTR(var) { memset((var), 0, sizeof(*(var))); _REENT_INIT_PTR_ZEROED(var); }
+#define __ATTRIBUTE_IMPURE_PTR__ 
+extern struct _reent *_impure_ptr ;
+#define __ATTRIBUTE_IMPURE_DATA__ 
+extern struct _reent _impure_data ;
+#define _REENT _impure_ptr
+#define _REENT_IS_NULL(_ptr) ((_ptr) == NULL)
+#define _GLOBAL_REENT (&_impure_data)
+#define _Kmax (sizeof (size_t) << 3)
+extern struct _atexit *__atexit;
+extern struct _atexit __atexit0;
+extern void (*__stdio_exit_handler) (void);
+void _reclaim_reent (struct _reent *);
+extern int _fwalk_sglue (struct _reent *, int (*)(struct _reent *, __FILE *),
+    struct _glue *);
+
+typedef __FILE FILE;
+#define __FILE_defined 
+typedef _fpos_t fpos_t;
+typedef __off_t off_t;
+#define _OFF_T_DECLARED 
+typedef _ssize_t ssize_t;
+#define _SSIZE_T_DECLARED 
+#define _NEWLIB_STDIO_H 
+#define _flockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_acquire_recursive((fp)->_lock))
+#define _funlockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_release_recursive((fp)->_lock))
+#define __SLBF 0x0001
+#define __SNBF 0x0002
+#define __SRD 0x0004
+#define __SWR 0x0008
+#define __SRW 0x0010
+#define __SEOF 0x0020
+#define __SERR 0x0040
+#define __SMBF 0x0080
+#define __SAPP 0x0100
+#define __SSTR 0x0200
+#define __SOPT 0x0400
+#define __SNPT 0x0800
+#define __SOFF 0x1000
+#define __SORD 0x2000
+#define __SL64 0x8000
+#define __SNLK 0x0001
+#define __SWID 0x2000
+#define _IOFBF 0
+#define _IOLBF 1
+#define _IONBF 2
+#define EOF (-1)
+#define BUFSIZ 1024
+#define FOPEN_MAX 20
+#define FILENAME_MAX 1024
+#define L_tmpnam FILENAME_MAX
+#define P_tmpdir "/tmp"
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+#define TMP_MAX 26
+#define stdin _REENT_STDIN(_REENT)
+#define stdout _REENT_STDOUT(_REENT)
+#define stderr _REENT_STDERR(_REENT)
+#define _stdin_r(x) _REENT_STDIN(x)
+#define _stdout_r(x) _REENT_STDOUT(x)
+#define _stderr_r(x) _REENT_STDERR(x)
+#define __VALIST __gnuc_va_list
+char * ctermid (char *);
+FILE * tmpfile (void);
+char * tmpnam (char *);
+char * tempnam (const char *, const char *) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
+int fclose (FILE *);
+int fflush (FILE *);
+FILE * freopen (const char *restrict, const char *restrict, FILE *restrict);
+void setbuf (FILE *restrict, char *restrict);
+int setvbuf (FILE *restrict, char *restrict, int, size_t);
+int fprintf (FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int fscanf (FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int printf (const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 1, 2)));
+int scanf (const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 1, 2)));
+int sscanf (const char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int vfprintf (FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vprintf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 1, 0)));
+int vsprintf (char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int fgetc (FILE *);
+char * fgets (char *restrict, int, FILE *restrict);
+int fputc (int, FILE *);
+int fputs (const char *restrict, FILE *restrict);
+int getc (FILE *);
+int getchar (void);
+char * gets (char *);
+int putc (int, FILE *);
+int putchar (int);
+int puts (const char *);
+int ungetc (int, FILE *);
+size_t fread (void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t fwrite (const void *restrict , size_t _size, size_t _n, FILE *);
+int fgetpos (FILE *restrict, fpos_t *restrict);
+int fseek (FILE *, long, int);
+int fsetpos (FILE *, const fpos_t *);
+long ftell ( FILE *);
+void rewind (FILE *);
+void clearerr (FILE *);
+int feof (FILE *);
+int ferror (FILE *);
+void perror (const char *);
+FILE * fopen (const char *restrict _name, const char *restrict _type);
+int sprintf (char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int remove (const char *);
+int rename (const char *, const char *);
+int fseeko (FILE *, off_t, int);
+off_t ftello (FILE *);
+int snprintf (char *restrict, size_t, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int vsnprintf (char *restrict, size_t, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int vfscanf (FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int vscanf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 1, 0)));
+int vsscanf (const char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int asiprintf (char **, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+char * asniprintf (char *, size_t *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+char * asnprintf (char *restrict, size_t *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int diprintf (int, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int fiprintf (FILE *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int fiscanf (FILE *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int iprintf (const char *, ...)
+               __attribute__ ((__format__ (__printf__, 1, 2)));
+int iscanf (const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 1, 2)));
+int siprintf (char *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int siscanf (const char *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int sniprintf (char *, size_t, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int vasiprintf (char **, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+char * vasniprintf (char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+char * vasnprintf (char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int vdiprintf (int, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vfiprintf (FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vfiscanf (FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int viprintf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 1, 0)));
+int viscanf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 1, 0)));
+int vsiprintf (char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vsiscanf (const char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int vsniprintf (char *, size_t, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+FILE * fdopen (int, const char *);
+int fileno (FILE *);
+int pclose (FILE *);
+FILE * popen (const char *, const char *);
+void setbuffer (FILE *, char *, int);
+int setlinebuf (FILE *);
+int getw (FILE *);
+int putw (int, FILE *);
+int getc_unlocked (FILE *);
+int getchar_unlocked (void);
+void flockfile (FILE *);
+int ftrylockfile (FILE *);
+void funlockfile (FILE *);
+int putc_unlocked (int, FILE *);
+int putchar_unlocked (int);
+int dprintf (int, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+FILE * fmemopen (void *restrict, size_t, const char *restrict);
+FILE * open_memstream (char **, size_t *);
+int vdprintf (int, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int renameat (int, const char *, int, const char *);
+int _asiprintf_r (struct _reent *, char **, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+char * _asniprintf_r (struct _reent *, char *, size_t *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+char * _asnprintf_r (struct _reent *, char *restrict, size_t *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+int _asprintf_r (struct _reent *, char **restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _diprintf_r (struct _reent *, int, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _dprintf_r (struct _reent *, int, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _fclose_r (struct _reent *, FILE *);
+int _fcloseall_r (struct _reent *);
+FILE * _fdopen_r (struct _reent *, int, const char *);
+int _fflush_r (struct _reent *, FILE *);
+int _fgetc_r (struct _reent *, FILE *);
+int _fgetc_unlocked_r (struct _reent *, FILE *);
+char * _fgets_r (struct _reent *, char *restrict, int, FILE *restrict);
+char * _fgets_unlocked_r (struct _reent *, char *restrict, int, FILE *restrict);
+int _fgetpos_r (struct _reent *, FILE *, fpos_t *);
+int _fsetpos_r (struct _reent *, FILE *, const fpos_t *);
+int _fiprintf_r (struct _reent *, FILE *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _fiscanf_r (struct _reent *, FILE *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+FILE * _fmemopen_r (struct _reent *, void *restrict, size_t, const char *restrict);
+FILE * _fopen_r (struct _reent *, const char *restrict, const char *restrict);
+FILE * _freopen_r (struct _reent *, const char *restrict, const char *restrict, FILE *restrict);
+int _fprintf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _fpurge_r (struct _reent *, FILE *);
+int _fputc_r (struct _reent *, int, FILE *);
+int _fputc_unlocked_r (struct _reent *, int, FILE *);
+int _fputs_r (struct _reent *, const char *restrict, FILE *restrict);
+int _fputs_unlocked_r (struct _reent *, const char *restrict, FILE *restrict);
+size_t _fread_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t _fread_unlocked_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
+int _fscanf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+int _fseek_r (struct _reent *, FILE *, long, int);
+int _fseeko_r (struct _reent *, FILE *, _off_t, int);
+long _ftell_r (struct _reent *, FILE *);
+_off_t _ftello_r (struct _reent *, FILE *);
+void _rewind_r (struct _reent *, FILE *);
+size_t _fwrite_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t _fwrite_unlocked_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
+int _getc_r (struct _reent *, FILE *);
+int _getc_unlocked_r (struct _reent *, FILE *);
+int _getchar_r (struct _reent *);
+int _getchar_unlocked_r (struct _reent *);
+char * _gets_r (struct _reent *, char *);
+int _iprintf_r (struct _reent *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int _iscanf_r (struct _reent *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+FILE * _open_memstream_r (struct _reent *, char **, size_t *);
+void _perror_r (struct _reent *, const char *);
+int _printf_r (struct _reent *, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int _putc_r (struct _reent *, int, FILE *);
+int _putc_unlocked_r (struct _reent *, int, FILE *);
+int _putchar_unlocked_r (struct _reent *, int);
+int _putchar_r (struct _reent *, int);
+int _puts_r (struct _reent *, const char *);
+int _remove_r (struct _reent *, const char *);
+int _rename_r (struct _reent *,
+      const char *_old, const char *_new);
+int _scanf_r (struct _reent *, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int _siprintf_r (struct _reent *, char *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _siscanf_r (struct _reent *, const char *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+int _sniprintf_r (struct _reent *, char *, size_t, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+int _snprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+int _sprintf_r (struct _reent *, char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _sscanf_r (struct _reent *, const char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+char * _tempnam_r (struct _reent *, const char *, const char *);
+FILE * _tmpfile_r (struct _reent *);
+char * _tmpnam_r (struct _reent *, char *);
+int _ungetc_r (struct _reent *, int, FILE *);
+int _vasiprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+char * _vasniprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+char * _vasnprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+int _vasprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vdiprintf_r (struct _reent *, int, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vdprintf_r (struct _reent *, int, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vfiprintf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vfiscanf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int _vfprintf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vfscanf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int _viprintf_r (struct _reent *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int _viscanf_r (struct _reent *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int _vprintf_r (struct _reent *, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int _vscanf_r (struct _reent *, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int _vsiprintf_r (struct _reent *, char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vsiscanf_r (struct _reent *, const char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int _vsniprintf_r (struct _reent *, char *, size_t, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+int _vsnprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+int _vsprintf_r (struct _reent *, char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vsscanf_r (struct _reent *, const char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int fpurge (FILE *);
+ssize_t __getdelim (char **, size_t *, int, FILE *);
+ssize_t __getline (char **, size_t *, FILE *);
+void clearerr_unlocked (FILE *);
+int feof_unlocked (FILE *);
+int ferror_unlocked (FILE *);
+int fileno_unlocked (FILE *);
+int fflush_unlocked (FILE *);
+int fgetc_unlocked (FILE *);
+int fputc_unlocked (int, FILE *);
+size_t fread_unlocked (void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t fwrite_unlocked (const void *restrict , size_t _size, size_t _n, FILE *);
+int __srget_r (struct _reent *, FILE *);
+int __swbuf_r (struct _reent *, int, FILE *);
+FILE *funopen (const void *__cookie,
+  int (*__readfn)(void *__cookie, char *__buf,
+    int __n),
+  int (*__writefn)(void *__cookie, const char *__buf,
+     int __n),
+  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
+  int (*__closefn)(void *__cookie));
+FILE *_funopen_r (struct _reent *, const void *__cookie,
+  int (*__readfn)(void *__cookie, char *__buf,
+    int __n),
+  int (*__writefn)(void *__cookie, const char *__buf,
+     int __n),
+  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
+  int (*__closefn)(void *__cookie));
+#define fropen(__cookie,__fn) funopen(__cookie, __fn, NULL, NULL, NULL)
+#define fwopen(__cookie,__fn) funopen(__cookie, NULL, __fn, NULL, NULL)
+#define __sgetc_raw_r(__ptr,__f) (--(__f)->_r < 0 ? __srget_r(__ptr, __f) : (int)(*(__f)->_p++))
+#define __sgetc_r(__ptr,__p) __sgetc_raw_r(__ptr, __p)
+static __inline__ int __sputc_r(struct _reent *_ptr, int _c, FILE *_p) {
+ if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
+  return (*_p->_p++ = _c);
+ else
+  return (__swbuf_r(_ptr, _c, _p));
+}
+#define __sfeof(p) ((int)(((p)->_flags & __SEOF) != 0))
+#define __sferror(p) ((int)(((p)->_flags & __SERR) != 0))
+#define __sclearerr(p) ((void)((p)->_flags &= ~(__SERR|__SEOF)))
+#define __sfileno(p) ((p)->_file)
+#define feof(p) __sfeof(p)
+#define ferror(p) __sferror(p)
+#define clearerr(p) __sclearerr(p)
+#define feof_unlocked(p) __sfeof(p)
+#define ferror_unlocked(p) __sferror(p)
+#define clearerr_unlocked(p) __sclearerr(p)
+static __inline int
+_getchar_unlocked(void)
+{
+ struct _reent *_ptr;
+ _ptr = _impure_ptr;
+ return ((--(((_ptr)->_stdin))->_r < 0 ? __srget_r(_ptr, ((_ptr)->_stdin)) : (int)(*(((_ptr)->_stdin))->_p++)));
+}
+static __inline int
+_putchar_unlocked(int _c)
+{
+ struct _reent *_ptr;
+ _ptr = _impure_ptr;
+ return (__sputc_r(_ptr, _c, ((_ptr)->_stdout)));
+}
+#define getchar_unlocked() _getchar_unlocked()
+#define putchar_unlocked(_c) _putchar_unlocked(_c)
+#define fast_putc(x,p) (--(p)->_w < 0 ? __swbuf_r(_REENT, (int)(x), p) == EOF : (*(p)->_p = (x), (p)->_p++, 0))
+#define L_ctermid 16
+
+#define CYW43_PRINTF(...) printf(__VA_ARGS__)
+#define CYW43_VDEBUG(...) (void)0
+#define CYW43_VERBOSE_DEBUG 0
+#define CYW43_DEBUG(...) CYW43_PRINTF(__VA_ARGS__)
+#define CYW43_INFO(...) CYW43_PRINTF(__VA_ARGS__)
+#define CYW43_WARN(...) CYW43_PRINTF("[CYW43] " __VA_ARGS__)
+#define CYW43_FAIL_FAST_CHECK(res) (res)
+#define CYW43_EVENT_POLL_HOOK 
+#define CYW43_DEFAULT_IP_STA_ADDRESS LWIP_MAKEU32(0, 0, 0, 0)
+#define CYW43_DEFAULT_IP_AP_ADDRESS LWIP_MAKEU32(192, 168, 4, 1)
+#define CYW43_DEFAULT_IP_MASK LWIP_MAKEU32(255, 255, 255, 0)
+#define CYW43_DEFAULT_IP_STA_GATEWAY LWIP_MAKEU32(192, 168, 0, 1)
+#define CYW43_DEFAULT_IP_AP_GATEWAY LWIP_MAKEU32(192, 168, 4, 1)
+#define CYW43_DEFAULT_IP_DNS LWIP_MAKEU32(8, 8, 8, 8)
+#define CYW43_CB_TCPIP_INIT_EXTRA(self,itf) do { } while (0)
+#define CYW43_CB_TCPIP_DEINIT_EXTRA(self,itf) do { } while (0)
+#define LWIP_HDR_NETIF_H 
+#define LWIP_HDR_OPT_H 
+#define __LWIPOPTS_H__ 
+#define NO_SYS 1
+#define LWIP_SOCKET 0
+#define MEM_LIBC_MALLOC 0
+#define MEM_ALIGNMENT 4
+#define MEM_SIZE 4000
+#define MEMP_NUM_TCP_SEG 32
+#define MEMP_NUM_ARP_QUEUE 10
+#define PBUF_POOL_SIZE 24
+#define LWIP_ARP 1
+#define LWIP_ETHERNET 1
+#define LWIP_ICMP 1
+#define LWIP_RAW 1
+#define TCP_WND (8 * TCP_MSS)
+#define TCP_MSS 1460
+#define TCP_SND_BUF (8 * TCP_MSS)
+#define TCP_SND_QUEUELEN ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
+#define LWIP_NETIF_STATUS_CALLBACK 1
+#define LWIP_NETIF_LINK_CALLBACK 1
+#define LWIP_NETIF_HOSTNAME 1
+#define LWIP_NETCONN 0
+#define MEM_STATS 1
+#define SYS_STATS 1
+#define MEMP_STATS 1
+#define LINK_STATS 1
+#define LWIP_CHKSUM_ALGORITHM 3
+#define LWIP_DHCP 1
+#define LWIP_IPV4 1
+#define LWIP_TCP 1
+#define LWIP_UDP 1
+#define LWIP_DNS 1
+#define LWIP_TCP_KEEPALIVE 1
+#define LWIP_NETIF_TX_SINGLE_PBUF 1
+#define DHCP_DOES_ARP_CHECK 0
+#define LWIP_DHCP_DOES_ACD_CHECK 0
+#define LWIP_DEBUG 1
+#define LWIP_STATS 1
+#define LWIP_STATS_DISPLAY 1
+#define ETHARP_DEBUG LWIP_DBG_OFF
+#define NETIF_DEBUG LWIP_DBG_OFF
+#define PBUF_DEBUG LWIP_DBG_OFF
+#define API_LIB_DEBUG LWIP_DBG_OFF
+#define API_MSG_DEBUG LWIP_DBG_OFF
+#define SOCKETS_DEBUG LWIP_DBG_OFF
+#define ICMP_DEBUG LWIP_DBG_OFF
+#define INET_DEBUG LWIP_DBG_OFF
+#define IP_DEBUG LWIP_DBG_OFF
+#define IP_REASS_DEBUG LWIP_DBG_OFF
+#define RAW_DEBUG LWIP_DBG_OFF
+#define MEM_DEBUG LWIP_DBG_OFF
+#define MEMP_DEBUG LWIP_DBG_OFF
+#define SYS_DEBUG LWIP_DBG_OFF
+#define TCP_DEBUG LWIP_DBG_OFF
+#define TCP_INPUT_DEBUG LWIP_DBG_OFF
+#define TCP_OUTPUT_DEBUG LWIP_DBG_OFF
+#define TCP_RTO_DEBUG LWIP_DBG_OFF
+#define TCP_CWND_DEBUG LWIP_DBG_OFF
+#define TCP_WND_DEBUG LWIP_DBG_OFF
+#define TCP_FR_DEBUG LWIP_DBG_OFF
+#define TCP_QLEN_DEBUG LWIP_DBG_OFF
+#define TCP_RST_DEBUG LWIP_DBG_OFF
+#define UDP_DEBUG LWIP_DBG_OFF
+#define TCPIP_DEBUG LWIP_DBG_OFF
+#define PPP_DEBUG LWIP_DBG_OFF
+#define SLIP_DEBUG LWIP_DBG_OFF
+#define DHCP_DEBUG LWIP_DBG_OFF
+#undef TCP_WND
+#define TCP_WND 16384
+#undef LWIP_DEBUG
+#define LWIP_HDR_DEBUG_H 
+#define LWIP_HDR_ARCH_H 
+#define LITTLE_ENDIAN 1234
+#define BIG_ENDIAN 4321
+#define __CC_H__ 
+#define _SYS_TIME_H_ 
+#define _SYS__TIMEVAL_H_ 
+typedef __suseconds_t suseconds_t;
+#define _SUSECONDS_T_DECLARED 
+typedef __int_least64_t time_t;
+#define __time_t_defined 
+#define _TIME_T_DECLARED 
+#define _TIMEVAL_DEFINED 
+struct timeval {
+ time_t tv_sec;
+ suseconds_t tv_usec;
+};
+typedef __uint8_t u_int8_t;
+typedef __uint16_t u_int16_t;
+typedef __uint32_t u_int32_t;
+typedef __uint64_t u_int64_t;
+typedef __intptr_t register_t;
+#define __BIT_TYPES_DEFINED__ 1
+#define _SYS_TYPES_H 
+#define __MACHINE_ENDIAN_H__ 
+#define _LITTLE_ENDIAN 1234
+#define _BIG_ENDIAN 4321
+#define _PDP_ENDIAN 3412
+#define _BYTE_ORDER _LITTLE_ENDIAN
+#define _QUAD_HIGHWORD 1
+#define _QUAD_LOWWORD 0
+#define LITTLE_ENDIAN _LITTLE_ENDIAN
+#define BIG_ENDIAN _BIG_ENDIAN
+#define PDP_ENDIAN _PDP_ENDIAN
+#define BYTE_ORDER _BYTE_ORDER
+#define __bswap16(_x) __builtin_bswap16(_x)
+#define __bswap32(_x) __builtin_bswap32(_x)
+#define __bswap64(_x) __builtin_bswap64(_x)
+#define __htonl(_x) __bswap32(_x)
+#define __htons(_x) __bswap16(_x)
+#define __ntohl(_x) __bswap32(_x)
+#define __ntohs(_x) __bswap16(_x)
+#define _SYS_SELECT_H 
+#define _SYS__SIGSET_H_ 
+typedef unsigned long __sigset_t;
+#define _SYS_TIMESPEC_H_ 
+#define _SYS__TIMESPEC_H_ 
+struct timespec {
+ time_t tv_sec;
+ long tv_nsec;
+};
+#define TIMEVAL_TO_TIMESPEC(tv,ts) do { (ts)->tv_sec = (tv)->tv_sec; (ts)->tv_nsec = (tv)->tv_usec * 1000; } while (0)
+#define TIMESPEC_TO_TIMEVAL(tv,ts) do { (tv)->tv_sec = (ts)->tv_sec; (tv)->tv_usec = (ts)->tv_nsec / 1000; } while (0)
+struct itimerspec {
+ struct timespec it_interval;
+ struct timespec it_value;
+};
+#define _SIGSET_T_DECLARED 
+typedef __sigset_t sigset_t;
+#define _SYS_TYPES_FD_SET 
+#define FD_SETSIZE 64
+typedef unsigned long __fd_mask;
+typedef __fd_mask fd_mask;
+#define _NFDBITS ((int)sizeof(__fd_mask) * 8)
+#define NFDBITS _NFDBITS
+#define _howmany(x,y) (((x) + ((y) - 1)) / (y))
+typedef struct fd_set {
+ __fd_mask __fds_bits[(((64) + ((((int)sizeof(__fd_mask) * 8)) - 1)) / (((int)sizeof(__fd_mask) * 8)))];
+} fd_set;
+#define fds_bits __fds_bits
+#define __fdset_mask(n) ((__fd_mask)1 << ((n) % _NFDBITS))
+#define FD_CLR(n,p) ((p)->__fds_bits[(n)/_NFDBITS] &= ~__fdset_mask(n))
+#define FD_COPY(f,t) (void)(*(t) = *(f))
+#define FD_ISSET(n,p) (((p)->__fds_bits[(n)/_NFDBITS] & __fdset_mask(n)) != 0)
+#define FD_SET(n,p) ((p)->__fds_bits[(n)/_NFDBITS] |= __fdset_mask(n))
+#define FD_ZERO(p) do { fd_set *_p; __size_t _n; _p = (p); _n = _howmany(FD_SETSIZE, _NFDBITS); while (_n > 0) _p->__fds_bits[--_n] = 0; } while (0)
+
+int select (int __n, fd_set *__readfds, fd_set *__writefds, fd_set *__exceptfds, struct timeval *__timeout);
+int pselect (int __n, fd_set *__readfds, fd_set *__writefds, fd_set *__exceptfds, const struct timespec *__timeout, const sigset_t *__set);
+
+#define physadr physadr_t
+#define quad quad_t
+typedef __uint32_t in_addr_t;
+#define _IN_ADDR_T_DECLARED 
+typedef __uint16_t in_port_t;
+#define _IN_PORT_T_DECLARED 
+typedef __uintptr_t u_register_t;
+typedef unsigned char u_char;
+#define __u_char_defined 
+typedef unsigned short u_short;
+#define __u_short_defined 
+typedef unsigned int u_int;
+#define __u_int_defined 
+typedef unsigned long u_long;
+#define __u_long_defined 
+#define _BSDTYPES_DEFINED 
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+typedef __blkcnt_t blkcnt_t;
+#define _BLKCNT_T_DECLARED 
+typedef __blksize_t blksize_t;
+#define _BLKSIZE_T_DECLARED 
+typedef unsigned long clock_t;
+#define __clock_t_defined 
+#define _CLOCK_T_DECLARED 
+typedef __daddr_t daddr_t;
+typedef char * caddr_t;
+#define __caddr_t_defined 
+typedef __fsblkcnt_t fsblkcnt_t;
+typedef __fsfilcnt_t fsfilcnt_t;
+#define _FSBLKCNT_T_DECLARED 
+typedef __id_t id_t;
+#define _ID_T_DECLARED 
+typedef __ino_t ino_t;
+#define _INO_T_DECLARED 
+typedef __dev_t dev_t;
+#define _DEV_T_DECLARED 
+typedef __uid_t uid_t;
+#define _UID_T_DECLARED 
+typedef __gid_t gid_t;
+#define _GID_T_DECLARED 
+typedef __pid_t pid_t;
+#define _PID_T_DECLARED 
+typedef __key_t key_t;
+#define _KEY_T_DECLARED 
+typedef __mode_t mode_t;
+#define _MODE_T_DECLARED 
+typedef __nlink_t nlink_t;
+#define _NLINK_T_DECLARED 
+typedef __clockid_t clockid_t;
+#define __clockid_t_defined 
+#define _CLOCKID_T_DECLARED 
+typedef __timer_t timer_t;
+#define __timer_t_defined 
+#define _TIMER_T_DECLARED 
+typedef __useconds_t useconds_t;
+#define _USECONDS_T_DECLARED 
+typedef __int64_t sbintime_t;
+#define _SYS__PTHREADTYPES_H_ 
+#define _SYS_SCHED_H_ 
+#define SCHED_OTHER 0
+#define SCHED_FIFO 1
+#define SCHED_RR 2
+struct sched_param {
+  int sched_priority;
+};
+typedef __uint32_t pthread_t;
+#define PTHREAD_SCOPE_PROCESS 0
+#define PTHREAD_SCOPE_SYSTEM 1
+#define PTHREAD_INHERIT_SCHED 1
+#define PTHREAD_EXPLICIT_SCHED 2
+#define PTHREAD_CREATE_DETACHED 0
+#define PTHREAD_CREATE_JOINABLE 1
+typedef struct {
+  int is_initialized;
+  void *stackaddr;
+  int stacksize;
+  int contentionscope;
+  int inheritsched;
+  int schedpolicy;
+  struct sched_param schedparam;
+  int detachstate;
+} pthread_attr_t;
+typedef __uint32_t pthread_mutex_t;
+typedef struct {
+  int is_initialized;
+  int recursive;
+} pthread_mutexattr_t;
+#define _PTHREAD_MUTEX_INITIALIZER ((pthread_mutex_t) 0xFFFFFFFF)
+typedef __uint32_t pthread_cond_t;
+#define _PTHREAD_COND_INITIALIZER ((pthread_cond_t) 0xFFFFFFFF)
+typedef struct {
+  int is_initialized;
+  clock_t clock;
+} pthread_condattr_t;
+typedef __uint32_t pthread_key_t;
+typedef struct {
+  int is_initialized;
+  int init_executed;
+} pthread_once_t;
+#define _PTHREAD_ONCE_INIT { 1, 0 }
+#undef __need_inttypes
+struct timezone {
+ int tz_minuteswest;
+ int tz_dsttime;
+};
+#define DST_NONE 0
+#define DST_USA 1
+#define DST_AUST 2
+#define DST_WET 3
+#define DST_MET 4
+#define DST_EET 5
+#define DST_CAN 6
+struct bintime {
+ time_t sec;
+ uint64_t frac;
+};
+static __inline void
+bintime_addx(struct bintime *_bt, uint64_t _x)
+{
+ uint64_t _u;
+ _u = _bt->frac;
+ _bt->frac += _x;
+ if (_u > _bt->frac)
+  _bt->sec++;
+}
+static __inline void
+bintime_add(struct bintime *_bt, const struct bintime *_bt2)
+{
+ uint64_t _u;
+ _u = _bt->frac;
+ _bt->frac += _bt2->frac;
+ if (_u > _bt->frac)
+  _bt->sec++;
+ _bt->sec += _bt2->sec;
+}
+static __inline void
+bintime_sub(struct bintime *_bt, const struct bintime *_bt2)
+{
+ uint64_t _u;
+ _u = _bt->frac;
+ _bt->frac -= _bt2->frac;
+ if (_u < _bt->frac)
+  _bt->sec--;
+ _bt->sec -= _bt2->sec;
+}
+static __inline void
+bintime_mul(struct bintime *_bt, u_int _x)
+{
+ uint64_t _p1, _p2;
+ _p1 = (_bt->frac & 0xffffffffull) * _x;
+ _p2 = (_bt->frac >> 32) * _x + (_p1 >> 32);
+ _bt->sec *= _x;
+ _bt->sec += (_p2 >> 32);
+ _bt->frac = (_p2 << 32) | (_p1 & 0xffffffffull);
+}
+static __inline void
+bintime_shift(struct bintime *_bt, int _exp)
+{
+ if (_exp > 0) {
+  _bt->sec <<= _exp;
+  _bt->sec |= _bt->frac >> (64 - _exp);
+  _bt->frac <<= _exp;
+ } else if (_exp < 0) {
+  _bt->frac >>= -_exp;
+  _bt->frac |= (uint64_t)_bt->sec << (64 + _exp);
+  _bt->sec >>= -_exp;
+ }
+}
+#define bintime_clear(a) ((a)->sec = (a)->frac = 0)
+#define bintime_isset(a) ((a)->sec || (a)->frac)
+#define bintime_cmp(a,b,cmp) (((a)->sec == (b)->sec) ? ((a)->frac cmp (b)->frac) : ((a)->sec cmp (b)->sec))
+#define SBT_1S ((sbintime_t)1 << 32)
+#define SBT_1M (SBT_1S * 60)
+#define SBT_1MS (SBT_1S / 1000)
+#define SBT_1US (SBT_1S / 1000000)
+#define SBT_1NS (SBT_1S / 1000000000)
+#define SBT_MAX 0x7fffffffffffffffLL
+static __inline int
+sbintime_getsec(sbintime_t _sbt)
+{
+ return (_sbt >> 32);
+}
+static __inline sbintime_t
+bttosbt(const struct bintime _bt)
+{
+ return (((sbintime_t)_bt.sec << 32) + (_bt.frac >> 32));
+}
+static __inline struct bintime
+sbttobt(sbintime_t _sbt)
+{
+ struct bintime _bt;
+ _bt.sec = _sbt >> 32;
+ _bt.frac = _sbt << 32;
+ return (_bt);
+}
+static __inline int64_t
+sbttons(sbintime_t _sbt)
+{
+ uint64_t ns;
+ ns = _sbt;
+ if (ns >= ((sbintime_t)1 << 32))
+  ns = (ns >> 32) * 1000000000;
+ else
+  ns = 0;
+ return (ns + (1000000000 * (_sbt & 0xffffffffu) >> 32));
+}
+static __inline sbintime_t
+nstosbt(int64_t _ns)
+{
+ sbintime_t sb = 0;
+ if (_ns >= ((sbintime_t)1 << 32)) {
+  sb = (_ns / 1000000000) * ((sbintime_t)1 << 32);
+  _ns = _ns % 1000000000;
+ }
+ sb += ((_ns * 9223372037ull) + 0x7fffffff) >> 31;
+ return (sb);
+}
+static __inline int64_t
+sbttous(sbintime_t _sbt)
+{
+ return ((1000000 * _sbt) >> 32);
+}
+static __inline sbintime_t
+ustosbt(int64_t _us)
+{
+ sbintime_t sb = 0;
+ if (_us >= ((sbintime_t)1 << 32)) {
+  sb = (_us / 1000000) * ((sbintime_t)1 << 32);
+  _us = _us % 1000000;
+ }
+ sb += ((_us * 9223372036855ull) + 0x7fffffff) >> 31;
+ return (sb);
+}
+static __inline int64_t
+sbttoms(sbintime_t _sbt)
+{
+ return ((1000 * _sbt) >> 32);
+}
+static __inline sbintime_t
+mstosbt(int64_t _ms)
+{
+ sbintime_t sb = 0;
+ if (_ms >= ((sbintime_t)1 << 32)) {
+  sb = (_ms / 1000) * ((sbintime_t)1 << 32);
+  _ms = _ms % 1000;
+ }
+ sb += ((_ms * 9223372036854776ull) + 0x7fffffff) >> 31;
+ return (sb);
+}
+static __inline void
+bintime2timespec(const struct bintime *_bt, struct timespec *_ts)
+{
+ _ts->tv_sec = _bt->sec;
+ _ts->tv_nsec = ((uint64_t)1000000000 *
+     (uint32_t)(_bt->frac >> 32)) >> 32;
+}
+static __inline void
+timespec2bintime(const struct timespec *_ts, struct bintime *_bt)
+{
+ _bt->sec = _ts->tv_sec;
+ _bt->frac = _ts->tv_nsec * (uint64_t)18446744073LL;
+}
+static __inline void
+bintime2timeval(const struct bintime *_bt, struct timeval *_tv)
+{
+ _tv->tv_sec = _bt->sec;
+ _tv->tv_usec = ((uint64_t)1000000 * (uint32_t)(_bt->frac >> 32)) >> 32;
+}
+static __inline void
+timeval2bintime(const struct timeval *_tv, struct bintime *_bt)
+{
+ _bt->sec = _tv->tv_sec;
+ _bt->frac = _tv->tv_usec * (uint64_t)18446744073709LL;
+}
+static __inline struct timespec
+sbttots(sbintime_t _sbt)
+{
+ struct timespec _ts;
+ _ts.tv_sec = _sbt >> 32;
+ _ts.tv_nsec = sbttons((uint32_t)_sbt);
+ return (_ts);
+}
+static __inline sbintime_t
+tstosbt(struct timespec _ts)
+{
+ return (((sbintime_t)_ts.tv_sec << 32) + nstosbt(_ts.tv_nsec));
+}
+static __inline struct timeval
+sbttotv(sbintime_t _sbt)
+{
+ struct timeval _tv;
+ _tv.tv_sec = _sbt >> 32;
+ _tv.tv_usec = sbttous((uint32_t)_sbt);
+ return (_tv);
+}
+static __inline sbintime_t
+tvtosbt(struct timeval _tv)
+{
+ return (((sbintime_t)_tv.tv_sec << 32) + ustosbt(_tv.tv_usec));
+}
+#define timespecclear(tvp) ((tvp)->tv_sec = (tvp)->tv_nsec = 0)
+#define timespecisset(tvp) ((tvp)->tv_sec || (tvp)->tv_nsec)
+#define timespeccmp(tvp,uvp,cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_nsec cmp (uvp)->tv_nsec) : ((tvp)->tv_sec cmp (uvp)->tv_sec))
+#define timespecadd(tsp,usp,vsp) do { (vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec; (vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec; if ((vsp)->tv_nsec >= 1000000000L) { (vsp)->tv_sec++; (vsp)->tv_nsec -= 1000000000L; } } while (0)
+#define timespecsub(tsp,usp,vsp) do { (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec; (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec; if ((vsp)->tv_nsec < 0) { (vsp)->tv_sec--; (vsp)->tv_nsec += 1000000000L; } } while (0)
+#define timerclear(tvp) ((tvp)->tv_sec = (tvp)->tv_usec = 0)
+#define timerisset(tvp) ((tvp)->tv_sec || (tvp)->tv_usec)
+#define timercmp(tvp,uvp,cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_usec cmp (uvp)->tv_usec) : ((tvp)->tv_sec cmp (uvp)->tv_sec))
+#define timeradd(tvp,uvp,vvp) do { (vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec; (vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec; if ((vvp)->tv_usec >= 1000000) { (vvp)->tv_sec++; (vvp)->tv_usec -= 1000000; } } while (0)
+#define timersub(tvp,uvp,vvp) do { (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec; (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec; if ((vvp)->tv_usec < 0) { (vvp)->tv_sec--; (vvp)->tv_usec += 1000000; } } while (0)
+#define ITIMER_REAL 0
+#define ITIMER_VIRTUAL 1
+#define ITIMER_PROF 2
+struct itimerval {
+ struct timeval it_interval;
+ struct timeval it_value;
+};
+#define _TIME_H_ 
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _MACHTIME_H_ 
+#define _CLOCKS_PER_SEC_ 100
+#define CLOCKS_PER_SEC _CLOCKS_PER_SEC_
+#define CLK_TCK CLOCKS_PER_SEC
+#define _SYS__LOCALE_H 
+struct __locale_t;
+typedef struct __locale_t *locale_t;
+
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+};
+clock_t clock (void);
+double difftime (time_t _time2, time_t _time1);
+time_t mktime (struct tm *_timeptr);
+time_t time (time_t *_timer);
+char *asctime (const struct tm *_tblock);
+char *ctime (const time_t *_time);
+struct tm *gmtime (const time_t *_timer);
+struct tm *localtime (const time_t *_timer);
+size_t strftime (char *restrict _s,
+        size_t _maxsize, const char *restrict _fmt,
+        const struct tm *restrict _t);
+extern size_t strftime_l (char *restrict _s, size_t _maxsize,
+     const char *restrict _fmt,
+     const struct tm *restrict _t, locale_t _l);
+char *asctime_r (const struct tm *restrict,
+     char *restrict);
+char *ctime_r (const time_t *, char *);
+struct tm *gmtime_r (const time_t *restrict,
+     struct tm *restrict);
+struct tm *localtime_r (const time_t *restrict,
+     struct tm *restrict);
+
+void tzset (void);
+void _tzset_r (struct _reent *);
+extern long _timezone;
+extern int _daylight;
+extern char *_tzname[2];
+#define tzname _tzname
+#define CLOCK_ENABLED 1
+#define CLOCK_DISABLED 0
+#define CLOCK_ALLOWED 1
+#define CLOCK_DISALLOWED 0
+#define TIMER_ABSTIME 4
+#define CLOCK_REALTIME (1)
+
+int utimes (const char *, const struct timeval [2]);
+int adjtime (const struct timeval *, struct timeval *);
+int futimes (int, const struct timeval [2]);
+int lutimes (const char *, const struct timeval [2]);
+int settimeofday (const struct timeval *, const struct timezone *);
+int getitimer (int __which, struct itimerval *__value);
+int setitimer (int __which, const struct itimerval *restrict __value,
+     struct itimerval *restrict __ovalue);
+int gettimeofday (struct timeval *restrict __p,
+     void *restrict __tz);
+
+#define PICO_LWIP_CUSTOM_LOCK_TCPIP_CORE 1
+typedef int sys_prot_t;
+#define PACK_STRUCT_BEGIN 
+#define PACK_STRUCT_STRUCT __attribute__ ((__packed__))
+#define PACK_STRUCT_END 
+#define PACK_STRUCT_FIELD(x) x
+#define LWIP_PLATFORM_ASSERT(x) panic(x)
+#define _PICO_RAND_H 
+#define PICO_RAND_ENTROPY_SRC_TRNG 1
+#define PICO_RAND_ENTROPY_SRC_TIME 1
+#define PICO_RAND_SEED_ENTROPY_SRC_ROSC PICO_RAND_ENTROPY_SRC_ROSC
+#define PICO_RAND_SEED_ENTROPY_SRC_TRNG PICO_RAND_ENTROPY_SRC_TRNG
+#define PICO_RAND_SEED_ENTROPY_SRC_TIME PICO_RAND_ENTROPY_SRC_TIME
+#define PICO_RAND_SEED_ENTROPY_SRC_BUS_PERF_COUNTER PICO_RAND_ENTROPY_SRC_BUS_PERF_COUNTER
+#define PICO_RAND_SEED_ENTROPY_SRC_BOOT_RANDOM 1
+#define PICO_RAND_SEED_ENTROPY_SRC_BOARD_ID (!PICO_RAND_SEED_ENTROPY_SRC_BOOT_RANDOM)
+#define PICO_RAND_ROSC_BIT_SAMPLE_COUNT 1
+#define PICO_RAND_MIN_ROSC_BIT_SAMPLE_TIME_US 10u
+#define PICO_RAND_BUS_PERF_COUNTER_EVENT arbiter_sram5_perf_event_access
+#define PICO_RAND_RAM_HASH_END SRAM_END
+#define PICO_RAND_RAM_HASH_START (PICO_RAND_RAM_HASH_END - 1024u)
+typedef struct rng_128 {
+    uint64_t r[2];
+} rng_128_t;
+void get_rand_128(rng_128_t *rand128);
+uint64_t get_rand_64(void);
+uint32_t get_rand_32(void);
+#define LWIP_RAND() get_rand_32()
+#define LWIP_PLATFORM_DIAG(x) do {printf x;} while(0)
+#define _STDLIB_H_ 
+#define __need_size_t 
+#define __need_wchar_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _MACHSTDLIB_H_ 
+#define _NEWLIB_ALLOCA_H 
+#undef alloca
+#define alloca(size) __builtin_alloca(size)
+
+typedef struct
+{
+  int quot;
+  int rem;
+} div_t;
+typedef struct
+{
+  long quot;
+  long rem;
+} ldiv_t;
+typedef struct
+{
+  long long int quot;
+  long long int rem;
+} lldiv_t;
+#define __compar_fn_t_defined 
+typedef int (*__compar_fn_t) (const void *, const void *);
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
+#define RAND_MAX __RAND_MAX
+int __locale_mb_cur_max (void);
+#define MB_CUR_MAX __locale_mb_cur_max()
+void abort (void) __attribute__ ((__noreturn__));
+int abs (int);
+__uint32_t arc4random (void);
+__uint32_t arc4random_uniform (__uint32_t);
+void arc4random_buf (void *, size_t);
+int atexit (void (*__func)(void));
+double atof (const char *__nptr);
+float atoff (const char *__nptr);
+int atoi (const char *__nptr);
+int _atoi_r (struct _reent *, const char *__nptr);
+long atol (const char *__nptr);
+long _atol_r (struct _reent *, const char *__nptr);
+void * bsearch (const void *__key,
+         const void *__base,
+         size_t __nmemb,
+         size_t __size,
+         __compar_fn_t _compar);
+void *calloc(size_t, size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__))
+      __attribute__((__alloc_size__(1, 2))) ;
+div_t div (int __numer, int __denom);
+void exit (int __status) __attribute__ ((__noreturn__));
+void free (void *) ;
+char * getenv (const char *__string);
+char * _getenv_r (struct _reent *, const char *__string);
+char * _findenv (const char *, int *);
+char * _findenv_r (struct _reent *, const char *, int *);
+extern char *suboptarg;
+int getsubopt (char **, char * const *, char **);
+long labs (long);
+ldiv_t ldiv (long __numer, long __denom);
+void *malloc(size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(1))) ;
+int mblen (const char *, size_t);
+int _mblen_r (struct _reent *, const char *, size_t, _mbstate_t *);
+int mbtowc (wchar_t *restrict, const char *restrict, size_t);
+int _mbtowc_r (struct _reent *, wchar_t *restrict, const char *restrict, size_t, _mbstate_t *);
+int wctomb (char *, wchar_t);
+int _wctomb_r (struct _reent *, char *, wchar_t, _mbstate_t *);
+size_t mbstowcs (wchar_t *restrict, const char *restrict, size_t);
+size_t _mbstowcs_r (struct _reent *, wchar_t *restrict, const char *restrict, size_t, _mbstate_t *);
+size_t wcstombs (char *restrict, const wchar_t *restrict, size_t);
+size_t _wcstombs_r (struct _reent *, char *restrict, const wchar_t *restrict, size_t, _mbstate_t *);
+char * mkdtemp (char *);
+int mkstemp (char *);
+int mkstemps (char *, int);
+char * mktemp (char *) __attribute__ ((__deprecated__("the use of `mktemp' is dangerous; use `mkstemp' instead")));
+char * _mkdtemp_r (struct _reent *, char *);
+int _mkostemp_r (struct _reent *, char *, int);
+int _mkostemps_r (struct _reent *, char *, int, int);
+int _mkstemp_r (struct _reent *, char *);
+int _mkstemps_r (struct _reent *, char *, int);
+char * _mktemp_r (struct _reent *, char *) __attribute__ ((__deprecated__("the use of `mktemp' is dangerous; use `mkstemp' instead")));
+void qsort (void *__base, size_t __nmemb, size_t __size, __compar_fn_t _compar);
+int rand (void);
+void *realloc(void *, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2))) ;
+void *reallocarray(void *, size_t, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2, 3)));
+void *reallocf(void *, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2)));
+char * realpath (const char *restrict path, char *restrict resolved_path);
+int rpmatch (const char *response);
+void srand (unsigned __seed);
+double strtod (const char *restrict __n, char **restrict __end_PTR);
+double _strtod_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR);
+float strtof (const char *restrict __n, char **restrict __end_PTR);
+#define strtodf strtof
+long strtol (const char *restrict __n, char **restrict __end_PTR, int __base);
+long _strtol_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long strtoul (const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long _strtoul_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR, int __base);
+int system (const char *__string);
+long a64l (const char *__input);
+char * l64a (long __input);
+char * _l64a_r (struct _reent *,long __input);
+int on_exit (void (*__func)(int, void *),void *__arg);
+void _Exit (int __status) __attribute__ ((__noreturn__));
+int putenv (char *__string);
+int _putenv_r (struct _reent *, char *__string);
+void * _reallocf_r (struct _reent *, void *, size_t);
+int setenv (const char *__string, const char *__value, int __overwrite);
+int _setenv_r (struct _reent *, const char *__string, const char *__value, int __overwrite);
+char * __itoa (int, char *, int);
+char * __utoa (unsigned, char *, int);
+char * itoa (int, char *, int);
+char * utoa (unsigned, char *, int);
+int rand_r (unsigned *__seed);
+double drand48 (void);
+double _drand48_r (struct _reent *);
+double erand48 (unsigned short [3]);
+double _erand48_r (struct _reent *, unsigned short [3]);
+long jrand48 (unsigned short [3]);
+long _jrand48_r (struct _reent *, unsigned short [3]);
+void lcong48 (unsigned short [7]);
+void _lcong48_r (struct _reent *, unsigned short [7]);
+long lrand48 (void);
+long _lrand48_r (struct _reent *);
+long mrand48 (void);
+long _mrand48_r (struct _reent *);
+long nrand48 (unsigned short [3]);
+long _nrand48_r (struct _reent *, unsigned short [3]);
+unsigned short *
+       seed48 (unsigned short [3]);
+unsigned short *
+       _seed48_r (struct _reent *, unsigned short [3]);
+void srand48 (long);
+void _srand48_r (struct _reent *, long);
+char * initstate (unsigned, char *, size_t);
+long random (void);
+char * setstate (char *);
+void srandom (unsigned);
+long long atoll (const char *__nptr);
+long long _atoll_r (struct _reent *, const char *__nptr);
+long long llabs (long long);
+lldiv_t lldiv (long long __numer, long long __denom);
+long long strtoll (const char *restrict __n, char **restrict __end_PTR, int __base);
+long long _strtoll_r (struct _reent *, const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long long strtoull (const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long long _strtoull_r (struct _reent *, const char *restrict __n, char **restrict __end_PTR, int __base);
+void cfree (void *);
+int unsetenv (const char *__string);
+int _unsetenv_r (struct _reent *, const char *__string);
+int posix_memalign (void **, size_t, size_t) __attribute__((__nonnull__ (1)))
+     __attribute__((__warn_unused_result__));
+char * _dtoa_r (struct _reent *, double, int, int, int *, int*, char**);
+void * _malloc_r (struct _reent *, size_t) ;
+void * _calloc_r (struct _reent *, size_t, size_t) ;
+void _free_r (struct _reent *, void *) ;
+void * _realloc_r (struct _reent *, void *, size_t) ;
+void _mstats_r (struct _reent *, char *);
+int _system_r (struct _reent *, const char *);
+void __eprintf (const char *, const char *, unsigned int, const char *);
+void qsort_r (void *__base, size_t __nmemb, size_t __size, void *__thunk, int (*_compar)(void *, const void *, const void *))
+             __asm__ ("" "__bsd_qsort_r");
+extern long double _strtold_r (struct _reent *, const char *restrict, char **restrict);
+extern long double strtold (const char *restrict, char **restrict);
+void * aligned_alloc(size_t, size_t) __attribute__((__malloc__)) __attribute__((__alloc_align__(1)))
+     __attribute__((__alloc_size__(2))) __attribute__((__warn_unused_result__));
+int at_quick_exit(void (*)(void));
+_Noreturn void
+ quick_exit(int);
+
+#define LWIP_NO_STDDEF_H 0
+#define LWIP_NO_STDINT_H 0
+#define LWIP_HAVE_INT64 1
+typedef uint8_t u8_t;
+typedef int8_t s8_t;
+typedef uint16_t u16_t;
+typedef int16_t s16_t;
+typedef uint32_t u32_t;
+typedef int32_t s32_t;
+typedef uint64_t u64_t;
+typedef int64_t s64_t;
+typedef uintptr_t mem_ptr_t;
+#define LWIP_NO_INTTYPES_H 0
+#define _INTTYPES_H 
+#define __need_wchar_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __STRINGIFY(a) #a
+#define __PRI8(x) __INT8 __STRINGIFY(x)
+#define __PRI8LEAST(x) __LEAST8 __STRINGIFY(x)
+#define __PRI8FAST(x) __FAST8 __STRINGIFY(x)
+#define __SCN8(x) __INT8 __STRINGIFY(x)
+#define __SCN8LEAST(x) __LEAST8 __STRINGIFY(x)
+#define __SCN8FAST(x) __FAST8 __STRINGIFY(x)
+#define PRId8 __PRI8(d)
+#define PRIi8 __PRI8(i)
+#define PRIo8 __PRI8(o)
+#define PRIu8 __PRI8(u)
+#define PRIx8 __PRI8(x)
+#define PRIX8 __PRI8(X)
+#define SCNd8 __SCN8(d)
+#define SCNi8 __SCN8(i)
+#define SCNo8 __SCN8(o)
+#define SCNu8 __SCN8(u)
+#define SCNx8 __SCN8(x)
+#define PRIdLEAST8 __PRI8LEAST(d)
+#define PRIiLEAST8 __PRI8LEAST(i)
+#define PRIoLEAST8 __PRI8LEAST(o)
+#define PRIuLEAST8 __PRI8LEAST(u)
+#define PRIxLEAST8 __PRI8LEAST(x)
+#define PRIXLEAST8 __PRI8LEAST(X)
+#define SCNdLEAST8 __SCN8LEAST(d)
+#define SCNiLEAST8 __SCN8LEAST(i)
+#define SCNoLEAST8 __SCN8LEAST(o)
+#define SCNuLEAST8 __SCN8LEAST(u)
+#define SCNxLEAST8 __SCN8LEAST(x)
+#define PRIdFAST8 __PRI8FAST(d)
+#define PRIiFAST8 __PRI8FAST(i)
+#define PRIoFAST8 __PRI8FAST(o)
+#define PRIuFAST8 __PRI8FAST(u)
+#define PRIxFAST8 __PRI8FAST(x)
+#define PRIXFAST8 __PRI8FAST(X)
+#define SCNdFAST8 __SCN8FAST(d)
+#define SCNiFAST8 __SCN8FAST(i)
+#define SCNoFAST8 __SCN8FAST(o)
+#define SCNuFAST8 __SCN8FAST(u)
+#define SCNxFAST8 __SCN8FAST(x)
+#define __PRI16(x) __INT16 __STRINGIFY(x)
+#define __PRI16LEAST(x) __LEAST16 __STRINGIFY(x)
+#define __PRI16FAST(x) __FAST16 __STRINGIFY(x)
+#define __SCN16(x) __INT16 __STRINGIFY(x)
+#define __SCN16LEAST(x) __LEAST16 __STRINGIFY(x)
+#define __SCN16FAST(x) __FAST16 __STRINGIFY(x)
+#define PRId16 __PRI16(d)
+#define PRIi16 __PRI16(i)
+#define PRIo16 __PRI16(o)
+#define PRIu16 __PRI16(u)
+#define PRIx16 __PRI16(x)
+#define PRIX16 __PRI16(X)
+#define SCNd16 __SCN16(d)
+#define SCNi16 __SCN16(i)
+#define SCNo16 __SCN16(o)
+#define SCNu16 __SCN16(u)
+#define SCNx16 __SCN16(x)
+#define PRIdLEAST16 __PRI16LEAST(d)
+#define PRIiLEAST16 __PRI16LEAST(i)
+#define PRIoLEAST16 __PRI16LEAST(o)
+#define PRIuLEAST16 __PRI16LEAST(u)
+#define PRIxLEAST16 __PRI16LEAST(x)
+#define PRIXLEAST16 __PRI16LEAST(X)
+#define SCNdLEAST16 __SCN16LEAST(d)
+#define SCNiLEAST16 __SCN16LEAST(i)
+#define SCNoLEAST16 __SCN16LEAST(o)
+#define SCNuLEAST16 __SCN16LEAST(u)
+#define SCNxLEAST16 __SCN16LEAST(x)
+#define PRIdFAST16 __PRI16FAST(d)
+#define PRIiFAST16 __PRI16FAST(i)
+#define PRIoFAST16 __PRI16FAST(o)
+#define PRIuFAST16 __PRI16FAST(u)
+#define PRIxFAST16 __PRI16FAST(x)
+#define PRIXFAST16 __PRI16FAST(X)
+#define SCNdFAST16 __SCN16FAST(d)
+#define SCNiFAST16 __SCN16FAST(i)
+#define SCNoFAST16 __SCN16FAST(o)
+#define SCNuFAST16 __SCN16FAST(u)
+#define SCNxFAST16 __SCN16FAST(x)
+#define __PRI32(x) __INT32 __STRINGIFY(x)
+#define __SCN32(x) __INT32 __STRINGIFY(x)
+#define __PRI32LEAST(x) __LEAST32 __STRINGIFY(x)
+#define __SCN32LEAST(x) __LEAST32 __STRINGIFY(x)
+#define __PRI32FAST(x) __FAST32 __STRINGIFY(x)
+#define __SCN32FAST(x) __FAST32 __STRINGIFY(x)
+#define PRId32 __PRI32(d)
+#define PRIi32 __PRI32(i)
+#define PRIo32 __PRI32(o)
+#define PRIu32 __PRI32(u)
+#define PRIx32 __PRI32(x)
+#define PRIX32 __PRI32(X)
+#define SCNd32 __SCN32(d)
+#define SCNi32 __SCN32(i)
+#define SCNo32 __SCN32(o)
+#define SCNu32 __SCN32(u)
+#define SCNx32 __SCN32(x)
+#define PRIdLEAST32 __PRI32LEAST(d)
+#define PRIiLEAST32 __PRI32LEAST(i)
+#define PRIoLEAST32 __PRI32LEAST(o)
+#define PRIuLEAST32 __PRI32LEAST(u)
+#define PRIxLEAST32 __PRI32LEAST(x)
+#define PRIXLEAST32 __PRI32LEAST(X)
+#define SCNdLEAST32 __SCN32LEAST(d)
+#define SCNiLEAST32 __SCN32LEAST(i)
+#define SCNoLEAST32 __SCN32LEAST(o)
+#define SCNuLEAST32 __SCN32LEAST(u)
+#define SCNxLEAST32 __SCN32LEAST(x)
+#define PRIdFAST32 __PRI32FAST(d)
+#define PRIiFAST32 __PRI32FAST(i)
+#define PRIoFAST32 __PRI32FAST(o)
+#define PRIuFAST32 __PRI32FAST(u)
+#define PRIxFAST32 __PRI32FAST(x)
+#define PRIXFAST32 __PRI32FAST(X)
+#define SCNdFAST32 __SCN32FAST(d)
+#define SCNiFAST32 __SCN32FAST(i)
+#define SCNoFAST32 __SCN32FAST(o)
+#define SCNuFAST32 __SCN32FAST(u)
+#define SCNxFAST32 __SCN32FAST(x)
+#define __PRI64(x) __INT64 __STRINGIFY(x)
+#define __SCN64(x) __INT64 __STRINGIFY(x)
+#define __PRI64LEAST(x) __LEAST64 __STRINGIFY(x)
+#define __SCN64LEAST(x) __LEAST64 __STRINGIFY(x)
+#define __PRI64FAST(x) __FAST64 __STRINGIFY(x)
+#define __SCN64FAST(x) __FAST64 __STRINGIFY(x)
+#define PRId64 __PRI64(d)
+#define PRIi64 __PRI64(i)
+#define PRIo64 __PRI64(o)
+#define PRIu64 __PRI64(u)
+#define PRIx64 __PRI64(x)
+#define PRIX64 __PRI64(X)
+#define SCNd64 __SCN64(d)
+#define SCNi64 __SCN64(i)
+#define SCNo64 __SCN64(o)
+#define SCNu64 __SCN64(u)
+#define SCNx64 __SCN64(x)
+#define PRIdLEAST64 __PRI64LEAST(d)
+#define PRIiLEAST64 __PRI64LEAST(i)
+#define PRIoLEAST64 __PRI64LEAST(o)
+#define PRIuLEAST64 __PRI64LEAST(u)
+#define PRIxLEAST64 __PRI64LEAST(x)
+#define PRIXLEAST64 __PRI64LEAST(X)
+#define SCNdLEAST64 __SCN64LEAST(d)
+#define SCNiLEAST64 __SCN64LEAST(i)
+#define SCNoLEAST64 __SCN64LEAST(o)
+#define SCNuLEAST64 __SCN64LEAST(u)
+#define SCNxLEAST64 __SCN64LEAST(x)
+#define PRIdFAST64 __PRI64FAST(d)
+#define PRIiFAST64 __PRI64FAST(i)
+#define PRIoFAST64 __PRI64FAST(o)
+#define PRIuFAST64 __PRI64FAST(u)
+#define PRIxFAST64 __PRI64FAST(x)
+#define PRIXFAST64 __PRI64FAST(X)
+#define SCNdFAST64 __SCN64FAST(d)
+#define SCNiFAST64 __SCN64FAST(i)
+#define SCNoFAST64 __SCN64FAST(o)
+#define SCNuFAST64 __SCN64FAST(u)
+#define SCNxFAST64 __SCN64FAST(x)
+#define __PRIMAX(x) __STRINGIFY(ll ##x)
+#define __SCNMAX(x) __STRINGIFY(ll ##x)
+#define PRIdMAX __PRIMAX(d)
+#define PRIiMAX __PRIMAX(i)
+#define PRIoMAX __PRIMAX(o)
+#define PRIuMAX __PRIMAX(u)
+#define PRIxMAX __PRIMAX(x)
+#define PRIXMAX __PRIMAX(X)
+#define SCNdMAX __SCNMAX(d)
+#define SCNiMAX __SCNMAX(i)
+#define SCNoMAX __SCNMAX(o)
+#define SCNuMAX __SCNMAX(u)
+#define SCNxMAX __SCNMAX(x)
+#define __PRIPTR(x) __STRINGIFY(x)
+#define __SCNPTR(x) __STRINGIFY(x)
+#define PRIdPTR __PRIPTR(d)
+#define PRIiPTR __PRIPTR(i)
+#define PRIoPTR __PRIPTR(o)
+#define PRIuPTR __PRIPTR(u)
+#define PRIxPTR __PRIPTR(x)
+#define PRIXPTR __PRIPTR(X)
+#define SCNdPTR __SCNPTR(d)
+#define SCNiPTR __SCNPTR(i)
+#define SCNoPTR __SCNPTR(o)
+#define SCNuPTR __SCNPTR(u)
+#define SCNxPTR __SCNPTR(x)
+typedef struct {
+  intmax_t quot;
+  intmax_t rem;
+} imaxdiv_t;
+struct _reent;
+extern intmax_t imaxabs(intmax_t);
+extern imaxdiv_t imaxdiv(intmax_t __numer, intmax_t __denomer);
+extern intmax_t strtoimax(const char *restrict, char **restrict, int);
+extern intmax_t _strtoimax_r(struct _reent *, const char *restrict, char **restrict, int);
+extern uintmax_t strtoumax(const char *restrict, char **restrict, int);
+extern uintmax_t _strtoumax_r(struct _reent *, const char *restrict, char **restrict, int);
+extern intmax_t wcstoimax(const wchar_t *restrict, wchar_t **restrict, int);
+extern intmax_t _wcstoimax_r(struct _reent *, const wchar_t *restrict, wchar_t **restrict, int);
+extern uintmax_t wcstoumax(const wchar_t *restrict, wchar_t **restrict, int);
+extern uintmax_t _wcstoumax_r(struct _reent *, const wchar_t *restrict, wchar_t **restrict, int);
+extern intmax_t strtoimax_l(const char *restrict, char **_restrict, int, locale_t);
+extern uintmax_t strtoumax_l(const char *restrict, char **_restrict, int, locale_t);
+extern intmax_t wcstoimax_l(const wchar_t *restrict, wchar_t **_restrict, int, locale_t);
+extern uintmax_t wcstoumax_l(const wchar_t *restrict, wchar_t **_restrict, int, locale_t);
+#define X8_F "02" PRIx8
+#define U16_F PRIu16
+#define S16_F PRId16
+#define X16_F PRIx16
+#define U32_F PRIu32
+#define S32_F PRId32
+#define X32_F PRIx32
+#define SZT_F PRIuPTR
+#define LWIP_NO_LIMITS_H 0
+#define _GCC_LIMITS_H_ 
+#define _GCC_NEXT_LIMITS_H 
+#define _LIBC_LIMITS_H_ 1
+#define _SYS_SYSLIMITS_H_ 
+#define ARG_MAX 65536
+#define CHILD_MAX 40
+#define LINK_MAX 32767
+#define MAX_CANON 255
+#define MAX_INPUT 255
+#define NAME_MAX 255
+#define NGROUPS_MAX 16
+#define OPEN_MAX 64
+#define PATH_MAX 1024
+#define PIPE_BUF 512
+#define IOV_MAX 1024
+#define BC_BASE_MAX 99
+#define BC_DIM_MAX 2048
+#define BC_SCALE_MAX 99
+#define BC_STRING_MAX 1000
+#define COLL_WEIGHTS_MAX 0
+#define EXPR_NEST_MAX 32
+#define LINE_MAX 2048
+#define RE_DUP_MAX 255
+#define MB_LEN_MAX _MB_LEN_MAX
+#define NL_ARGMAX 32
+#define _POSIX2_RE_DUP_MAX 255
+#undef _GCC_NEXT_LIMITS_H
+#define _LIMITS_H___ 
+#undef CHAR_BIT
+#define CHAR_BIT __CHAR_BIT__
+#undef SCHAR_MIN
+#define SCHAR_MIN (-SCHAR_MAX - 1)
+#undef SCHAR_MAX
+#define SCHAR_MAX __SCHAR_MAX__
+#undef UCHAR_MAX
+#define UCHAR_MAX (SCHAR_MAX * 2 + 1)
+#undef CHAR_MIN
+#define CHAR_MIN 0
+#undef CHAR_MAX
+#define CHAR_MAX UCHAR_MAX
+#undef SHRT_MIN
+#define SHRT_MIN (-SHRT_MAX - 1)
+#undef SHRT_MAX
+#define SHRT_MAX __SHRT_MAX__
+#undef USHRT_MAX
+#define USHRT_MAX (SHRT_MAX * 2 + 1)
+#undef INT_MIN
+#define INT_MIN (-INT_MAX - 1)
+#undef INT_MAX
+#define INT_MAX __INT_MAX__
+#undef UINT_MAX
+#define UINT_MAX (INT_MAX * 2U + 1U)
+#undef LONG_MIN
+#define LONG_MIN (-LONG_MAX - 1L)
+#undef LONG_MAX
+#define LONG_MAX __LONG_MAX__
+#undef ULONG_MAX
+#define ULONG_MAX (LONG_MAX * 2UL + 1UL)
+#undef LLONG_MIN
+#define LLONG_MIN (-LLONG_MAX - 1LL)
+#undef LLONG_MAX
+#define LLONG_MAX __LONG_LONG_MAX__
+#undef ULLONG_MAX
+#define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
+#undef LONG_LONG_MIN
+#define LONG_LONG_MIN (-LONG_LONG_MAX - 1LL)
+#undef LONG_LONG_MAX
+#define LONG_LONG_MAX __LONG_LONG_MAX__
+#undef ULONG_LONG_MAX
+#define ULONG_LONG_MAX (LONG_LONG_MAX * 2ULL + 1ULL)
+typedef int ssize_t;
+#define SSIZE_MAX INT_MAX
+#define LWIP_UINT32_MAX 0xffffffff
+#define LWIP_NO_CTYPE_H 0
+#define _CTYPE_H_ 
+
+int isalnum (int __c);
+int isalpha (int __c);
+int iscntrl (int __c);
+int isdigit (int __c);
+int isgraph (int __c);
+int islower (int __c);
+int isprint (int __c);
+int ispunct (int __c);
+int isspace (int __c);
+int isupper (int __c);
+int isxdigit (int __c);
+int tolower (int __c);
+int toupper (int __c);
+int isblank (int __c);
+int isascii (int __c);
+int toascii (int __c);
+#define _tolower(__c) ((unsigned char)(__c) - 'A' + 'a')
+#define _toupper(__c) ((unsigned char)(__c) - 'a' + 'A')
+extern int isalnum_l (int __c, locale_t __l);
+extern int isalpha_l (int __c, locale_t __l);
+extern int isblank_l (int __c, locale_t __l);
+extern int iscntrl_l (int __c, locale_t __l);
+extern int isdigit_l (int __c, locale_t __l);
+extern int isgraph_l (int __c, locale_t __l);
+extern int islower_l (int __c, locale_t __l);
+extern int isprint_l (int __c, locale_t __l);
+extern int ispunct_l (int __c, locale_t __l);
+extern int isspace_l (int __c, locale_t __l);
+extern int isupper_l (int __c, locale_t __l);
+extern int isxdigit_l(int __c, locale_t __l);
+extern int tolower_l (int __c, locale_t __l);
+extern int toupper_l (int __c, locale_t __l);
+extern int isascii_l (int __c, locale_t __l);
+extern int toascii_l (int __c, locale_t __l);
+#define _U 01
+#define _L 02
+#define _N 04
+#define _S 010
+#define _P 020
+#define _C 040
+#define _X 0100
+#define _B 0200
+extern const char _ctype_[];
+#define __locale_ctype_ptr() _ctype_
+#define __CTYPE_PTR (__locale_ctype_ptr ())
+#define __ctype_lookup(__c) ((__CTYPE_PTR+sizeof(""[__c]))[(int)(__c)])
+#define isalpha(__c) (__ctype_lookup(__c)&(_U|_L))
+#define isupper(__c) ((__ctype_lookup(__c)&(_U|_L))==_U)
+#define islower(__c) ((__ctype_lookup(__c)&(_U|_L))==_L)
+#define isdigit(__c) (__ctype_lookup(__c)&_N)
+#define isxdigit(__c) (__ctype_lookup(__c)&(_X|_N))
+#define isspace(__c) (__ctype_lookup(__c)&_S)
+#define ispunct(__c) (__ctype_lookup(__c)&_P)
+#define isalnum(__c) (__ctype_lookup(__c)&(_U|_L|_N))
+#define isprint(__c) (__ctype_lookup(__c)&(_P|_U|_L|_N|_B))
+#define isgraph(__c) (__ctype_lookup(__c)&(_P|_U|_L|_N))
+#define iscntrl(__c) (__ctype_lookup(__c)&_C)
+#define isblank(__c) __extension__ ({ __typeof__ (__c) __x = (__c); (__ctype_lookup(__x)&_B) || (int) (__x) == '\t';})
+static __inline const char *
+__locale_ctype_ptr_l(locale_t _l)
+{
+ (void)_l;
+ return _ctype_;
+}
+#define __ctype_lookup_l(__c,__l) ((__locale_ctype_ptr_l(__l)+sizeof(""[__c]))[(int)(__c)])
+#define isalpha_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_U|_L))
+#define isupper_l(__c,__l) ((__ctype_lookup_l(__c,__l)&(_U|_L))==_U)
+#define islower_l(__c,__l) ((__ctype_lookup_l(__c,__l)&(_U|_L))==_L)
+#define isdigit_l(__c,__l) (__ctype_lookup_l(__c,__l)&_N)
+#define isxdigit_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_X|_N))
+#define isspace_l(__c,__l) (__ctype_lookup_l(__c,__l)&_S)
+#define ispunct_l(__c,__l) (__ctype_lookup_l(__c,__l)&_P)
+#define isalnum_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_U|_L|_N))
+#define isprint_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_P|_U|_L|_N|_B))
+#define isgraph_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_P|_U|_L|_N))
+#define iscntrl_l(__c,__l) (__ctype_lookup_l(__c,__l)&_C)
+#define isblank_l(__c,__l) __extension__ ({ __typeof__ (__c) __x = (__c); (__ctype_lookup_l(__x,__l)&_B) || (int) (__x) == '\t';})
+#define isascii(__c) ((unsigned)(__c)<=0177)
+#define toascii(__c) ((__c)&0177)
+#define isascii_l(__c,__l) ((__l),(unsigned)(__c)<=0177)
+#define toascii_l(__c,__l) ((__l),(__c)&0177)
+#define toupper(__c) __extension__ ({ __typeof__ (__c) __x = (__c); islower (__x) ? (int) __x - 'a' + 'A' : (int) __x;})
+#define tolower(__c) __extension__ ({ __typeof__ (__c) __x = (__c); isupper (__x) ? (int) __x - 'A' + 'a' : (int) __x;})
+
+#define lwip_isdigit(c) isdigit((unsigned char)(c))
+#define lwip_isxdigit(c) isxdigit((unsigned char)(c))
+#define lwip_islower(c) islower((unsigned char)(c))
+#define lwip_isspace(c) isspace((unsigned char)(c))
+#define lwip_isupper(c) isupper((unsigned char)(c))
+#define lwip_tolower(c) tolower((unsigned char)(c))
+#define lwip_toupper(c) toupper((unsigned char)(c))
+#define LWIP_CONST_CAST(target_type,val) ((target_type)((ptrdiff_t)val))
+#define LWIP_ALIGNMENT_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
+#define LWIP_PTR_NUMERIC_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
+#define LWIP_PACKED_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
+#define LWIP_DECLARE_MEMORY_ALIGNED(variable_name,size) u8_t variable_name[LWIP_MEM_ALIGN_BUFFER(size)]
+#define LWIP_MEM_ALIGN_SIZE(size) (((size) + MEM_ALIGNMENT - 1U) & ~(MEM_ALIGNMENT-1U))
+#define LWIP_MEM_ALIGN_BUFFER(size) (((size) + MEM_ALIGNMENT - 1U))
+#define LWIP_MEM_ALIGN(addr) ((void *)(((mem_ptr_t)(addr) + MEM_ALIGNMENT - 1) & ~(mem_ptr_t)(MEM_ALIGNMENT-1)))
+#define PACK_STRUCT_FLD_8(x) PACK_STRUCT_FIELD(x)
+#define PACK_STRUCT_FLD_S(x) PACK_STRUCT_FIELD(x)
+#define LWIP_UNUSED_ARG(x) (void)x
+#define LWIP_DBG_LEVEL_ALL 0x00
+#define LWIP_DBG_LEVEL_WARNING 0x01
+#define LWIP_DBG_LEVEL_SERIOUS 0x02
+#define LWIP_DBG_LEVEL_SEVERE 0x03
+#define LWIP_DBG_MASK_LEVEL 0x03
+#define LWIP_DBG_LEVEL_OFF LWIP_DBG_LEVEL_ALL
+#define LWIP_DBG_ON 0x80U
+#define LWIP_DBG_OFF 0x00U
+#define LWIP_DBG_TRACE 0x40U
+#define LWIP_DBG_STATE 0x20U
+#define LWIP_DBG_FRESH 0x10U
+#define LWIP_DBG_HALT 0x08U
+#define LWIP_ASSERT(message,assertion) do { if (!(assertion)) { LWIP_PLATFORM_ASSERT(message); }} while(0)
+#define LWIP_PLATFORM_ERROR(message) 
+#define LWIP_ERROR(message,expression,handler) do { if (!(expression)) { LWIP_PLATFORM_ERROR(message); handler;}} while(0)
+#define LWIP_DEBUG_ENABLED(debug) 0
+#define LWIP_DEBUGF(debug,message) 
+#define LWIP_TIMERS 1
+#define LWIP_TIMERS_CUSTOM 0
+#define MEMCPY(dst,src,len) memcpy(dst,src,len)
+#define SMEMCPY(dst,src,len) memcpy(dst,src,len)
+#define MEMMOVE(dst,src,len) memmove(dst,src,len)
+#define LWIP_MPU_COMPATIBLE 0
+#define LWIP_TCPIP_CORE_LOCKING 1
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 0
+#define SYS_LIGHTWEIGHT_PROT 1
+#define LWIP_ASSERT_CORE_LOCKED() 
+#define MEM_CUSTOM_ALLOCATOR 0
+#define MEMP_MEM_MALLOC 0
+#define MEMP_MEM_INIT 0
+#define MEMP_OVERFLOW_CHECK 0
+#define MEMP_SANITY_CHECK 0
+#define MEM_OVERFLOW_CHECK 0
+#define MEM_SANITY_CHECK 0
+#define MEM_USE_POOLS 0
+#define MEM_USE_POOLS_TRY_BIGGER_POOL 0
+#define MEMP_USE_CUSTOM_POOLS 0
+#define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 0
+#define MEMP_NUM_PBUF 16
+#define MEMP_NUM_RAW_PCB 4
+#define MEMP_NUM_UDP_PCB 4
+#define MEMP_NUM_TCP_PCB 5
+#define MEMP_NUM_TCP_PCB_LISTEN 8
+#define MEMP_NUM_ALTCP_PCB MEMP_NUM_TCP_PCB
+#define MEMP_NUM_REASSDATA 5
+#define MEMP_NUM_FRAG_PBUF 15
+#define MEMP_NUM_IGMP_GROUP 8
+#define LWIP_NUM_SYS_TIMEOUT_INTERNAL (LWIP_TCP + IP_REASSEMBLY + LWIP_ARP + (2*LWIP_DHCP) + LWIP_ACD + LWIP_IGMP + LWIP_DNS + PPP_NUM_TIMEOUTS + (LWIP_IPV6 * (1 + LWIP_IPV6_REASS + LWIP_IPV6_MLD + LWIP_IPV6_DHCP6)))
+#define MEMP_NUM_SYS_TIMEOUT LWIP_NUM_SYS_TIMEOUT_INTERNAL
+#define MEMP_NUM_NETBUF 2
+#define MEMP_NUM_NETCONN 4
+#define MEMP_NUM_SELECT_CB 4
+#define MEMP_NUM_TCPIP_MSG_API 8
+#define MEMP_NUM_TCPIP_MSG_INPKT 8
+#define MEMP_NUM_NETDB 1
+#define MEMP_NUM_LOCALHOSTLIST 1
+#define MEMP_NUM_API_MSG MEMP_NUM_TCPIP_MSG_API
+#define MEMP_NUM_DNS_API_MSG MEMP_NUM_TCPIP_MSG_API
+#define MEMP_NUM_SOCKET_SETGETSOCKOPT_DATA MEMP_NUM_TCPIP_MSG_API
+#define MEMP_NUM_NETIFAPI_MSG MEMP_NUM_TCPIP_MSG_API
+#define ARP_TABLE_SIZE 10
+#define ARP_MAXAGE 300
+#define ARP_QUEUEING 0
+#define ARP_QUEUE_LEN 3
+#define ETHARP_SUPPORT_VLAN 0
+#define LWIP_VLAN_PCP 0
+#define ETH_PAD_SIZE 0
+#define ETHARP_SUPPORT_STATIC_ENTRIES 0
+#define ETHARP_TABLE_MATCH_NETIF !LWIP_SINGLE_NETIF
+#define IP_FORWARD 0
+#define IP_REASSEMBLY 1
+#define IP_FRAG 1
+#define IP_OPTIONS_ALLOWED 1
+#define IP_REASS_MAXAGE 15
+#define IP_REASS_MAX_PBUFS 10
+#define IP_DEFAULT_TTL 255
+#define IP_SOF_BROADCAST 0
+#define IP_SOF_BROADCAST_RECV 0
+#define IP_FORWARD_ALLOW_TX_ON_RX_NETIF 0
+#define ICMP_TTL IP_DEFAULT_TTL
+#define LWIP_BROADCAST_PING 0
+#define LWIP_MULTICAST_PING 0
+#define RAW_TTL IP_DEFAULT_TTL
+#define LWIP_DHCP_BOOTP_FILE 0
+#define LWIP_DHCP_GET_NTP_SRV 0
+#define LWIP_DHCP_MAX_NTP_SERVERS 1
+#define LWIP_DHCP_MAX_DNS_SERVERS DNS_MAX_SERVERS
+#define LWIP_DHCP_DISCOVER_ADD_HOSTNAME 1
+#define LWIP_AUTOIP 0
+#define LWIP_DHCP_AUTOIP_COOP 0
+#define LWIP_DHCP_AUTOIP_COOP_TRIES 9
+#define LWIP_ACD (LWIP_AUTOIP || LWIP_DHCP_DOES_ACD_CHECK)
+#define LWIP_MIB2_CALLBACKS 0
+#define LWIP_MULTICAST_TX_OPTIONS ((LWIP_IGMP || LWIP_IPV6_MLD) && (LWIP_UDP || LWIP_RAW))
+#define LWIP_IGMP 0
+#define DNS_TABLE_SIZE 4
+#define DNS_MAX_NAME_LENGTH 256
+#define DNS_MAX_SERVERS 2
+#define DNS_MAX_RETRIES 4
+#define DNS_DOES_NAME_CHECK 1
+#define LWIP_DNS_SECURE (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT)
+#define LWIP_DNS_SECURE_RAND_XID 1
+#define LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING 2
+#define LWIP_DNS_SECURE_RAND_SRC_PORT 4
+#define DNS_LOCAL_HOSTLIST 0
+#define DNS_LOCAL_HOSTLIST_IS_DYNAMIC 0
+#define LWIP_DNS_SUPPORT_MDNS_QUERIES 0
+#define LWIP_UDPLITE 0
+#define UDP_TTL IP_DEFAULT_TTL
+#define LWIP_NETBUF_RECVINFO 0
+#define TCP_TTL IP_DEFAULT_TTL
+#define TCP_MAXRTX 12
+#define TCP_SYNMAXRTX 6
+#define TCP_QUEUE_OOSEQ LWIP_TCP
+#define LWIP_TCP_SACK_OUT 0
+#define LWIP_TCP_MAX_SACK_NUM 4
+#define TCP_CALCULATE_EFF_SEND_MSS 1
+#define LWIP_TCP_RTO_TIME 3000
+#define TCP_SNDLOWAT LWIP_MIN(LWIP_MAX(((TCP_SND_BUF)/2), (2 * TCP_MSS) + 1), (TCP_SND_BUF) - 1)
+#define TCP_SNDQUEUELOWAT LWIP_MAX(((TCP_SND_QUEUELEN)/2), 5)
+#define TCP_OOSEQ_MAX_BYTES 0
+#define TCP_OOSEQ_MAX_PBUFS 0
+#define TCP_LISTEN_BACKLOG 0
+#define TCP_DEFAULT_LISTEN_BACKLOG 0xff
+#define TCP_OVERSIZE TCP_MSS
+#define LWIP_TCP_TIMESTAMPS 0
+#define TCP_WND_UPDATE_THRESHOLD LWIP_MIN((TCP_WND / 4), (TCP_MSS * 4))
+#define LWIP_EVENT_API 0
+#define LWIP_CALLBACK_API 1
+#define LWIP_WND_SCALE 0
+#define TCP_RCV_SCALE 0
+#define LWIP_TCP_PCB_NUM_EXT_ARGS 0
+#define LWIP_ALTCP 0
+#define LWIP_ALTCP_TLS 0
+#define PBUF_LINK_HLEN (14 + ETH_PAD_SIZE)
+#define PBUF_LINK_ENCAPSULATION_HLEN 0
+#define PBUF_POOL_BUFSIZE LWIP_MEM_ALIGN_SIZE(TCP_MSS+PBUF_IP_HLEN+PBUF_TRANSPORT_HLEN+PBUF_LINK_ENCAPSULATION_HLEN+PBUF_LINK_HLEN)
+#define LWIP_PBUF_REF_T u8_t
+#define LWIP_PBUF_CUSTOM_DATA 
+#define LWIP_PBUF_CUSTOM_DATA_INIT(p) 
+#define LWIP_SINGLE_NETIF 0
+#define LWIP_NETIF_API 0
+#define LWIP_NETIF_EXT_STATUS_CALLBACK 0
+#define LWIP_NETIF_REMOVE_CALLBACK 0
+#define LWIP_NETIF_HWADDRHINT 0
+#define LWIP_NUM_NETIF_CLIENT_DATA 0
+#define LWIP_HAVE_LOOPIF (LWIP_NETIF_LOOPBACK && !LWIP_SINGLE_NETIF)
+#define LWIP_LOOPIF_MULTICAST 0
+#define LWIP_NETIF_LOOPBACK 0
+#define LWIP_LOOPBACK_MAX_PBUFS 0
+#define LWIP_NETIF_LOOPBACK_MULTITHREADING (!NO_SYS)
+#define TCPIP_THREAD_NAME "tcpip_thread"
+#define TCPIP_THREAD_STACKSIZE 0
+#define TCPIP_THREAD_PRIO 1
+#define TCPIP_MBOX_SIZE 0
+#define LWIP_TCPIP_THREAD_ALIVE() 
+#define SLIPIF_THREAD_NAME "slipif_loop"
+#define SLIPIF_THREAD_STACKSIZE 0
+#define SLIPIF_THREAD_PRIO 1
+#define DEFAULT_THREAD_NAME "lwIP"
+#define DEFAULT_THREAD_STACKSIZE 0
+#define DEFAULT_THREAD_PRIO 1
+#define DEFAULT_RAW_RECVMBOX_SIZE 0
+#define DEFAULT_UDP_RECVMBOX_SIZE 0
+#define DEFAULT_TCP_RECVMBOX_SIZE 0
+#define DEFAULT_ACCEPTMBOX_SIZE 0
+#define LWIP_TCPIP_TIMEOUT 0
+#define LWIP_NETCONN_SEM_PER_THREAD 0
+#define LWIP_NETCONN_FULLDUPLEX 0
+#define LWIP_COMPAT_SOCKETS 1
+#define LWIP_POSIX_SOCKETS_IO_NAMES 1
+#define LWIP_SOCKET_OFFSET 0
+#define LWIP_SOCKET_EXTERNAL_HEADERS 0
+#define LWIP_SO_SNDTIMEO 0
+#define LWIP_SO_RCVTIMEO 0
+#define LWIP_SO_SNDRCVTIMEO_NONSTANDARD 0
+#define LWIP_SO_RCVBUF 0
+#define LWIP_SO_LINGER 0
+#define RECV_BUFSIZE_DEFAULT INT_MAX
+#define LWIP_TCP_CLOSE_TIMEOUT_MS_DEFAULT 20000
+#define SO_REUSE 0
+#define SO_REUSE_RXTOALL 0
+#define LWIP_FIONREAD_LINUXMODE 0
+#define LWIP_SOCKET_SELECT 1
+#define LWIP_SOCKET_POLL 1
+#define ETHARP_STATS (LWIP_ARP)
+#define IP_STATS 1
+#define IPFRAG_STATS (IP_REASSEMBLY || IP_FRAG)
+#define ICMP_STATS 1
+#define IGMP_STATS (LWIP_IGMP)
+#define UDP_STATS (LWIP_UDP)
+#define TCP_STATS (LWIP_TCP)
+#define IP6_STATS (LWIP_IPV6)
+#define ICMP6_STATS (LWIP_IPV6 && LWIP_ICMP6)
+#define IP6_FRAG_STATS (LWIP_IPV6 && (LWIP_IPV6_FRAG || LWIP_IPV6_REASS))
+#define MLD6_STATS (LWIP_IPV6 && LWIP_IPV6_MLD)
+#define ND6_STATS (LWIP_IPV6)
+#define MIB2_STATS 0
+#define LWIP_CHECKSUM_CTRL_PER_NETIF 0
+#define CHECKSUM_GEN_IP 1
+#define CHECKSUM_GEN_UDP 1
+#define CHECKSUM_GEN_TCP 1
+#define CHECKSUM_GEN_ICMP 1
+#define CHECKSUM_GEN_ICMP6 1
+#define CHECKSUM_CHECK_IP 1
+#define CHECKSUM_CHECK_UDP 1
+#define CHECKSUM_CHECK_TCP 1
+#define CHECKSUM_CHECK_ICMP 1
+#define CHECKSUM_CHECK_ICMP6 1
+#define LWIP_CHECKSUM_ON_COPY 0
+#define LWIP_IPV6 0
+#define IPV6_REASS_MAXAGE 60
+#define LWIP_IPV6_SCOPES (LWIP_IPV6 && !LWIP_SINGLE_NETIF)
+#define LWIP_IPV6_SCOPES_DEBUG 0
+#define LWIP_IPV6_NUM_ADDRESSES 3
+#define LWIP_IPV6_FORWARD 0
+#define LWIP_IPV6_FRAG 1
+#define LWIP_IPV6_REASS LWIP_IPV6
+#define LWIP_IPV6_SEND_ROUTER_SOLICIT LWIP_IPV6
+#define LWIP_IPV6_AUTOCONFIG LWIP_IPV6
+#define LWIP_IPV6_ADDRESS_LIFETIMES LWIP_IPV6_AUTOCONFIG
+#define LWIP_IPV6_DUP_DETECT_ATTEMPTS 1
+#define LWIP_ICMP6 LWIP_IPV6
+#define LWIP_ICMP6_DATASIZE 0
+#define LWIP_ICMP6_HL 255
+#define LWIP_IPV6_MLD LWIP_IPV6
+#define MEMP_NUM_MLD6_GROUP 4
+#define LWIP_ND6_QUEUEING LWIP_IPV6
+#define MEMP_NUM_ND6_QUEUE 20
+#define LWIP_ND6_NUM_NEIGHBORS 10
+#define LWIP_ND6_NUM_DESTINATIONS 10
+#define LWIP_ND6_NUM_PREFIXES 5
+#define LWIP_ND6_NUM_ROUTERS 3
+#define LWIP_ND6_MAX_MULTICAST_SOLICIT 3
+#define LWIP_ND6_MAX_UNICAST_SOLICIT 3
+#define LWIP_ND6_MAX_ANYCAST_DELAY_TIME 1000
+#define LWIP_ND6_MAX_NEIGHBOR_ADVERTISEMENT 3
+#define LWIP_ND6_REACHABLE_TIME 30000
+#define LWIP_ND6_RETRANS_TIMER 1000
+#define LWIP_ND6_DELAY_FIRST_PROBE_TIME 5000
+#define LWIP_ND6_ALLOW_RA_UPDATES 1
+#define LWIP_ND6_TCP_REACHABILITY_HINTS 1
+#define LWIP_ND6_RDNSS_MAX_DNS_SERVERS 0
+#define LWIP_IPV6_DHCP6 0
+#define LWIP_IPV6_DHCP6_STATEFUL 0
+#define LWIP_IPV6_DHCP6_STATELESS LWIP_IPV6_DHCP6
+#define LWIP_DHCP6_GET_NTP_SRV 0
+#define LWIP_DHCP6_MAX_NTP_SERVERS 1
+#define LWIP_DHCP6_MAX_DNS_SERVERS DNS_MAX_SERVERS
+#define LWIP_DBG_MIN_LEVEL LWIP_DBG_LEVEL_ALL
+#define LWIP_DBG_TYPES_ON LWIP_DBG_ON
+#define IGMP_DEBUG LWIP_DBG_OFF
+#define TIMERS_DEBUG LWIP_DBG_OFF
+#define AUTOIP_DEBUG LWIP_DBG_OFF
+#define ACD_DEBUG LWIP_DBG_OFF
+#define DNS_DEBUG LWIP_DBG_OFF
+#define IP6_DEBUG LWIP_DBG_OFF
+#define DHCP6_DEBUG LWIP_DBG_OFF
+#define LWIP_TESTMODE 0
+#define LWIP_PERF 0
+#define ENABLE_LOOPBACK (LWIP_NETIF_LOOPBACK || LWIP_HAVE_LOOPIF)
+#define LWIP_HDR_ERR_H 
+typedef enum {
+  ERR_OK = 0,
+  ERR_MEM = -1,
+  ERR_BUF = -2,
+  ERR_TIMEOUT = -3,
+  ERR_RTE = -4,
+  ERR_INPROGRESS = -5,
+  ERR_VAL = -6,
+  ERR_WOULDBLOCK = -7,
+  ERR_USE = -8,
+  ERR_ALREADY = -9,
+  ERR_ISCONN = -10,
+  ERR_CONN = -11,
+  ERR_IF = -12,
+  ERR_ABRT = -13,
+  ERR_RST = -14,
+  ERR_CLSD = -15,
+  ERR_ARG = -16
+} err_enum_t;
+typedef s8_t err_t;
+#define lwip_strerr(x) ""
+#define LWIP_HDR_IP_ADDR_H 
+#define LWIP_HDR_DEF_H 
+#define PERF_START 
+#define PERF_STOP(x) 
+#define LWIP_MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define LWIP_MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define LWIP_ARRAYSIZE(x) (sizeof(x)/sizeof((x)[0]))
+#define LWIP_MAKEU32(a,b,c,d) (((u32_t)((a) & 0xff) << 24) | ((u32_t)((b) & 0xff) << 16) | ((u32_t)((c) & 0xff) << 8) | (u32_t)((d) & 0xff))
+u16_t lwip_htons(u16_t x);
+#define lwip_ntohs(x) lwip_htons(x)
+u32_t lwip_htonl(u32_t x);
+#define lwip_ntohl(x) lwip_htonl(x)
+#define PP_HTONS(x) ((u16_t)((((x) & (u16_t)0x00ffU) << 8) | (((x) & (u16_t)0xff00U) >> 8)))
+#define PP_NTOHS(x) PP_HTONS(x)
+#define PP_HTONL(x) ((((x) & (u32_t)0x000000ffUL) << 24) | (((x) & (u32_t)0x0000ff00UL) << 8) | (((x) & (u32_t)0x00ff0000UL) >> 8) | (((x) & (u32_t)0xff000000UL) >> 24))
+#define PP_NTOHL(x) PP_HTONL(x)
+#define htons(x) lwip_htons(x)
+#define ntohs(x) lwip_ntohs(x)
+#define htonl(x) lwip_htonl(x)
+#define ntohl(x) lwip_ntohl(x)
+void lwip_itoa(char* result, size_t bufsize, int number);
+int lwip_strnicmp(const char* str1, const char* str2, size_t len);
+int lwip_stricmp(const char* str1, const char* str2);
+char* lwip_strnstr(const char* buffer, const char* token, size_t n);
+char* lwip_strnistr(const char* buffer, const char* token, size_t n);
+int lwip_memcmp_consttime(const void* s1, const void* s2, size_t len);
+#define LWIP_HDR_IP4_ADDR_H 
+struct ip4_addr {
+  u32_t addr;
+};
+typedef struct ip4_addr ip4_addr_t;
+struct netif;
+#define IPADDR_NONE ((u32_t)0xffffffffUL)
+#define IPADDR_LOOPBACK ((u32_t)0x7f000001UL)
+#define IPADDR_ANY ((u32_t)0x00000000UL)
+#define IPADDR_BROADCAST ((u32_t)0xffffffffUL)
+#define IP_CLASSA(a) ((((u32_t)(a)) & 0x80000000UL) == 0)
+#define IP_CLASSA_NET 0xff000000
+#define IP_CLASSA_NSHIFT 24
+#define IP_CLASSA_HOST (0xffffffff & ~IP_CLASSA_NET)
+#define IP_CLASSA_MAX 128
+#define IP_CLASSB(a) ((((u32_t)(a)) & 0xc0000000UL) == 0x80000000UL)
+#define IP_CLASSB_NET 0xffff0000
+#define IP_CLASSB_NSHIFT 16
+#define IP_CLASSB_HOST (0xffffffff & ~IP_CLASSB_NET)
+#define IP_CLASSB_MAX 65536
+#define IP_CLASSC(a) ((((u32_t)(a)) & 0xe0000000UL) == 0xc0000000UL)
+#define IP_CLASSC_NET 0xffffff00
+#define IP_CLASSC_NSHIFT 8
+#define IP_CLASSC_HOST (0xffffffff & ~IP_CLASSC_NET)
+#define IP_CLASSD(a) (((u32_t)(a) & 0xf0000000UL) == 0xe0000000UL)
+#define IP_CLASSD_NET 0xf0000000
+#define IP_CLASSD_NSHIFT 28
+#define IP_CLASSD_HOST 0x0fffffff
+#define IP_MULTICAST(a) IP_CLASSD(a)
+#define IP_EXPERIMENTAL(a) (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
+#define IP_BADCLASS(a) (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
+#define IP_LOOPBACKNET 127
+#define IP4_ADDR(ipaddr,a,b,c,d) (ipaddr)->addr = PP_HTONL(LWIP_MAKEU32(a,b,c,d))
+#define ip4_addr_copy(dest,src) ((dest).addr = (src).addr)
+#define ip4_addr_set(dest,src) ((dest)->addr = ((src) == NULL ? 0 : (src)->addr))
+#define ip4_addr_set_zero(ipaddr) ((ipaddr)->addr = 0)
+#define ip4_addr_set_any(ipaddr) ((ipaddr)->addr = IPADDR_ANY)
+#define ip4_addr_set_loopback(ipaddr) ((ipaddr)->addr = PP_HTONL(IPADDR_LOOPBACK))
+#define ip4_addr_isloopback(ipaddr) (((ipaddr)->addr & PP_HTONL(IP_CLASSA_NET)) == PP_HTONL(((u32_t)IP_LOOPBACKNET) << 24))
+#define ip4_addr_set_hton(dest,src) ((dest)->addr = ((src) == NULL ? 0: lwip_htonl((src)->addr)))
+#define ip4_addr_set_u32(dest_ipaddr,src_u32) ((dest_ipaddr)->addr = (src_u32))
+#define ip4_addr_get_u32(src_ipaddr) ((src_ipaddr)->addr)
+#define ip4_addr_get_network(target,host,netmask) do { ((target)->addr = ((host)->addr) & ((netmask)->addr)); } while(0)
+#define ip4_addr_netcmp(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
+#define ip4_addr_net_eq(addr1,addr2,mask) (((addr1)->addr & (mask)->addr) == ((addr2)->addr & (mask)->addr))
+#define ip4_addr_cmp(addr1,addr2) ip4_addr_eq(addr1, addr2)
+#define ip4_addr_eq(addr1,addr2) ((addr1)->addr == (addr2)->addr)
+#define ip4_addr_isany_val(addr1) ((addr1).addr == IPADDR_ANY)
+#define ip4_addr_isany(addr1) ((addr1) == NULL || ip4_addr_isany_val(*(addr1)))
+#define ip4_addr_isbroadcast(addr1,netif) ip4_addr_isbroadcast_u32((addr1)->addr, netif)
+u8_t ip4_addr_isbroadcast_u32(u32_t addr, const struct netif *netif);
+#define ip_addr_netmask_valid(netmask) ip4_addr_netmask_valid((netmask)->addr)
+u8_t ip4_addr_netmask_valid(u32_t netmask);
+#define ip4_addr_ismulticast(addr1) (((addr1)->addr & PP_HTONL(0xf0000000UL)) == PP_HTONL(0xe0000000UL))
+#define ip4_addr_islinklocal(addr1) (((addr1)->addr & PP_HTONL(0xffff0000UL)) == PP_HTONL(0xa9fe0000UL))
+#define ip4_addr_debug_print_parts(debug,a,b,c,d) LWIP_DEBUGF(debug, ("%" U16_F ".%" U16_F ".%" U16_F ".%" U16_F, a, b, c, d))
+#define ip4_addr_debug_print(debug,ipaddr) ip4_addr_debug_print_parts(debug, (u16_t)((ipaddr) != NULL ? ip4_addr1_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr2_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr3_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr4_16(ipaddr) : 0))
+#define ip4_addr_debug_print_val(debug,ipaddr) ip4_addr_debug_print_parts(debug, ip4_addr1_16_val(ipaddr), ip4_addr2_16_val(ipaddr), ip4_addr3_16_val(ipaddr), ip4_addr4_16_val(ipaddr))
+#define ip4_addr_get_byte(ipaddr,idx) (((const u8_t*)(&(ipaddr)->addr))[idx])
+#define ip4_addr1(ipaddr) ip4_addr_get_byte(ipaddr, 0)
+#define ip4_addr2(ipaddr) ip4_addr_get_byte(ipaddr, 1)
+#define ip4_addr3(ipaddr) ip4_addr_get_byte(ipaddr, 2)
+#define ip4_addr4(ipaddr) ip4_addr_get_byte(ipaddr, 3)
+#define ip4_addr_get_byte_val(ipaddr,idx) ((u8_t)(((ipaddr).addr >> (idx * 8)) & 0xff))
+#define ip4_addr1_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 0)
+#define ip4_addr2_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 1)
+#define ip4_addr3_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 2)
+#define ip4_addr4_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 3)
+#define ip4_addr1_16(ipaddr) ((u16_t)ip4_addr1(ipaddr))
+#define ip4_addr2_16(ipaddr) ((u16_t)ip4_addr2(ipaddr))
+#define ip4_addr3_16(ipaddr) ((u16_t)ip4_addr3(ipaddr))
+#define ip4_addr4_16(ipaddr) ((u16_t)ip4_addr4(ipaddr))
+#define ip4_addr1_16_val(ipaddr) ((u16_t)ip4_addr1_val(ipaddr))
+#define ip4_addr2_16_val(ipaddr) ((u16_t)ip4_addr2_val(ipaddr))
+#define ip4_addr3_16_val(ipaddr) ((u16_t)ip4_addr3_val(ipaddr))
+#define ip4_addr4_16_val(ipaddr) ((u16_t)ip4_addr4_val(ipaddr))
+#define IP4ADDR_STRLEN_MAX 16
+#define ip_ntoa(ipaddr) ipaddr_ntoa(ipaddr)
+u32_t ipaddr_addr(const char *cp);
+int ip4addr_aton(const char *cp, ip4_addr_t *addr);
+char *ip4addr_ntoa(const ip4_addr_t *addr);
+char *ip4addr_ntoa_r(const ip4_addr_t *addr, char *buf, int buflen);
+#define LWIP_HDR_IP6_ADDR_H 
+enum lwip_ip_addr_type {
+  IPADDR_TYPE_V4 = 0U,
+  IPADDR_TYPE_V6 = 6U,
+  IPADDR_TYPE_ANY = 46U
+};
+#define IP_ADDR_PCB_VERSION_MATCH(addr,pcb) 1
+#define IP_ADDR_PCB_VERSION_MATCH_EXACT(pcb,ipaddr) 1
+#define ip_addr_set_any_val(is_ipv6,ipaddr) ip_addr_set_any(is_ipv6, &(ipaddr))
+#define ip_addr_set_loopback_val(is_ipv6,ipaddr) ip_addr_set_loopback(is_ipv6, &(ipaddr))
+typedef ip4_addr_t ip_addr_t;
+#define IPADDR4_INIT(u32val) { u32val }
+#define IPADDR4_INIT_BYTES(a,b,c,d) IPADDR4_INIT(PP_HTONL(LWIP_MAKEU32(a,b,c,d)))
+#define IP_IS_V4_VAL(ipaddr) 1
+#define IP_IS_V6_VAL(ipaddr) 0
+#define IP_IS_V4(ipaddr) 1
+#define IP_IS_V6(ipaddr) 0
+#define IP_IS_ANY_TYPE_VAL(ipaddr) 0
+#define IP_SET_TYPE_VAL(ipaddr,iptype) 
+#define IP_SET_TYPE(ipaddr,iptype) 
+#define IP_GET_TYPE(ipaddr) IPADDR_TYPE_V4
+#define IP_ADDR_RAW_SIZE(ipaddr) sizeof(ip4_addr_t)
+#define ip_2_ip4(ipaddr) (ipaddr)
+#define IP_ADDR4(ipaddr,a,b,c,d) IP4_ADDR(ipaddr,a,b,c,d)
+#define ip_addr_copy(dest,src) ip4_addr_copy(dest, src)
+#define ip_addr_copy_from_ip4(dest,src) ip4_addr_copy(dest, src)
+#define ip_addr_set_ip4_u32(ipaddr,val) ip4_addr_set_u32(ip_2_ip4(ipaddr), val)
+#define ip_addr_set_ip4_u32_val(ipaddr,val) ip_addr_set_ip4_u32(&(ipaddr), val)
+#define ip_addr_get_ip4_u32(ipaddr) ip4_addr_get_u32(ip_2_ip4(ipaddr))
+#define ip_addr_set(dest,src) ip4_addr_set(dest, src)
+#define ip_addr_set_ipaddr(dest,src) ip4_addr_set(dest, src)
+#define ip_addr_set_zero(ipaddr) ip4_addr_set_zero(ipaddr)
+#define ip_addr_set_zero_ip4(ipaddr) ip4_addr_set_zero(ipaddr)
+#define ip_addr_set_any(is_ipv6,ipaddr) ip4_addr_set_any(ipaddr)
+#define ip_addr_set_loopback(is_ipv6,ipaddr) ip4_addr_set_loopback(ipaddr)
+#define ip_addr_set_hton(dest,src) ip4_addr_set_hton(dest, src)
+#define ip_addr_get_network(target,host,mask) ip4_addr_get_network(target, host, mask)
+#define ip_addr_netcmp(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
+#define ip_addr_net_eq(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
+#define ip_addr_cmp(addr1,addr2) ip4_addr_eq(addr1, addr2)
+#define ip_addr_eq(addr1,addr2) ip4_addr_eq(addr1, addr2)
+#define ip_addr_isany(ipaddr) ip4_addr_isany(ipaddr)
+#define ip_addr_isany_val(ipaddr) ip4_addr_isany_val(ipaddr)
+#define ip_addr_isloopback(ipaddr) ip4_addr_isloopback(ipaddr)
+#define ip_addr_islinklocal(ipaddr) ip4_addr_islinklocal(ipaddr)
+#define ip_addr_isbroadcast(addr,netif) ip4_addr_isbroadcast(addr, netif)
+#define ip_addr_ismulticast(ipaddr) ip4_addr_ismulticast(ipaddr)
+#define ip_addr_debug_print(debug,ipaddr) ip4_addr_debug_print(debug, ipaddr)
+#define ip_addr_debug_print_val(debug,ipaddr) ip4_addr_debug_print_val(debug, ipaddr)
+#define ipaddr_ntoa(ipaddr) ip4addr_ntoa(ipaddr)
+#define ipaddr_ntoa_r(ipaddr,buf,buflen) ip4addr_ntoa_r(ipaddr, buf, buflen)
+#define ipaddr_aton(cp,addr) ip4addr_aton(cp, addr)
+#define IPADDR_STRLEN_MAX IP4ADDR_STRLEN_MAX
+#define IP46_ADDR_ANY(type) (IP4_ADDR_ANY)
+extern const ip_addr_t ip_addr_any;
+extern const ip_addr_t ip_addr_broadcast;
+#define IP_ADDR_ANY IP4_ADDR_ANY
+#define IP4_ADDR_ANY (&ip_addr_any)
+#define IP4_ADDR_ANY4 (ip_2_ip4(&ip_addr_any))
+#define IP_ADDR_BROADCAST (&ip_addr_broadcast)
+#define IP4_ADDR_BROADCAST (ip_2_ip4(&ip_addr_broadcast))
+#define IP_ANY_TYPE IP_ADDR_ANY
+#define LWIP_HDR_PBUF_H 
+#define LWIP_SUPPORT_CUSTOM_PBUF ((IP_FRAG && !LWIP_NETIF_TX_SINGLE_PBUF) || (LWIP_IPV6 && LWIP_IPV6_FRAG))
+#define PBUF_NEEDS_COPY(p) ((p)->type_internal & PBUF_TYPE_FLAG_DATA_VOLATILE)
+#define PBUF_TRANSPORT_HLEN 20
+#define PBUF_IP_HLEN 20
+typedef enum {
+  PBUF_TRANSPORT = 0 + (14 + 0) + 20 + 20,
+  PBUF_IP = 0 + (14 + 0) + 20,
+  PBUF_LINK = 0 + (14 + 0),
+  PBUF_RAW_TX = 0,
+  PBUF_RAW = 0
+} pbuf_layer;
+#define PBUF_TYPE_FLAG_STRUCT_DATA_CONTIGUOUS 0x80
+#define PBUF_TYPE_FLAG_DATA_VOLATILE 0x40
+#define PBUF_TYPE_ALLOC_SRC_MASK 0x0F
+#define PBUF_ALLOC_FLAG_RX 0x0100
+#define PBUF_ALLOC_FLAG_DATA_CONTIGUOUS 0x0200
+#define PBUF_TYPE_ALLOC_SRC_MASK_STD_HEAP 0x00
+#define PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF 0x01
+#define PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF_POOL 0x02
+#define PBUF_TYPE_ALLOC_SRC_MASK_APP_MIN 0x03
+#define PBUF_TYPE_ALLOC_SRC_MASK_APP_MAX PBUF_TYPE_ALLOC_SRC_MASK
+typedef enum {
+  PBUF_RAM = (0x0200 | 0x80 | 0x00),
+  PBUF_ROM = 0x01,
+  PBUF_REF = (0x40 | 0x01),
+  PBUF_POOL = (0x0100 | 0x80 | 0x02)
+} pbuf_type;
+#define PBUF_FLAG_PUSH 0x01U
+#define PBUF_FLAG_IS_CUSTOM 0x02U
+#define PBUF_FLAG_MCASTLOOP 0x04U
+#define PBUF_FLAG_LLBCAST 0x08U
+#define PBUF_FLAG_LLMCAST 0x10U
+#define PBUF_FLAG_TCP_FIN 0x20U
+struct pbuf {
+  struct pbuf *next;
+  void *payload;
+  u16_t tot_len;
+  u16_t len;
+  u8_t type_internal;
+  u8_t flags;
+  u8_t ref;
+  u8_t if_idx;
+ 
+};
+struct pbuf_rom {
+  struct pbuf *next;
+  const void *payload;
+};
+#define PBUF_POOL_FREE_OOSEQ 1
+extern volatile u8_t pbuf_free_ooseq_pending;
+void pbuf_free_ooseq(void);
+#define PBUF_CHECK_FREE_OOSEQ() do { if(pbuf_free_ooseq_pending) { pbuf_free_ooseq(); }}while(0)
+#define pbuf_init() 
+struct pbuf *pbuf_alloc(pbuf_layer l, u16_t length, pbuf_type type);
+struct pbuf *pbuf_alloc_reference(void *payload, u16_t length, pbuf_type type);
+void pbuf_realloc(struct pbuf *p, u16_t size);
+#define pbuf_get_allocsrc(p) ((p)->type_internal & PBUF_TYPE_ALLOC_SRC_MASK)
+#define pbuf_match_allocsrc(p,type) (pbuf_get_allocsrc(p) == ((type) & PBUF_TYPE_ALLOC_SRC_MASK))
+#define pbuf_match_type(p,type) pbuf_match_allocsrc(p, type)
+u8_t pbuf_header(struct pbuf *p, s16_t header_size);
+u8_t pbuf_header_force(struct pbuf *p, s16_t header_size);
+u8_t pbuf_add_header(struct pbuf *p, size_t header_size_increment);
+u8_t pbuf_add_header_force(struct pbuf *p, size_t header_size_increment);
+u8_t pbuf_remove_header(struct pbuf *p, size_t header_size);
+struct pbuf *pbuf_free_header(struct pbuf *q, u16_t size);
+void pbuf_ref(struct pbuf *p);
+u8_t pbuf_free(struct pbuf *p);
+u16_t pbuf_clen(const struct pbuf *p);
+void pbuf_cat(struct pbuf *head, struct pbuf *tail);
+void pbuf_chain(struct pbuf *head, struct pbuf *tail);
+struct pbuf *pbuf_dechain(struct pbuf *p);
+err_t pbuf_copy(struct pbuf *p_to, const struct pbuf *p_from);
+err_t pbuf_copy_partial_pbuf(struct pbuf *p_to, const struct pbuf *p_from, u16_t copy_len, u16_t offset);
+u16_t pbuf_copy_partial(const struct pbuf *p, void *dataptr, u16_t len, u16_t offset);
+void *pbuf_get_contiguous(const struct pbuf *p, void *buffer, size_t bufsize, u16_t len, u16_t offset);
+err_t pbuf_take(struct pbuf *buf, const void *dataptr, u16_t len);
+err_t pbuf_take_at(struct pbuf *buf, const void *dataptr, u16_t len, u16_t offset);
+struct pbuf *pbuf_skip(struct pbuf* in, u16_t in_offset, u16_t* out_offset);
+struct pbuf *pbuf_coalesce(struct pbuf *p, pbuf_layer layer);
+struct pbuf *pbuf_clone(pbuf_layer l, pbuf_type type, struct pbuf *p);
+u8_t pbuf_get_at(const struct pbuf* p, u16_t offset);
+int pbuf_try_get_at(const struct pbuf* p, u16_t offset);
+void pbuf_put_at(struct pbuf* p, u16_t offset, u8_t data);
+u16_t pbuf_memcmp(const struct pbuf* p, u16_t offset, const void* s2, u16_t n);
+u16_t pbuf_memfind(const struct pbuf* p, const void* mem, u16_t mem_len, u16_t start_offset);
+u16_t pbuf_strstr(const struct pbuf* p, const char* substr);
+#define LWIP_HDR_STATS_H 
+#define LWIP_HDR_MEM_H 
+typedef u16_t mem_size_t;
+#define MEM_SIZE_F U16_F
+void mem_init(void);
+void *mem_trim(void *mem, mem_size_t size);
+void *mem_malloc(mem_size_t size);
+void *mem_calloc(mem_size_t count, mem_size_t size);
+void mem_free(void *mem);
+#define LWIP_HDR_MEMP_H 
+#define LWIP_MEMPOOL(name,num,size,desc) 
+#define LWIP_MALLOC_MEMPOOL(num,size) LWIP_MEMPOOL(POOL_ ##size, num, (size + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper))), "MALLOC_"#size)
+#define LWIP_MALLOC_MEMPOOL_START 
+#define LWIP_MALLOC_MEMPOOL_END 
+#define LWIP_PBUF_MEMPOOL(name,num,payload,desc) LWIP_MEMPOOL(name, num, (LWIP_MEM_ALIGN_SIZE(sizeof(struct pbuf)) + LWIP_MEM_ALIGN_SIZE(payload)), desc)
+
+
+
+
+
+
+
+
+
+#undef LWIP_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL_START
+#undef LWIP_MALLOC_MEMPOOL_END
+#undef LWIP_PBUF_MEMPOOL
+typedef enum {
+#define LWIP_MEMPOOL(name,num,size,desc) MEMP_ ##name,
+#define LWIP_MALLOC_MEMPOOL(num,size) LWIP_MEMPOOL(POOL_ ##size, num, (size + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper))), "MALLOC_"#size)
+#define LWIP_MALLOC_MEMPOOL_START 
+#define LWIP_MALLOC_MEMPOOL_END 
+#define LWIP_PBUF_MEMPOOL(name,num,payload,desc) LWIP_MEMPOOL(name, num, (LWIP_MEM_ALIGN_SIZE(sizeof(struct pbuf)) + LWIP_MEM_ALIGN_SIZE(payload)), desc)
+MEMP_RAW_PCB,
+MEMP_UDP_PCB,
+MEMP_TCP_PCB,
+MEMP_TCP_PCB_LISTEN,
+MEMP_TCP_SEG,
+MEMP_REASSDATA,
+MEMP_SYS_TIMEOUT,
+MEMP_PBUF,
+MEMP_PBUF_POOL,
+#undef LWIP_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL_START
+#undef LWIP_MALLOC_MEMPOOL_END
+#undef LWIP_PBUF_MEMPOOL
+  MEMP_MAX
+} memp_t;
+#define LWIP_HDR_MEMP_PRIV_H 
+#define LWIP_HDR_MEM_PRIV_H 
+#define MEMP_SIZE 0
+#define MEMP_ALIGN_SIZE(x) (LWIP_MEM_ALIGN_SIZE(x))
+struct memp {
+  struct memp *next;
+};
+struct memp_desc {
+  const char *desc;
+  struct stats_mem *stats;
+  u16_t size;
+  u16_t num;
+  u8_t *base;
+  struct memp **tab;
+};
+#define DECLARE_LWIP_MEMPOOL_DESC(desc) (desc),
+#define LWIP_MEMPOOL_DECLARE_STATS_INSTANCE(name) static struct stats_mem name;
+#define LWIP_MEMPOOL_DECLARE_STATS_REFERENCE(name) &name,
+void memp_init_pool(const struct memp_desc *desc);
+void *memp_malloc_pool(const struct memp_desc *desc);
+void memp_free_pool(const struct memp_desc* desc, void *mem);
+extern const struct memp_desc* const memp_pools[MEMP_MAX];
+#define LWIP_MEMPOOL_PROTOTYPE(name) extern const struct memp_desc memp_ ## name
+#define LWIP_MEMPOOL_DECLARE(name,num,size,desc) LWIP_DECLARE_MEMORY_ALIGNED(memp_memory_ ## name ## _base, ((num) * (MEMP_SIZE + MEMP_ALIGN_SIZE(size)))); LWIP_MEMPOOL_DECLARE_STATS_INSTANCE(memp_stats_ ## name) static struct memp *memp_tab_ ## name; const struct memp_desc memp_ ## name = { DECLARE_LWIP_MEMPOOL_DESC(desc) LWIP_MEMPOOL_DECLARE_STATS_REFERENCE(memp_stats_ ## name) LWIP_MEM_ALIGN_SIZE(size), (num), memp_memory_ ## name ## _base, &memp_tab_ ## name };
+#define LWIP_MEMPOOL_INIT(name) memp_init_pool(&memp_ ## name)
+#define LWIP_MEMPOOL_ALLOC(name) memp_malloc_pool(&memp_ ## name)
+#define LWIP_MEMPOOL_FREE(name,x) memp_free_pool(&memp_ ## name, (x))
+void memp_init(void);
+void *memp_malloc(memp_t type);
+void memp_free(memp_t type, void *mem);
+#define LWIP_STATS_LARGE 0
+#define STAT_COUNTER u16_t
+#define STAT_COUNTER_F U16_F
+struct stats_proto {
+  u16_t xmit;
+  u16_t recv;
+  u16_t fw;
+  u16_t drop;
+  u16_t chkerr;
+  u16_t lenerr;
+  u16_t memerr;
+  u16_t rterr;
+  u16_t proterr;
+  u16_t opterr;
+  u16_t err;
+  u16_t cachehit;
+};
+struct stats_igmp {
+  u16_t xmit;
+  u16_t recv;
+  u16_t drop;
+  u16_t chkerr;
+  u16_t lenerr;
+  u16_t memerr;
+  u16_t proterr;
+  u16_t rx_v1;
+  u16_t rx_group;
+  u16_t rx_general;
+  u16_t rx_report;
+  u16_t tx_join;
+  u16_t tx_leave;
+  u16_t tx_report;
+};
+struct stats_mem {
+  const char *name;
+  u16_t err;
+  mem_size_t avail;
+  mem_size_t used;
+  mem_size_t max;
+  u16_t illegal;
+};
+struct stats_syselem {
+  u16_t used;
+  u16_t max;
+  u16_t err;
+};
+struct stats_sys {
+  struct stats_syselem sem;
+  struct stats_syselem mutex;
+  struct stats_syselem mbox;
+};
+struct stats_mib2 {
+  u32_t ipinhdrerrors;
+  u32_t ipinaddrerrors;
+  u32_t ipinunknownprotos;
+  u32_t ipindiscards;
+  u32_t ipindelivers;
+  u32_t ipoutrequests;
+  u32_t ipoutdiscards;
+  u32_t ipoutnoroutes;
+  u32_t ipreasmoks;
+  u32_t ipreasmfails;
+  u32_t ipfragoks;
+  u32_t ipfragfails;
+  u32_t ipfragcreates;
+  u32_t ipreasmreqds;
+  u32_t ipforwdatagrams;
+  u32_t ipinreceives;
+  u32_t ip6reasmoks;
+  u32_t tcpactiveopens;
+  u32_t tcppassiveopens;
+  u32_t tcpattemptfails;
+  u32_t tcpestabresets;
+  u32_t tcpoutsegs;
+  u32_t tcpretranssegs;
+  u32_t tcpinsegs;
+  u32_t tcpinerrs;
+  u32_t tcpoutrsts;
+  u32_t udpindatagrams;
+  u32_t udpnoports;
+  u32_t udpinerrors;
+  u32_t udpoutdatagrams;
+  u32_t icmpinmsgs;
+  u32_t icmpinerrors;
+  u32_t icmpindestunreachs;
+  u32_t icmpintimeexcds;
+  u32_t icmpinparmprobs;
+  u32_t icmpinsrcquenchs;
+  u32_t icmpinredirects;
+  u32_t icmpinechos;
+  u32_t icmpinechoreps;
+  u32_t icmpintimestamps;
+  u32_t icmpintimestampreps;
+  u32_t icmpinaddrmasks;
+  u32_t icmpinaddrmaskreps;
+  u32_t icmpoutmsgs;
+  u32_t icmpouterrors;
+  u32_t icmpoutdestunreachs;
+  u32_t icmpouttimeexcds;
+  u32_t icmpoutechos;
+  u32_t icmpoutechoreps;
+};
+struct stats_mib2_netif_ctrs {
+  u32_t ifinoctets;
+  u32_t ifinucastpkts;
+  u32_t ifinnucastpkts;
+  u32_t ifindiscards;
+  u32_t ifinerrors;
+  u32_t ifinunknownprotos;
+  u32_t ifoutoctets;
+  u32_t ifoutucastpkts;
+  u32_t ifoutnucastpkts;
+  u32_t ifoutdiscards;
+  u32_t ifouterrors;
+};
+struct stats_ {
+  struct stats_proto link;
+  struct stats_proto etharp;
+  struct stats_proto ip_frag;
+  struct stats_proto ip;
+  struct stats_proto icmp;
+  struct stats_proto udp;
+  struct stats_proto tcp;
+  struct stats_mem mem;
+  struct stats_mem *memp[MEMP_MAX];
+  struct stats_sys sys;
+};
+extern struct stats_ lwip_stats;
+void stats_init(void);
+#define STATS_INC(x) ++lwip_stats.x
+#define STATS_DEC(x) --lwip_stats.x
+#define STATS_INC_USED(x,y,type) do { lwip_stats.x.used = (type)(lwip_stats.x.used + y); if (lwip_stats.x.max < lwip_stats.x.used) { lwip_stats.x.max = lwip_stats.x.used; } } while(0)
+#define STATS_GET(x) lwip_stats.x
+#define TCP_STATS_INC(x) STATS_INC(x)
+#define TCP_STATS_DISPLAY() stats_display_proto(&lwip_stats.tcp, "TCP")
+#define UDP_STATS_INC(x) STATS_INC(x)
+#define UDP_STATS_DISPLAY() stats_display_proto(&lwip_stats.udp, "UDP")
+#define ICMP_STATS_INC(x) STATS_INC(x)
+#define ICMP_STATS_DISPLAY() stats_display_proto(&lwip_stats.icmp, "ICMP")
+#define IGMP_STATS_INC(x) 
+#define IGMP_STATS_DISPLAY() 
+#define IP_STATS_INC(x) STATS_INC(x)
+#define IP_STATS_DISPLAY() stats_display_proto(&lwip_stats.ip, "IP")
+#define IPFRAG_STATS_INC(x) STATS_INC(x)
+#define IPFRAG_STATS_DISPLAY() stats_display_proto(&lwip_stats.ip_frag, "IP_FRAG")
+#define ETHARP_STATS_INC(x) STATS_INC(x)
+#define ETHARP_STATS_DISPLAY() stats_display_proto(&lwip_stats.etharp, "ETHARP")
+#define LINK_STATS_INC(x) STATS_INC(x)
+#define LINK_STATS_DISPLAY() stats_display_proto(&lwip_stats.link, "LINK")
+#define MEM_STATS_AVAIL(x,y) lwip_stats.mem.x = y
+#define MEM_STATS_INC(x) STATS_INC(mem.x)
+#define MEM_STATS_INC_USED(x,y) STATS_INC_USED(mem, y, mem_size_t)
+#define MEM_STATS_DEC_USED(x,y) lwip_stats.mem.x = (mem_size_t)((lwip_stats.mem.x) - (y))
+#define MEM_STATS_DISPLAY() stats_display_mem(&lwip_stats.mem, "HEAP")
+#define MEMP_STATS_DEC(x,i) STATS_DEC(memp[i]->x)
+#define MEMP_STATS_DISPLAY(i) stats_display_memp(lwip_stats.memp[i], i)
+#define MEMP_STATS_GET(x,i) STATS_GET(memp[i]->x)
+#define SYS_STATS_INC(x) STATS_INC(sys.x)
+#define SYS_STATS_DEC(x) STATS_DEC(sys.x)
+#define SYS_STATS_INC_USED(x) STATS_INC_USED(sys.x, 1, STAT_COUNTER)
+#define SYS_STATS_DISPLAY() stats_display_sys(&lwip_stats.sys)
+#define IP6_STATS_INC(x) 
+#define IP6_STATS_DISPLAY() 
+#define ICMP6_STATS_INC(x) 
+#define ICMP6_STATS_DISPLAY() 
+#define IP6_FRAG_STATS_INC(x) 
+#define IP6_FRAG_STATS_DISPLAY() 
+#define MLD6_STATS_INC(x) 
+#define MLD6_STATS_DISPLAY() 
+#define ND6_STATS_INC(x) 
+#define ND6_STATS_DISPLAY() 
+#define MIB2_STATS_INC(x) 
+void stats_display(void);
+void stats_display_proto(struct stats_proto *proto, const char *name);
+void stats_display_igmp(struct stats_igmp *igmp, const char *name);
+void stats_display_mem(struct stats_mem *mem, const char *name);
+void stats_display_memp(struct stats_mem *mem, int index);
+void stats_display_sys(struct stats_sys *sys);
+#define NETIF_MAX_HWADDR_LEN 6U
+#define NETIF_NAMESIZE 6
+#define NETIF_FLAG_UP 0x01U
+#define NETIF_FLAG_BROADCAST 0x02U
+#define NETIF_FLAG_LINK_UP 0x04U
+#define NETIF_FLAG_ETHARP 0x08U
+#define NETIF_FLAG_ETHERNET 0x10U
+#define NETIF_FLAG_IGMP 0x20U
+#define NETIF_FLAG_MLD6 0x40U
+enum lwip_internal_netif_client_data_index
+{
+   LWIP_NETIF_CLIENT_DATA_INDEX_DHCP,
+   LWIP_NETIF_CLIENT_DATA_INDEX_MAX
+};
+struct netif;
+enum netif_mac_filter_action {
+  NETIF_DEL_MAC_FILTER = 0,
+  NETIF_ADD_MAC_FILTER = 1
+};
+typedef err_t (*netif_init_fn)(struct netif *netif);
+typedef err_t (*netif_input_fn)(struct pbuf *p, struct netif *inp);
+typedef err_t (*netif_output_fn)(struct netif *netif, struct pbuf *p,
+       const ip4_addr_t *ipaddr);
+typedef err_t (*netif_linkoutput_fn)(struct netif *netif, struct pbuf *p);
+typedef void (*netif_status_callback_fn)(struct netif *netif);
+#define netif_set_client_data(netif,id,data) netif_get_client_data(netif, id) = (data)
+#define netif_get_client_data(netif,id) (netif)->client_data[(id)]
+typedef u8_t netif_addr_idx_t;
+#define NETIF_ADDR_IDX_MAX 0x7F
+#define LWIP_NETIF_USE_HINTS 0
+struct netif {
+  struct netif *next;
+  ip_addr_t ip_addr;
+  ip_addr_t netmask;
+  ip_addr_t gw;
+  netif_input_fn input;
+  netif_output_fn output;
+  netif_linkoutput_fn linkoutput;
+  netif_status_callback_fn status_callback;
+  netif_status_callback_fn link_callback;
+  void *state;
+  void* client_data[LWIP_NETIF_CLIENT_DATA_INDEX_MAX + 0];
+  const char* hostname;
+  u16_t mtu;
+  u8_t hwaddr[6U];
+  u8_t hwaddr_len;
+  u8_t flags;
+  char name[2];
+  u8_t num;
+};
+#define NETIF_CHECKSUM_ENABLED(netif,chksumflag) 0
+#define NETIF_SET_CHECKSUM_CTRL(netif,chksumflags) 
+#define IF__NETIF_CHECKSUM_ENABLED(netif,chksumflag) 
+extern struct netif *netif_list;
+#define NETIF_FOREACH(netif) for ((netif) = netif_list; (netif) != NULL; (netif) = (netif)->next)
+extern struct netif *netif_default;
+void netif_init(void);
+struct netif *netif_add_noaddr(struct netif *netif, void *state, netif_init_fn init, netif_input_fn input);
+struct netif *netif_add(struct netif *netif,
+                            const ip4_addr_t *ipaddr, const ip4_addr_t *netmask, const ip4_addr_t *gw,
+                            void *state, netif_init_fn init, netif_input_fn input);
+void netif_set_addr(struct netif *netif, const ip4_addr_t *ipaddr, const ip4_addr_t *netmask,
+                    const ip4_addr_t *gw);
+void netif_remove(struct netif * netif);
+struct netif *netif_find(const char *name);
+void netif_set_default(struct netif *netif);
+void netif_set_ipaddr(struct netif *netif, const ip4_addr_t *ipaddr);
+void netif_set_netmask(struct netif *netif, const ip4_addr_t *netmask);
+void netif_set_gw(struct netif *netif, const ip4_addr_t *gw);
+#define netif_ip4_addr(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->ip_addr)))
+#define netif_ip4_netmask(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->netmask)))
+#define netif_ip4_gw(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->gw)))
+#define netif_ip_addr4(netif) ((const ip_addr_t*)&((netif)->ip_addr))
+#define netif_ip_netmask4(netif) ((const ip_addr_t*)&((netif)->netmask))
+#define netif_ip_gw4(netif) ((const ip_addr_t*)&((netif)->gw))
+#define netif_set_flags(netif,set_flags) do { (netif)->flags = (u8_t)((netif)->flags | (set_flags)); } while(0)
+#define netif_clear_flags(netif,clr_flags) do { (netif)->flags = (u8_t)((netif)->flags & (u8_t)(~(clr_flags) & 0xff)); } while(0)
+#define netif_is_flag_set(netif,flag) (((netif)->flags & (flag)) != 0)
+void netif_set_up(struct netif *netif);
+void netif_set_down(struct netif *netif);
+#define netif_is_up(netif) (((netif)->flags & NETIF_FLAG_UP) ? (u8_t)1 : (u8_t)0)
+void netif_set_status_callback(struct netif *netif, netif_status_callback_fn status_callback);
+void netif_set_link_up(struct netif *netif);
+void netif_set_link_down(struct netif *netif);
+#define netif_is_link_up(netif) (((netif)->flags & NETIF_FLAG_LINK_UP) ? (u8_t)1 : (u8_t)0)
+void netif_set_link_callback(struct netif *netif, netif_status_callback_fn link_callback);
+#define netif_set_hostname(netif,name) do { if((netif) != NULL) { (netif)->hostname = name; }}while(0)
+#define netif_get_hostname(netif) (((netif) != NULL) ? ((netif)->hostname) : NULL)
+err_t netif_input(struct pbuf *p, struct netif *inp);
+#define NETIF_SET_HINTS(netif,netifhint) 
+#define NETIF_RESET_HINTS(netif) 
+u8_t netif_name_to_index(const char *name);
+char * netif_index_to_name(u8_t idx, char *name);
+struct netif* netif_get_by_index(u8_t idx);
+#define netif_get_index(netif) ((u8_t)((netif)->num + 1))
+#define NETIF_NO_INDEX (0)
+typedef u16_t netif_nsc_reason_t;
+#define LWIP_NSC_NONE 0x0000
+#define LWIP_NSC_NETIF_ADDED 0x0001
+#define LWIP_NSC_NETIF_REMOVED 0x0002
+#define LWIP_NSC_LINK_CHANGED 0x0004
+#define LWIP_NSC_STATUS_CHANGED 0x0008
+#define LWIP_NSC_IPV4_ADDRESS_CHANGED 0x0010
+#define LWIP_NSC_IPV4_GATEWAY_CHANGED 0x0020
+#define LWIP_NSC_IPV4_NETMASK_CHANGED 0x0040
+#define LWIP_NSC_IPV4_SETTINGS_CHANGED 0x0080
+#define LWIP_NSC_IPV6_SET 0x0100
+#define LWIP_NSC_IPV6_ADDR_STATE_CHANGED 0x0200
+#define LWIP_NSC_IPV4_ADDR_VALID 0x0400
+typedef union
+{
+  struct link_changed_s
+  {
+    u8_t state;
+  } link_changed;
+  struct status_changed_s
+  {
+    u8_t state;
+  } status_changed;
+  struct ipv4_changed_s
+  {
+    const ip_addr_t* old_address;
+    const ip_addr_t* old_netmask;
+    const ip_addr_t* old_gw;
+  } ipv4_changed;
+  struct ipv6_set_s
+  {
+    s8_t addr_index;
+    const ip_addr_t* old_address;
+  } ipv6_set;
+  struct ipv6_addr_state_changed_s
+  {
+    s8_t addr_index;
+    u8_t old_state;
+    const ip_addr_t* address;
+  } ipv6_addr_state_changed;
+} netif_ext_callback_args_t;
+typedef void (*netif_ext_callback_fn)(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
+#define NETIF_DECLARE_EXT_CALLBACK(name) 
+#define netif_add_ext_callback(callback,fn) 
+#define netif_remove_ext_callback(callback) 
+#define netif_invoke_ext_callback(netif,reason,args) 
+#define LWIP_HDR_DHCP_H 
+#define LWIP_HDR_UDP_H 
+#define LWIP_HDR_IP_H 
+#define LWIP_HDR_IP4_H 
+#define LWIP_HDR_PROT_IP4_H 
+
+struct ip4_addr_packed {
+  u32_t addr;
+} __attribute__ ((__packed__));
+
+typedef struct ip4_addr_packed ip4_addr_p_t;
+#define IP_HLEN 20
+#define IP_HLEN_MAX 60
+
+struct ip_hdr {
+  u8_t _v_hl;
+  u8_t _tos;
+  u16_t _len;
+  u16_t _id;
+  u16_t _offset;
+#define IP_RF 0x8000U
+#define IP_DF 0x4000U
+#define IP_MF 0x2000U
+#define IP_OFFMASK 0x1fffU
+  u8_t _ttl;
+  u8_t _proto;
+  u16_t _chksum;
+  ip4_addr_p_t src;
+  ip4_addr_p_t dest;
+} __attribute__ ((__packed__));
+
+#define IPH_V(hdr) ((hdr)->_v_hl >> 4)
+#define IPH_HL(hdr) ((hdr)->_v_hl & 0x0f)
+#define IPH_HL_BYTES(hdr) ((u8_t)(IPH_HL(hdr) * 4))
+#define IPH_TOS(hdr) ((hdr)->_tos)
+#define IPH_LEN(hdr) ((hdr)->_len)
+#define IPH_ID(hdr) ((hdr)->_id)
+#define IPH_OFFSET(hdr) ((hdr)->_offset)
+#define IPH_OFFSET_BYTES(hdr) ((u16_t)((lwip_ntohs(IPH_OFFSET(hdr)) & IP_OFFMASK) * 8U))
+#define IPH_TTL(hdr) ((hdr)->_ttl)
+#define IPH_PROTO(hdr) ((hdr)->_proto)
+#define IPH_CHKSUM(hdr) ((hdr)->_chksum)
+#define IPH_VHL_SET(hdr,v,hl) (hdr)->_v_hl = (u8_t)((((v) << 4) | (hl)))
+#define IPH_TOS_SET(hdr,tos) (hdr)->_tos = (tos)
+#define IPH_LEN_SET(hdr,len) (hdr)->_len = (len)
+#define IPH_ID_SET(hdr,id) (hdr)->_id = (id)
+#define IPH_OFFSET_SET(hdr,off) (hdr)->_offset = (off)
+#define IPH_TTL_SET(hdr,ttl) (hdr)->_ttl = (u8_t)(ttl)
+#define IPH_PROTO_SET(hdr,proto) (hdr)->_proto = (u8_t)(proto)
+#define IPH_CHKSUM_SET(hdr,chksum) (hdr)->_chksum = (chksum)
+#define LWIP_IPV4_SRC_ROUTING 0
+#define IP_OPTIONS_SEND (LWIP_IPV4 && LWIP_IGMP)
+#define ip_init() 
+struct netif *ip4_route(const ip4_addr_t *dest);
+#define ip4_route_src(src,dest) ip4_route(dest)
+err_t ip4_input(struct pbuf *p, struct netif *inp);
+err_t ip4_output(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
+       u8_t ttl, u8_t tos, u8_t proto);
+err_t ip4_output_if(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
+       u8_t ttl, u8_t tos, u8_t proto, struct netif *netif);
+err_t ip4_output_if_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
+       u8_t ttl, u8_t tos, u8_t proto, struct netif *netif);
+#define ip4_netif_get_local_ip(netif) (((netif) != NULL) ? netif_ip_addr4(netif) : NULL)
+#define ip4_debug_print(p) 
+#define LWIP_HDR_IP6_H 
+#define LWIP_HDR_PROT_IP_H 
+#define IP_PROTO_ICMP 1
+#define IP_PROTO_IGMP 2
+#define IP_PROTO_UDP 17
+#define IP_PROTO_UDPLITE 136
+#define IP_PROTO_TCP 6
+#define IP_HDR_GET_VERSION(ptr) ((*(u8_t*)(ptr)) >> 4)
+#define LWIP_IP_HDRINCL NULL
+#define LWIP_IP_CHECK_PBUF_REF_COUNT_FOR_TX(p) LWIP_ASSERT("p->ref == 1", (p)->ref == 1)
+#define IP_PCB_NETIFHINT 
+#define IP_PCB ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl IP_PCB_NETIFHINT
+struct ip_pcb {
+  ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl ;
+};
+#define pcb_tci_init(pcb) 
+#define SOF_REUSEADDR 0x04U
+#define SOF_KEEPALIVE 0x08U
+#define SOF_BROADCAST 0x20U
+#define SOF_INHERITED (SOF_REUSEADDR|SOF_KEEPALIVE)
+struct ip_globals
+{
+  struct netif *current_netif;
+  struct netif *current_input_netif;
+  const struct ip_hdr *current_ip4_header;
+  u16_t current_ip_header_tot_len;
+  ip_addr_t current_iphdr_src;
+  ip_addr_t current_iphdr_dest;
+};
+extern struct ip_globals ip_data;
+#define ip_current_netif() (ip_data.current_netif)
+#define ip_current_input_netif() (ip_data.current_input_netif)
+#define ip_current_header_tot_len() (ip_data.current_ip_header_tot_len)
+#define ip_current_src_addr() (&ip_data.current_iphdr_src)
+#define ip_current_dest_addr() (&ip_data.current_iphdr_dest)
+#define ip4_current_header() ip_data.current_ip4_header
+#define ip_current_is_v6() 0
+#define ip_current_header_proto() IPH_PROTO(ip4_current_header())
+#define ip_next_header_ptr() ((const void*)((const u8_t*)ip4_current_header() + ip_current_header_tot_len()))
+#define ip4_current_src_addr() (&ip_data.current_iphdr_src)
+#define ip4_current_dest_addr() (&ip_data.current_iphdr_dest)
+#define ip_current_src_addr() (&ip_data.current_iphdr_src)
+#define ip_current_dest_addr() (&ip_data.current_iphdr_dest)
+#define ip_get_option(pcb,opt) ((pcb)->so_options & (opt))
+#define ip_set_option(pcb,opt) ((pcb)->so_options = (u8_t)((pcb)->so_options | (opt)))
+#define ip_reset_option(pcb,opt) ((pcb)->so_options = (u8_t)((pcb)->so_options & ~(opt)))
+#define ip_output(p,src,dest,ttl,tos,proto) ip4_output(p, src, dest, ttl, tos, proto)
+#define ip_output_if(p,src,dest,ttl,tos,proto,netif) ip4_output_if(p, src, dest, ttl, tos, proto, netif)
+#define ip_output_if_src(p,src,dest,ttl,tos,proto,netif) ip4_output_if_src(p, src, dest, ttl, tos, proto, netif)
+#define ip_output_hinted(p,src,dest,ttl,tos,proto,netif_hint) ip4_output_hinted(p, src, dest, ttl, tos, proto, netif_hint)
+#define ip_output_if_hdrincl(p,src,dest,netif) ip4_output_if(p, src, LWIP_IP_HDRINCL, 0, 0, 0, netif)
+#define ip_route(src,dest) ip4_route_src(src, dest)
+#define ip_netif_get_local_ip(netif,dest) ip4_netif_get_local_ip(netif)
+#define ip_debug_print(is_ipv6,p) ip4_debug_print(p)
+#define ip_input ip4_input
+#define ip_route_get_local_ip(src,dest,netif,ipaddr) do { (netif) = ip_route(src, dest); (ipaddr) = ip_netif_get_local_ip(netif, dest); }while(0)
+#define LWIP_HDR_PROT_UDP_H 
+#define UDP_HLEN 8
+
+struct udp_hdr {
+  u16_t src;
+  u16_t dest;
+  u16_t len;
+  u16_t chksum;
+} __attribute__ ((__packed__));
+
+#define UDP_FLAGS_NOCHKSUM 0x01U
+#define UDP_FLAGS_UDPLITE 0x02U
+#define UDP_FLAGS_CONNECTED 0x04U
+#define UDP_FLAGS_MULTICAST_LOOP 0x08U
+struct udp_pcb;
+typedef void (*udp_recv_fn)(void *arg, struct udp_pcb *pcb, struct pbuf *p,
+    const ip_addr_t *addr, u16_t port);
+struct udp_pcb {
+  ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl ;
+  struct udp_pcb *next;
+  u8_t flags;
+  u16_t local_port, remote_port;
+  udp_recv_fn recv;
+  void *recv_arg;
+};
+extern struct udp_pcb *udp_pcbs;
+struct udp_pcb * udp_new (void);
+struct udp_pcb * udp_new_ip_type(u8_t type);
+void udp_remove (struct udp_pcb *pcb);
+err_t udp_bind (struct udp_pcb *pcb, const ip_addr_t *ipaddr,
+                                 u16_t port);
+void udp_bind_netif (struct udp_pcb *pcb, const struct netif* netif);
+err_t udp_connect (struct udp_pcb *pcb, const ip_addr_t *ipaddr,
+                                 u16_t port);
+void udp_disconnect (struct udp_pcb *pcb);
+void udp_recv (struct udp_pcb *pcb, udp_recv_fn recv,
+                                 void *recv_arg);
+err_t udp_sendto_if (struct udp_pcb *pcb, struct pbuf *p,
+                                 const ip_addr_t *dst_ip, u16_t dst_port,
+                                 struct netif *netif);
+err_t udp_sendto_if_src(struct udp_pcb *pcb, struct pbuf *p,
+                                 const ip_addr_t *dst_ip, u16_t dst_port,
+                                 struct netif *netif, const ip_addr_t *src_ip);
+err_t udp_sendto (struct udp_pcb *pcb, struct pbuf *p,
+                                 const ip_addr_t *dst_ip, u16_t dst_port);
+err_t udp_send (struct udp_pcb *pcb, struct pbuf *p);
+#define udp_flags(pcb) ((pcb)->flags)
+#define udp_setflags(pcb,f) ((pcb)->flags = (f))
+#define udp_set_flags(pcb,set_flags) do { (pcb)->flags = (u8_t)((pcb)->flags | (set_flags)); } while(0)
+#define udp_clear_flags(pcb,clr_flags) do { (pcb)->flags = (u8_t)((pcb)->flags & (u8_t)(~(clr_flags) & 0xff)); } while(0)
+#define udp_is_flag_set(pcb,flag) (((pcb)->flags & (flag)) != 0)
+void udp_input (struct pbuf *p, struct netif *inp);
+void udp_init (void);
+#define udp_new_ip6() udp_new_ip_type(IPADDR_TYPE_V6)
+#define udp_debug_print(udphdr) 
+void udp_netif_ip_addr_changed(const ip_addr_t* old_addr, const ip_addr_t* new_addr);
+typedef u16_t dhcp_timeout_t;
+#define DHCP_COARSE_TIMER_SECS 60
+#define DHCP_COARSE_TIMER_MSECS (DHCP_COARSE_TIMER_SECS * 1000UL)
+#define DHCP_FINE_TIMER_MSECS 500
+#define DHCP_BOOT_FILE_LEN 128U
+#define DHCP_FLAG_SUBNET_MASK_GIVEN 0x01
+#define DHCP_FLAG_EXTERNAL_MEM 0x02
+typedef enum {
+  DHCP_AUTOIP_COOP_STATE_OFF = 0,
+  DHCP_AUTOIP_COOP_STATE_ON = 1
+} dhcp_autoip_coop_state_enum_t;
+struct dhcp
+{
+  u32_t xid;
+  u8_t pcb_allocated;
+  u8_t state;
+  u8_t tries;
+  u8_t flags;
+  dhcp_timeout_t request_timeout;
+  dhcp_timeout_t t1_timeout;
+  dhcp_timeout_t t2_timeout;
+  dhcp_timeout_t t1_renew_time;
+  dhcp_timeout_t t2_rebind_time;
+  dhcp_timeout_t lease_used;
+  dhcp_timeout_t t0_timeout;
+  ip_addr_t server_ip_addr;
+  ip4_addr_t offered_ip_addr;
+  ip4_addr_t offered_sn_mask;
+  ip4_addr_t offered_gw_addr;
+  u32_t offered_t0_lease;
+  u32_t offered_t1_renew;
+  u32_t offered_t2_rebind;
+};
+void dhcp_set_struct(struct netif *netif, struct dhcp *dhcp);
+#define dhcp_remove_struct(netif) netif_set_client_data(netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP, NULL)
+void dhcp_cleanup(struct netif *netif);
+err_t dhcp_start(struct netif *netif);
+err_t dhcp_renew(struct netif *netif);
+err_t dhcp_release(struct netif *netif);
+void dhcp_stop(struct netif *netif);
+void dhcp_release_and_stop(struct netif *netif);
+void dhcp_inform(struct netif *netif);
+void dhcp_network_changed_link_up(struct netif *netif);
+u8_t dhcp_supplied_address(const struct netif *netif);
+void dhcp_coarse_tmr(void);
+void dhcp_fine_tmr(void);
+#define netif_dhcp_data(netif) ((struct dhcp*)netif_get_client_data(netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP))
+#define CYW43_INCLUDED_CYW43_LL_H 
+#define CYW43_IOCTL_GET_SSID (0x32)
+#define CYW43_IOCTL_GET_CHANNEL (0x3a)
+#define CYW43_IOCTL_SET_DISASSOC (0x69)
+#define CYW43_IOCTL_GET_ANTDIV (0x7e)
+#define CYW43_IOCTL_SET_ANTDIV (0x81)
+#define CYW43_IOCTL_SET_MONITOR (0xd9)
+#define CYW43_IOCTL_GET_RSSI (0xfe)
+#define CYW43_IOCTL_GET_VAR (0x20c)
+#define CYW43_IOCTL_SET_VAR (0x20f)
+#define CYW43_EV_SET_SSID (0)
+#define CYW43_EV_JOIN (1)
+#define CYW43_EV_AUTH (3)
+#define CYW43_EV_DEAUTH (5)
+#define CYW43_EV_DEAUTH_IND (6)
+#define CYW43_EV_ASSOC (7)
+#define CYW43_EV_DISASSOC (11)
+#define CYW43_EV_DISASSOC_IND (12)
+#define CYW43_EV_LINK (16)
+#define CYW43_EV_PRUNE (23)
+#define CYW43_EV_PSK_SUP (46)
+#define CYW43_EV_ICV_ERROR (49)
+#define CYW43_EV_ESCAN_RESULT (69)
+#define CYW43_EV_CSA_COMPLETE_IND (80)
+#define CYW43_EV_ASSOC_REQ_IE (87)
+#define CYW43_EV_ASSOC_RESP_IE (88)
+#define CYW43_STATUS_SUCCESS (0)
+#define CYW43_STATUS_FAIL (1)
+#define CYW43_STATUS_TIMEOUT (2)
+#define CYW43_STATUS_NO_NETWORKS (3)
+#define CYW43_STATUS_ABORT (4)
+#define CYW43_STATUS_NO_ACK (5)
+#define CYW43_STATUS_UNSOLICITED (6)
+#define CYW43_STATUS_ATTEMPT (7)
+#define CYW43_STATUS_PARTIAL (8)
+#define CYW43_STATUS_NEWSCAN (9)
+#define CYW43_STATUS_NEWASSOC (10)
+#define CYW43_SUP_DISCONNECTED (0)
+#define CYW43_SUP_CONNECTING (1)
+#define CYW43_SUP_IDREQUIRED (2)
+#define CYW43_SUP_AUTHENTICATING (3)
+#define CYW43_SUP_AUTHENTICATED (4)
+#define CYW43_SUP_KEYXCHANGE (5)
+#define CYW43_SUP_KEYED (6)
+#define CYW43_SUP_TIMEOUT (7)
+#define CYW43_SUP_LAST_BASIC_STATE (8)
+#define CYW43_SUP_KEYXCHANGE_WAIT_M1 CYW43_SUP_AUTHENTICATED
+#define CYW43_SUP_KEYXCHANGE_PREP_M2 CYW43_SUP_KEYXCHANGE
+#define CYW43_SUP_KEYXCHANGE_WAIT_M3 CYW43_SUP_LAST_BASIC_STATE
+#define CYW43_SUP_KEYXCHANGE_PREP_M4 (9)
+#define CYW43_SUP_KEYXCHANGE_WAIT_G1 (10)
+#define CYW43_SUP_KEYXCHANGE_PREP_G2 (11)
+#define CYW43_REASON_INITIAL_ASSOC (0)
+#define CYW43_REASON_LOW_RSSI (1)
+#define CYW43_REASON_DEAUTH (2)
+#define CYW43_REASON_DISASSOC (3)
+#define CYW43_REASON_BCNS_LOST (4)
+#define CYW43_REASON_FAST_ROAM_FAILED (5)
+#define CYW43_REASON_DIRECTED_ROAM (6)
+#define CYW43_REASON_TSPEC_REJECTED (7)
+#define CYW43_REASON_BETTER_AP (8)
+#define CYW43_REASON_PRUNE_ENCR_MISMATCH (1)
+#define CYW43_REASON_PRUNE_BCAST_BSSID (2)
+#define CYW43_REASON_PRUNE_MAC_DENY (3)
+#define CYW43_REASON_PRUNE_MAC_NA (4)
+#define CYW43_REASON_PRUNE_REG_PASSV (5)
+#define CYW43_REASON_PRUNE_SPCT_MGMT (6)
+#define CYW43_REASON_PRUNE_RADAR (7)
+#define CYW43_REASON_RSN_MISMATCH (8)
+#define CYW43_REASON_PRUNE_NO_COMMON_RATES (9)
+#define CYW43_REASON_PRUNE_BASIC_RATES (10)
+#define CYW43_REASON_PRUNE_CCXFAST_PREVAP (11)
+#define CYW43_REASON_PRUNE_CIPHER_NA (12)
+#define CYW43_REASON_PRUNE_KNOWN_STA (13)
+#define CYW43_REASON_PRUNE_CCXFAST_DROAM (14)
+#define CYW43_REASON_PRUNE_WDS_PEER (15)
+#define CYW43_REASON_PRUNE_QBSS_LOAD (16)
+#define CYW43_REASON_PRUNE_HOME_AP (17)
+#define CYW43_REASON_PRUNE_AP_BLOCKED (18)
+#define CYW43_REASON_PRUNE_NO_DIAG_SUPPORT (19)
+#define CYW43_REASON_SUP_OTHER (0)
+#define CYW43_REASON_SUP_DECRYPT_KEY_DATA (1)
+#define CYW43_REASON_SUP_BAD_UCAST_WEP128 (2)
+#define CYW43_REASON_SUP_BAD_UCAST_WEP40 (3)
+#define CYW43_REASON_SUP_UNSUP_KEY_LEN (4)
+#define CYW43_REASON_SUP_PW_KEY_CIPHER (5)
+#define CYW43_REASON_SUP_MSG3_TOO_MANY_IE (6)
+#define CYW43_REASON_SUP_MSG3_IE_MISMATCH (7)
+#define CYW43_REASON_SUP_NO_INSTALL_FLAG (8)
+#define CYW43_REASON_SUP_MSG3_NO_GTK (9)
+#define CYW43_REASON_SUP_GRP_KEY_CIPHER (10)
+#define CYW43_REASON_SUP_GRP_MSG1_NO_GTK (11)
+#define CYW43_REASON_SUP_GTK_DECRYPT_FAIL (12)
+#define CYW43_REASON_SUP_SEND_FAIL (13)
+#define CYW43_REASON_SUP_DEAUTH (14)
+#define CYW43_REASON_SUP_WPA_PSK_TMO (15)
+#define CYW43_AUTH_OPEN (0)
+#define CYW43_AUTH_WPA_TKIP_PSK (0x00200002)
+#define CYW43_AUTH_WPA2_AES_PSK (0x00400004)
+#define CYW43_AUTH_WPA2_MIXED_PSK (0x00400006)
+#define CYW43_AUTH_WPA3_SAE_AES_PSK (0x01000004)
+#define CYW43_AUTH_WPA3_WPA2_AES_PSK (0x01400004)
+#define CYW43_NO_POWERSAVE_MODE (0)
+#define CYW43_PM1_POWERSAVE_MODE (1)
+#define CYW43_PM2_POWERSAVE_MODE (2)
+#define CYW43_BUS_MAX_BLOCK_SIZE 64
+#define CYW43_BACKPLANE_READ_PAD_LEN_BYTES 16
+#define CYW43_LL_STATE_SIZE_WORDS (526 + 1 + ((CYW43_BACKPLANE_READ_PAD_LEN_BYTES / 4) + 1) + CYW43_INCLUDE_LEGACY_F1_OVERFLOW_WORKAROUND_VARIABLES * 4)
+#define CYW43_CHANNEL_NONE (0xffffffff)
+enum {
+    CYW43_ITF_STA,
+    CYW43_ITF_AP,
+};
+typedef struct _cyw43_ev_scan_result_t {
+    uint32_t _0[5];
+    uint8_t bssid[6];
+    uint16_t _1[2];
+    uint8_t ssid_len;
+    uint8_t ssid[32];
+    uint32_t _2[5];
+    uint16_t channel;
+    uint16_t _3;
+    uint8_t auth_mode;
+    int16_t rssi;
+} cyw43_ev_scan_result_t;
+typedef struct _cyw43_async_event_t {
+    uint16_t _0;
+    uint16_t flags;
+    uint32_t event_type;
+    uint32_t status;
+    uint32_t reason;
+    uint8_t _1[30];
+    uint8_t interface;
+    uint8_t _2;
+    union {
+        cyw43_ev_scan_result_t scan_result;
+    } u;
+} cyw43_async_event_t;
+typedef struct _cyw43_wifi_scan_options_t {
+    uint32_t version;
+    uint16_t action;
+    uint16_t _;
+    uint32_t ssid_len;
+    uint8_t ssid[32];
+    uint8_t bssid[6];
+    int8_t bss_type;
+    int8_t scan_type;
+    int32_t nprobes;
+    int32_t active_time;
+    int32_t passive_time;
+    int32_t home_time;
+    int32_t channel_num;
+    uint16_t channel_list[1];
+} cyw43_wifi_scan_options_t;
+typedef struct _cyw43_ll_t {
+    uint32_t opaque[(526 + 1 + ((16 / 4) + 1) + (0) * 4)];
+} cyw43_ll_t;
+void cyw43_ll_init(cyw43_ll_t *self, void *cb_data);
+void cyw43_ll_deinit(cyw43_ll_t *self);
+int cyw43_ll_bus_init(cyw43_ll_t *self, const uint8_t *mac);
+void cyw43_ll_bus_sleep(cyw43_ll_t *self, _Bool can_sleep);
+void cyw43_ll_process_packets(cyw43_ll_t *self);
+int cyw43_ll_ioctl(cyw43_ll_t *self, uint32_t cmd, size_t len, uint8_t *buf, uint32_t iface);
+int cyw43_ll_send_ethernet(cyw43_ll_t *self, int itf, size_t len, const void *buf, _Bool is_pbuf);
+int cyw43_ll_wifi_on(cyw43_ll_t *self, uint32_t country);
+int cyw43_ll_wifi_pm(cyw43_ll_t *self, uint32_t pm, uint32_t pm_sleep_ret, uint32_t li_bcn, uint32_t li_dtim, uint32_t li_assoc);
+int cyw43_ll_wifi_get_pm(cyw43_ll_t *self, uint32_t *pm, uint32_t *pm_sleep_ret, uint32_t *li_bcn, uint32_t *li_dtim, uint32_t *li_assoc);
+int cyw43_ll_wifi_scan(cyw43_ll_t *self, cyw43_wifi_scan_options_t *opts);
+int cyw43_ll_wifi_join(cyw43_ll_t *self, size_t ssid_len, const uint8_t *ssid, size_t key_len, const uint8_t *key, uint32_t auth_type, const uint8_t *bssid, uint32_t channel);
+void cyw43_ll_wifi_set_wpa_auth(cyw43_ll_t *self);
+void cyw43_ll_wifi_rejoin(cyw43_ll_t *self);
+int cyw43_ll_wifi_get_bssid(cyw43_ll_t *self_in, uint8_t *bssid);
+int cyw43_ll_wifi_ap_init(cyw43_ll_t *self, size_t ssid_len, const uint8_t *ssid, uint32_t auth, size_t key_len, const uint8_t *key, uint32_t channel);
+int cyw43_ll_wifi_ap_set_up(cyw43_ll_t *self, _Bool up);
+int cyw43_ll_wifi_ap_get_stas(cyw43_ll_t *self, int *num_stas, uint8_t *macs);
+int cyw43_ll_gpio_set(cyw43_ll_t *self, int gpio_n, _Bool gpio_en);
+int cyw43_ll_gpio_get(cyw43_ll_t *self_in, int gpio_n, _Bool *gpio_en);
+int cyw43_ll_wifi_get_mac(cyw43_ll_t *self_in, uint8_t *addr);
+int cyw43_ll_wifi_update_multicast_filter(cyw43_ll_t *self_in, uint8_t *addr, _Bool add);
+_Bool cyw43_ll_has_work(cyw43_ll_t *self);
+_Bool cyw43_ll_bt_has_work(cyw43_ll_t *self);
+int cyw43_cb_read_host_interrupt_pin(void *cb_data);
+void cyw43_cb_ensure_awake(void *cb_data);
+void cyw43_cb_process_async_event(void *cb_data, const cyw43_async_event_t *ev);
+void cyw43_cb_process_ethernet(void *cb_data, int itf, size_t len, const uint8_t *buf);
+void cyw43_ll_write_backplane_reg(cyw43_ll_t *self_in, uint32_t addr, uint32_t val);
+uint32_t cyw43_ll_read_backplane_reg(cyw43_ll_t *self_in, uint32_t addr);
+int cyw43_ll_write_backplane_mem(cyw43_ll_t *self_in, uint32_t addr, uint32_t len, const uint8_t *buf);
+int cyw43_ll_read_backplane_mem(cyw43_ll_t *self_in, uint32_t addr, uint32_t len, uint8_t *buf);
+#define _STRING_H_ 
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _STRINGS_H_ 
+
+int bcmp(const void *, const void *, size_t) __attribute__((__pure__));
+void bcopy(const void *, void *, size_t);
+void bzero(void *, size_t);
+void explicit_bzero(void *, size_t);
+int ffs(int) __attribute__((__const__));
+int ffsl(long) __attribute__((__const__));
+int ffsll(long long) __attribute__((__const__));
+int fls(int) __attribute__((__const__));
+int flsl(long) __attribute__((__const__));
+int flsll(long long) __attribute__((__const__));
+char *index(const char *, int) __attribute__((__pure__));
+char *rindex(const char *, int) __attribute__((__pure__));
+int strcasecmp(const char *, const char *) __attribute__((__pure__));
+int strncasecmp(const char *, const char *, size_t) __attribute__((__pure__));
+int strcasecmp_l (const char *, const char *, locale_t);
+int strncasecmp_l (const char *, const char *, size_t, locale_t);
+
+
+void * memchr (const void *, int, size_t);
+int memcmp (const void *, const void *, size_t);
+void * memcpy (void *restrict, const void *restrict, size_t);
+void * memmove (void *, const void *, size_t);
+void * memset (void *, int, size_t);
+char *strcat (char *restrict, const char *restrict);
+char *strchr (const char *, int);
+int strcmp (const char *, const char *);
+int strcoll (const char *, const char *);
+char *strcpy (char *restrict, const char *restrict);
+size_t strcspn (const char *, const char *);
+char *strerror (int);
+size_t strlen (const char *);
+char *strncat (char *restrict, const char *restrict, size_t);
+int strncmp (const char *, const char *, size_t);
+char *strncpy (char *restrict, const char *restrict, size_t);
+char *strpbrk (const char *, const char *);
+char *strrchr (const char *, int);
+size_t strspn (const char *, const char *);
+char *strstr (const char *, const char *);
+char *strtok (char *restrict, const char *restrict);
+size_t strxfrm (char *restrict, const char *restrict, size_t);
+int strcoll_l (const char *, const char *, locale_t);
+char *strerror_l (int, locale_t);
+size_t strxfrm_l (char *restrict, const char *restrict, size_t, locale_t);
+char *strtok_r (char *restrict, const char *restrict, char **restrict);
+int timingsafe_bcmp (const void *, const void *, size_t);
+int timingsafe_memcmp (const void *, const void *, size_t);
+void * memccpy (void *restrict, const void *restrict, int, size_t);
+char *stpcpy (char *restrict, const char *restrict);
+char *stpncpy (char *restrict, const char *restrict, size_t);
+char *strdup (const char *) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
+char *_strdup_r (struct _reent *, const char *);
+char *strndup (const char *, size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
+char *_strndup_r (struct _reent *, const char *, size_t);
+int strerror_r (int, char *, size_t)
+             __asm__ ("" "__xpg_strerror_r")
+  ;
+char * _strerror_r (struct _reent *, int, int, int *);
+size_t strlcat (char *, const char *, size_t);
+size_t strlcpy (char *, const char *, size_t);
+size_t strnlen (const char *, size_t);
+char *strsep (char **, const char *);
+char *strnstr(const char *, const char *, size_t) __attribute__((__pure__));
+char *strlwr (char *);
+char *strupr (char *);
+char *strsignal (int __signo);
+
+#define CYW43_VERSION_MAJOR 1
+#define CYW43_VERSION_MINOR 1
+#define CYW43_VERSION_MICRO 0
+#define CYW43_VERSION (CYW43_VERSION_MAJOR << 16 | CYW43_VERSION_MINOR << 8 | CYW43_VERSION_MICRO)
+#define CYW43_TRACE_ASYNC_EV (0x0001)
+#define CYW43_TRACE_ETH_TX (0x0002)
+#define CYW43_TRACE_ETH_RX (0x0004)
+#define CYW43_TRACE_ETH_FULL (0x0008)
+#define CYW43_TRACE_MAC (0x0010)
+#define CYW43_LINK_DOWN (0)
+#define CYW43_LINK_JOIN (1)
+#define CYW43_LINK_NOIP (2)
+#define CYW43_LINK_UP (3)
+#define CYW43_LINK_FAIL (-1)
+#define CYW43_LINK_NONET (-2)
+#define CYW43_LINK_BADAUTH (-3)
+typedef struct _cyw43_t {
+    cyw43_ll_t cyw43_ll;
+    uint8_t itf_state;
+    uint32_t trace_flags;
+    volatile uint32_t wifi_scan_state;
+    uint32_t wifi_join_state;
+    void *wifi_scan_env;
+    int (*wifi_scan_cb)(void *, const cyw43_ev_scan_result_t *);
+    _Bool initted;
+    _Bool pend_disassoc;
+    _Bool pend_rejoin;
+    _Bool pend_rejoin_wpa;
+    uint32_t ap_auth;
+    uint8_t ap_channel;
+    uint8_t ap_ssid_len;
+    uint8_t ap_key_len;
+    uint8_t ap_ssid[32];
+    uint8_t ap_key[64];
+    struct netif netif[2];
+    struct dhcp dhcp_client;
+    uint8_t mac[6];
+} cyw43_t;
+extern cyw43_t cyw43_state;
+extern void (*cyw43_poll)(void);
+extern uint32_t cyw43_sleep;
+void cyw43_init(cyw43_t *self);
+void cyw43_deinit(cyw43_t *self);
+int cyw43_ioctl(cyw43_t *self, uint32_t cmd, size_t len, uint8_t *buf, uint32_t iface);
+int cyw43_send_ethernet(cyw43_t *self, int itf, size_t len, const void *buf, _Bool is_pbuf);
+int cyw43_wifi_pm(cyw43_t *self, uint32_t pm);
+int cyw43_wifi_get_pm(cyw43_t *self, uint32_t *pm);
+int cyw43_wifi_link_status(cyw43_t *self, int itf);
+void cyw43_wifi_set_up(cyw43_t *self, int itf, _Bool up, uint32_t country);
+int cyw43_wifi_get_mac(cyw43_t *self, int itf, uint8_t mac[6]);
+int cyw43_wifi_update_multicast_filter(cyw43_t *self, uint8_t *addr, _Bool add);
+int cyw43_wifi_scan(cyw43_t *self, cyw43_wifi_scan_options_t *opts, void *env, int (*result_cb)(void *, const cyw43_ev_scan_result_t *));
+static inline _Bool cyw43_wifi_scan_active(cyw43_t *self) {
+    return self->wifi_scan_state == 1;
+}
+int cyw43_wifi_join(cyw43_t *self, size_t ssid_len, const uint8_t *ssid, size_t key_len, const uint8_t *key, uint32_t auth_type, const uint8_t *bssid, uint32_t channel);
+int cyw43_wifi_leave(cyw43_t *self, int itf);
+int cyw43_wifi_get_rssi(cyw43_t *self, int32_t *rssi);
+int cyw43_wifi_get_bssid(cyw43_t *self, uint8_t bssid[6]);
+static inline void cyw43_wifi_ap_get_ssid(cyw43_t *self, size_t *len, const uint8_t **buf) {
+    *len = self->ap_ssid_len;
+    *buf = self->ap_ssid;
+}
+static inline uint32_t cyw43_wifi_ap_get_auth(cyw43_t *self) {
+    return self->ap_auth;
+}
+static inline void cyw43_wifi_ap_set_channel(cyw43_t *self, uint32_t channel) {
+    self->ap_channel = (uint8_t)channel;
+}
+static inline void cyw43_wifi_ap_set_ssid(cyw43_t *self, size_t len, const uint8_t *buf) {
+    self->ap_ssid_len = (uint8_t)((sizeof(self->ap_ssid))>(len)?(len):(sizeof(self->ap_ssid)));
+    memcpy(self->ap_ssid, buf, self->ap_ssid_len);
+}
+static inline void cyw43_wifi_ap_set_password(cyw43_t *self, size_t len, const uint8_t *buf) {
+    self->ap_key_len = (uint8_t)((sizeof(self->ap_key))>(len)?(len):(sizeof(self->ap_key)));
+    memcpy(self->ap_key, buf, self->ap_key_len);
+}
+static inline void cyw43_wifi_ap_set_auth(cyw43_t *self, uint32_t auth) {
+    self->ap_auth = auth;
+}
+void cyw43_wifi_ap_get_max_stas(cyw43_t *self, int *max_stas);
+void cyw43_wifi_ap_get_stas(cyw43_t *self, int *num_stas, uint8_t *macs);
+static inline _Bool cyw43_is_initialized(cyw43_t *self) {
+    return self->initted;
+}
+void cyw43_cb_tcpip_init(cyw43_t *self, int itf);
+void cyw43_cb_tcpip_deinit(cyw43_t *self, int itf);
+void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf);
+void cyw43_cb_tcpip_set_link_down(cyw43_t *self, int itf);
+int cyw43_tcpip_link_status(cyw43_t *self, int itf);
+int cyw43_gpio_set(cyw43_t *self, int gpio, _Bool val);
+int cyw43_gpio_get(cyw43_t *self, int gpio, _Bool *val);
+static inline uint32_t cyw43_pm_value(uint8_t pm_mode, uint16_t pm2_sleep_ret_ms, uint8_t li_beacon_period, uint8_t li_dtim_period, uint8_t li_assoc) {
+    return li_assoc << 20
+           | li_dtim_period << 16
+           | li_beacon_period << 12
+           | (pm2_sleep_ret_ms / 10) << 4
+           | pm_mode;
+}
+#define CYW43_DEFAULT_PM (CYW43_PERFORMANCE_PM)
+#define CYW43_NONE_PM (cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 10, 0, 0, 0))
+#define CYW43_AGGRESSIVE_PM (cyw43_pm_value(CYW43_PM1_POWERSAVE_MODE, 10, 0, 0, 0))
+#define CYW43_PERFORMANCE_PM (cyw43_pm_value(CYW43_PM2_POWERSAVE_MODE, 200, 1, 1, 10))
+struct async_context;
+#define PICO_STATUS_LED_AVAILABLE 1
+#define PICO_COLORED_STATUS_LED_AVAILABLE 0
+#define PICO_STATUS_LED_VIA_COLORED_STATUS_LED (PICO_COLORED_STATUS_LED_AVAILABLE && !PICO_STATUS_LED_AVAILABLE)
+#define PICO_COLORED_STATUS_LED_USES_WRGB 0
+#define PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(r,g,b) (((r) << 16) | ((g) << 8) | (b))
+#define PICO_COLORED_STATUS_LED_COLOR_FROM_WRGB(w,r,g,b) (((w) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define PICO_DEFAULT_COLORED_STATUS_LED_ON_COLOR PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0xaa, 0xaa, 0xaa)
+_Bool status_led_init(void);
+_Bool status_led_init_with_context(struct async_context *context);
+static inline _Bool colored_status_led_supported(void) {
+    return 0;
+}
+static inline _Bool status_led_via_colored_status_led(void) {
+    return (0 && !1);
+}
+static inline _Bool status_led_supported(void) {
+    if (status_led_via_colored_status_led()) {
+        return colored_status_led_supported();
+    }
+    return 1;
+}
+_Bool colored_status_led_set_state(_Bool led_on);
+_Bool colored_status_led_get_state(void);
+_Bool colored_status_led_set_on_with_color(uint32_t color);
+uint32_t colored_status_led_get_on_color(void);
+static inline _Bool status_led_set_state(_Bool led_on) {
+    if (status_led_via_colored_status_led()) {
+        return colored_status_led_set_state(led_on);
+    } else if (status_led_supported()) {
+        cyw43_gpio_set(&cyw43_state, 0, led_on);
+        return 1;
+    }
+    return 0;
+}
+static inline _Bool status_led_get_state() {
+    if (status_led_via_colored_status_led()) {
+        return colored_status_led_get_state();
+    } else if (status_led_supported()) {
+        _Bool value = 0;
+        cyw43_gpio_get(&cyw43_state, 0, &value);
+        return value;
+    }
+    return 0;
+}
+void status_led_deinit();
 #define _HARDWARE_UART_H 
 #define _HARDWARE_STRUCTS_UART_H 
 #define _HARDWARE_REGS_UART_H 
@@ -30500,1199 +33987,3223 @@ static inline uint uart_get_reset_num(uart_inst_t *uart) {
 static inline uint uart_get_dreq(uart_inst_t *uart, _Bool is_tx) {
     return uart_get_dreq_num(uart, is_tx);
 }
-#define PICO_DEFAULT_LED_PIN_INVERTED 0
-void setup_default_uart(void);
-#define _PICO_STATUS_LED_H 
-#define CYW43_INCLUDED_CYW43_H 
-#define _CYW43_CONFIGPORT_H 
-#define CYW43_HOST_NAME "PicoW"
-#define CYW43_GPIO 1
-#define CYW43_LOGIC_DEBUG 0
-#define CYW43_USE_OTP_MAC 1
-#define CYW43_NO_NETUTILS 1
-#define CYW43_IOCTL_TIMEOUT_US 1000000
-#define CYW43_USE_STATS 0
-#define CYW43_HAL_MAC_WLAN0 0
-#define STATIC static
-#define CYW43_USE_SPI 1
-#define CYW43_SPI_PIO 1
-#define CYW43_CHIPSET_FIRMWARE_INCLUDE_FILE "w43439A0_7_95_49_00_combined.h"
-#define CYW43_WIFI_NVRAM_INCLUDE_FILE "wifi_nvram_43439.h"
-#define CYW43_EPERM (-PICO_ERROR_NOT_PERMITTED)
-#define CYW43_EIO (-PICO_ERROR_IO)
-#define CYW43_EINVAL (-PICO_ERROR_INVALID_ARG)
-#define CYW43_ETIMEDOUT (-PICO_ERROR_TIMEOUT)
-#define CYW43_NUM_GPIOS CYW43_WL_GPIO_COUNT
-#define cyw43_hal_pin_obj_t uint
-#define CYW43_ARRAY_SIZE(a) count_of(a)
-static inline uint32_t cyw43_hal_ticks_us(void) {
-    return time_us_32();
-}
-static inline uint32_t cyw43_hal_ticks_ms(void) {
-    return to_ms_since_boot(get_absolute_time());
-}
-#define CYW43_PIN_WL_REG_ON CYW43_DEFAULT_PIN_WL_REG_ON
-#define CYW43_PIN_WL_DATA_OUT CYW43_DEFAULT_PIN_WL_DATA_OUT
-#define CYW43_PIN_WL_DATA_IN CYW43_DEFAULT_PIN_WL_DATA_IN
-#define CYW43_PIN_WL_HOST_WAKE CYW43_DEFAULT_PIN_WL_HOST_WAKE
-#define CYW43_PIN_WL_CLOCK CYW43_DEFAULT_PIN_WL_CLOCK
-#define CYW43_PIN_WL_CS CYW43_DEFAULT_PIN_WL_CS
-static inline int cyw43_hal_pin_read(uint pin) {
-    return gpio_get(pin);
-}
-static inline void cyw43_hal_pin_low(uint pin) {
-    gpio_put(pin, 0);
-}
-static inline void cyw43_hal_pin_high(uint pin) {
-    gpio_put(pin, 1);
-}
-#define CYW43_HAL_PIN_MODE_INPUT (GPIO_IN)
-#define CYW43_HAL_PIN_MODE_OUTPUT (GPIO_OUT)
-#define CYW43_HAL_PIN_PULL_NONE (0)
-#define CYW43_HAL_PIN_PULL_UP (1)
-#define CYW43_HAL_PIN_PULL_DOWN (2)
-static inline void cyw43_hal_pin_config(uint pin, uint32_t mode, uint32_t pull, __attribute__((__unused__)) uint32_t alt) {
-    (((mode == (GPIO_IN) || mode == (GPIO_OUT)) && alt == 0) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/pico_cyw43_driver/include/cyw43_configport.h", 155, __func__, "(mode == CYW43_HAL_PIN_MODE_INPUT || mode == CYW43_HAL_PIN_MODE_OUTPUT) && alt == 0"));
-    gpio_set_dir(pin, mode);
-    gpio_set_pulls(pin, pull == (1), pull == (2));
-}
-void cyw43_hal_get_mac(int idx, uint8_t buf[6]);
-void cyw43_hal_generate_laa_mac(int idx, uint8_t buf[6]);
-void cyw43_thread_enter(void);
-void cyw43_thread_exit(void);
-#define CYW43_THREAD_ENTER cyw43_thread_enter();
-#define CYW43_THREAD_EXIT cyw43_thread_exit();
-void cyw43_thread_lock_check(void);
-#define cyw43_arch_lwip_check() cyw43_thread_lock_check()
-#define CYW43_THREAD_LOCK_CHECK cyw43_arch_lwip_check();
-void cyw43_await_background_or_timeout_us(uint32_t timeout_us);
-#define CYW43_SDPCM_SEND_COMMON_WAIT cyw43_await_background_or_timeout_us(1000);
-#define CYW43_DO_IOCTL_WAIT cyw43_await_background_or_timeout_us(1000);
-void cyw43_delay_ms(uint32_t ms);
-void cyw43_delay_us(uint32_t us);
-void cyw43_schedule_internal_poll_dispatch(void (*func)(void));
-void cyw43_post_poll_hook(void);
-#define CYW43_POST_POLL_HOOK cyw43_post_poll_hook();
-#define cyw43_malloc malloc
-#define cyw43_free free
-#define PICO_CYW43_LOGGING_ENABLED 1
-#define CYW43_LWIP CYW43_LWIP_DEFAULT
-#define CYW43_CLEAR_SDIO_INT (0)
-#define CYW43_INCLUDE_LEGACY_F1_OVERFLOW_WORKAROUND_VARIABLES (0)
-#define CYW43_ENABLE_BLUETOOTH (0)
-#define CYW43_ENABLE_BLUETOOTH_OVER_UART (0)
-#define CYW43_RESOURCE_ATTRIBUTE __attribute__((aligned(4)))
-#define CYW43_RESOURCE_VERIFY_DOWNLOAD (0)
-#define CYW43_SLEEP_MAX (50)
-#define CYW43_HAL_UART_READCHAR_BLOCKING_WAIT cyw43_delay_us(10)
-#define CYW43_NETUTILS (0)
-#define _STDIO_H_ 
-#define _FSTDIO 
-#define __need_size_t 
-#define __need_NULL 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define __need___va_list 
-#define _SYS_REENT_H_ 
-#define _SYS__TYPES_H 
-#define __need_size_t 
-#define __need_wint_t 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#define _WINT_T 
-typedef unsigned int wint_t;
-#undef __need_wint_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define _MACHINE__TYPES_H 
-typedef long __blkcnt_t;
-typedef long __blksize_t;
-typedef __uint64_t __fsblkcnt_t;
-typedef __uint32_t __fsfilcnt_t;
-typedef long _off_t;
-typedef int __pid_t;
-typedef short __dev_t;
-typedef unsigned short __uid_t;
-typedef unsigned short __gid_t;
-typedef __uint32_t __id_t;
-typedef unsigned short __ino_t;
-typedef __uint32_t __mode_t;
-__extension__ typedef long long _off64_t;
-typedef _off_t __off_t;
-typedef _off64_t __loff_t;
-typedef long __key_t;
-typedef long _fpos_t;
-#undef __size_t
-typedef unsigned int __size_t;
-#define unsigned signed
-typedef signed int _ssize_t;
-#undef unsigned
-typedef _ssize_t __ssize_t;
-typedef struct
-{
-  int __count;
-  union
-  {
-    wint_t __wch;
-    unsigned char __wchb[4];
-  } __value;
-} _mbstate_t;
-typedef void *_iconv_t;
-#define _CLOCK_T_ unsigned long
-typedef unsigned long __clock_t;
-#define _TIME_T_ __int_least64_t
-typedef __int_least64_t __time_t;
-#define _CLOCKID_T_ unsigned long
-typedef unsigned long __clockid_t;
-typedef long __daddr_t;
-#define _TIMER_T_ unsigned long
-typedef unsigned long __timer_t;
-typedef __uint8_t __sa_family_t;
-typedef __uint32_t __socklen_t;
-typedef int __nl_item;
-typedef unsigned short __nlink_t;
-typedef long __suseconds_t;
-typedef unsigned long __useconds_t;
-typedef __builtin_va_list __va_list;
-#define _NULL 0
-#define __Long long
-typedef unsigned long __ULong;
-#define __SYS_LOCK_H__ 
-struct __lock;
-typedef struct __lock * _LOCK_T;
-#define _LOCK_RECURSIVE_T _LOCK_T
-#define __LOCK_INIT(class,lock) extern struct __lock __lock_ ## lock; class _LOCK_T lock = &__lock_ ## lock
-#define __LOCK_INIT_RECURSIVE(class,lock) __LOCK_INIT(class,lock)
-extern void __retarget_lock_init(_LOCK_T *lock);
-#define __lock_init(lock) __retarget_lock_init(&lock)
-extern void __retarget_lock_init_recursive(_LOCK_T *lock);
-#define __lock_init_recursive(lock) __retarget_lock_init_recursive(&lock)
-extern void __retarget_lock_close(_LOCK_T lock);
-#define __lock_close(lock) __retarget_lock_close(lock)
-extern void __retarget_lock_close_recursive(_LOCK_T lock);
-#define __lock_close_recursive(lock) __retarget_lock_close_recursive(lock)
-extern void __retarget_lock_acquire(_LOCK_T lock);
-#define __lock_acquire(lock) __retarget_lock_acquire(lock)
-extern void __retarget_lock_acquire_recursive(_LOCK_T lock);
-#define __lock_acquire_recursive(lock) __retarget_lock_acquire_recursive(lock)
-extern int __retarget_lock_try_acquire(_LOCK_T lock);
-#define __lock_try_acquire(lock) __retarget_lock_try_acquire(lock)
-extern int __retarget_lock_try_acquire_recursive(_LOCK_T lock);
-#define __lock_try_acquire_recursive(lock) __retarget_lock_try_acquire_recursive(lock)
-extern void __retarget_lock_release(_LOCK_T lock);
-#define __lock_release(lock) __retarget_lock_release(lock)
-extern void __retarget_lock_release_recursive(_LOCK_T lock);
-#define __lock_release_recursive(lock) __retarget_lock_release_recursive(lock)
-typedef _LOCK_T _flock_t;
-struct _reent;
-struct __locale_t;
-struct _Bigint
-{
-  struct _Bigint *_next;
-  int _k, _maxwds, _sign, _wds;
-  __ULong _x[1];
-};
-struct __tm
-{
-  int __tm_sec;
-  int __tm_min;
-  int __tm_hour;
-  int __tm_mday;
-  int __tm_mon;
-  int __tm_year;
-  int __tm_wday;
-  int __tm_yday;
-  int __tm_isdst;
-};
-#define _ATEXIT_SIZE 32
-struct _on_exit_args {
- void * _fnargs[32];
- void * _dso_handle[32];
- __ULong _fntypes;
- __ULong _is_cxa;
-};
-struct _atexit {
- struct _atexit *_next;
- int _ind;
- void (*_fns[32])(void);
-        struct _on_exit_args _on_exit_args;
-};
-#define _ATEXIT_INIT {_NULL, 0, {_NULL}, {{_NULL}, {_NULL}, 0, 0}}
-struct __sbuf {
- unsigned char *_base;
- int _size;
-};
-#define _REENT_SMALL_CHECK_INIT(ptr) 
-struct __sFILE {
-  unsigned char *_p;
-  int _r;
-  int _w;
-  short _flags;
-  short _file;
-  struct __sbuf _bf;
-  int _lbfsize;
-  void * _cookie;
-  int (*_read) (struct _reent *, void *,
-        char *, int);
-  int (*_write) (struct _reent *, void *,
-         const char *,
-         int);
-  _fpos_t (*_seek) (struct _reent *, void *, _fpos_t, int);
-  int (*_close) (struct _reent *, void *);
-  struct __sbuf _ub;
-  unsigned char *_up;
-  int _ur;
-  unsigned char _ubuf[3];
-  unsigned char _nbuf[1];
-  struct __sbuf _lb;
-  int _blksize;
-  _off_t _offset;
-  struct _reent *_data;
-  _flock_t _lock;
-  _mbstate_t _mbstate;
-  int _flags2;
-};
-typedef struct __sFILE __FILE;
-extern __FILE __sf[3];
-struct _glue
-{
-  struct _glue *_next;
-  int _niobs;
-  __FILE *_iobs;
-};
-extern struct _glue __sglue;
-#define _RAND48_SEED_0 (0x330e)
-#define _RAND48_SEED_1 (0xabcd)
-#define _RAND48_SEED_2 (0x1234)
-#define _RAND48_MULT_0 (0xe66d)
-#define _RAND48_MULT_1 (0xdeec)
-#define _RAND48_MULT_2 (0x0005)
-#define _RAND48_ADD (0x000b)
-struct _rand48 {
-  unsigned short _seed[3];
-  unsigned short _mult[3];
-  unsigned short _add;
-};
-#define _REENT_EMERGENCY_SIZE 25
-#define _REENT_ASCTIME_SIZE 26
-#define _REENT_SIGNAL_SIZE 24
-#define _REENT_INIT_RESERVED_0 
-#define _REENT_INIT_RESERVED_1 
-#define _REENT_INIT_RESERVED_2 
-#define _REENT_INIT_RESERVED_6_7 
-#define _REENT_INIT_RESERVED_8 
-struct _reent
-{
-  int _errno;
-  __FILE *_stdin, *_stdout, *_stderr;
-  int _inc;
-  char _emergency[25];
-  struct __locale_t *_locale;
-  void (*__cleanup) (struct _reent *);
-  struct _Bigint *_result;
-  int _result_k;
-  struct _Bigint *_p5s;
-  struct _Bigint **_freelist;
-  int _cvtlen;
-  char *_cvtbuf;
-  union
-    {
-      struct
-        {
-          char * _strtok_last;
-          char _asctime_buf[26];
-          struct __tm _localtime_buf;
-          int _gamma_signgam;
-          __extension__ unsigned long long _rand_next;
-          struct _rand48 _r48;
-          _mbstate_t _mblen_state;
-          _mbstate_t _mbtowc_state;
-          _mbstate_t _wctomb_state;
-          char _l64a_buf[8];
-          char _signal_buf[24];
-          int _getdate_err;
-          _mbstate_t _mbrlen_state;
-          _mbstate_t _mbrtowc_state;
-          _mbstate_t _mbsrtowcs_state;
-          _mbstate_t _wcrtomb_state;
-          _mbstate_t _wcsrtombs_state;
-   int _h_errno;
-   char _getlocalename_l_buf[32 ];
-        } _reent;
-    } _new;
-  void (**_sig_func)(int);
-};
-#define _REENT_INIT(var) { 0, &__sf[0], &__sf[1], &__sf[2], 0, "", _REENT_INIT_RESERVED_1 _NULL, _REENT_INIT_RESERVED_0 _NULL, _NULL, 0, _NULL, _NULL, 0, _NULL, { { _REENT_INIT_RESERVED_2 _NULL, "", {0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 1, { {_RAND48_SEED_0, _RAND48_SEED_1, _RAND48_SEED_2}, {_RAND48_MULT_0, _RAND48_MULT_1, _RAND48_MULT_2}, _RAND48_ADD }, {0, {0}}, {0, {0}}, {0, {0}}, "", "", 0, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}} } }, _REENT_INIT_RESERVED_6_7 _NULL }
-#define _REENT_INIT_PTR_ZEROED(var) { (var)->_stdin = &__sf[0]; (var)->_stdout = &__sf[1]; (var)->_stderr = &__sf[2]; (var)->_new._reent._rand_next = 1; (var)->_new._reent._r48._seed[0] = _RAND48_SEED_0; (var)->_new._reent._r48._seed[1] = _RAND48_SEED_1; (var)->_new._reent._r48._seed[2] = _RAND48_SEED_2; (var)->_new._reent._r48._mult[0] = _RAND48_MULT_0; (var)->_new._reent._r48._mult[1] = _RAND48_MULT_1; (var)->_new._reent._r48._mult[2] = _RAND48_MULT_2; (var)->_new._reent._r48._add = _RAND48_ADD; }
-#define _REENT_CHECK_RAND48(ptr) 
-#define _REENT_CHECK_MP(ptr) 
-#define _REENT_CHECK_TM(ptr) 
-#define _REENT_CHECK_ASCTIME_BUF(ptr) 
-#define _REENT_CHECK_EMERGENCY(ptr) 
-#define _REENT_CHECK_MISC(ptr) 
-#define _REENT_CHECK_SIGNAL_BUF(ptr) 
-#define _REENT_SIGNGAM(ptr) ((ptr)->_new._reent._gamma_signgam)
-#define _REENT_RAND_NEXT(ptr) ((ptr)->_new._reent._rand_next)
-#define _REENT_RAND48_SEED(ptr) ((ptr)->_new._reent._r48._seed)
-#define _REENT_RAND48_MULT(ptr) ((ptr)->_new._reent._r48._mult)
-#define _REENT_RAND48_ADD(ptr) ((ptr)->_new._reent._r48._add)
-#define _REENT_MP_RESULT(ptr) ((ptr)->_result)
-#define _REENT_MP_RESULT_K(ptr) ((ptr)->_result_k)
-#define _REENT_MP_P5S(ptr) ((ptr)->_p5s)
-#define _REENT_MP_FREELIST(ptr) ((ptr)->_freelist)
-#define _REENT_ASCTIME_BUF(ptr) ((ptr)->_new._reent._asctime_buf)
-#define _REENT_TM(ptr) (&(ptr)->_new._reent._localtime_buf)
-#define _REENT_STRTOK_LAST(ptr) ((ptr)->_new._reent._strtok_last)
-#define _REENT_MBLEN_STATE(ptr) ((ptr)->_new._reent._mblen_state)
-#define _REENT_MBTOWC_STATE(ptr) ((ptr)->_new._reent._mbtowc_state)
-#define _REENT_WCTOMB_STATE(ptr) ((ptr)->_new._reent._wctomb_state)
-#define _REENT_MBRLEN_STATE(ptr) ((ptr)->_new._reent._mbrlen_state)
-#define _REENT_MBRTOWC_STATE(ptr) ((ptr)->_new._reent._mbrtowc_state)
-#define _REENT_MBSRTOWCS_STATE(ptr) ((ptr)->_new._reent._mbsrtowcs_state)
-#define _REENT_WCRTOMB_STATE(ptr) ((ptr)->_new._reent._wcrtomb_state)
-#define _REENT_WCSRTOMBS_STATE(ptr) ((ptr)->_new._reent._wcsrtombs_state)
-#define _REENT_L64A_BUF(ptr) ((ptr)->_new._reent._l64a_buf)
-#define _REENT_SIGNAL_BUF(ptr) ((ptr)->_new._reent._signal_buf)
-#define _REENT_GETDATE_ERR_P(ptr) (&((ptr)->_new._reent._getdate_err))
-#define _REENT_GETLOCALENAME_L_BUF(ptr) ((ptr)->_new._reent._getlocalename_l_buf)
-#define _REENT_CLEANUP(_ptr) ((_ptr)->__cleanup)
-#define _REENT_CVTBUF(_ptr) ((_ptr)->_cvtbuf)
-#define _REENT_CVTLEN(_ptr) ((_ptr)->_cvtlen)
-#define _REENT_EMERGENCY(_ptr) ((_ptr)->_emergency)
-#define _REENT_ERRNO(_ptr) ((_ptr)->_errno)
-#define _REENT_INC(_ptr) ((_ptr)->_inc)
-#define _REENT_LOCALE(_ptr) ((_ptr)->_locale)
-#define _REENT_SIG_FUNC(_ptr) ((_ptr)->_sig_func)
-#define _REENT_STDIN(_ptr) ((_ptr)->_stdin)
-#define _REENT_STDOUT(_ptr) ((_ptr)->_stdout)
-#define _REENT_STDERR(_ptr) ((_ptr)->_stderr)
-#define _REENT_INIT_PTR(var) { memset((var), 0, sizeof(*(var))); _REENT_INIT_PTR_ZEROED(var); }
-#define __ATTRIBUTE_IMPURE_PTR__ 
-extern struct _reent *_impure_ptr ;
-#define __ATTRIBUTE_IMPURE_DATA__ 
-extern struct _reent _impure_data ;
-#define _REENT _impure_ptr
-#define _REENT_IS_NULL(_ptr) ((_ptr) == NULL)
-#define _GLOBAL_REENT (&_impure_data)
-#define _Kmax (sizeof (size_t) << 3)
-extern struct _atexit *__atexit;
-extern struct _atexit __atexit0;
-extern void (*__stdio_exit_handler) (void);
-void _reclaim_reent (struct _reent *);
-extern int _fwalk_sglue (struct _reent *, int (*)(struct _reent *, __FILE *),
-    struct _glue *);
-
-typedef __FILE FILE;
-#define __FILE_defined 
-typedef _fpos_t fpos_t;
-typedef __off_t off_t;
-#define _OFF_T_DECLARED 
-typedef _ssize_t ssize_t;
-#define _SSIZE_T_DECLARED 
-#define _NEWLIB_STDIO_H 
-#define _flockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_acquire_recursive((fp)->_lock))
-#define _funlockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_release_recursive((fp)->_lock))
-#define __SLBF 0x0001
-#define __SNBF 0x0002
-#define __SRD 0x0004
-#define __SWR 0x0008
-#define __SRW 0x0010
-#define __SEOF 0x0020
-#define __SERR 0x0040
-#define __SMBF 0x0080
-#define __SAPP 0x0100
-#define __SSTR 0x0200
-#define __SOPT 0x0400
-#define __SNPT 0x0800
-#define __SOFF 0x1000
-#define __SORD 0x2000
-#define __SL64 0x8000
-#define __SNLK 0x0001
-#define __SWID 0x2000
-#define _IOFBF 0
-#define _IOLBF 1
-#define _IONBF 2
-#define EOF (-1)
-#define BUFSIZ 1024
-#define FOPEN_MAX 20
-#define FILENAME_MAX 1024
-#define L_tmpnam FILENAME_MAX
-#define P_tmpdir "/tmp"
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
-#define TMP_MAX 26
-#define stdin _REENT_STDIN(_REENT)
-#define stdout _REENT_STDOUT(_REENT)
-#define stderr _REENT_STDERR(_REENT)
-#define _stdin_r(x) _REENT_STDIN(x)
-#define _stdout_r(x) _REENT_STDOUT(x)
-#define _stderr_r(x) _REENT_STDERR(x)
-#define __VALIST __gnuc_va_list
-char * ctermid (char *);
-FILE * tmpfile (void);
-char * tmpnam (char *);
-char * tempnam (const char *, const char *) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
-int fclose (FILE *);
-int fflush (FILE *);
-FILE * freopen (const char *restrict, const char *restrict, FILE *restrict);
-void setbuf (FILE *restrict, char *restrict);
-int setvbuf (FILE *restrict, char *restrict, int, size_t);
-int fprintf (FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int fscanf (FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int printf (const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 1, 2)));
-int scanf (const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 1, 2)));
-int sscanf (const char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int vfprintf (FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vprintf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 1, 0)));
-int vsprintf (char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int fgetc (FILE *);
-char * fgets (char *restrict, int, FILE *restrict);
-int fputc (int, FILE *);
-int fputs (const char *restrict, FILE *restrict);
-int getc (FILE *);
-int getchar (void);
-char * gets (char *);
-int putc (int, FILE *);
-int putchar (int);
-int puts (const char *);
-int ungetc (int, FILE *);
-size_t fread (void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t fwrite (const void *restrict , size_t _size, size_t _n, FILE *);
-int fgetpos (FILE *restrict, fpos_t *restrict);
-int fseek (FILE *, long, int);
-int fsetpos (FILE *, const fpos_t *);
-long ftell ( FILE *);
-void rewind (FILE *);
-void clearerr (FILE *);
-int feof (FILE *);
-int ferror (FILE *);
-void perror (const char *);
-FILE * fopen (const char *restrict _name, const char *restrict _type);
-int sprintf (char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int remove (const char *);
-int rename (const char *, const char *);
-int fseeko (FILE *, off_t, int);
-off_t ftello (FILE *);
-int snprintf (char *restrict, size_t, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int vsnprintf (char *restrict, size_t, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int vfscanf (FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int vscanf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 1, 0)));
-int vsscanf (const char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int asiprintf (char **, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-char * asniprintf (char *, size_t *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-char * asnprintf (char *restrict, size_t *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int diprintf (int, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int fiprintf (FILE *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int fiscanf (FILE *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int iprintf (const char *, ...)
-               __attribute__ ((__format__ (__printf__, 1, 2)));
-int iscanf (const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 1, 2)));
-int siprintf (char *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int siscanf (const char *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int sniprintf (char *, size_t, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int vasiprintf (char **, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-char * vasniprintf (char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-char * vasnprintf (char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int vdiprintf (int, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vfiprintf (FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vfiscanf (FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int viprintf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 1, 0)));
-int viscanf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 1, 0)));
-int vsiprintf (char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vsiscanf (const char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int vsniprintf (char *, size_t, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-FILE * fdopen (int, const char *);
-int fileno (FILE *);
-int pclose (FILE *);
-FILE * popen (const char *, const char *);
-void setbuffer (FILE *, char *, int);
-int setlinebuf (FILE *);
-int getw (FILE *);
-int putw (int, FILE *);
-int getc_unlocked (FILE *);
-int getchar_unlocked (void);
-void flockfile (FILE *);
-int ftrylockfile (FILE *);
-void funlockfile (FILE *);
-int putc_unlocked (int, FILE *);
-int putchar_unlocked (int);
-int dprintf (int, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-FILE * fmemopen (void *restrict, size_t, const char *restrict);
-FILE * open_memstream (char **, size_t *);
-int vdprintf (int, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int renameat (int, const char *, int, const char *);
-int _asiprintf_r (struct _reent *, char **, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-char * _asniprintf_r (struct _reent *, char *, size_t *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-char * _asnprintf_r (struct _reent *, char *restrict, size_t *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-int _asprintf_r (struct _reent *, char **restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _diprintf_r (struct _reent *, int, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _dprintf_r (struct _reent *, int, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _fclose_r (struct _reent *, FILE *);
-int _fcloseall_r (struct _reent *);
-FILE * _fdopen_r (struct _reent *, int, const char *);
-int _fflush_r (struct _reent *, FILE *);
-int _fgetc_r (struct _reent *, FILE *);
-int _fgetc_unlocked_r (struct _reent *, FILE *);
-char * _fgets_r (struct _reent *, char *restrict, int, FILE *restrict);
-char * _fgets_unlocked_r (struct _reent *, char *restrict, int, FILE *restrict);
-int _fgetpos_r (struct _reent *, FILE *, fpos_t *);
-int _fsetpos_r (struct _reent *, FILE *, const fpos_t *);
-int _fiprintf_r (struct _reent *, FILE *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _fiscanf_r (struct _reent *, FILE *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-FILE * _fmemopen_r (struct _reent *, void *restrict, size_t, const char *restrict);
-FILE * _fopen_r (struct _reent *, const char *restrict, const char *restrict);
-FILE * _freopen_r (struct _reent *, const char *restrict, const char *restrict, FILE *restrict);
-int _fprintf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _fpurge_r (struct _reent *, FILE *);
-int _fputc_r (struct _reent *, int, FILE *);
-int _fputc_unlocked_r (struct _reent *, int, FILE *);
-int _fputs_r (struct _reent *, const char *restrict, FILE *restrict);
-int _fputs_unlocked_r (struct _reent *, const char *restrict, FILE *restrict);
-size_t _fread_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t _fread_unlocked_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
-int _fscanf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-int _fseek_r (struct _reent *, FILE *, long, int);
-int _fseeko_r (struct _reent *, FILE *, _off_t, int);
-long _ftell_r (struct _reent *, FILE *);
-_off_t _ftello_r (struct _reent *, FILE *);
-void _rewind_r (struct _reent *, FILE *);
-size_t _fwrite_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t _fwrite_unlocked_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
-int _getc_r (struct _reent *, FILE *);
-int _getc_unlocked_r (struct _reent *, FILE *);
-int _getchar_r (struct _reent *);
-int _getchar_unlocked_r (struct _reent *);
-char * _gets_r (struct _reent *, char *);
-int _iprintf_r (struct _reent *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int _iscanf_r (struct _reent *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-FILE * _open_memstream_r (struct _reent *, char **, size_t *);
-void _perror_r (struct _reent *, const char *);
-int _printf_r (struct _reent *, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int _putc_r (struct _reent *, int, FILE *);
-int _putc_unlocked_r (struct _reent *, int, FILE *);
-int _putchar_unlocked_r (struct _reent *, int);
-int _putchar_r (struct _reent *, int);
-int _puts_r (struct _reent *, const char *);
-int _remove_r (struct _reent *, const char *);
-int _rename_r (struct _reent *,
-      const char *_old, const char *_new);
-int _scanf_r (struct _reent *, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int _siprintf_r (struct _reent *, char *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _siscanf_r (struct _reent *, const char *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-int _sniprintf_r (struct _reent *, char *, size_t, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-int _snprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-int _sprintf_r (struct _reent *, char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _sscanf_r (struct _reent *, const char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-char * _tempnam_r (struct _reent *, const char *, const char *);
-FILE * _tmpfile_r (struct _reent *);
-char * _tmpnam_r (struct _reent *, char *);
-int _ungetc_r (struct _reent *, int, FILE *);
-int _vasiprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-char * _vasniprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-char * _vasnprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-int _vasprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vdiprintf_r (struct _reent *, int, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vdprintf_r (struct _reent *, int, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vfiprintf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vfiscanf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int _vfprintf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vfscanf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int _viprintf_r (struct _reent *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int _viscanf_r (struct _reent *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int _vprintf_r (struct _reent *, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int _vscanf_r (struct _reent *, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int _vsiprintf_r (struct _reent *, char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vsiscanf_r (struct _reent *, const char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int _vsniprintf_r (struct _reent *, char *, size_t, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-int _vsnprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-int _vsprintf_r (struct _reent *, char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vsscanf_r (struct _reent *, const char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int fpurge (FILE *);
-ssize_t __getdelim (char **, size_t *, int, FILE *);
-ssize_t __getline (char **, size_t *, FILE *);
-void clearerr_unlocked (FILE *);
-int feof_unlocked (FILE *);
-int ferror_unlocked (FILE *);
-int fileno_unlocked (FILE *);
-int fflush_unlocked (FILE *);
-int fgetc_unlocked (FILE *);
-int fputc_unlocked (int, FILE *);
-size_t fread_unlocked (void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t fwrite_unlocked (const void *restrict , size_t _size, size_t _n, FILE *);
-int __srget_r (struct _reent *, FILE *);
-int __swbuf_r (struct _reent *, int, FILE *);
-FILE *funopen (const void *__cookie,
-  int (*__readfn)(void *__cookie, char *__buf,
-    int __n),
-  int (*__writefn)(void *__cookie, const char *__buf,
-     int __n),
-  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
-  int (*__closefn)(void *__cookie));
-FILE *_funopen_r (struct _reent *, const void *__cookie,
-  int (*__readfn)(void *__cookie, char *__buf,
-    int __n),
-  int (*__writefn)(void *__cookie, const char *__buf,
-     int __n),
-  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
-  int (*__closefn)(void *__cookie));
-#define fropen(__cookie,__fn) funopen(__cookie, __fn, NULL, NULL, NULL)
-#define fwopen(__cookie,__fn) funopen(__cookie, NULL, __fn, NULL, NULL)
-#define __sgetc_raw_r(__ptr,__f) (--(__f)->_r < 0 ? __srget_r(__ptr, __f) : (int)(*(__f)->_p++))
-#define __sgetc_r(__ptr,__p) __sgetc_raw_r(__ptr, __p)
-static __inline__ int __sputc_r(struct _reent *_ptr, int _c, FILE *_p) {
- if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
-  return (*_p->_p++ = _c);
- else
-  return (__swbuf_r(_ptr, _c, _p));
-}
-#define __sfeof(p) ((int)(((p)->_flags & __SEOF) != 0))
-#define __sferror(p) ((int)(((p)->_flags & __SERR) != 0))
-#define __sclearerr(p) ((void)((p)->_flags &= ~(__SERR|__SEOF)))
-#define __sfileno(p) ((p)->_file)
-#define feof(p) __sfeof(p)
-#define ferror(p) __sferror(p)
-#define clearerr(p) __sclearerr(p)
-#define feof_unlocked(p) __sfeof(p)
-#define ferror_unlocked(p) __sferror(p)
-#define clearerr_unlocked(p) __sclearerr(p)
-static __inline int
-_getchar_unlocked(void)
-{
- struct _reent *_ptr;
- _ptr = _impure_ptr;
- return ((--(((_ptr)->_stdin))->_r < 0 ? __srget_r(_ptr, ((_ptr)->_stdin)) : (int)(*(((_ptr)->_stdin))->_p++)));
-}
-static __inline int
-_putchar_unlocked(int _c)
-{
- struct _reent *_ptr;
- _ptr = _impure_ptr;
- return (__sputc_r(_ptr, _c, ((_ptr)->_stdout)));
-}
-#define getchar_unlocked() _getchar_unlocked()
-#define putchar_unlocked(_c) _putchar_unlocked(_c)
-#define fast_putc(x,p) (--(p)->_w < 0 ? __swbuf_r(_REENT, (int)(x), p) == EOF : (*(p)->_p = (x), (p)->_p++, 0))
-#define L_ctermid 16
-
-#define CYW43_PRINTF(...) printf(__VA_ARGS__)
-#define CYW43_VDEBUG(...) (void)0
-#define CYW43_VERBOSE_DEBUG 0
-#define CYW43_DEBUG(...) CYW43_PRINTF(__VA_ARGS__)
-#define CYW43_INFO(...) CYW43_PRINTF(__VA_ARGS__)
-#define CYW43_WARN(...) CYW43_PRINTF("[CYW43] " __VA_ARGS__)
-#define CYW43_FAIL_FAST_CHECK(res) (res)
-#define CYW43_EVENT_POLL_HOOK 
-#define CYW43_DEFAULT_IP_STA_ADDRESS LWIP_MAKEU32(0, 0, 0, 0)
-#define CYW43_DEFAULT_IP_AP_ADDRESS LWIP_MAKEU32(192, 168, 4, 1)
-#define CYW43_DEFAULT_IP_MASK LWIP_MAKEU32(255, 255, 255, 0)
-#define CYW43_DEFAULT_IP_STA_GATEWAY LWIP_MAKEU32(192, 168, 0, 1)
-#define CYW43_DEFAULT_IP_AP_GATEWAY LWIP_MAKEU32(192, 168, 4, 1)
-#define CYW43_DEFAULT_IP_DNS LWIP_MAKEU32(8, 8, 8, 8)
-#define CYW43_CB_TCPIP_INIT_EXTRA(self,itf) do { } while (0)
-#define CYW43_CB_TCPIP_DEINIT_EXTRA(self,itf) do { } while (0)
-#define CYW43_INCLUDED_CYW43_LL_H 
-#define CYW43_IOCTL_GET_SSID (0x32)
-#define CYW43_IOCTL_GET_CHANNEL (0x3a)
-#define CYW43_IOCTL_SET_DISASSOC (0x69)
-#define CYW43_IOCTL_GET_ANTDIV (0x7e)
-#define CYW43_IOCTL_SET_ANTDIV (0x81)
-#define CYW43_IOCTL_SET_MONITOR (0xd9)
-#define CYW43_IOCTL_GET_RSSI (0xfe)
-#define CYW43_IOCTL_GET_VAR (0x20c)
-#define CYW43_IOCTL_SET_VAR (0x20f)
-#define CYW43_EV_SET_SSID (0)
-#define CYW43_EV_JOIN (1)
-#define CYW43_EV_AUTH (3)
-#define CYW43_EV_DEAUTH (5)
-#define CYW43_EV_DEAUTH_IND (6)
-#define CYW43_EV_ASSOC (7)
-#define CYW43_EV_DISASSOC (11)
-#define CYW43_EV_DISASSOC_IND (12)
-#define CYW43_EV_LINK (16)
-#define CYW43_EV_PRUNE (23)
-#define CYW43_EV_PSK_SUP (46)
-#define CYW43_EV_ICV_ERROR (49)
-#define CYW43_EV_ESCAN_RESULT (69)
-#define CYW43_EV_CSA_COMPLETE_IND (80)
-#define CYW43_EV_ASSOC_REQ_IE (87)
-#define CYW43_EV_ASSOC_RESP_IE (88)
-#define CYW43_STATUS_SUCCESS (0)
-#define CYW43_STATUS_FAIL (1)
-#define CYW43_STATUS_TIMEOUT (2)
-#define CYW43_STATUS_NO_NETWORKS (3)
-#define CYW43_STATUS_ABORT (4)
-#define CYW43_STATUS_NO_ACK (5)
-#define CYW43_STATUS_UNSOLICITED (6)
-#define CYW43_STATUS_ATTEMPT (7)
-#define CYW43_STATUS_PARTIAL (8)
-#define CYW43_STATUS_NEWSCAN (9)
-#define CYW43_STATUS_NEWASSOC (10)
-#define CYW43_SUP_DISCONNECTED (0)
-#define CYW43_SUP_CONNECTING (1)
-#define CYW43_SUP_IDREQUIRED (2)
-#define CYW43_SUP_AUTHENTICATING (3)
-#define CYW43_SUP_AUTHENTICATED (4)
-#define CYW43_SUP_KEYXCHANGE (5)
-#define CYW43_SUP_KEYED (6)
-#define CYW43_SUP_TIMEOUT (7)
-#define CYW43_SUP_LAST_BASIC_STATE (8)
-#define CYW43_SUP_KEYXCHANGE_WAIT_M1 CYW43_SUP_AUTHENTICATED
-#define CYW43_SUP_KEYXCHANGE_PREP_M2 CYW43_SUP_KEYXCHANGE
-#define CYW43_SUP_KEYXCHANGE_WAIT_M3 CYW43_SUP_LAST_BASIC_STATE
-#define CYW43_SUP_KEYXCHANGE_PREP_M4 (9)
-#define CYW43_SUP_KEYXCHANGE_WAIT_G1 (10)
-#define CYW43_SUP_KEYXCHANGE_PREP_G2 (11)
-#define CYW43_REASON_INITIAL_ASSOC (0)
-#define CYW43_REASON_LOW_RSSI (1)
-#define CYW43_REASON_DEAUTH (2)
-#define CYW43_REASON_DISASSOC (3)
-#define CYW43_REASON_BCNS_LOST (4)
-#define CYW43_REASON_FAST_ROAM_FAILED (5)
-#define CYW43_REASON_DIRECTED_ROAM (6)
-#define CYW43_REASON_TSPEC_REJECTED (7)
-#define CYW43_REASON_BETTER_AP (8)
-#define CYW43_REASON_PRUNE_ENCR_MISMATCH (1)
-#define CYW43_REASON_PRUNE_BCAST_BSSID (2)
-#define CYW43_REASON_PRUNE_MAC_DENY (3)
-#define CYW43_REASON_PRUNE_MAC_NA (4)
-#define CYW43_REASON_PRUNE_REG_PASSV (5)
-#define CYW43_REASON_PRUNE_SPCT_MGMT (6)
-#define CYW43_REASON_PRUNE_RADAR (7)
-#define CYW43_REASON_RSN_MISMATCH (8)
-#define CYW43_REASON_PRUNE_NO_COMMON_RATES (9)
-#define CYW43_REASON_PRUNE_BASIC_RATES (10)
-#define CYW43_REASON_PRUNE_CCXFAST_PREVAP (11)
-#define CYW43_REASON_PRUNE_CIPHER_NA (12)
-#define CYW43_REASON_PRUNE_KNOWN_STA (13)
-#define CYW43_REASON_PRUNE_CCXFAST_DROAM (14)
-#define CYW43_REASON_PRUNE_WDS_PEER (15)
-#define CYW43_REASON_PRUNE_QBSS_LOAD (16)
-#define CYW43_REASON_PRUNE_HOME_AP (17)
-#define CYW43_REASON_PRUNE_AP_BLOCKED (18)
-#define CYW43_REASON_PRUNE_NO_DIAG_SUPPORT (19)
-#define CYW43_REASON_SUP_OTHER (0)
-#define CYW43_REASON_SUP_DECRYPT_KEY_DATA (1)
-#define CYW43_REASON_SUP_BAD_UCAST_WEP128 (2)
-#define CYW43_REASON_SUP_BAD_UCAST_WEP40 (3)
-#define CYW43_REASON_SUP_UNSUP_KEY_LEN (4)
-#define CYW43_REASON_SUP_PW_KEY_CIPHER (5)
-#define CYW43_REASON_SUP_MSG3_TOO_MANY_IE (6)
-#define CYW43_REASON_SUP_MSG3_IE_MISMATCH (7)
-#define CYW43_REASON_SUP_NO_INSTALL_FLAG (8)
-#define CYW43_REASON_SUP_MSG3_NO_GTK (9)
-#define CYW43_REASON_SUP_GRP_KEY_CIPHER (10)
-#define CYW43_REASON_SUP_GRP_MSG1_NO_GTK (11)
-#define CYW43_REASON_SUP_GTK_DECRYPT_FAIL (12)
-#define CYW43_REASON_SUP_SEND_FAIL (13)
-#define CYW43_REASON_SUP_DEAUTH (14)
-#define CYW43_REASON_SUP_WPA_PSK_TMO (15)
-#define CYW43_AUTH_OPEN (0)
-#define CYW43_AUTH_WPA_TKIP_PSK (0x00200002)
-#define CYW43_AUTH_WPA2_AES_PSK (0x00400004)
-#define CYW43_AUTH_WPA2_MIXED_PSK (0x00400006)
-#define CYW43_AUTH_WPA3_SAE_AES_PSK (0x01000004)
-#define CYW43_AUTH_WPA3_WPA2_AES_PSK (0x01400004)
-#define CYW43_NO_POWERSAVE_MODE (0)
-#define CYW43_PM1_POWERSAVE_MODE (1)
-#define CYW43_PM2_POWERSAVE_MODE (2)
-#define CYW43_BUS_MAX_BLOCK_SIZE 64
-#define CYW43_BACKPLANE_READ_PAD_LEN_BYTES 16
-#define CYW43_LL_STATE_SIZE_WORDS (526 + 1 + ((CYW43_BACKPLANE_READ_PAD_LEN_BYTES / 4) + 1) + CYW43_INCLUDE_LEGACY_F1_OVERFLOW_WORKAROUND_VARIABLES * 4)
-#define CYW43_CHANNEL_NONE (0xffffffff)
-enum {
-    CYW43_ITF_STA,
-    CYW43_ITF_AP,
-};
-typedef struct _cyw43_ev_scan_result_t {
-    uint32_t _0[5];
-    uint8_t bssid[6];
-    uint16_t _1[2];
-    uint8_t ssid_len;
-    uint8_t ssid[32];
-    uint32_t _2[5];
-    uint16_t channel;
-    uint16_t _3;
-    uint8_t auth_mode;
-    int16_t rssi;
-} cyw43_ev_scan_result_t;
-typedef struct _cyw43_async_event_t {
-    uint16_t _0;
-    uint16_t flags;
-    uint32_t event_type;
-    uint32_t status;
-    uint32_t reason;
-    uint8_t _1[30];
-    uint8_t interface;
-    uint8_t _2;
+#define _HARDWARE_PIO_H 
+#define _HARDWARE_STRUCTS_PIO_H 
+#define _HARDWARE_REGS_PIO_H 
+#define PIO_CTRL_OFFSET _u(0x00000000)
+#define PIO_CTRL_BITS _u(0x07ff0fff)
+#define PIO_CTRL_RESET _u(0x00000000)
+#define PIO_CTRL_NEXTPREV_CLKDIV_RESTART_RESET _u(0x0)
+#define PIO_CTRL_NEXTPREV_CLKDIV_RESTART_BITS _u(0x04000000)
+#define PIO_CTRL_NEXTPREV_CLKDIV_RESTART_MSB _u(26)
+#define PIO_CTRL_NEXTPREV_CLKDIV_RESTART_LSB _u(26)
+#define PIO_CTRL_NEXTPREV_CLKDIV_RESTART_ACCESS "SC"
+#define PIO_CTRL_NEXTPREV_SM_DISABLE_RESET _u(0x0)
+#define PIO_CTRL_NEXTPREV_SM_DISABLE_BITS _u(0x02000000)
+#define PIO_CTRL_NEXTPREV_SM_DISABLE_MSB _u(25)
+#define PIO_CTRL_NEXTPREV_SM_DISABLE_LSB _u(25)
+#define PIO_CTRL_NEXTPREV_SM_DISABLE_ACCESS "SC"
+#define PIO_CTRL_NEXTPREV_SM_ENABLE_RESET _u(0x0)
+#define PIO_CTRL_NEXTPREV_SM_ENABLE_BITS _u(0x01000000)
+#define PIO_CTRL_NEXTPREV_SM_ENABLE_MSB _u(24)
+#define PIO_CTRL_NEXTPREV_SM_ENABLE_LSB _u(24)
+#define PIO_CTRL_NEXTPREV_SM_ENABLE_ACCESS "SC"
+#define PIO_CTRL_NEXT_PIO_MASK_RESET _u(0x0)
+#define PIO_CTRL_NEXT_PIO_MASK_BITS _u(0x00f00000)
+#define PIO_CTRL_NEXT_PIO_MASK_MSB _u(23)
+#define PIO_CTRL_NEXT_PIO_MASK_LSB _u(20)
+#define PIO_CTRL_NEXT_PIO_MASK_ACCESS "SC"
+#define PIO_CTRL_PREV_PIO_MASK_RESET _u(0x0)
+#define PIO_CTRL_PREV_PIO_MASK_BITS _u(0x000f0000)
+#define PIO_CTRL_PREV_PIO_MASK_MSB _u(19)
+#define PIO_CTRL_PREV_PIO_MASK_LSB _u(16)
+#define PIO_CTRL_PREV_PIO_MASK_ACCESS "SC"
+#define PIO_CTRL_CLKDIV_RESTART_RESET _u(0x0)
+#define PIO_CTRL_CLKDIV_RESTART_BITS _u(0x00000f00)
+#define PIO_CTRL_CLKDIV_RESTART_MSB _u(11)
+#define PIO_CTRL_CLKDIV_RESTART_LSB _u(8)
+#define PIO_CTRL_CLKDIV_RESTART_ACCESS "SC"
+#define PIO_CTRL_SM_RESTART_RESET _u(0x0)
+#define PIO_CTRL_SM_RESTART_BITS _u(0x000000f0)
+#define PIO_CTRL_SM_RESTART_MSB _u(7)
+#define PIO_CTRL_SM_RESTART_LSB _u(4)
+#define PIO_CTRL_SM_RESTART_ACCESS "SC"
+#define PIO_CTRL_SM_ENABLE_RESET _u(0x0)
+#define PIO_CTRL_SM_ENABLE_BITS _u(0x0000000f)
+#define PIO_CTRL_SM_ENABLE_MSB _u(3)
+#define PIO_CTRL_SM_ENABLE_LSB _u(0)
+#define PIO_CTRL_SM_ENABLE_ACCESS "RW"
+#define PIO_FSTAT_OFFSET _u(0x00000004)
+#define PIO_FSTAT_BITS _u(0x0f0f0f0f)
+#define PIO_FSTAT_RESET _u(0x0f000f00)
+#define PIO_FSTAT_TXEMPTY_RESET _u(0xf)
+#define PIO_FSTAT_TXEMPTY_BITS _u(0x0f000000)
+#define PIO_FSTAT_TXEMPTY_MSB _u(27)
+#define PIO_FSTAT_TXEMPTY_LSB _u(24)
+#define PIO_FSTAT_TXEMPTY_ACCESS "RO"
+#define PIO_FSTAT_TXFULL_RESET _u(0x0)
+#define PIO_FSTAT_TXFULL_BITS _u(0x000f0000)
+#define PIO_FSTAT_TXFULL_MSB _u(19)
+#define PIO_FSTAT_TXFULL_LSB _u(16)
+#define PIO_FSTAT_TXFULL_ACCESS "RO"
+#define PIO_FSTAT_RXEMPTY_RESET _u(0xf)
+#define PIO_FSTAT_RXEMPTY_BITS _u(0x00000f00)
+#define PIO_FSTAT_RXEMPTY_MSB _u(11)
+#define PIO_FSTAT_RXEMPTY_LSB _u(8)
+#define PIO_FSTAT_RXEMPTY_ACCESS "RO"
+#define PIO_FSTAT_RXFULL_RESET _u(0x0)
+#define PIO_FSTAT_RXFULL_BITS _u(0x0000000f)
+#define PIO_FSTAT_RXFULL_MSB _u(3)
+#define PIO_FSTAT_RXFULL_LSB _u(0)
+#define PIO_FSTAT_RXFULL_ACCESS "RO"
+#define PIO_FDEBUG_OFFSET _u(0x00000008)
+#define PIO_FDEBUG_BITS _u(0x0f0f0f0f)
+#define PIO_FDEBUG_RESET _u(0x00000000)
+#define PIO_FDEBUG_TXSTALL_RESET _u(0x0)
+#define PIO_FDEBUG_TXSTALL_BITS _u(0x0f000000)
+#define PIO_FDEBUG_TXSTALL_MSB _u(27)
+#define PIO_FDEBUG_TXSTALL_LSB _u(24)
+#define PIO_FDEBUG_TXSTALL_ACCESS "WC"
+#define PIO_FDEBUG_TXOVER_RESET _u(0x0)
+#define PIO_FDEBUG_TXOVER_BITS _u(0x000f0000)
+#define PIO_FDEBUG_TXOVER_MSB _u(19)
+#define PIO_FDEBUG_TXOVER_LSB _u(16)
+#define PIO_FDEBUG_TXOVER_ACCESS "WC"
+#define PIO_FDEBUG_RXUNDER_RESET _u(0x0)
+#define PIO_FDEBUG_RXUNDER_BITS _u(0x00000f00)
+#define PIO_FDEBUG_RXUNDER_MSB _u(11)
+#define PIO_FDEBUG_RXUNDER_LSB _u(8)
+#define PIO_FDEBUG_RXUNDER_ACCESS "WC"
+#define PIO_FDEBUG_RXSTALL_RESET _u(0x0)
+#define PIO_FDEBUG_RXSTALL_BITS _u(0x0000000f)
+#define PIO_FDEBUG_RXSTALL_MSB _u(3)
+#define PIO_FDEBUG_RXSTALL_LSB _u(0)
+#define PIO_FDEBUG_RXSTALL_ACCESS "WC"
+#define PIO_FLEVEL_OFFSET _u(0x0000000c)
+#define PIO_FLEVEL_BITS _u(0xffffffff)
+#define PIO_FLEVEL_RESET _u(0x00000000)
+#define PIO_FLEVEL_RX3_RESET _u(0x0)
+#define PIO_FLEVEL_RX3_BITS _u(0xf0000000)
+#define PIO_FLEVEL_RX3_MSB _u(31)
+#define PIO_FLEVEL_RX3_LSB _u(28)
+#define PIO_FLEVEL_RX3_ACCESS "RO"
+#define PIO_FLEVEL_TX3_RESET _u(0x0)
+#define PIO_FLEVEL_TX3_BITS _u(0x0f000000)
+#define PIO_FLEVEL_TX3_MSB _u(27)
+#define PIO_FLEVEL_TX3_LSB _u(24)
+#define PIO_FLEVEL_TX3_ACCESS "RO"
+#define PIO_FLEVEL_RX2_RESET _u(0x0)
+#define PIO_FLEVEL_RX2_BITS _u(0x00f00000)
+#define PIO_FLEVEL_RX2_MSB _u(23)
+#define PIO_FLEVEL_RX2_LSB _u(20)
+#define PIO_FLEVEL_RX2_ACCESS "RO"
+#define PIO_FLEVEL_TX2_RESET _u(0x0)
+#define PIO_FLEVEL_TX2_BITS _u(0x000f0000)
+#define PIO_FLEVEL_TX2_MSB _u(19)
+#define PIO_FLEVEL_TX2_LSB _u(16)
+#define PIO_FLEVEL_TX2_ACCESS "RO"
+#define PIO_FLEVEL_RX1_RESET _u(0x0)
+#define PIO_FLEVEL_RX1_BITS _u(0x0000f000)
+#define PIO_FLEVEL_RX1_MSB _u(15)
+#define PIO_FLEVEL_RX1_LSB _u(12)
+#define PIO_FLEVEL_RX1_ACCESS "RO"
+#define PIO_FLEVEL_TX1_RESET _u(0x0)
+#define PIO_FLEVEL_TX1_BITS _u(0x00000f00)
+#define PIO_FLEVEL_TX1_MSB _u(11)
+#define PIO_FLEVEL_TX1_LSB _u(8)
+#define PIO_FLEVEL_TX1_ACCESS "RO"
+#define PIO_FLEVEL_RX0_RESET _u(0x0)
+#define PIO_FLEVEL_RX0_BITS _u(0x000000f0)
+#define PIO_FLEVEL_RX0_MSB _u(7)
+#define PIO_FLEVEL_RX0_LSB _u(4)
+#define PIO_FLEVEL_RX0_ACCESS "RO"
+#define PIO_FLEVEL_TX0_RESET _u(0x0)
+#define PIO_FLEVEL_TX0_BITS _u(0x0000000f)
+#define PIO_FLEVEL_TX0_MSB _u(3)
+#define PIO_FLEVEL_TX0_LSB _u(0)
+#define PIO_FLEVEL_TX0_ACCESS "RO"
+#define PIO_TXF0_OFFSET _u(0x00000010)
+#define PIO_TXF0_BITS _u(0xffffffff)
+#define PIO_TXF0_RESET _u(0x00000000)
+#define PIO_TXF0_MSB _u(31)
+#define PIO_TXF0_LSB _u(0)
+#define PIO_TXF0_ACCESS "WF"
+#define PIO_TXF1_OFFSET _u(0x00000014)
+#define PIO_TXF1_BITS _u(0xffffffff)
+#define PIO_TXF1_RESET _u(0x00000000)
+#define PIO_TXF1_MSB _u(31)
+#define PIO_TXF1_LSB _u(0)
+#define PIO_TXF1_ACCESS "WF"
+#define PIO_TXF2_OFFSET _u(0x00000018)
+#define PIO_TXF2_BITS _u(0xffffffff)
+#define PIO_TXF2_RESET _u(0x00000000)
+#define PIO_TXF2_MSB _u(31)
+#define PIO_TXF2_LSB _u(0)
+#define PIO_TXF2_ACCESS "WF"
+#define PIO_TXF3_OFFSET _u(0x0000001c)
+#define PIO_TXF3_BITS _u(0xffffffff)
+#define PIO_TXF3_RESET _u(0x00000000)
+#define PIO_TXF3_MSB _u(31)
+#define PIO_TXF3_LSB _u(0)
+#define PIO_TXF3_ACCESS "WF"
+#define PIO_RXF0_OFFSET _u(0x00000020)
+#define PIO_RXF0_BITS _u(0xffffffff)
+#define PIO_RXF0_RESET "-"
+#define PIO_RXF0_MSB _u(31)
+#define PIO_RXF0_LSB _u(0)
+#define PIO_RXF0_ACCESS "RF"
+#define PIO_RXF1_OFFSET _u(0x00000024)
+#define PIO_RXF1_BITS _u(0xffffffff)
+#define PIO_RXF1_RESET "-"
+#define PIO_RXF1_MSB _u(31)
+#define PIO_RXF1_LSB _u(0)
+#define PIO_RXF1_ACCESS "RF"
+#define PIO_RXF2_OFFSET _u(0x00000028)
+#define PIO_RXF2_BITS _u(0xffffffff)
+#define PIO_RXF2_RESET "-"
+#define PIO_RXF2_MSB _u(31)
+#define PIO_RXF2_LSB _u(0)
+#define PIO_RXF2_ACCESS "RF"
+#define PIO_RXF3_OFFSET _u(0x0000002c)
+#define PIO_RXF3_BITS _u(0xffffffff)
+#define PIO_RXF3_RESET "-"
+#define PIO_RXF3_MSB _u(31)
+#define PIO_RXF3_LSB _u(0)
+#define PIO_RXF3_ACCESS "RF"
+#define PIO_IRQ_OFFSET _u(0x00000030)
+#define PIO_IRQ_BITS _u(0x000000ff)
+#define PIO_IRQ_RESET _u(0x00000000)
+#define PIO_IRQ_MSB _u(7)
+#define PIO_IRQ_LSB _u(0)
+#define PIO_IRQ_ACCESS "WC"
+#define PIO_IRQ_FORCE_OFFSET _u(0x00000034)
+#define PIO_IRQ_FORCE_BITS _u(0x000000ff)
+#define PIO_IRQ_FORCE_RESET _u(0x00000000)
+#define PIO_IRQ_FORCE_MSB _u(7)
+#define PIO_IRQ_FORCE_LSB _u(0)
+#define PIO_IRQ_FORCE_ACCESS "WF"
+#define PIO_INPUT_SYNC_BYPASS_OFFSET _u(0x00000038)
+#define PIO_INPUT_SYNC_BYPASS_BITS _u(0xffffffff)
+#define PIO_INPUT_SYNC_BYPASS_RESET _u(0x00000000)
+#define PIO_INPUT_SYNC_BYPASS_MSB _u(31)
+#define PIO_INPUT_SYNC_BYPASS_LSB _u(0)
+#define PIO_INPUT_SYNC_BYPASS_ACCESS "RW"
+#define PIO_DBG_PADOUT_OFFSET _u(0x0000003c)
+#define PIO_DBG_PADOUT_BITS _u(0xffffffff)
+#define PIO_DBG_PADOUT_RESET _u(0x00000000)
+#define PIO_DBG_PADOUT_MSB _u(31)
+#define PIO_DBG_PADOUT_LSB _u(0)
+#define PIO_DBG_PADOUT_ACCESS "RO"
+#define PIO_DBG_PADOE_OFFSET _u(0x00000040)
+#define PIO_DBG_PADOE_BITS _u(0xffffffff)
+#define PIO_DBG_PADOE_RESET _u(0x00000000)
+#define PIO_DBG_PADOE_MSB _u(31)
+#define PIO_DBG_PADOE_LSB _u(0)
+#define PIO_DBG_PADOE_ACCESS "RO"
+#define PIO_DBG_CFGINFO_OFFSET _u(0x00000044)
+#define PIO_DBG_CFGINFO_BITS _u(0xf03f0f3f)
+#define PIO_DBG_CFGINFO_RESET _u(0x10000000)
+#define PIO_DBG_CFGINFO_VERSION_RESET _u(0x1)
+#define PIO_DBG_CFGINFO_VERSION_BITS _u(0xf0000000)
+#define PIO_DBG_CFGINFO_VERSION_MSB _u(31)
+#define PIO_DBG_CFGINFO_VERSION_LSB _u(28)
+#define PIO_DBG_CFGINFO_VERSION_ACCESS "RO"
+#define PIO_DBG_CFGINFO_VERSION_VALUE_V0 _u(0x0)
+#define PIO_DBG_CFGINFO_VERSION_VALUE_V1 _u(0x1)
+#define PIO_DBG_CFGINFO_IMEM_SIZE_RESET "-"
+#define PIO_DBG_CFGINFO_IMEM_SIZE_BITS _u(0x003f0000)
+#define PIO_DBG_CFGINFO_IMEM_SIZE_MSB _u(21)
+#define PIO_DBG_CFGINFO_IMEM_SIZE_LSB _u(16)
+#define PIO_DBG_CFGINFO_IMEM_SIZE_ACCESS "RO"
+#define PIO_DBG_CFGINFO_SM_COUNT_RESET "-"
+#define PIO_DBG_CFGINFO_SM_COUNT_BITS _u(0x00000f00)
+#define PIO_DBG_CFGINFO_SM_COUNT_MSB _u(11)
+#define PIO_DBG_CFGINFO_SM_COUNT_LSB _u(8)
+#define PIO_DBG_CFGINFO_SM_COUNT_ACCESS "RO"
+#define PIO_DBG_CFGINFO_FIFO_DEPTH_RESET "-"
+#define PIO_DBG_CFGINFO_FIFO_DEPTH_BITS _u(0x0000003f)
+#define PIO_DBG_CFGINFO_FIFO_DEPTH_MSB _u(5)
+#define PIO_DBG_CFGINFO_FIFO_DEPTH_LSB _u(0)
+#define PIO_DBG_CFGINFO_FIFO_DEPTH_ACCESS "RO"
+#define PIO_INSTR_MEM0_OFFSET _u(0x00000048)
+#define PIO_INSTR_MEM0_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM0_RESET _u(0x00000000)
+#define PIO_INSTR_MEM0_MSB _u(15)
+#define PIO_INSTR_MEM0_LSB _u(0)
+#define PIO_INSTR_MEM0_ACCESS "WO"
+#define PIO_INSTR_MEM1_OFFSET _u(0x0000004c)
+#define PIO_INSTR_MEM1_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM1_RESET _u(0x00000000)
+#define PIO_INSTR_MEM1_MSB _u(15)
+#define PIO_INSTR_MEM1_LSB _u(0)
+#define PIO_INSTR_MEM1_ACCESS "WO"
+#define PIO_INSTR_MEM2_OFFSET _u(0x00000050)
+#define PIO_INSTR_MEM2_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM2_RESET _u(0x00000000)
+#define PIO_INSTR_MEM2_MSB _u(15)
+#define PIO_INSTR_MEM2_LSB _u(0)
+#define PIO_INSTR_MEM2_ACCESS "WO"
+#define PIO_INSTR_MEM3_OFFSET _u(0x00000054)
+#define PIO_INSTR_MEM3_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM3_RESET _u(0x00000000)
+#define PIO_INSTR_MEM3_MSB _u(15)
+#define PIO_INSTR_MEM3_LSB _u(0)
+#define PIO_INSTR_MEM3_ACCESS "WO"
+#define PIO_INSTR_MEM4_OFFSET _u(0x00000058)
+#define PIO_INSTR_MEM4_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM4_RESET _u(0x00000000)
+#define PIO_INSTR_MEM4_MSB _u(15)
+#define PIO_INSTR_MEM4_LSB _u(0)
+#define PIO_INSTR_MEM4_ACCESS "WO"
+#define PIO_INSTR_MEM5_OFFSET _u(0x0000005c)
+#define PIO_INSTR_MEM5_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM5_RESET _u(0x00000000)
+#define PIO_INSTR_MEM5_MSB _u(15)
+#define PIO_INSTR_MEM5_LSB _u(0)
+#define PIO_INSTR_MEM5_ACCESS "WO"
+#define PIO_INSTR_MEM6_OFFSET _u(0x00000060)
+#define PIO_INSTR_MEM6_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM6_RESET _u(0x00000000)
+#define PIO_INSTR_MEM6_MSB _u(15)
+#define PIO_INSTR_MEM6_LSB _u(0)
+#define PIO_INSTR_MEM6_ACCESS "WO"
+#define PIO_INSTR_MEM7_OFFSET _u(0x00000064)
+#define PIO_INSTR_MEM7_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM7_RESET _u(0x00000000)
+#define PIO_INSTR_MEM7_MSB _u(15)
+#define PIO_INSTR_MEM7_LSB _u(0)
+#define PIO_INSTR_MEM7_ACCESS "WO"
+#define PIO_INSTR_MEM8_OFFSET _u(0x00000068)
+#define PIO_INSTR_MEM8_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM8_RESET _u(0x00000000)
+#define PIO_INSTR_MEM8_MSB _u(15)
+#define PIO_INSTR_MEM8_LSB _u(0)
+#define PIO_INSTR_MEM8_ACCESS "WO"
+#define PIO_INSTR_MEM9_OFFSET _u(0x0000006c)
+#define PIO_INSTR_MEM9_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM9_RESET _u(0x00000000)
+#define PIO_INSTR_MEM9_MSB _u(15)
+#define PIO_INSTR_MEM9_LSB _u(0)
+#define PIO_INSTR_MEM9_ACCESS "WO"
+#define PIO_INSTR_MEM10_OFFSET _u(0x00000070)
+#define PIO_INSTR_MEM10_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM10_RESET _u(0x00000000)
+#define PIO_INSTR_MEM10_MSB _u(15)
+#define PIO_INSTR_MEM10_LSB _u(0)
+#define PIO_INSTR_MEM10_ACCESS "WO"
+#define PIO_INSTR_MEM11_OFFSET _u(0x00000074)
+#define PIO_INSTR_MEM11_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM11_RESET _u(0x00000000)
+#define PIO_INSTR_MEM11_MSB _u(15)
+#define PIO_INSTR_MEM11_LSB _u(0)
+#define PIO_INSTR_MEM11_ACCESS "WO"
+#define PIO_INSTR_MEM12_OFFSET _u(0x00000078)
+#define PIO_INSTR_MEM12_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM12_RESET _u(0x00000000)
+#define PIO_INSTR_MEM12_MSB _u(15)
+#define PIO_INSTR_MEM12_LSB _u(0)
+#define PIO_INSTR_MEM12_ACCESS "WO"
+#define PIO_INSTR_MEM13_OFFSET _u(0x0000007c)
+#define PIO_INSTR_MEM13_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM13_RESET _u(0x00000000)
+#define PIO_INSTR_MEM13_MSB _u(15)
+#define PIO_INSTR_MEM13_LSB _u(0)
+#define PIO_INSTR_MEM13_ACCESS "WO"
+#define PIO_INSTR_MEM14_OFFSET _u(0x00000080)
+#define PIO_INSTR_MEM14_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM14_RESET _u(0x00000000)
+#define PIO_INSTR_MEM14_MSB _u(15)
+#define PIO_INSTR_MEM14_LSB _u(0)
+#define PIO_INSTR_MEM14_ACCESS "WO"
+#define PIO_INSTR_MEM15_OFFSET _u(0x00000084)
+#define PIO_INSTR_MEM15_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM15_RESET _u(0x00000000)
+#define PIO_INSTR_MEM15_MSB _u(15)
+#define PIO_INSTR_MEM15_LSB _u(0)
+#define PIO_INSTR_MEM15_ACCESS "WO"
+#define PIO_INSTR_MEM16_OFFSET _u(0x00000088)
+#define PIO_INSTR_MEM16_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM16_RESET _u(0x00000000)
+#define PIO_INSTR_MEM16_MSB _u(15)
+#define PIO_INSTR_MEM16_LSB _u(0)
+#define PIO_INSTR_MEM16_ACCESS "WO"
+#define PIO_INSTR_MEM17_OFFSET _u(0x0000008c)
+#define PIO_INSTR_MEM17_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM17_RESET _u(0x00000000)
+#define PIO_INSTR_MEM17_MSB _u(15)
+#define PIO_INSTR_MEM17_LSB _u(0)
+#define PIO_INSTR_MEM17_ACCESS "WO"
+#define PIO_INSTR_MEM18_OFFSET _u(0x00000090)
+#define PIO_INSTR_MEM18_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM18_RESET _u(0x00000000)
+#define PIO_INSTR_MEM18_MSB _u(15)
+#define PIO_INSTR_MEM18_LSB _u(0)
+#define PIO_INSTR_MEM18_ACCESS "WO"
+#define PIO_INSTR_MEM19_OFFSET _u(0x00000094)
+#define PIO_INSTR_MEM19_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM19_RESET _u(0x00000000)
+#define PIO_INSTR_MEM19_MSB _u(15)
+#define PIO_INSTR_MEM19_LSB _u(0)
+#define PIO_INSTR_MEM19_ACCESS "WO"
+#define PIO_INSTR_MEM20_OFFSET _u(0x00000098)
+#define PIO_INSTR_MEM20_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM20_RESET _u(0x00000000)
+#define PIO_INSTR_MEM20_MSB _u(15)
+#define PIO_INSTR_MEM20_LSB _u(0)
+#define PIO_INSTR_MEM20_ACCESS "WO"
+#define PIO_INSTR_MEM21_OFFSET _u(0x0000009c)
+#define PIO_INSTR_MEM21_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM21_RESET _u(0x00000000)
+#define PIO_INSTR_MEM21_MSB _u(15)
+#define PIO_INSTR_MEM21_LSB _u(0)
+#define PIO_INSTR_MEM21_ACCESS "WO"
+#define PIO_INSTR_MEM22_OFFSET _u(0x000000a0)
+#define PIO_INSTR_MEM22_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM22_RESET _u(0x00000000)
+#define PIO_INSTR_MEM22_MSB _u(15)
+#define PIO_INSTR_MEM22_LSB _u(0)
+#define PIO_INSTR_MEM22_ACCESS "WO"
+#define PIO_INSTR_MEM23_OFFSET _u(0x000000a4)
+#define PIO_INSTR_MEM23_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM23_RESET _u(0x00000000)
+#define PIO_INSTR_MEM23_MSB _u(15)
+#define PIO_INSTR_MEM23_LSB _u(0)
+#define PIO_INSTR_MEM23_ACCESS "WO"
+#define PIO_INSTR_MEM24_OFFSET _u(0x000000a8)
+#define PIO_INSTR_MEM24_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM24_RESET _u(0x00000000)
+#define PIO_INSTR_MEM24_MSB _u(15)
+#define PIO_INSTR_MEM24_LSB _u(0)
+#define PIO_INSTR_MEM24_ACCESS "WO"
+#define PIO_INSTR_MEM25_OFFSET _u(0x000000ac)
+#define PIO_INSTR_MEM25_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM25_RESET _u(0x00000000)
+#define PIO_INSTR_MEM25_MSB _u(15)
+#define PIO_INSTR_MEM25_LSB _u(0)
+#define PIO_INSTR_MEM25_ACCESS "WO"
+#define PIO_INSTR_MEM26_OFFSET _u(0x000000b0)
+#define PIO_INSTR_MEM26_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM26_RESET _u(0x00000000)
+#define PIO_INSTR_MEM26_MSB _u(15)
+#define PIO_INSTR_MEM26_LSB _u(0)
+#define PIO_INSTR_MEM26_ACCESS "WO"
+#define PIO_INSTR_MEM27_OFFSET _u(0x000000b4)
+#define PIO_INSTR_MEM27_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM27_RESET _u(0x00000000)
+#define PIO_INSTR_MEM27_MSB _u(15)
+#define PIO_INSTR_MEM27_LSB _u(0)
+#define PIO_INSTR_MEM27_ACCESS "WO"
+#define PIO_INSTR_MEM28_OFFSET _u(0x000000b8)
+#define PIO_INSTR_MEM28_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM28_RESET _u(0x00000000)
+#define PIO_INSTR_MEM28_MSB _u(15)
+#define PIO_INSTR_MEM28_LSB _u(0)
+#define PIO_INSTR_MEM28_ACCESS "WO"
+#define PIO_INSTR_MEM29_OFFSET _u(0x000000bc)
+#define PIO_INSTR_MEM29_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM29_RESET _u(0x00000000)
+#define PIO_INSTR_MEM29_MSB _u(15)
+#define PIO_INSTR_MEM29_LSB _u(0)
+#define PIO_INSTR_MEM29_ACCESS "WO"
+#define PIO_INSTR_MEM30_OFFSET _u(0x000000c0)
+#define PIO_INSTR_MEM30_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM30_RESET _u(0x00000000)
+#define PIO_INSTR_MEM30_MSB _u(15)
+#define PIO_INSTR_MEM30_LSB _u(0)
+#define PIO_INSTR_MEM30_ACCESS "WO"
+#define PIO_INSTR_MEM31_OFFSET _u(0x000000c4)
+#define PIO_INSTR_MEM31_BITS _u(0x0000ffff)
+#define PIO_INSTR_MEM31_RESET _u(0x00000000)
+#define PIO_INSTR_MEM31_MSB _u(15)
+#define PIO_INSTR_MEM31_LSB _u(0)
+#define PIO_INSTR_MEM31_ACCESS "WO"
+#define PIO_SM0_CLKDIV_OFFSET _u(0x000000c8)
+#define PIO_SM0_CLKDIV_BITS _u(0xffffff00)
+#define PIO_SM0_CLKDIV_RESET _u(0x00010000)
+#define PIO_SM0_CLKDIV_INT_RESET _u(0x0001)
+#define PIO_SM0_CLKDIV_INT_BITS _u(0xffff0000)
+#define PIO_SM0_CLKDIV_INT_MSB _u(31)
+#define PIO_SM0_CLKDIV_INT_LSB _u(16)
+#define PIO_SM0_CLKDIV_INT_ACCESS "RW"
+#define PIO_SM0_CLKDIV_FRAC_RESET _u(0x00)
+#define PIO_SM0_CLKDIV_FRAC_BITS _u(0x0000ff00)
+#define PIO_SM0_CLKDIV_FRAC_MSB _u(15)
+#define PIO_SM0_CLKDIV_FRAC_LSB _u(8)
+#define PIO_SM0_CLKDIV_FRAC_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_OFFSET _u(0x000000cc)
+#define PIO_SM0_EXECCTRL_BITS _u(0xffffffff)
+#define PIO_SM0_EXECCTRL_RESET _u(0x0001f000)
+#define PIO_SM0_EXECCTRL_EXEC_STALLED_RESET _u(0x0)
+#define PIO_SM0_EXECCTRL_EXEC_STALLED_BITS _u(0x80000000)
+#define PIO_SM0_EXECCTRL_EXEC_STALLED_MSB _u(31)
+#define PIO_SM0_EXECCTRL_EXEC_STALLED_LSB _u(31)
+#define PIO_SM0_EXECCTRL_EXEC_STALLED_ACCESS "RO"
+#define PIO_SM0_EXECCTRL_SIDE_EN_RESET _u(0x0)
+#define PIO_SM0_EXECCTRL_SIDE_EN_BITS _u(0x40000000)
+#define PIO_SM0_EXECCTRL_SIDE_EN_MSB _u(30)
+#define PIO_SM0_EXECCTRL_SIDE_EN_LSB _u(30)
+#define PIO_SM0_EXECCTRL_SIDE_EN_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_SIDE_PINDIR_RESET _u(0x0)
+#define PIO_SM0_EXECCTRL_SIDE_PINDIR_BITS _u(0x20000000)
+#define PIO_SM0_EXECCTRL_SIDE_PINDIR_MSB _u(29)
+#define PIO_SM0_EXECCTRL_SIDE_PINDIR_LSB _u(29)
+#define PIO_SM0_EXECCTRL_SIDE_PINDIR_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_JMP_PIN_RESET _u(0x00)
+#define PIO_SM0_EXECCTRL_JMP_PIN_BITS _u(0x1f000000)
+#define PIO_SM0_EXECCTRL_JMP_PIN_MSB _u(28)
+#define PIO_SM0_EXECCTRL_JMP_PIN_LSB _u(24)
+#define PIO_SM0_EXECCTRL_JMP_PIN_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_OUT_EN_SEL_RESET _u(0x00)
+#define PIO_SM0_EXECCTRL_OUT_EN_SEL_BITS _u(0x00f80000)
+#define PIO_SM0_EXECCTRL_OUT_EN_SEL_MSB _u(23)
+#define PIO_SM0_EXECCTRL_OUT_EN_SEL_LSB _u(19)
+#define PIO_SM0_EXECCTRL_OUT_EN_SEL_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_INLINE_OUT_EN_RESET _u(0x0)
+#define PIO_SM0_EXECCTRL_INLINE_OUT_EN_BITS _u(0x00040000)
+#define PIO_SM0_EXECCTRL_INLINE_OUT_EN_MSB _u(18)
+#define PIO_SM0_EXECCTRL_INLINE_OUT_EN_LSB _u(18)
+#define PIO_SM0_EXECCTRL_INLINE_OUT_EN_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_OUT_STICKY_RESET _u(0x0)
+#define PIO_SM0_EXECCTRL_OUT_STICKY_BITS _u(0x00020000)
+#define PIO_SM0_EXECCTRL_OUT_STICKY_MSB _u(17)
+#define PIO_SM0_EXECCTRL_OUT_STICKY_LSB _u(17)
+#define PIO_SM0_EXECCTRL_OUT_STICKY_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_WRAP_TOP_RESET _u(0x1f)
+#define PIO_SM0_EXECCTRL_WRAP_TOP_BITS _u(0x0001f000)
+#define PIO_SM0_EXECCTRL_WRAP_TOP_MSB _u(16)
+#define PIO_SM0_EXECCTRL_WRAP_TOP_LSB _u(12)
+#define PIO_SM0_EXECCTRL_WRAP_TOP_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_WRAP_BOTTOM_RESET _u(0x00)
+#define PIO_SM0_EXECCTRL_WRAP_BOTTOM_BITS _u(0x00000f80)
+#define PIO_SM0_EXECCTRL_WRAP_BOTTOM_MSB _u(11)
+#define PIO_SM0_EXECCTRL_WRAP_BOTTOM_LSB _u(7)
+#define PIO_SM0_EXECCTRL_WRAP_BOTTOM_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_STATUS_SEL_RESET _u(0x0)
+#define PIO_SM0_EXECCTRL_STATUS_SEL_BITS _u(0x00000060)
+#define PIO_SM0_EXECCTRL_STATUS_SEL_MSB _u(6)
+#define PIO_SM0_EXECCTRL_STATUS_SEL_LSB _u(5)
+#define PIO_SM0_EXECCTRL_STATUS_SEL_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_STATUS_SEL_VALUE_TXLEVEL _u(0x0)
+#define PIO_SM0_EXECCTRL_STATUS_SEL_VALUE_RXLEVEL _u(0x1)
+#define PIO_SM0_EXECCTRL_STATUS_SEL_VALUE_IRQ _u(0x2)
+#define PIO_SM0_EXECCTRL_STATUS_N_RESET _u(0x00)
+#define PIO_SM0_EXECCTRL_STATUS_N_BITS _u(0x0000001f)
+#define PIO_SM0_EXECCTRL_STATUS_N_MSB _u(4)
+#define PIO_SM0_EXECCTRL_STATUS_N_LSB _u(0)
+#define PIO_SM0_EXECCTRL_STATUS_N_ACCESS "RW"
+#define PIO_SM0_EXECCTRL_STATUS_N_VALUE_IRQ _u(0x00)
+#define PIO_SM0_EXECCTRL_STATUS_N_VALUE_IRQ_PREVPIO _u(0x08)
+#define PIO_SM0_EXECCTRL_STATUS_N_VALUE_IRQ_NEXTPIO _u(0x10)
+#define PIO_SM0_SHIFTCTRL_OFFSET _u(0x000000d0)
+#define PIO_SM0_SHIFTCTRL_BITS _u(0xffffc01f)
+#define PIO_SM0_SHIFTCTRL_RESET _u(0x000c0000)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_RESET _u(0x0)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_BITS _u(0x80000000)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_MSB _u(31)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_LSB _u(31)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_FJOIN_TX_RESET _u(0x0)
+#define PIO_SM0_SHIFTCTRL_FJOIN_TX_BITS _u(0x40000000)
+#define PIO_SM0_SHIFTCTRL_FJOIN_TX_MSB _u(30)
+#define PIO_SM0_SHIFTCTRL_FJOIN_TX_LSB _u(30)
+#define PIO_SM0_SHIFTCTRL_FJOIN_TX_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_PULL_THRESH_RESET _u(0x00)
+#define PIO_SM0_SHIFTCTRL_PULL_THRESH_BITS _u(0x3e000000)
+#define PIO_SM0_SHIFTCTRL_PULL_THRESH_MSB _u(29)
+#define PIO_SM0_SHIFTCTRL_PULL_THRESH_LSB _u(25)
+#define PIO_SM0_SHIFTCTRL_PULL_THRESH_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_PUSH_THRESH_RESET _u(0x00)
+#define PIO_SM0_SHIFTCTRL_PUSH_THRESH_BITS _u(0x01f00000)
+#define PIO_SM0_SHIFTCTRL_PUSH_THRESH_MSB _u(24)
+#define PIO_SM0_SHIFTCTRL_PUSH_THRESH_LSB _u(20)
+#define PIO_SM0_SHIFTCTRL_PUSH_THRESH_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_OUT_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM0_SHIFTCTRL_OUT_SHIFTDIR_BITS _u(0x00080000)
+#define PIO_SM0_SHIFTCTRL_OUT_SHIFTDIR_MSB _u(19)
+#define PIO_SM0_SHIFTCTRL_OUT_SHIFTDIR_LSB _u(19)
+#define PIO_SM0_SHIFTCTRL_OUT_SHIFTDIR_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_BITS _u(0x00040000)
+#define PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_MSB _u(18)
+#define PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_LSB _u(18)
+#define PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_AUTOPULL_RESET _u(0x0)
+#define PIO_SM0_SHIFTCTRL_AUTOPULL_BITS _u(0x00020000)
+#define PIO_SM0_SHIFTCTRL_AUTOPULL_MSB _u(17)
+#define PIO_SM0_SHIFTCTRL_AUTOPULL_LSB _u(17)
+#define PIO_SM0_SHIFTCTRL_AUTOPULL_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_AUTOPUSH_RESET _u(0x0)
+#define PIO_SM0_SHIFTCTRL_AUTOPUSH_BITS _u(0x00010000)
+#define PIO_SM0_SHIFTCTRL_AUTOPUSH_MSB _u(16)
+#define PIO_SM0_SHIFTCTRL_AUTOPUSH_LSB _u(16)
+#define PIO_SM0_SHIFTCTRL_AUTOPUSH_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_PUT_RESET _u(0x0)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_PUT_BITS _u(0x00008000)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_PUT_MSB _u(15)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_PUT_LSB _u(15)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_PUT_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_GET_RESET _u(0x0)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_GET_BITS _u(0x00004000)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_GET_MSB _u(14)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_GET_LSB _u(14)
+#define PIO_SM0_SHIFTCTRL_FJOIN_RX_GET_ACCESS "RW"
+#define PIO_SM0_SHIFTCTRL_IN_COUNT_RESET _u(0x00)
+#define PIO_SM0_SHIFTCTRL_IN_COUNT_BITS _u(0x0000001f)
+#define PIO_SM0_SHIFTCTRL_IN_COUNT_MSB _u(4)
+#define PIO_SM0_SHIFTCTRL_IN_COUNT_LSB _u(0)
+#define PIO_SM0_SHIFTCTRL_IN_COUNT_ACCESS "RW"
+#define PIO_SM0_ADDR_OFFSET _u(0x000000d4)
+#define PIO_SM0_ADDR_BITS _u(0x0000001f)
+#define PIO_SM0_ADDR_RESET _u(0x00000000)
+#define PIO_SM0_ADDR_MSB _u(4)
+#define PIO_SM0_ADDR_LSB _u(0)
+#define PIO_SM0_ADDR_ACCESS "RO"
+#define PIO_SM0_INSTR_OFFSET _u(0x000000d8)
+#define PIO_SM0_INSTR_BITS _u(0x0000ffff)
+#define PIO_SM0_INSTR_RESET "-"
+#define PIO_SM0_INSTR_MSB _u(15)
+#define PIO_SM0_INSTR_LSB _u(0)
+#define PIO_SM0_INSTR_ACCESS "RW"
+#define PIO_SM0_PINCTRL_OFFSET _u(0x000000dc)
+#define PIO_SM0_PINCTRL_BITS _u(0xffffffff)
+#define PIO_SM0_PINCTRL_RESET _u(0x14000000)
+#define PIO_SM0_PINCTRL_SIDESET_COUNT_RESET _u(0x0)
+#define PIO_SM0_PINCTRL_SIDESET_COUNT_BITS _u(0xe0000000)
+#define PIO_SM0_PINCTRL_SIDESET_COUNT_MSB _u(31)
+#define PIO_SM0_PINCTRL_SIDESET_COUNT_LSB _u(29)
+#define PIO_SM0_PINCTRL_SIDESET_COUNT_ACCESS "RW"
+#define PIO_SM0_PINCTRL_SET_COUNT_RESET _u(0x5)
+#define PIO_SM0_PINCTRL_SET_COUNT_BITS _u(0x1c000000)
+#define PIO_SM0_PINCTRL_SET_COUNT_MSB _u(28)
+#define PIO_SM0_PINCTRL_SET_COUNT_LSB _u(26)
+#define PIO_SM0_PINCTRL_SET_COUNT_ACCESS "RW"
+#define PIO_SM0_PINCTRL_OUT_COUNT_RESET _u(0x00)
+#define PIO_SM0_PINCTRL_OUT_COUNT_BITS _u(0x03f00000)
+#define PIO_SM0_PINCTRL_OUT_COUNT_MSB _u(25)
+#define PIO_SM0_PINCTRL_OUT_COUNT_LSB _u(20)
+#define PIO_SM0_PINCTRL_OUT_COUNT_ACCESS "RW"
+#define PIO_SM0_PINCTRL_IN_BASE_RESET _u(0x00)
+#define PIO_SM0_PINCTRL_IN_BASE_BITS _u(0x000f8000)
+#define PIO_SM0_PINCTRL_IN_BASE_MSB _u(19)
+#define PIO_SM0_PINCTRL_IN_BASE_LSB _u(15)
+#define PIO_SM0_PINCTRL_IN_BASE_ACCESS "RW"
+#define PIO_SM0_PINCTRL_SIDESET_BASE_RESET _u(0x00)
+#define PIO_SM0_PINCTRL_SIDESET_BASE_BITS _u(0x00007c00)
+#define PIO_SM0_PINCTRL_SIDESET_BASE_MSB _u(14)
+#define PIO_SM0_PINCTRL_SIDESET_BASE_LSB _u(10)
+#define PIO_SM0_PINCTRL_SIDESET_BASE_ACCESS "RW"
+#define PIO_SM0_PINCTRL_SET_BASE_RESET _u(0x00)
+#define PIO_SM0_PINCTRL_SET_BASE_BITS _u(0x000003e0)
+#define PIO_SM0_PINCTRL_SET_BASE_MSB _u(9)
+#define PIO_SM0_PINCTRL_SET_BASE_LSB _u(5)
+#define PIO_SM0_PINCTRL_SET_BASE_ACCESS "RW"
+#define PIO_SM0_PINCTRL_OUT_BASE_RESET _u(0x00)
+#define PIO_SM0_PINCTRL_OUT_BASE_BITS _u(0x0000001f)
+#define PIO_SM0_PINCTRL_OUT_BASE_MSB _u(4)
+#define PIO_SM0_PINCTRL_OUT_BASE_LSB _u(0)
+#define PIO_SM0_PINCTRL_OUT_BASE_ACCESS "RW"
+#define PIO_SM1_CLKDIV_OFFSET _u(0x000000e0)
+#define PIO_SM1_CLKDIV_BITS _u(0xffffff00)
+#define PIO_SM1_CLKDIV_RESET _u(0x00010000)
+#define PIO_SM1_CLKDIV_INT_RESET _u(0x0001)
+#define PIO_SM1_CLKDIV_INT_BITS _u(0xffff0000)
+#define PIO_SM1_CLKDIV_INT_MSB _u(31)
+#define PIO_SM1_CLKDIV_INT_LSB _u(16)
+#define PIO_SM1_CLKDIV_INT_ACCESS "RW"
+#define PIO_SM1_CLKDIV_FRAC_RESET _u(0x00)
+#define PIO_SM1_CLKDIV_FRAC_BITS _u(0x0000ff00)
+#define PIO_SM1_CLKDIV_FRAC_MSB _u(15)
+#define PIO_SM1_CLKDIV_FRAC_LSB _u(8)
+#define PIO_SM1_CLKDIV_FRAC_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_OFFSET _u(0x000000e4)
+#define PIO_SM1_EXECCTRL_BITS _u(0xffffffff)
+#define PIO_SM1_EXECCTRL_RESET _u(0x0001f000)
+#define PIO_SM1_EXECCTRL_EXEC_STALLED_RESET _u(0x0)
+#define PIO_SM1_EXECCTRL_EXEC_STALLED_BITS _u(0x80000000)
+#define PIO_SM1_EXECCTRL_EXEC_STALLED_MSB _u(31)
+#define PIO_SM1_EXECCTRL_EXEC_STALLED_LSB _u(31)
+#define PIO_SM1_EXECCTRL_EXEC_STALLED_ACCESS "RO"
+#define PIO_SM1_EXECCTRL_SIDE_EN_RESET _u(0x0)
+#define PIO_SM1_EXECCTRL_SIDE_EN_BITS _u(0x40000000)
+#define PIO_SM1_EXECCTRL_SIDE_EN_MSB _u(30)
+#define PIO_SM1_EXECCTRL_SIDE_EN_LSB _u(30)
+#define PIO_SM1_EXECCTRL_SIDE_EN_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_SIDE_PINDIR_RESET _u(0x0)
+#define PIO_SM1_EXECCTRL_SIDE_PINDIR_BITS _u(0x20000000)
+#define PIO_SM1_EXECCTRL_SIDE_PINDIR_MSB _u(29)
+#define PIO_SM1_EXECCTRL_SIDE_PINDIR_LSB _u(29)
+#define PIO_SM1_EXECCTRL_SIDE_PINDIR_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_JMP_PIN_RESET _u(0x00)
+#define PIO_SM1_EXECCTRL_JMP_PIN_BITS _u(0x1f000000)
+#define PIO_SM1_EXECCTRL_JMP_PIN_MSB _u(28)
+#define PIO_SM1_EXECCTRL_JMP_PIN_LSB _u(24)
+#define PIO_SM1_EXECCTRL_JMP_PIN_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_OUT_EN_SEL_RESET _u(0x00)
+#define PIO_SM1_EXECCTRL_OUT_EN_SEL_BITS _u(0x00f80000)
+#define PIO_SM1_EXECCTRL_OUT_EN_SEL_MSB _u(23)
+#define PIO_SM1_EXECCTRL_OUT_EN_SEL_LSB _u(19)
+#define PIO_SM1_EXECCTRL_OUT_EN_SEL_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_INLINE_OUT_EN_RESET _u(0x0)
+#define PIO_SM1_EXECCTRL_INLINE_OUT_EN_BITS _u(0x00040000)
+#define PIO_SM1_EXECCTRL_INLINE_OUT_EN_MSB _u(18)
+#define PIO_SM1_EXECCTRL_INLINE_OUT_EN_LSB _u(18)
+#define PIO_SM1_EXECCTRL_INLINE_OUT_EN_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_OUT_STICKY_RESET _u(0x0)
+#define PIO_SM1_EXECCTRL_OUT_STICKY_BITS _u(0x00020000)
+#define PIO_SM1_EXECCTRL_OUT_STICKY_MSB _u(17)
+#define PIO_SM1_EXECCTRL_OUT_STICKY_LSB _u(17)
+#define PIO_SM1_EXECCTRL_OUT_STICKY_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_WRAP_TOP_RESET _u(0x1f)
+#define PIO_SM1_EXECCTRL_WRAP_TOP_BITS _u(0x0001f000)
+#define PIO_SM1_EXECCTRL_WRAP_TOP_MSB _u(16)
+#define PIO_SM1_EXECCTRL_WRAP_TOP_LSB _u(12)
+#define PIO_SM1_EXECCTRL_WRAP_TOP_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_WRAP_BOTTOM_RESET _u(0x00)
+#define PIO_SM1_EXECCTRL_WRAP_BOTTOM_BITS _u(0x00000f80)
+#define PIO_SM1_EXECCTRL_WRAP_BOTTOM_MSB _u(11)
+#define PIO_SM1_EXECCTRL_WRAP_BOTTOM_LSB _u(7)
+#define PIO_SM1_EXECCTRL_WRAP_BOTTOM_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_STATUS_SEL_RESET _u(0x0)
+#define PIO_SM1_EXECCTRL_STATUS_SEL_BITS _u(0x00000060)
+#define PIO_SM1_EXECCTRL_STATUS_SEL_MSB _u(6)
+#define PIO_SM1_EXECCTRL_STATUS_SEL_LSB _u(5)
+#define PIO_SM1_EXECCTRL_STATUS_SEL_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_STATUS_SEL_VALUE_TXLEVEL _u(0x0)
+#define PIO_SM1_EXECCTRL_STATUS_SEL_VALUE_RXLEVEL _u(0x1)
+#define PIO_SM1_EXECCTRL_STATUS_SEL_VALUE_IRQ _u(0x2)
+#define PIO_SM1_EXECCTRL_STATUS_N_RESET _u(0x00)
+#define PIO_SM1_EXECCTRL_STATUS_N_BITS _u(0x0000001f)
+#define PIO_SM1_EXECCTRL_STATUS_N_MSB _u(4)
+#define PIO_SM1_EXECCTRL_STATUS_N_LSB _u(0)
+#define PIO_SM1_EXECCTRL_STATUS_N_ACCESS "RW"
+#define PIO_SM1_EXECCTRL_STATUS_N_VALUE_IRQ _u(0x00)
+#define PIO_SM1_EXECCTRL_STATUS_N_VALUE_IRQ_PREVPIO _u(0x08)
+#define PIO_SM1_EXECCTRL_STATUS_N_VALUE_IRQ_NEXTPIO _u(0x10)
+#define PIO_SM1_SHIFTCTRL_OFFSET _u(0x000000e8)
+#define PIO_SM1_SHIFTCTRL_BITS _u(0xffffc01f)
+#define PIO_SM1_SHIFTCTRL_RESET _u(0x000c0000)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_RESET _u(0x0)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_BITS _u(0x80000000)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_MSB _u(31)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_LSB _u(31)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_FJOIN_TX_RESET _u(0x0)
+#define PIO_SM1_SHIFTCTRL_FJOIN_TX_BITS _u(0x40000000)
+#define PIO_SM1_SHIFTCTRL_FJOIN_TX_MSB _u(30)
+#define PIO_SM1_SHIFTCTRL_FJOIN_TX_LSB _u(30)
+#define PIO_SM1_SHIFTCTRL_FJOIN_TX_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_PULL_THRESH_RESET _u(0x00)
+#define PIO_SM1_SHIFTCTRL_PULL_THRESH_BITS _u(0x3e000000)
+#define PIO_SM1_SHIFTCTRL_PULL_THRESH_MSB _u(29)
+#define PIO_SM1_SHIFTCTRL_PULL_THRESH_LSB _u(25)
+#define PIO_SM1_SHIFTCTRL_PULL_THRESH_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_PUSH_THRESH_RESET _u(0x00)
+#define PIO_SM1_SHIFTCTRL_PUSH_THRESH_BITS _u(0x01f00000)
+#define PIO_SM1_SHIFTCTRL_PUSH_THRESH_MSB _u(24)
+#define PIO_SM1_SHIFTCTRL_PUSH_THRESH_LSB _u(20)
+#define PIO_SM1_SHIFTCTRL_PUSH_THRESH_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_OUT_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM1_SHIFTCTRL_OUT_SHIFTDIR_BITS _u(0x00080000)
+#define PIO_SM1_SHIFTCTRL_OUT_SHIFTDIR_MSB _u(19)
+#define PIO_SM1_SHIFTCTRL_OUT_SHIFTDIR_LSB _u(19)
+#define PIO_SM1_SHIFTCTRL_OUT_SHIFTDIR_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_IN_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM1_SHIFTCTRL_IN_SHIFTDIR_BITS _u(0x00040000)
+#define PIO_SM1_SHIFTCTRL_IN_SHIFTDIR_MSB _u(18)
+#define PIO_SM1_SHIFTCTRL_IN_SHIFTDIR_LSB _u(18)
+#define PIO_SM1_SHIFTCTRL_IN_SHIFTDIR_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_AUTOPULL_RESET _u(0x0)
+#define PIO_SM1_SHIFTCTRL_AUTOPULL_BITS _u(0x00020000)
+#define PIO_SM1_SHIFTCTRL_AUTOPULL_MSB _u(17)
+#define PIO_SM1_SHIFTCTRL_AUTOPULL_LSB _u(17)
+#define PIO_SM1_SHIFTCTRL_AUTOPULL_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_AUTOPUSH_RESET _u(0x0)
+#define PIO_SM1_SHIFTCTRL_AUTOPUSH_BITS _u(0x00010000)
+#define PIO_SM1_SHIFTCTRL_AUTOPUSH_MSB _u(16)
+#define PIO_SM1_SHIFTCTRL_AUTOPUSH_LSB _u(16)
+#define PIO_SM1_SHIFTCTRL_AUTOPUSH_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_PUT_RESET _u(0x0)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_PUT_BITS _u(0x00008000)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_PUT_MSB _u(15)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_PUT_LSB _u(15)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_PUT_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_GET_RESET _u(0x0)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_GET_BITS _u(0x00004000)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_GET_MSB _u(14)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_GET_LSB _u(14)
+#define PIO_SM1_SHIFTCTRL_FJOIN_RX_GET_ACCESS "RW"
+#define PIO_SM1_SHIFTCTRL_IN_COUNT_RESET _u(0x00)
+#define PIO_SM1_SHIFTCTRL_IN_COUNT_BITS _u(0x0000001f)
+#define PIO_SM1_SHIFTCTRL_IN_COUNT_MSB _u(4)
+#define PIO_SM1_SHIFTCTRL_IN_COUNT_LSB _u(0)
+#define PIO_SM1_SHIFTCTRL_IN_COUNT_ACCESS "RW"
+#define PIO_SM1_ADDR_OFFSET _u(0x000000ec)
+#define PIO_SM1_ADDR_BITS _u(0x0000001f)
+#define PIO_SM1_ADDR_RESET _u(0x00000000)
+#define PIO_SM1_ADDR_MSB _u(4)
+#define PIO_SM1_ADDR_LSB _u(0)
+#define PIO_SM1_ADDR_ACCESS "RO"
+#define PIO_SM1_INSTR_OFFSET _u(0x000000f0)
+#define PIO_SM1_INSTR_BITS _u(0x0000ffff)
+#define PIO_SM1_INSTR_RESET "-"
+#define PIO_SM1_INSTR_MSB _u(15)
+#define PIO_SM1_INSTR_LSB _u(0)
+#define PIO_SM1_INSTR_ACCESS "RW"
+#define PIO_SM1_PINCTRL_OFFSET _u(0x000000f4)
+#define PIO_SM1_PINCTRL_BITS _u(0xffffffff)
+#define PIO_SM1_PINCTRL_RESET _u(0x14000000)
+#define PIO_SM1_PINCTRL_SIDESET_COUNT_RESET _u(0x0)
+#define PIO_SM1_PINCTRL_SIDESET_COUNT_BITS _u(0xe0000000)
+#define PIO_SM1_PINCTRL_SIDESET_COUNT_MSB _u(31)
+#define PIO_SM1_PINCTRL_SIDESET_COUNT_LSB _u(29)
+#define PIO_SM1_PINCTRL_SIDESET_COUNT_ACCESS "RW"
+#define PIO_SM1_PINCTRL_SET_COUNT_RESET _u(0x5)
+#define PIO_SM1_PINCTRL_SET_COUNT_BITS _u(0x1c000000)
+#define PIO_SM1_PINCTRL_SET_COUNT_MSB _u(28)
+#define PIO_SM1_PINCTRL_SET_COUNT_LSB _u(26)
+#define PIO_SM1_PINCTRL_SET_COUNT_ACCESS "RW"
+#define PIO_SM1_PINCTRL_OUT_COUNT_RESET _u(0x00)
+#define PIO_SM1_PINCTRL_OUT_COUNT_BITS _u(0x03f00000)
+#define PIO_SM1_PINCTRL_OUT_COUNT_MSB _u(25)
+#define PIO_SM1_PINCTRL_OUT_COUNT_LSB _u(20)
+#define PIO_SM1_PINCTRL_OUT_COUNT_ACCESS "RW"
+#define PIO_SM1_PINCTRL_IN_BASE_RESET _u(0x00)
+#define PIO_SM1_PINCTRL_IN_BASE_BITS _u(0x000f8000)
+#define PIO_SM1_PINCTRL_IN_BASE_MSB _u(19)
+#define PIO_SM1_PINCTRL_IN_BASE_LSB _u(15)
+#define PIO_SM1_PINCTRL_IN_BASE_ACCESS "RW"
+#define PIO_SM1_PINCTRL_SIDESET_BASE_RESET _u(0x00)
+#define PIO_SM1_PINCTRL_SIDESET_BASE_BITS _u(0x00007c00)
+#define PIO_SM1_PINCTRL_SIDESET_BASE_MSB _u(14)
+#define PIO_SM1_PINCTRL_SIDESET_BASE_LSB _u(10)
+#define PIO_SM1_PINCTRL_SIDESET_BASE_ACCESS "RW"
+#define PIO_SM1_PINCTRL_SET_BASE_RESET _u(0x00)
+#define PIO_SM1_PINCTRL_SET_BASE_BITS _u(0x000003e0)
+#define PIO_SM1_PINCTRL_SET_BASE_MSB _u(9)
+#define PIO_SM1_PINCTRL_SET_BASE_LSB _u(5)
+#define PIO_SM1_PINCTRL_SET_BASE_ACCESS "RW"
+#define PIO_SM1_PINCTRL_OUT_BASE_RESET _u(0x00)
+#define PIO_SM1_PINCTRL_OUT_BASE_BITS _u(0x0000001f)
+#define PIO_SM1_PINCTRL_OUT_BASE_MSB _u(4)
+#define PIO_SM1_PINCTRL_OUT_BASE_LSB _u(0)
+#define PIO_SM1_PINCTRL_OUT_BASE_ACCESS "RW"
+#define PIO_SM2_CLKDIV_OFFSET _u(0x000000f8)
+#define PIO_SM2_CLKDIV_BITS _u(0xffffff00)
+#define PIO_SM2_CLKDIV_RESET _u(0x00010000)
+#define PIO_SM2_CLKDIV_INT_RESET _u(0x0001)
+#define PIO_SM2_CLKDIV_INT_BITS _u(0xffff0000)
+#define PIO_SM2_CLKDIV_INT_MSB _u(31)
+#define PIO_SM2_CLKDIV_INT_LSB _u(16)
+#define PIO_SM2_CLKDIV_INT_ACCESS "RW"
+#define PIO_SM2_CLKDIV_FRAC_RESET _u(0x00)
+#define PIO_SM2_CLKDIV_FRAC_BITS _u(0x0000ff00)
+#define PIO_SM2_CLKDIV_FRAC_MSB _u(15)
+#define PIO_SM2_CLKDIV_FRAC_LSB _u(8)
+#define PIO_SM2_CLKDIV_FRAC_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_OFFSET _u(0x000000fc)
+#define PIO_SM2_EXECCTRL_BITS _u(0xffffffff)
+#define PIO_SM2_EXECCTRL_RESET _u(0x0001f000)
+#define PIO_SM2_EXECCTRL_EXEC_STALLED_RESET _u(0x0)
+#define PIO_SM2_EXECCTRL_EXEC_STALLED_BITS _u(0x80000000)
+#define PIO_SM2_EXECCTRL_EXEC_STALLED_MSB _u(31)
+#define PIO_SM2_EXECCTRL_EXEC_STALLED_LSB _u(31)
+#define PIO_SM2_EXECCTRL_EXEC_STALLED_ACCESS "RO"
+#define PIO_SM2_EXECCTRL_SIDE_EN_RESET _u(0x0)
+#define PIO_SM2_EXECCTRL_SIDE_EN_BITS _u(0x40000000)
+#define PIO_SM2_EXECCTRL_SIDE_EN_MSB _u(30)
+#define PIO_SM2_EXECCTRL_SIDE_EN_LSB _u(30)
+#define PIO_SM2_EXECCTRL_SIDE_EN_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_SIDE_PINDIR_RESET _u(0x0)
+#define PIO_SM2_EXECCTRL_SIDE_PINDIR_BITS _u(0x20000000)
+#define PIO_SM2_EXECCTRL_SIDE_PINDIR_MSB _u(29)
+#define PIO_SM2_EXECCTRL_SIDE_PINDIR_LSB _u(29)
+#define PIO_SM2_EXECCTRL_SIDE_PINDIR_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_JMP_PIN_RESET _u(0x00)
+#define PIO_SM2_EXECCTRL_JMP_PIN_BITS _u(0x1f000000)
+#define PIO_SM2_EXECCTRL_JMP_PIN_MSB _u(28)
+#define PIO_SM2_EXECCTRL_JMP_PIN_LSB _u(24)
+#define PIO_SM2_EXECCTRL_JMP_PIN_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_OUT_EN_SEL_RESET _u(0x00)
+#define PIO_SM2_EXECCTRL_OUT_EN_SEL_BITS _u(0x00f80000)
+#define PIO_SM2_EXECCTRL_OUT_EN_SEL_MSB _u(23)
+#define PIO_SM2_EXECCTRL_OUT_EN_SEL_LSB _u(19)
+#define PIO_SM2_EXECCTRL_OUT_EN_SEL_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_INLINE_OUT_EN_RESET _u(0x0)
+#define PIO_SM2_EXECCTRL_INLINE_OUT_EN_BITS _u(0x00040000)
+#define PIO_SM2_EXECCTRL_INLINE_OUT_EN_MSB _u(18)
+#define PIO_SM2_EXECCTRL_INLINE_OUT_EN_LSB _u(18)
+#define PIO_SM2_EXECCTRL_INLINE_OUT_EN_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_OUT_STICKY_RESET _u(0x0)
+#define PIO_SM2_EXECCTRL_OUT_STICKY_BITS _u(0x00020000)
+#define PIO_SM2_EXECCTRL_OUT_STICKY_MSB _u(17)
+#define PIO_SM2_EXECCTRL_OUT_STICKY_LSB _u(17)
+#define PIO_SM2_EXECCTRL_OUT_STICKY_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_WRAP_TOP_RESET _u(0x1f)
+#define PIO_SM2_EXECCTRL_WRAP_TOP_BITS _u(0x0001f000)
+#define PIO_SM2_EXECCTRL_WRAP_TOP_MSB _u(16)
+#define PIO_SM2_EXECCTRL_WRAP_TOP_LSB _u(12)
+#define PIO_SM2_EXECCTRL_WRAP_TOP_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_WRAP_BOTTOM_RESET _u(0x00)
+#define PIO_SM2_EXECCTRL_WRAP_BOTTOM_BITS _u(0x00000f80)
+#define PIO_SM2_EXECCTRL_WRAP_BOTTOM_MSB _u(11)
+#define PIO_SM2_EXECCTRL_WRAP_BOTTOM_LSB _u(7)
+#define PIO_SM2_EXECCTRL_WRAP_BOTTOM_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_STATUS_SEL_RESET _u(0x0)
+#define PIO_SM2_EXECCTRL_STATUS_SEL_BITS _u(0x00000060)
+#define PIO_SM2_EXECCTRL_STATUS_SEL_MSB _u(6)
+#define PIO_SM2_EXECCTRL_STATUS_SEL_LSB _u(5)
+#define PIO_SM2_EXECCTRL_STATUS_SEL_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_STATUS_SEL_VALUE_TXLEVEL _u(0x0)
+#define PIO_SM2_EXECCTRL_STATUS_SEL_VALUE_RXLEVEL _u(0x1)
+#define PIO_SM2_EXECCTRL_STATUS_SEL_VALUE_IRQ _u(0x2)
+#define PIO_SM2_EXECCTRL_STATUS_N_RESET _u(0x00)
+#define PIO_SM2_EXECCTRL_STATUS_N_BITS _u(0x0000001f)
+#define PIO_SM2_EXECCTRL_STATUS_N_MSB _u(4)
+#define PIO_SM2_EXECCTRL_STATUS_N_LSB _u(0)
+#define PIO_SM2_EXECCTRL_STATUS_N_ACCESS "RW"
+#define PIO_SM2_EXECCTRL_STATUS_N_VALUE_IRQ _u(0x00)
+#define PIO_SM2_EXECCTRL_STATUS_N_VALUE_IRQ_PREVPIO _u(0x08)
+#define PIO_SM2_EXECCTRL_STATUS_N_VALUE_IRQ_NEXTPIO _u(0x10)
+#define PIO_SM2_SHIFTCTRL_OFFSET _u(0x00000100)
+#define PIO_SM2_SHIFTCTRL_BITS _u(0xffffc01f)
+#define PIO_SM2_SHIFTCTRL_RESET _u(0x000c0000)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_RESET _u(0x0)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_BITS _u(0x80000000)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_MSB _u(31)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_LSB _u(31)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_FJOIN_TX_RESET _u(0x0)
+#define PIO_SM2_SHIFTCTRL_FJOIN_TX_BITS _u(0x40000000)
+#define PIO_SM2_SHIFTCTRL_FJOIN_TX_MSB _u(30)
+#define PIO_SM2_SHIFTCTRL_FJOIN_TX_LSB _u(30)
+#define PIO_SM2_SHIFTCTRL_FJOIN_TX_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_PULL_THRESH_RESET _u(0x00)
+#define PIO_SM2_SHIFTCTRL_PULL_THRESH_BITS _u(0x3e000000)
+#define PIO_SM2_SHIFTCTRL_PULL_THRESH_MSB _u(29)
+#define PIO_SM2_SHIFTCTRL_PULL_THRESH_LSB _u(25)
+#define PIO_SM2_SHIFTCTRL_PULL_THRESH_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_PUSH_THRESH_RESET _u(0x00)
+#define PIO_SM2_SHIFTCTRL_PUSH_THRESH_BITS _u(0x01f00000)
+#define PIO_SM2_SHIFTCTRL_PUSH_THRESH_MSB _u(24)
+#define PIO_SM2_SHIFTCTRL_PUSH_THRESH_LSB _u(20)
+#define PIO_SM2_SHIFTCTRL_PUSH_THRESH_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_OUT_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM2_SHIFTCTRL_OUT_SHIFTDIR_BITS _u(0x00080000)
+#define PIO_SM2_SHIFTCTRL_OUT_SHIFTDIR_MSB _u(19)
+#define PIO_SM2_SHIFTCTRL_OUT_SHIFTDIR_LSB _u(19)
+#define PIO_SM2_SHIFTCTRL_OUT_SHIFTDIR_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_IN_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM2_SHIFTCTRL_IN_SHIFTDIR_BITS _u(0x00040000)
+#define PIO_SM2_SHIFTCTRL_IN_SHIFTDIR_MSB _u(18)
+#define PIO_SM2_SHIFTCTRL_IN_SHIFTDIR_LSB _u(18)
+#define PIO_SM2_SHIFTCTRL_IN_SHIFTDIR_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_AUTOPULL_RESET _u(0x0)
+#define PIO_SM2_SHIFTCTRL_AUTOPULL_BITS _u(0x00020000)
+#define PIO_SM2_SHIFTCTRL_AUTOPULL_MSB _u(17)
+#define PIO_SM2_SHIFTCTRL_AUTOPULL_LSB _u(17)
+#define PIO_SM2_SHIFTCTRL_AUTOPULL_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_AUTOPUSH_RESET _u(0x0)
+#define PIO_SM2_SHIFTCTRL_AUTOPUSH_BITS _u(0x00010000)
+#define PIO_SM2_SHIFTCTRL_AUTOPUSH_MSB _u(16)
+#define PIO_SM2_SHIFTCTRL_AUTOPUSH_LSB _u(16)
+#define PIO_SM2_SHIFTCTRL_AUTOPUSH_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_PUT_RESET _u(0x0)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_PUT_BITS _u(0x00008000)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_PUT_MSB _u(15)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_PUT_LSB _u(15)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_PUT_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_GET_RESET _u(0x0)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_GET_BITS _u(0x00004000)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_GET_MSB _u(14)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_GET_LSB _u(14)
+#define PIO_SM2_SHIFTCTRL_FJOIN_RX_GET_ACCESS "RW"
+#define PIO_SM2_SHIFTCTRL_IN_COUNT_RESET _u(0x00)
+#define PIO_SM2_SHIFTCTRL_IN_COUNT_BITS _u(0x0000001f)
+#define PIO_SM2_SHIFTCTRL_IN_COUNT_MSB _u(4)
+#define PIO_SM2_SHIFTCTRL_IN_COUNT_LSB _u(0)
+#define PIO_SM2_SHIFTCTRL_IN_COUNT_ACCESS "RW"
+#define PIO_SM2_ADDR_OFFSET _u(0x00000104)
+#define PIO_SM2_ADDR_BITS _u(0x0000001f)
+#define PIO_SM2_ADDR_RESET _u(0x00000000)
+#define PIO_SM2_ADDR_MSB _u(4)
+#define PIO_SM2_ADDR_LSB _u(0)
+#define PIO_SM2_ADDR_ACCESS "RO"
+#define PIO_SM2_INSTR_OFFSET _u(0x00000108)
+#define PIO_SM2_INSTR_BITS _u(0x0000ffff)
+#define PIO_SM2_INSTR_RESET "-"
+#define PIO_SM2_INSTR_MSB _u(15)
+#define PIO_SM2_INSTR_LSB _u(0)
+#define PIO_SM2_INSTR_ACCESS "RW"
+#define PIO_SM2_PINCTRL_OFFSET _u(0x0000010c)
+#define PIO_SM2_PINCTRL_BITS _u(0xffffffff)
+#define PIO_SM2_PINCTRL_RESET _u(0x14000000)
+#define PIO_SM2_PINCTRL_SIDESET_COUNT_RESET _u(0x0)
+#define PIO_SM2_PINCTRL_SIDESET_COUNT_BITS _u(0xe0000000)
+#define PIO_SM2_PINCTRL_SIDESET_COUNT_MSB _u(31)
+#define PIO_SM2_PINCTRL_SIDESET_COUNT_LSB _u(29)
+#define PIO_SM2_PINCTRL_SIDESET_COUNT_ACCESS "RW"
+#define PIO_SM2_PINCTRL_SET_COUNT_RESET _u(0x5)
+#define PIO_SM2_PINCTRL_SET_COUNT_BITS _u(0x1c000000)
+#define PIO_SM2_PINCTRL_SET_COUNT_MSB _u(28)
+#define PIO_SM2_PINCTRL_SET_COUNT_LSB _u(26)
+#define PIO_SM2_PINCTRL_SET_COUNT_ACCESS "RW"
+#define PIO_SM2_PINCTRL_OUT_COUNT_RESET _u(0x00)
+#define PIO_SM2_PINCTRL_OUT_COUNT_BITS _u(0x03f00000)
+#define PIO_SM2_PINCTRL_OUT_COUNT_MSB _u(25)
+#define PIO_SM2_PINCTRL_OUT_COUNT_LSB _u(20)
+#define PIO_SM2_PINCTRL_OUT_COUNT_ACCESS "RW"
+#define PIO_SM2_PINCTRL_IN_BASE_RESET _u(0x00)
+#define PIO_SM2_PINCTRL_IN_BASE_BITS _u(0x000f8000)
+#define PIO_SM2_PINCTRL_IN_BASE_MSB _u(19)
+#define PIO_SM2_PINCTRL_IN_BASE_LSB _u(15)
+#define PIO_SM2_PINCTRL_IN_BASE_ACCESS "RW"
+#define PIO_SM2_PINCTRL_SIDESET_BASE_RESET _u(0x00)
+#define PIO_SM2_PINCTRL_SIDESET_BASE_BITS _u(0x00007c00)
+#define PIO_SM2_PINCTRL_SIDESET_BASE_MSB _u(14)
+#define PIO_SM2_PINCTRL_SIDESET_BASE_LSB _u(10)
+#define PIO_SM2_PINCTRL_SIDESET_BASE_ACCESS "RW"
+#define PIO_SM2_PINCTRL_SET_BASE_RESET _u(0x00)
+#define PIO_SM2_PINCTRL_SET_BASE_BITS _u(0x000003e0)
+#define PIO_SM2_PINCTRL_SET_BASE_MSB _u(9)
+#define PIO_SM2_PINCTRL_SET_BASE_LSB _u(5)
+#define PIO_SM2_PINCTRL_SET_BASE_ACCESS "RW"
+#define PIO_SM2_PINCTRL_OUT_BASE_RESET _u(0x00)
+#define PIO_SM2_PINCTRL_OUT_BASE_BITS _u(0x0000001f)
+#define PIO_SM2_PINCTRL_OUT_BASE_MSB _u(4)
+#define PIO_SM2_PINCTRL_OUT_BASE_LSB _u(0)
+#define PIO_SM2_PINCTRL_OUT_BASE_ACCESS "RW"
+#define PIO_SM3_CLKDIV_OFFSET _u(0x00000110)
+#define PIO_SM3_CLKDIV_BITS _u(0xffffff00)
+#define PIO_SM3_CLKDIV_RESET _u(0x00010000)
+#define PIO_SM3_CLKDIV_INT_RESET _u(0x0001)
+#define PIO_SM3_CLKDIV_INT_BITS _u(0xffff0000)
+#define PIO_SM3_CLKDIV_INT_MSB _u(31)
+#define PIO_SM3_CLKDIV_INT_LSB _u(16)
+#define PIO_SM3_CLKDIV_INT_ACCESS "RW"
+#define PIO_SM3_CLKDIV_FRAC_RESET _u(0x00)
+#define PIO_SM3_CLKDIV_FRAC_BITS _u(0x0000ff00)
+#define PIO_SM3_CLKDIV_FRAC_MSB _u(15)
+#define PIO_SM3_CLKDIV_FRAC_LSB _u(8)
+#define PIO_SM3_CLKDIV_FRAC_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_OFFSET _u(0x00000114)
+#define PIO_SM3_EXECCTRL_BITS _u(0xffffffff)
+#define PIO_SM3_EXECCTRL_RESET _u(0x0001f000)
+#define PIO_SM3_EXECCTRL_EXEC_STALLED_RESET _u(0x0)
+#define PIO_SM3_EXECCTRL_EXEC_STALLED_BITS _u(0x80000000)
+#define PIO_SM3_EXECCTRL_EXEC_STALLED_MSB _u(31)
+#define PIO_SM3_EXECCTRL_EXEC_STALLED_LSB _u(31)
+#define PIO_SM3_EXECCTRL_EXEC_STALLED_ACCESS "RO"
+#define PIO_SM3_EXECCTRL_SIDE_EN_RESET _u(0x0)
+#define PIO_SM3_EXECCTRL_SIDE_EN_BITS _u(0x40000000)
+#define PIO_SM3_EXECCTRL_SIDE_EN_MSB _u(30)
+#define PIO_SM3_EXECCTRL_SIDE_EN_LSB _u(30)
+#define PIO_SM3_EXECCTRL_SIDE_EN_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_SIDE_PINDIR_RESET _u(0x0)
+#define PIO_SM3_EXECCTRL_SIDE_PINDIR_BITS _u(0x20000000)
+#define PIO_SM3_EXECCTRL_SIDE_PINDIR_MSB _u(29)
+#define PIO_SM3_EXECCTRL_SIDE_PINDIR_LSB _u(29)
+#define PIO_SM3_EXECCTRL_SIDE_PINDIR_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_JMP_PIN_RESET _u(0x00)
+#define PIO_SM3_EXECCTRL_JMP_PIN_BITS _u(0x1f000000)
+#define PIO_SM3_EXECCTRL_JMP_PIN_MSB _u(28)
+#define PIO_SM3_EXECCTRL_JMP_PIN_LSB _u(24)
+#define PIO_SM3_EXECCTRL_JMP_PIN_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_OUT_EN_SEL_RESET _u(0x00)
+#define PIO_SM3_EXECCTRL_OUT_EN_SEL_BITS _u(0x00f80000)
+#define PIO_SM3_EXECCTRL_OUT_EN_SEL_MSB _u(23)
+#define PIO_SM3_EXECCTRL_OUT_EN_SEL_LSB _u(19)
+#define PIO_SM3_EXECCTRL_OUT_EN_SEL_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_INLINE_OUT_EN_RESET _u(0x0)
+#define PIO_SM3_EXECCTRL_INLINE_OUT_EN_BITS _u(0x00040000)
+#define PIO_SM3_EXECCTRL_INLINE_OUT_EN_MSB _u(18)
+#define PIO_SM3_EXECCTRL_INLINE_OUT_EN_LSB _u(18)
+#define PIO_SM3_EXECCTRL_INLINE_OUT_EN_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_OUT_STICKY_RESET _u(0x0)
+#define PIO_SM3_EXECCTRL_OUT_STICKY_BITS _u(0x00020000)
+#define PIO_SM3_EXECCTRL_OUT_STICKY_MSB _u(17)
+#define PIO_SM3_EXECCTRL_OUT_STICKY_LSB _u(17)
+#define PIO_SM3_EXECCTRL_OUT_STICKY_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_WRAP_TOP_RESET _u(0x1f)
+#define PIO_SM3_EXECCTRL_WRAP_TOP_BITS _u(0x0001f000)
+#define PIO_SM3_EXECCTRL_WRAP_TOP_MSB _u(16)
+#define PIO_SM3_EXECCTRL_WRAP_TOP_LSB _u(12)
+#define PIO_SM3_EXECCTRL_WRAP_TOP_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_WRAP_BOTTOM_RESET _u(0x00)
+#define PIO_SM3_EXECCTRL_WRAP_BOTTOM_BITS _u(0x00000f80)
+#define PIO_SM3_EXECCTRL_WRAP_BOTTOM_MSB _u(11)
+#define PIO_SM3_EXECCTRL_WRAP_BOTTOM_LSB _u(7)
+#define PIO_SM3_EXECCTRL_WRAP_BOTTOM_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_STATUS_SEL_RESET _u(0x0)
+#define PIO_SM3_EXECCTRL_STATUS_SEL_BITS _u(0x00000060)
+#define PIO_SM3_EXECCTRL_STATUS_SEL_MSB _u(6)
+#define PIO_SM3_EXECCTRL_STATUS_SEL_LSB _u(5)
+#define PIO_SM3_EXECCTRL_STATUS_SEL_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_STATUS_SEL_VALUE_TXLEVEL _u(0x0)
+#define PIO_SM3_EXECCTRL_STATUS_SEL_VALUE_RXLEVEL _u(0x1)
+#define PIO_SM3_EXECCTRL_STATUS_SEL_VALUE_IRQ _u(0x2)
+#define PIO_SM3_EXECCTRL_STATUS_N_RESET _u(0x00)
+#define PIO_SM3_EXECCTRL_STATUS_N_BITS _u(0x0000001f)
+#define PIO_SM3_EXECCTRL_STATUS_N_MSB _u(4)
+#define PIO_SM3_EXECCTRL_STATUS_N_LSB _u(0)
+#define PIO_SM3_EXECCTRL_STATUS_N_ACCESS "RW"
+#define PIO_SM3_EXECCTRL_STATUS_N_VALUE_IRQ _u(0x00)
+#define PIO_SM3_EXECCTRL_STATUS_N_VALUE_IRQ_PREVPIO _u(0x08)
+#define PIO_SM3_EXECCTRL_STATUS_N_VALUE_IRQ_NEXTPIO _u(0x10)
+#define PIO_SM3_SHIFTCTRL_OFFSET _u(0x00000118)
+#define PIO_SM3_SHIFTCTRL_BITS _u(0xffffc01f)
+#define PIO_SM3_SHIFTCTRL_RESET _u(0x000c0000)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_RESET _u(0x0)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_BITS _u(0x80000000)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_MSB _u(31)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_LSB _u(31)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_FJOIN_TX_RESET _u(0x0)
+#define PIO_SM3_SHIFTCTRL_FJOIN_TX_BITS _u(0x40000000)
+#define PIO_SM3_SHIFTCTRL_FJOIN_TX_MSB _u(30)
+#define PIO_SM3_SHIFTCTRL_FJOIN_TX_LSB _u(30)
+#define PIO_SM3_SHIFTCTRL_FJOIN_TX_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_PULL_THRESH_RESET _u(0x00)
+#define PIO_SM3_SHIFTCTRL_PULL_THRESH_BITS _u(0x3e000000)
+#define PIO_SM3_SHIFTCTRL_PULL_THRESH_MSB _u(29)
+#define PIO_SM3_SHIFTCTRL_PULL_THRESH_LSB _u(25)
+#define PIO_SM3_SHIFTCTRL_PULL_THRESH_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_PUSH_THRESH_RESET _u(0x00)
+#define PIO_SM3_SHIFTCTRL_PUSH_THRESH_BITS _u(0x01f00000)
+#define PIO_SM3_SHIFTCTRL_PUSH_THRESH_MSB _u(24)
+#define PIO_SM3_SHIFTCTRL_PUSH_THRESH_LSB _u(20)
+#define PIO_SM3_SHIFTCTRL_PUSH_THRESH_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_OUT_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM3_SHIFTCTRL_OUT_SHIFTDIR_BITS _u(0x00080000)
+#define PIO_SM3_SHIFTCTRL_OUT_SHIFTDIR_MSB _u(19)
+#define PIO_SM3_SHIFTCTRL_OUT_SHIFTDIR_LSB _u(19)
+#define PIO_SM3_SHIFTCTRL_OUT_SHIFTDIR_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_IN_SHIFTDIR_RESET _u(0x1)
+#define PIO_SM3_SHIFTCTRL_IN_SHIFTDIR_BITS _u(0x00040000)
+#define PIO_SM3_SHIFTCTRL_IN_SHIFTDIR_MSB _u(18)
+#define PIO_SM3_SHIFTCTRL_IN_SHIFTDIR_LSB _u(18)
+#define PIO_SM3_SHIFTCTRL_IN_SHIFTDIR_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_AUTOPULL_RESET _u(0x0)
+#define PIO_SM3_SHIFTCTRL_AUTOPULL_BITS _u(0x00020000)
+#define PIO_SM3_SHIFTCTRL_AUTOPULL_MSB _u(17)
+#define PIO_SM3_SHIFTCTRL_AUTOPULL_LSB _u(17)
+#define PIO_SM3_SHIFTCTRL_AUTOPULL_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_AUTOPUSH_RESET _u(0x0)
+#define PIO_SM3_SHIFTCTRL_AUTOPUSH_BITS _u(0x00010000)
+#define PIO_SM3_SHIFTCTRL_AUTOPUSH_MSB _u(16)
+#define PIO_SM3_SHIFTCTRL_AUTOPUSH_LSB _u(16)
+#define PIO_SM3_SHIFTCTRL_AUTOPUSH_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_PUT_RESET _u(0x0)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_PUT_BITS _u(0x00008000)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_PUT_MSB _u(15)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_PUT_LSB _u(15)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_PUT_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_GET_RESET _u(0x0)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_GET_BITS _u(0x00004000)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_GET_MSB _u(14)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_GET_LSB _u(14)
+#define PIO_SM3_SHIFTCTRL_FJOIN_RX_GET_ACCESS "RW"
+#define PIO_SM3_SHIFTCTRL_IN_COUNT_RESET _u(0x00)
+#define PIO_SM3_SHIFTCTRL_IN_COUNT_BITS _u(0x0000001f)
+#define PIO_SM3_SHIFTCTRL_IN_COUNT_MSB _u(4)
+#define PIO_SM3_SHIFTCTRL_IN_COUNT_LSB _u(0)
+#define PIO_SM3_SHIFTCTRL_IN_COUNT_ACCESS "RW"
+#define PIO_SM3_ADDR_OFFSET _u(0x0000011c)
+#define PIO_SM3_ADDR_BITS _u(0x0000001f)
+#define PIO_SM3_ADDR_RESET _u(0x00000000)
+#define PIO_SM3_ADDR_MSB _u(4)
+#define PIO_SM3_ADDR_LSB _u(0)
+#define PIO_SM3_ADDR_ACCESS "RO"
+#define PIO_SM3_INSTR_OFFSET _u(0x00000120)
+#define PIO_SM3_INSTR_BITS _u(0x0000ffff)
+#define PIO_SM3_INSTR_RESET "-"
+#define PIO_SM3_INSTR_MSB _u(15)
+#define PIO_SM3_INSTR_LSB _u(0)
+#define PIO_SM3_INSTR_ACCESS "RW"
+#define PIO_SM3_PINCTRL_OFFSET _u(0x00000124)
+#define PIO_SM3_PINCTRL_BITS _u(0xffffffff)
+#define PIO_SM3_PINCTRL_RESET _u(0x14000000)
+#define PIO_SM3_PINCTRL_SIDESET_COUNT_RESET _u(0x0)
+#define PIO_SM3_PINCTRL_SIDESET_COUNT_BITS _u(0xe0000000)
+#define PIO_SM3_PINCTRL_SIDESET_COUNT_MSB _u(31)
+#define PIO_SM3_PINCTRL_SIDESET_COUNT_LSB _u(29)
+#define PIO_SM3_PINCTRL_SIDESET_COUNT_ACCESS "RW"
+#define PIO_SM3_PINCTRL_SET_COUNT_RESET _u(0x5)
+#define PIO_SM3_PINCTRL_SET_COUNT_BITS _u(0x1c000000)
+#define PIO_SM3_PINCTRL_SET_COUNT_MSB _u(28)
+#define PIO_SM3_PINCTRL_SET_COUNT_LSB _u(26)
+#define PIO_SM3_PINCTRL_SET_COUNT_ACCESS "RW"
+#define PIO_SM3_PINCTRL_OUT_COUNT_RESET _u(0x00)
+#define PIO_SM3_PINCTRL_OUT_COUNT_BITS _u(0x03f00000)
+#define PIO_SM3_PINCTRL_OUT_COUNT_MSB _u(25)
+#define PIO_SM3_PINCTRL_OUT_COUNT_LSB _u(20)
+#define PIO_SM3_PINCTRL_OUT_COUNT_ACCESS "RW"
+#define PIO_SM3_PINCTRL_IN_BASE_RESET _u(0x00)
+#define PIO_SM3_PINCTRL_IN_BASE_BITS _u(0x000f8000)
+#define PIO_SM3_PINCTRL_IN_BASE_MSB _u(19)
+#define PIO_SM3_PINCTRL_IN_BASE_LSB _u(15)
+#define PIO_SM3_PINCTRL_IN_BASE_ACCESS "RW"
+#define PIO_SM3_PINCTRL_SIDESET_BASE_RESET _u(0x00)
+#define PIO_SM3_PINCTRL_SIDESET_BASE_BITS _u(0x00007c00)
+#define PIO_SM3_PINCTRL_SIDESET_BASE_MSB _u(14)
+#define PIO_SM3_PINCTRL_SIDESET_BASE_LSB _u(10)
+#define PIO_SM3_PINCTRL_SIDESET_BASE_ACCESS "RW"
+#define PIO_SM3_PINCTRL_SET_BASE_RESET _u(0x00)
+#define PIO_SM3_PINCTRL_SET_BASE_BITS _u(0x000003e0)
+#define PIO_SM3_PINCTRL_SET_BASE_MSB _u(9)
+#define PIO_SM3_PINCTRL_SET_BASE_LSB _u(5)
+#define PIO_SM3_PINCTRL_SET_BASE_ACCESS "RW"
+#define PIO_SM3_PINCTRL_OUT_BASE_RESET _u(0x00)
+#define PIO_SM3_PINCTRL_OUT_BASE_BITS _u(0x0000001f)
+#define PIO_SM3_PINCTRL_OUT_BASE_MSB _u(4)
+#define PIO_SM3_PINCTRL_OUT_BASE_LSB _u(0)
+#define PIO_SM3_PINCTRL_OUT_BASE_ACCESS "RW"
+#define PIO_RXF0_PUTGET0_OFFSET _u(0x00000128)
+#define PIO_RXF0_PUTGET0_BITS _u(0xffffffff)
+#define PIO_RXF0_PUTGET0_RESET _u(0x00000000)
+#define PIO_RXF0_PUTGET0_MSB _u(31)
+#define PIO_RXF0_PUTGET0_LSB _u(0)
+#define PIO_RXF0_PUTGET0_ACCESS "RW"
+#define PIO_RXF0_PUTGET1_OFFSET _u(0x0000012c)
+#define PIO_RXF0_PUTGET1_BITS _u(0xffffffff)
+#define PIO_RXF0_PUTGET1_RESET _u(0x00000000)
+#define PIO_RXF0_PUTGET1_MSB _u(31)
+#define PIO_RXF0_PUTGET1_LSB _u(0)
+#define PIO_RXF0_PUTGET1_ACCESS "RW"
+#define PIO_RXF0_PUTGET2_OFFSET _u(0x00000130)
+#define PIO_RXF0_PUTGET2_BITS _u(0xffffffff)
+#define PIO_RXF0_PUTGET2_RESET _u(0x00000000)
+#define PIO_RXF0_PUTGET2_MSB _u(31)
+#define PIO_RXF0_PUTGET2_LSB _u(0)
+#define PIO_RXF0_PUTGET2_ACCESS "RW"
+#define PIO_RXF0_PUTGET3_OFFSET _u(0x00000134)
+#define PIO_RXF0_PUTGET3_BITS _u(0xffffffff)
+#define PIO_RXF0_PUTGET3_RESET _u(0x00000000)
+#define PIO_RXF0_PUTGET3_MSB _u(31)
+#define PIO_RXF0_PUTGET3_LSB _u(0)
+#define PIO_RXF0_PUTGET3_ACCESS "RW"
+#define PIO_RXF1_PUTGET0_OFFSET _u(0x00000138)
+#define PIO_RXF1_PUTGET0_BITS _u(0xffffffff)
+#define PIO_RXF1_PUTGET0_RESET _u(0x00000000)
+#define PIO_RXF1_PUTGET0_MSB _u(31)
+#define PIO_RXF1_PUTGET0_LSB _u(0)
+#define PIO_RXF1_PUTGET0_ACCESS "RW"
+#define PIO_RXF1_PUTGET1_OFFSET _u(0x0000013c)
+#define PIO_RXF1_PUTGET1_BITS _u(0xffffffff)
+#define PIO_RXF1_PUTGET1_RESET _u(0x00000000)
+#define PIO_RXF1_PUTGET1_MSB _u(31)
+#define PIO_RXF1_PUTGET1_LSB _u(0)
+#define PIO_RXF1_PUTGET1_ACCESS "RW"
+#define PIO_RXF1_PUTGET2_OFFSET _u(0x00000140)
+#define PIO_RXF1_PUTGET2_BITS _u(0xffffffff)
+#define PIO_RXF1_PUTGET2_RESET _u(0x00000000)
+#define PIO_RXF1_PUTGET2_MSB _u(31)
+#define PIO_RXF1_PUTGET2_LSB _u(0)
+#define PIO_RXF1_PUTGET2_ACCESS "RW"
+#define PIO_RXF1_PUTGET3_OFFSET _u(0x00000144)
+#define PIO_RXF1_PUTGET3_BITS _u(0xffffffff)
+#define PIO_RXF1_PUTGET3_RESET _u(0x00000000)
+#define PIO_RXF1_PUTGET3_MSB _u(31)
+#define PIO_RXF1_PUTGET3_LSB _u(0)
+#define PIO_RXF1_PUTGET3_ACCESS "RW"
+#define PIO_RXF2_PUTGET0_OFFSET _u(0x00000148)
+#define PIO_RXF2_PUTGET0_BITS _u(0xffffffff)
+#define PIO_RXF2_PUTGET0_RESET _u(0x00000000)
+#define PIO_RXF2_PUTGET0_MSB _u(31)
+#define PIO_RXF2_PUTGET0_LSB _u(0)
+#define PIO_RXF2_PUTGET0_ACCESS "RW"
+#define PIO_RXF2_PUTGET1_OFFSET _u(0x0000014c)
+#define PIO_RXF2_PUTGET1_BITS _u(0xffffffff)
+#define PIO_RXF2_PUTGET1_RESET _u(0x00000000)
+#define PIO_RXF2_PUTGET1_MSB _u(31)
+#define PIO_RXF2_PUTGET1_LSB _u(0)
+#define PIO_RXF2_PUTGET1_ACCESS "RW"
+#define PIO_RXF2_PUTGET2_OFFSET _u(0x00000150)
+#define PIO_RXF2_PUTGET2_BITS _u(0xffffffff)
+#define PIO_RXF2_PUTGET2_RESET _u(0x00000000)
+#define PIO_RXF2_PUTGET2_MSB _u(31)
+#define PIO_RXF2_PUTGET2_LSB _u(0)
+#define PIO_RXF2_PUTGET2_ACCESS "RW"
+#define PIO_RXF2_PUTGET3_OFFSET _u(0x00000154)
+#define PIO_RXF2_PUTGET3_BITS _u(0xffffffff)
+#define PIO_RXF2_PUTGET3_RESET _u(0x00000000)
+#define PIO_RXF2_PUTGET3_MSB _u(31)
+#define PIO_RXF2_PUTGET3_LSB _u(0)
+#define PIO_RXF2_PUTGET3_ACCESS "RW"
+#define PIO_RXF3_PUTGET0_OFFSET _u(0x00000158)
+#define PIO_RXF3_PUTGET0_BITS _u(0xffffffff)
+#define PIO_RXF3_PUTGET0_RESET _u(0x00000000)
+#define PIO_RXF3_PUTGET0_MSB _u(31)
+#define PIO_RXF3_PUTGET0_LSB _u(0)
+#define PIO_RXF3_PUTGET0_ACCESS "RW"
+#define PIO_RXF3_PUTGET1_OFFSET _u(0x0000015c)
+#define PIO_RXF3_PUTGET1_BITS _u(0xffffffff)
+#define PIO_RXF3_PUTGET1_RESET _u(0x00000000)
+#define PIO_RXF3_PUTGET1_MSB _u(31)
+#define PIO_RXF3_PUTGET1_LSB _u(0)
+#define PIO_RXF3_PUTGET1_ACCESS "RW"
+#define PIO_RXF3_PUTGET2_OFFSET _u(0x00000160)
+#define PIO_RXF3_PUTGET2_BITS _u(0xffffffff)
+#define PIO_RXF3_PUTGET2_RESET _u(0x00000000)
+#define PIO_RXF3_PUTGET2_MSB _u(31)
+#define PIO_RXF3_PUTGET2_LSB _u(0)
+#define PIO_RXF3_PUTGET2_ACCESS "RW"
+#define PIO_RXF3_PUTGET3_OFFSET _u(0x00000164)
+#define PIO_RXF3_PUTGET3_BITS _u(0xffffffff)
+#define PIO_RXF3_PUTGET3_RESET _u(0x00000000)
+#define PIO_RXF3_PUTGET3_MSB _u(31)
+#define PIO_RXF3_PUTGET3_LSB _u(0)
+#define PIO_RXF3_PUTGET3_ACCESS "RW"
+#define PIO_GPIOBASE_OFFSET _u(0x00000168)
+#define PIO_GPIOBASE_BITS _u(0x00000010)
+#define PIO_GPIOBASE_RESET _u(0x00000000)
+#define PIO_GPIOBASE_MSB _u(4)
+#define PIO_GPIOBASE_LSB _u(4)
+#define PIO_GPIOBASE_ACCESS "RW"
+#define PIO_INTR_OFFSET _u(0x0000016c)
+#define PIO_INTR_BITS _u(0x0000ffff)
+#define PIO_INTR_RESET _u(0x00000000)
+#define PIO_INTR_SM7_RESET _u(0x0)
+#define PIO_INTR_SM7_BITS _u(0x00008000)
+#define PIO_INTR_SM7_MSB _u(15)
+#define PIO_INTR_SM7_LSB _u(15)
+#define PIO_INTR_SM7_ACCESS "RO"
+#define PIO_INTR_SM6_RESET _u(0x0)
+#define PIO_INTR_SM6_BITS _u(0x00004000)
+#define PIO_INTR_SM6_MSB _u(14)
+#define PIO_INTR_SM6_LSB _u(14)
+#define PIO_INTR_SM6_ACCESS "RO"
+#define PIO_INTR_SM5_RESET _u(0x0)
+#define PIO_INTR_SM5_BITS _u(0x00002000)
+#define PIO_INTR_SM5_MSB _u(13)
+#define PIO_INTR_SM5_LSB _u(13)
+#define PIO_INTR_SM5_ACCESS "RO"
+#define PIO_INTR_SM4_RESET _u(0x0)
+#define PIO_INTR_SM4_BITS _u(0x00001000)
+#define PIO_INTR_SM4_MSB _u(12)
+#define PIO_INTR_SM4_LSB _u(12)
+#define PIO_INTR_SM4_ACCESS "RO"
+#define PIO_INTR_SM3_RESET _u(0x0)
+#define PIO_INTR_SM3_BITS _u(0x00000800)
+#define PIO_INTR_SM3_MSB _u(11)
+#define PIO_INTR_SM3_LSB _u(11)
+#define PIO_INTR_SM3_ACCESS "RO"
+#define PIO_INTR_SM2_RESET _u(0x0)
+#define PIO_INTR_SM2_BITS _u(0x00000400)
+#define PIO_INTR_SM2_MSB _u(10)
+#define PIO_INTR_SM2_LSB _u(10)
+#define PIO_INTR_SM2_ACCESS "RO"
+#define PIO_INTR_SM1_RESET _u(0x0)
+#define PIO_INTR_SM1_BITS _u(0x00000200)
+#define PIO_INTR_SM1_MSB _u(9)
+#define PIO_INTR_SM1_LSB _u(9)
+#define PIO_INTR_SM1_ACCESS "RO"
+#define PIO_INTR_SM0_RESET _u(0x0)
+#define PIO_INTR_SM0_BITS _u(0x00000100)
+#define PIO_INTR_SM0_MSB _u(8)
+#define PIO_INTR_SM0_LSB _u(8)
+#define PIO_INTR_SM0_ACCESS "RO"
+#define PIO_INTR_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_INTR_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_INTR_SM3_TXNFULL_MSB _u(7)
+#define PIO_INTR_SM3_TXNFULL_LSB _u(7)
+#define PIO_INTR_SM3_TXNFULL_ACCESS "RO"
+#define PIO_INTR_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_INTR_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_INTR_SM2_TXNFULL_MSB _u(6)
+#define PIO_INTR_SM2_TXNFULL_LSB _u(6)
+#define PIO_INTR_SM2_TXNFULL_ACCESS "RO"
+#define PIO_INTR_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_INTR_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_INTR_SM1_TXNFULL_MSB _u(5)
+#define PIO_INTR_SM1_TXNFULL_LSB _u(5)
+#define PIO_INTR_SM1_TXNFULL_ACCESS "RO"
+#define PIO_INTR_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_INTR_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_INTR_SM0_TXNFULL_MSB _u(4)
+#define PIO_INTR_SM0_TXNFULL_LSB _u(4)
+#define PIO_INTR_SM0_TXNFULL_ACCESS "RO"
+#define PIO_INTR_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_INTR_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_INTR_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_INTR_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_INTR_SM3_RXNEMPTY_ACCESS "RO"
+#define PIO_INTR_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_INTR_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_INTR_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_INTR_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_INTR_SM2_RXNEMPTY_ACCESS "RO"
+#define PIO_INTR_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_INTR_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_INTR_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_INTR_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_INTR_SM1_RXNEMPTY_ACCESS "RO"
+#define PIO_INTR_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_INTR_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_INTR_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_INTR_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_INTR_SM0_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ0_INTE_OFFSET _u(0x00000170)
+#define PIO_IRQ0_INTE_BITS _u(0x0000ffff)
+#define PIO_IRQ0_INTE_RESET _u(0x00000000)
+#define PIO_IRQ0_INTE_SM7_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM7_BITS _u(0x00008000)
+#define PIO_IRQ0_INTE_SM7_MSB _u(15)
+#define PIO_IRQ0_INTE_SM7_LSB _u(15)
+#define PIO_IRQ0_INTE_SM7_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM6_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM6_BITS _u(0x00004000)
+#define PIO_IRQ0_INTE_SM6_MSB _u(14)
+#define PIO_IRQ0_INTE_SM6_LSB _u(14)
+#define PIO_IRQ0_INTE_SM6_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM5_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM5_BITS _u(0x00002000)
+#define PIO_IRQ0_INTE_SM5_MSB _u(13)
+#define PIO_IRQ0_INTE_SM5_LSB _u(13)
+#define PIO_IRQ0_INTE_SM5_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM4_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM4_BITS _u(0x00001000)
+#define PIO_IRQ0_INTE_SM4_MSB _u(12)
+#define PIO_IRQ0_INTE_SM4_LSB _u(12)
+#define PIO_IRQ0_INTE_SM4_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM3_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM3_BITS _u(0x00000800)
+#define PIO_IRQ0_INTE_SM3_MSB _u(11)
+#define PIO_IRQ0_INTE_SM3_LSB _u(11)
+#define PIO_IRQ0_INTE_SM3_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM2_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM2_BITS _u(0x00000400)
+#define PIO_IRQ0_INTE_SM2_MSB _u(10)
+#define PIO_IRQ0_INTE_SM2_LSB _u(10)
+#define PIO_IRQ0_INTE_SM2_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM1_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM1_BITS _u(0x00000200)
+#define PIO_IRQ0_INTE_SM1_MSB _u(9)
+#define PIO_IRQ0_INTE_SM1_LSB _u(9)
+#define PIO_IRQ0_INTE_SM1_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM0_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM0_BITS _u(0x00000100)
+#define PIO_IRQ0_INTE_SM0_MSB _u(8)
+#define PIO_IRQ0_INTE_SM0_LSB _u(8)
+#define PIO_IRQ0_INTE_SM0_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_IRQ0_INTE_SM3_TXNFULL_MSB _u(7)
+#define PIO_IRQ0_INTE_SM3_TXNFULL_LSB _u(7)
+#define PIO_IRQ0_INTE_SM3_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_IRQ0_INTE_SM2_TXNFULL_MSB _u(6)
+#define PIO_IRQ0_INTE_SM2_TXNFULL_LSB _u(6)
+#define PIO_IRQ0_INTE_SM2_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_IRQ0_INTE_SM1_TXNFULL_MSB _u(5)
+#define PIO_IRQ0_INTE_SM1_TXNFULL_LSB _u(5)
+#define PIO_IRQ0_INTE_SM1_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_IRQ0_INTE_SM0_TXNFULL_MSB _u(4)
+#define PIO_IRQ0_INTE_SM0_TXNFULL_LSB _u(4)
+#define PIO_IRQ0_INTE_SM0_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_IRQ0_INTE_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_IRQ0_INTE_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_IRQ0_INTE_SM3_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_IRQ0_INTE_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_IRQ0_INTE_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_IRQ0_INTE_SM2_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_IRQ0_INTE_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_IRQ0_INTE_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_IRQ0_INTE_SM1_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTE_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTE_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_IRQ0_INTE_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_IRQ0_INTE_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_IRQ0_INTE_SM0_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTF_OFFSET _u(0x00000174)
+#define PIO_IRQ0_INTF_BITS _u(0x0000ffff)
+#define PIO_IRQ0_INTF_RESET _u(0x00000000)
+#define PIO_IRQ0_INTF_SM7_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM7_BITS _u(0x00008000)
+#define PIO_IRQ0_INTF_SM7_MSB _u(15)
+#define PIO_IRQ0_INTF_SM7_LSB _u(15)
+#define PIO_IRQ0_INTF_SM7_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM6_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM6_BITS _u(0x00004000)
+#define PIO_IRQ0_INTF_SM6_MSB _u(14)
+#define PIO_IRQ0_INTF_SM6_LSB _u(14)
+#define PIO_IRQ0_INTF_SM6_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM5_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM5_BITS _u(0x00002000)
+#define PIO_IRQ0_INTF_SM5_MSB _u(13)
+#define PIO_IRQ0_INTF_SM5_LSB _u(13)
+#define PIO_IRQ0_INTF_SM5_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM4_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM4_BITS _u(0x00001000)
+#define PIO_IRQ0_INTF_SM4_MSB _u(12)
+#define PIO_IRQ0_INTF_SM4_LSB _u(12)
+#define PIO_IRQ0_INTF_SM4_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM3_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM3_BITS _u(0x00000800)
+#define PIO_IRQ0_INTF_SM3_MSB _u(11)
+#define PIO_IRQ0_INTF_SM3_LSB _u(11)
+#define PIO_IRQ0_INTF_SM3_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM2_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM2_BITS _u(0x00000400)
+#define PIO_IRQ0_INTF_SM2_MSB _u(10)
+#define PIO_IRQ0_INTF_SM2_LSB _u(10)
+#define PIO_IRQ0_INTF_SM2_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM1_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM1_BITS _u(0x00000200)
+#define PIO_IRQ0_INTF_SM1_MSB _u(9)
+#define PIO_IRQ0_INTF_SM1_LSB _u(9)
+#define PIO_IRQ0_INTF_SM1_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM0_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM0_BITS _u(0x00000100)
+#define PIO_IRQ0_INTF_SM0_MSB _u(8)
+#define PIO_IRQ0_INTF_SM0_LSB _u(8)
+#define PIO_IRQ0_INTF_SM0_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_IRQ0_INTF_SM3_TXNFULL_MSB _u(7)
+#define PIO_IRQ0_INTF_SM3_TXNFULL_LSB _u(7)
+#define PIO_IRQ0_INTF_SM3_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_IRQ0_INTF_SM2_TXNFULL_MSB _u(6)
+#define PIO_IRQ0_INTF_SM2_TXNFULL_LSB _u(6)
+#define PIO_IRQ0_INTF_SM2_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_IRQ0_INTF_SM1_TXNFULL_MSB _u(5)
+#define PIO_IRQ0_INTF_SM1_TXNFULL_LSB _u(5)
+#define PIO_IRQ0_INTF_SM1_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_IRQ0_INTF_SM0_TXNFULL_MSB _u(4)
+#define PIO_IRQ0_INTF_SM0_TXNFULL_LSB _u(4)
+#define PIO_IRQ0_INTF_SM0_TXNFULL_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_IRQ0_INTF_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_IRQ0_INTF_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_IRQ0_INTF_SM3_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_IRQ0_INTF_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_IRQ0_INTF_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_IRQ0_INTF_SM2_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_IRQ0_INTF_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_IRQ0_INTF_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_IRQ0_INTF_SM1_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTF_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTF_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_IRQ0_INTF_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_IRQ0_INTF_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_IRQ0_INTF_SM0_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ0_INTS_OFFSET _u(0x00000178)
+#define PIO_IRQ0_INTS_BITS _u(0x0000ffff)
+#define PIO_IRQ0_INTS_RESET _u(0x00000000)
+#define PIO_IRQ0_INTS_SM7_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM7_BITS _u(0x00008000)
+#define PIO_IRQ0_INTS_SM7_MSB _u(15)
+#define PIO_IRQ0_INTS_SM7_LSB _u(15)
+#define PIO_IRQ0_INTS_SM7_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM6_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM6_BITS _u(0x00004000)
+#define PIO_IRQ0_INTS_SM6_MSB _u(14)
+#define PIO_IRQ0_INTS_SM6_LSB _u(14)
+#define PIO_IRQ0_INTS_SM6_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM5_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM5_BITS _u(0x00002000)
+#define PIO_IRQ0_INTS_SM5_MSB _u(13)
+#define PIO_IRQ0_INTS_SM5_LSB _u(13)
+#define PIO_IRQ0_INTS_SM5_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM4_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM4_BITS _u(0x00001000)
+#define PIO_IRQ0_INTS_SM4_MSB _u(12)
+#define PIO_IRQ0_INTS_SM4_LSB _u(12)
+#define PIO_IRQ0_INTS_SM4_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM3_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM3_BITS _u(0x00000800)
+#define PIO_IRQ0_INTS_SM3_MSB _u(11)
+#define PIO_IRQ0_INTS_SM3_LSB _u(11)
+#define PIO_IRQ0_INTS_SM3_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM2_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM2_BITS _u(0x00000400)
+#define PIO_IRQ0_INTS_SM2_MSB _u(10)
+#define PIO_IRQ0_INTS_SM2_LSB _u(10)
+#define PIO_IRQ0_INTS_SM2_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM1_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM1_BITS _u(0x00000200)
+#define PIO_IRQ0_INTS_SM1_MSB _u(9)
+#define PIO_IRQ0_INTS_SM1_LSB _u(9)
+#define PIO_IRQ0_INTS_SM1_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM0_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM0_BITS _u(0x00000100)
+#define PIO_IRQ0_INTS_SM0_MSB _u(8)
+#define PIO_IRQ0_INTS_SM0_LSB _u(8)
+#define PIO_IRQ0_INTS_SM0_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_IRQ0_INTS_SM3_TXNFULL_MSB _u(7)
+#define PIO_IRQ0_INTS_SM3_TXNFULL_LSB _u(7)
+#define PIO_IRQ0_INTS_SM3_TXNFULL_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_IRQ0_INTS_SM2_TXNFULL_MSB _u(6)
+#define PIO_IRQ0_INTS_SM2_TXNFULL_LSB _u(6)
+#define PIO_IRQ0_INTS_SM2_TXNFULL_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_IRQ0_INTS_SM1_TXNFULL_MSB _u(5)
+#define PIO_IRQ0_INTS_SM1_TXNFULL_LSB _u(5)
+#define PIO_IRQ0_INTS_SM1_TXNFULL_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_IRQ0_INTS_SM0_TXNFULL_MSB _u(4)
+#define PIO_IRQ0_INTS_SM0_TXNFULL_LSB _u(4)
+#define PIO_IRQ0_INTS_SM0_TXNFULL_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_IRQ0_INTS_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_IRQ0_INTS_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_IRQ0_INTS_SM3_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_IRQ0_INTS_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_IRQ0_INTS_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_IRQ0_INTS_SM2_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_IRQ0_INTS_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_IRQ0_INTS_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_IRQ0_INTS_SM1_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ0_INTS_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ0_INTS_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_IRQ0_INTS_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_IRQ0_INTS_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_IRQ0_INTS_SM0_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ1_INTE_OFFSET _u(0x0000017c)
+#define PIO_IRQ1_INTE_BITS _u(0x0000ffff)
+#define PIO_IRQ1_INTE_RESET _u(0x00000000)
+#define PIO_IRQ1_INTE_SM7_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM7_BITS _u(0x00008000)
+#define PIO_IRQ1_INTE_SM7_MSB _u(15)
+#define PIO_IRQ1_INTE_SM7_LSB _u(15)
+#define PIO_IRQ1_INTE_SM7_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM6_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM6_BITS _u(0x00004000)
+#define PIO_IRQ1_INTE_SM6_MSB _u(14)
+#define PIO_IRQ1_INTE_SM6_LSB _u(14)
+#define PIO_IRQ1_INTE_SM6_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM5_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM5_BITS _u(0x00002000)
+#define PIO_IRQ1_INTE_SM5_MSB _u(13)
+#define PIO_IRQ1_INTE_SM5_LSB _u(13)
+#define PIO_IRQ1_INTE_SM5_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM4_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM4_BITS _u(0x00001000)
+#define PIO_IRQ1_INTE_SM4_MSB _u(12)
+#define PIO_IRQ1_INTE_SM4_LSB _u(12)
+#define PIO_IRQ1_INTE_SM4_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM3_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM3_BITS _u(0x00000800)
+#define PIO_IRQ1_INTE_SM3_MSB _u(11)
+#define PIO_IRQ1_INTE_SM3_LSB _u(11)
+#define PIO_IRQ1_INTE_SM3_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM2_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM2_BITS _u(0x00000400)
+#define PIO_IRQ1_INTE_SM2_MSB _u(10)
+#define PIO_IRQ1_INTE_SM2_LSB _u(10)
+#define PIO_IRQ1_INTE_SM2_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM1_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM1_BITS _u(0x00000200)
+#define PIO_IRQ1_INTE_SM1_MSB _u(9)
+#define PIO_IRQ1_INTE_SM1_LSB _u(9)
+#define PIO_IRQ1_INTE_SM1_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM0_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM0_BITS _u(0x00000100)
+#define PIO_IRQ1_INTE_SM0_MSB _u(8)
+#define PIO_IRQ1_INTE_SM0_LSB _u(8)
+#define PIO_IRQ1_INTE_SM0_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_IRQ1_INTE_SM3_TXNFULL_MSB _u(7)
+#define PIO_IRQ1_INTE_SM3_TXNFULL_LSB _u(7)
+#define PIO_IRQ1_INTE_SM3_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_IRQ1_INTE_SM2_TXNFULL_MSB _u(6)
+#define PIO_IRQ1_INTE_SM2_TXNFULL_LSB _u(6)
+#define PIO_IRQ1_INTE_SM2_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_IRQ1_INTE_SM1_TXNFULL_MSB _u(5)
+#define PIO_IRQ1_INTE_SM1_TXNFULL_LSB _u(5)
+#define PIO_IRQ1_INTE_SM1_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_IRQ1_INTE_SM0_TXNFULL_MSB _u(4)
+#define PIO_IRQ1_INTE_SM0_TXNFULL_LSB _u(4)
+#define PIO_IRQ1_INTE_SM0_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_IRQ1_INTE_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_IRQ1_INTE_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_IRQ1_INTE_SM3_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_IRQ1_INTE_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_IRQ1_INTE_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_IRQ1_INTE_SM2_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_IRQ1_INTE_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_IRQ1_INTE_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_IRQ1_INTE_SM1_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTE_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTE_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_IRQ1_INTE_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_IRQ1_INTE_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_IRQ1_INTE_SM0_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTF_OFFSET _u(0x00000180)
+#define PIO_IRQ1_INTF_BITS _u(0x0000ffff)
+#define PIO_IRQ1_INTF_RESET _u(0x00000000)
+#define PIO_IRQ1_INTF_SM7_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM7_BITS _u(0x00008000)
+#define PIO_IRQ1_INTF_SM7_MSB _u(15)
+#define PIO_IRQ1_INTF_SM7_LSB _u(15)
+#define PIO_IRQ1_INTF_SM7_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM6_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM6_BITS _u(0x00004000)
+#define PIO_IRQ1_INTF_SM6_MSB _u(14)
+#define PIO_IRQ1_INTF_SM6_LSB _u(14)
+#define PIO_IRQ1_INTF_SM6_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM5_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM5_BITS _u(0x00002000)
+#define PIO_IRQ1_INTF_SM5_MSB _u(13)
+#define PIO_IRQ1_INTF_SM5_LSB _u(13)
+#define PIO_IRQ1_INTF_SM5_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM4_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM4_BITS _u(0x00001000)
+#define PIO_IRQ1_INTF_SM4_MSB _u(12)
+#define PIO_IRQ1_INTF_SM4_LSB _u(12)
+#define PIO_IRQ1_INTF_SM4_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM3_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM3_BITS _u(0x00000800)
+#define PIO_IRQ1_INTF_SM3_MSB _u(11)
+#define PIO_IRQ1_INTF_SM3_LSB _u(11)
+#define PIO_IRQ1_INTF_SM3_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM2_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM2_BITS _u(0x00000400)
+#define PIO_IRQ1_INTF_SM2_MSB _u(10)
+#define PIO_IRQ1_INTF_SM2_LSB _u(10)
+#define PIO_IRQ1_INTF_SM2_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM1_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM1_BITS _u(0x00000200)
+#define PIO_IRQ1_INTF_SM1_MSB _u(9)
+#define PIO_IRQ1_INTF_SM1_LSB _u(9)
+#define PIO_IRQ1_INTF_SM1_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM0_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM0_BITS _u(0x00000100)
+#define PIO_IRQ1_INTF_SM0_MSB _u(8)
+#define PIO_IRQ1_INTF_SM0_LSB _u(8)
+#define PIO_IRQ1_INTF_SM0_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_IRQ1_INTF_SM3_TXNFULL_MSB _u(7)
+#define PIO_IRQ1_INTF_SM3_TXNFULL_LSB _u(7)
+#define PIO_IRQ1_INTF_SM3_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_IRQ1_INTF_SM2_TXNFULL_MSB _u(6)
+#define PIO_IRQ1_INTF_SM2_TXNFULL_LSB _u(6)
+#define PIO_IRQ1_INTF_SM2_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_IRQ1_INTF_SM1_TXNFULL_MSB _u(5)
+#define PIO_IRQ1_INTF_SM1_TXNFULL_LSB _u(5)
+#define PIO_IRQ1_INTF_SM1_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_IRQ1_INTF_SM0_TXNFULL_MSB _u(4)
+#define PIO_IRQ1_INTF_SM0_TXNFULL_LSB _u(4)
+#define PIO_IRQ1_INTF_SM0_TXNFULL_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_IRQ1_INTF_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_IRQ1_INTF_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_IRQ1_INTF_SM3_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_IRQ1_INTF_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_IRQ1_INTF_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_IRQ1_INTF_SM2_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_IRQ1_INTF_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_IRQ1_INTF_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_IRQ1_INTF_SM1_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTF_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTF_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_IRQ1_INTF_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_IRQ1_INTF_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_IRQ1_INTF_SM0_RXNEMPTY_ACCESS "RW"
+#define PIO_IRQ1_INTS_OFFSET _u(0x00000184)
+#define PIO_IRQ1_INTS_BITS _u(0x0000ffff)
+#define PIO_IRQ1_INTS_RESET _u(0x00000000)
+#define PIO_IRQ1_INTS_SM7_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM7_BITS _u(0x00008000)
+#define PIO_IRQ1_INTS_SM7_MSB _u(15)
+#define PIO_IRQ1_INTS_SM7_LSB _u(15)
+#define PIO_IRQ1_INTS_SM7_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM6_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM6_BITS _u(0x00004000)
+#define PIO_IRQ1_INTS_SM6_MSB _u(14)
+#define PIO_IRQ1_INTS_SM6_LSB _u(14)
+#define PIO_IRQ1_INTS_SM6_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM5_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM5_BITS _u(0x00002000)
+#define PIO_IRQ1_INTS_SM5_MSB _u(13)
+#define PIO_IRQ1_INTS_SM5_LSB _u(13)
+#define PIO_IRQ1_INTS_SM5_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM4_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM4_BITS _u(0x00001000)
+#define PIO_IRQ1_INTS_SM4_MSB _u(12)
+#define PIO_IRQ1_INTS_SM4_LSB _u(12)
+#define PIO_IRQ1_INTS_SM4_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM3_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM3_BITS _u(0x00000800)
+#define PIO_IRQ1_INTS_SM3_MSB _u(11)
+#define PIO_IRQ1_INTS_SM3_LSB _u(11)
+#define PIO_IRQ1_INTS_SM3_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM2_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM2_BITS _u(0x00000400)
+#define PIO_IRQ1_INTS_SM2_MSB _u(10)
+#define PIO_IRQ1_INTS_SM2_LSB _u(10)
+#define PIO_IRQ1_INTS_SM2_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM1_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM1_BITS _u(0x00000200)
+#define PIO_IRQ1_INTS_SM1_MSB _u(9)
+#define PIO_IRQ1_INTS_SM1_LSB _u(9)
+#define PIO_IRQ1_INTS_SM1_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM0_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM0_BITS _u(0x00000100)
+#define PIO_IRQ1_INTS_SM0_MSB _u(8)
+#define PIO_IRQ1_INTS_SM0_LSB _u(8)
+#define PIO_IRQ1_INTS_SM0_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM3_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM3_TXNFULL_BITS _u(0x00000080)
+#define PIO_IRQ1_INTS_SM3_TXNFULL_MSB _u(7)
+#define PIO_IRQ1_INTS_SM3_TXNFULL_LSB _u(7)
+#define PIO_IRQ1_INTS_SM3_TXNFULL_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM2_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM2_TXNFULL_BITS _u(0x00000040)
+#define PIO_IRQ1_INTS_SM2_TXNFULL_MSB _u(6)
+#define PIO_IRQ1_INTS_SM2_TXNFULL_LSB _u(6)
+#define PIO_IRQ1_INTS_SM2_TXNFULL_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM1_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM1_TXNFULL_BITS _u(0x00000020)
+#define PIO_IRQ1_INTS_SM1_TXNFULL_MSB _u(5)
+#define PIO_IRQ1_INTS_SM1_TXNFULL_LSB _u(5)
+#define PIO_IRQ1_INTS_SM1_TXNFULL_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM0_TXNFULL_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM0_TXNFULL_BITS _u(0x00000010)
+#define PIO_IRQ1_INTS_SM0_TXNFULL_MSB _u(4)
+#define PIO_IRQ1_INTS_SM0_TXNFULL_LSB _u(4)
+#define PIO_IRQ1_INTS_SM0_TXNFULL_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM3_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM3_RXNEMPTY_BITS _u(0x00000008)
+#define PIO_IRQ1_INTS_SM3_RXNEMPTY_MSB _u(3)
+#define PIO_IRQ1_INTS_SM3_RXNEMPTY_LSB _u(3)
+#define PIO_IRQ1_INTS_SM3_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM2_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM2_RXNEMPTY_BITS _u(0x00000004)
+#define PIO_IRQ1_INTS_SM2_RXNEMPTY_MSB _u(2)
+#define PIO_IRQ1_INTS_SM2_RXNEMPTY_LSB _u(2)
+#define PIO_IRQ1_INTS_SM2_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM1_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM1_RXNEMPTY_BITS _u(0x00000002)
+#define PIO_IRQ1_INTS_SM1_RXNEMPTY_MSB _u(1)
+#define PIO_IRQ1_INTS_SM1_RXNEMPTY_LSB _u(1)
+#define PIO_IRQ1_INTS_SM1_RXNEMPTY_ACCESS "RO"
+#define PIO_IRQ1_INTS_SM0_RXNEMPTY_RESET _u(0x0)
+#define PIO_IRQ1_INTS_SM0_RXNEMPTY_BITS _u(0x00000001)
+#define PIO_IRQ1_INTS_SM0_RXNEMPTY_MSB _u(0)
+#define PIO_IRQ1_INTS_SM0_RXNEMPTY_LSB _u(0)
+#define PIO_IRQ1_INTS_SM0_RXNEMPTY_ACCESS "RO"
+typedef struct {
+   
+    io_rw_32 clkdiv;
+   
+    io_rw_32 execctrl;
+   
+    io_rw_32 shiftctrl;
+   
+    io_ro_32 addr;
+   
+    io_rw_32 instr;
+   
+    io_rw_32 pinctrl;
+} pio_sm_hw_t;
+typedef struct {
+   
+    io_rw_32 inte;
+   
+    io_rw_32 intf;
+   
+    io_ro_32 ints;
+} pio_irq_ctrl_hw_t;
+typedef struct {
+   
+    io_rw_32 ctrl;
+   
+    io_ro_32 fstat;
+   
+    io_rw_32 fdebug;
+   
+    io_ro_32 flevel;
+   
+    io_wo_32 txf[4];
+   
+    io_ro_32 rxf[4];
+   
+    io_rw_32 irq;
+   
+    io_wo_32 irq_force;
+   
+    io_rw_32 input_sync_bypass;
+   
+    io_ro_32 dbg_padout;
+   
+    io_ro_32 dbg_padoe;
+   
+    io_ro_32 dbg_cfginfo;
+   
+    io_wo_32 instr_mem[32];
+    pio_sm_hw_t sm[4];
+   
+    io_rw_32 rxf_putget[4][4];
+   
+    io_rw_32 gpiobase;
+   
+    io_ro_32 intr;
     union {
-        cyw43_ev_scan_result_t scan_result;
-    } u;
-} cyw43_async_event_t;
-typedef struct _cyw43_wifi_scan_options_t {
-    uint32_t version;
-    uint16_t action;
-    uint16_t _;
-    uint32_t ssid_len;
-    uint8_t ssid[32];
-    uint8_t bssid[6];
-    int8_t bss_type;
-    int8_t scan_type;
-    int32_t nprobes;
-    int32_t active_time;
-    int32_t passive_time;
-    int32_t home_time;
-    int32_t channel_num;
-    uint16_t channel_list[1];
-} cyw43_wifi_scan_options_t;
-typedef struct _cyw43_ll_t {
-    uint32_t opaque[(526 + 1 + ((16 / 4) + 1) + (0) * 4)];
-} cyw43_ll_t;
-void cyw43_ll_init(cyw43_ll_t *self, void *cb_data);
-void cyw43_ll_deinit(cyw43_ll_t *self);
-int cyw43_ll_bus_init(cyw43_ll_t *self, const uint8_t *mac);
-void cyw43_ll_bus_sleep(cyw43_ll_t *self, _Bool can_sleep);
-void cyw43_ll_process_packets(cyw43_ll_t *self);
-int cyw43_ll_ioctl(cyw43_ll_t *self, uint32_t cmd, size_t len, uint8_t *buf, uint32_t iface);
-int cyw43_ll_send_ethernet(cyw43_ll_t *self, int itf, size_t len, const void *buf, _Bool is_pbuf);
-int cyw43_ll_wifi_on(cyw43_ll_t *self, uint32_t country);
-int cyw43_ll_wifi_pm(cyw43_ll_t *self, uint32_t pm, uint32_t pm_sleep_ret, uint32_t li_bcn, uint32_t li_dtim, uint32_t li_assoc);
-int cyw43_ll_wifi_get_pm(cyw43_ll_t *self, uint32_t *pm, uint32_t *pm_sleep_ret, uint32_t *li_bcn, uint32_t *li_dtim, uint32_t *li_assoc);
-int cyw43_ll_wifi_scan(cyw43_ll_t *self, cyw43_wifi_scan_options_t *opts);
-int cyw43_ll_wifi_join(cyw43_ll_t *self, size_t ssid_len, const uint8_t *ssid, size_t key_len, const uint8_t *key, uint32_t auth_type, const uint8_t *bssid, uint32_t channel);
-void cyw43_ll_wifi_set_wpa_auth(cyw43_ll_t *self);
-void cyw43_ll_wifi_rejoin(cyw43_ll_t *self);
-int cyw43_ll_wifi_get_bssid(cyw43_ll_t *self_in, uint8_t *bssid);
-int cyw43_ll_wifi_ap_init(cyw43_ll_t *self, size_t ssid_len, const uint8_t *ssid, uint32_t auth, size_t key_len, const uint8_t *key, uint32_t channel);
-int cyw43_ll_wifi_ap_set_up(cyw43_ll_t *self, _Bool up);
-int cyw43_ll_wifi_ap_get_stas(cyw43_ll_t *self, int *num_stas, uint8_t *macs);
-int cyw43_ll_gpio_set(cyw43_ll_t *self, int gpio_n, _Bool gpio_en);
-int cyw43_ll_gpio_get(cyw43_ll_t *self_in, int gpio_n, _Bool *gpio_en);
-int cyw43_ll_wifi_get_mac(cyw43_ll_t *self_in, uint8_t *addr);
-int cyw43_ll_wifi_update_multicast_filter(cyw43_ll_t *self_in, uint8_t *addr, _Bool add);
-_Bool cyw43_ll_has_work(cyw43_ll_t *self);
-_Bool cyw43_ll_bt_has_work(cyw43_ll_t *self);
-int cyw43_cb_read_host_interrupt_pin(void *cb_data);
-void cyw43_cb_ensure_awake(void *cb_data);
-void cyw43_cb_process_async_event(void *cb_data, const cyw43_async_event_t *ev);
-void cyw43_cb_process_ethernet(void *cb_data, int itf, size_t len, const uint8_t *buf);
-void cyw43_ll_write_backplane_reg(cyw43_ll_t *self_in, uint32_t addr, uint32_t val);
-uint32_t cyw43_ll_read_backplane_reg(cyw43_ll_t *self_in, uint32_t addr);
-int cyw43_ll_write_backplane_mem(cyw43_ll_t *self_in, uint32_t addr, uint32_t len, const uint8_t *buf);
-int cyw43_ll_read_backplane_mem(cyw43_ll_t *self_in, uint32_t addr, uint32_t len, uint8_t *buf);
-#define _STRING_H_ 
-#define __need_size_t 
-#define __need_NULL 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define _SYS__LOCALE_H 
-struct __locale_t;
-typedef struct __locale_t *locale_t;
-#define _STRINGS_H_ 
-
-int bcmp(const void *, const void *, size_t) __attribute__((__pure__));
-void bcopy(const void *, void *, size_t);
-void bzero(void *, size_t);
-void explicit_bzero(void *, size_t);
-int ffs(int) __attribute__((__const__));
-int ffsl(long) __attribute__((__const__));
-int ffsll(long long) __attribute__((__const__));
-int fls(int) __attribute__((__const__));
-int flsl(long) __attribute__((__const__));
-int flsll(long long) __attribute__((__const__));
-char *index(const char *, int) __attribute__((__pure__));
-char *rindex(const char *, int) __attribute__((__pure__));
-int strcasecmp(const char *, const char *) __attribute__((__pure__));
-int strncasecmp(const char *, const char *, size_t) __attribute__((__pure__));
-int strcasecmp_l (const char *, const char *, locale_t);
-int strncasecmp_l (const char *, const char *, size_t, locale_t);
-
-
-void * memchr (const void *, int, size_t);
-int memcmp (const void *, const void *, size_t);
-void * memcpy (void *restrict, const void *restrict, size_t);
-void * memmove (void *, const void *, size_t);
-void * memset (void *, int, size_t);
-char *strcat (char *restrict, const char *restrict);
-char *strchr (const char *, int);
-int strcmp (const char *, const char *);
-int strcoll (const char *, const char *);
-char *strcpy (char *restrict, const char *restrict);
-size_t strcspn (const char *, const char *);
-char *strerror (int);
-size_t strlen (const char *);
-char *strncat (char *restrict, const char *restrict, size_t);
-int strncmp (const char *, const char *, size_t);
-char *strncpy (char *restrict, const char *restrict, size_t);
-char *strpbrk (const char *, const char *);
-char *strrchr (const char *, int);
-size_t strspn (const char *, const char *);
-char *strstr (const char *, const char *);
-char *strtok (char *restrict, const char *restrict);
-size_t strxfrm (char *restrict, const char *restrict, size_t);
-int strcoll_l (const char *, const char *, locale_t);
-char *strerror_l (int, locale_t);
-size_t strxfrm_l (char *restrict, const char *restrict, size_t, locale_t);
-char *strtok_r (char *restrict, const char *restrict, char **restrict);
-int timingsafe_bcmp (const void *, const void *, size_t);
-int timingsafe_memcmp (const void *, const void *, size_t);
-void * memccpy (void *restrict, const void *restrict, int, size_t);
-char *stpcpy (char *restrict, const char *restrict);
-char *stpncpy (char *restrict, const char *restrict, size_t);
-char *strdup (const char *) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
-char *_strdup_r (struct _reent *, const char *);
-char *strndup (const char *, size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
-char *_strndup_r (struct _reent *, const char *, size_t);
-int strerror_r (int, char *, size_t)
-             __asm__ ("" "__xpg_strerror_r")
-  ;
-char * _strerror_r (struct _reent *, int, int, int *);
-size_t strlcat (char *, const char *, size_t);
-size_t strlcpy (char *, const char *, size_t);
-size_t strnlen (const char *, size_t);
-char *strsep (char **, const char *);
-char *strnstr(const char *, const char *, size_t) __attribute__((__pure__));
-char *strlwr (char *);
-char *strupr (char *);
-char *strsignal (int __signo);
-
-#define CYW43_VERSION_MAJOR 1
-#define CYW43_VERSION_MINOR 1
-#define CYW43_VERSION_MICRO 0
-#define CYW43_VERSION (CYW43_VERSION_MAJOR << 16 | CYW43_VERSION_MINOR << 8 | CYW43_VERSION_MICRO)
-#define CYW43_TRACE_ASYNC_EV (0x0001)
-#define CYW43_TRACE_ETH_TX (0x0002)
-#define CYW43_TRACE_ETH_RX (0x0004)
-#define CYW43_TRACE_ETH_FULL (0x0008)
-#define CYW43_TRACE_MAC (0x0010)
-#define CYW43_LINK_DOWN (0)
-#define CYW43_LINK_JOIN (1)
-#define CYW43_LINK_NOIP (2)
-#define CYW43_LINK_UP (3)
-#define CYW43_LINK_FAIL (-1)
-#define CYW43_LINK_NONET (-2)
-#define CYW43_LINK_BADAUTH (-3)
-typedef struct _cyw43_t {
-    cyw43_ll_t cyw43_ll;
-    uint8_t itf_state;
-    uint32_t trace_flags;
-    volatile uint32_t wifi_scan_state;
-    uint32_t wifi_join_state;
-    void *wifi_scan_env;
-    int (*wifi_scan_cb)(void *, const cyw43_ev_scan_result_t *);
-    _Bool initted;
-    _Bool pend_disassoc;
-    _Bool pend_rejoin;
-    _Bool pend_rejoin_wpa;
-    uint32_t ap_auth;
-    uint8_t ap_channel;
-    uint8_t ap_ssid_len;
-    uint8_t ap_key_len;
-    uint8_t ap_ssid[32];
-    uint8_t ap_key[64];
-    uint8_t mac[6];
-} cyw43_t;
-extern cyw43_t cyw43_state;
-extern void (*cyw43_poll)(void);
-extern uint32_t cyw43_sleep;
-void cyw43_init(cyw43_t *self);
-void cyw43_deinit(cyw43_t *self);
-int cyw43_ioctl(cyw43_t *self, uint32_t cmd, size_t len, uint8_t *buf, uint32_t iface);
-int cyw43_send_ethernet(cyw43_t *self, int itf, size_t len, const void *buf, _Bool is_pbuf);
-int cyw43_wifi_pm(cyw43_t *self, uint32_t pm);
-int cyw43_wifi_get_pm(cyw43_t *self, uint32_t *pm);
-int cyw43_wifi_link_status(cyw43_t *self, int itf);
-void cyw43_wifi_set_up(cyw43_t *self, int itf, _Bool up, uint32_t country);
-int cyw43_wifi_get_mac(cyw43_t *self, int itf, uint8_t mac[6]);
-int cyw43_wifi_update_multicast_filter(cyw43_t *self, uint8_t *addr, _Bool add);
-int cyw43_wifi_scan(cyw43_t *self, cyw43_wifi_scan_options_t *opts, void *env, int (*result_cb)(void *, const cyw43_ev_scan_result_t *));
-static inline _Bool cyw43_wifi_scan_active(cyw43_t *self) {
-    return self->wifi_scan_state == 1;
+        struct {
+           
+            io_rw_32 inte0;
+           
+            io_rw_32 intf0;
+           
+            io_ro_32 ints0;
+           
+            io_rw_32 inte1;
+           
+            io_rw_32 intf1;
+           
+            io_ro_32 ints1;
+        };
+        pio_irq_ctrl_hw_t irq_ctrl[2];
+    };
+} pio_hw_t;
+#define pio0_hw ((pio_hw_t *)PIO0_BASE)
+#define pio1_hw ((pio_hw_t *)PIO1_BASE)
+#define pio2_hw ((pio_hw_t *)PIO2_BASE)
+_Static_assert(sizeof (pio_hw_t) == 0x0188, "");
+#define _HARDWARE_PIO_INSTRUCTIONS_H 
+#define PARAM_ASSERTIONS_ENABLED_PIO_INSTRUCTIONS 0
+enum pio_instr_bits {
+    pio_instr_bits_jmp = 0x0000,
+    pio_instr_bits_wait = 0x2000,
+    pio_instr_bits_in = 0x4000,
+    pio_instr_bits_out = 0x6000,
+    pio_instr_bits_push = 0x8000,
+    pio_instr_bits_pull = 0x8080,
+    pio_instr_bits_mov = 0xa000,
+    pio_instr_bits_irq = 0xc000,
+    pio_instr_bits_set = 0xe000,
+};
+#define _PIO_INVALID_IN_SRC 0x08u
+#define _PIO_INVALID_OUT_DEST 0x10u
+#define _PIO_INVALID_SET_DEST 0x20u
+#define _PIO_INVALID_MOV_SRC 0x40u
+#define _PIO_INVALID_MOV_DEST 0x80u
+enum pio_src_dest {
+    pio_pins = 0u,
+    pio_x = 1u,
+    pio_y = 2u,
+    pio_null = 3u | 0x20u | 0x80u,
+    pio_pindirs = 4u | 0x08u | 0x40u | 0x80u,
+    pio_exec_mov = 4u | 0x08u | 0x10u | 0x20u | 0x40u,
+    pio_status = 5u | 0x08u | 0x10u | 0x20u | 0x80u,
+    pio_pc = 5u | 0x08u | 0x20u | 0x40u,
+    pio_isr = 6u | 0x20u,
+    pio_osr = 7u | 0x10u | 0x20u,
+    pio_exec_out = 7u | 0x08u | 0x20u | 0x40u | 0x80u,
+};
+static inline uint _pio_major_instr_bits(uint instr) {
+    return instr & 0xe000u;
 }
-int cyw43_wifi_join(cyw43_t *self, size_t ssid_len, const uint8_t *ssid, size_t key_len, const uint8_t *key, uint32_t auth_type, const uint8_t *bssid, uint32_t channel);
-int cyw43_wifi_leave(cyw43_t *self, int itf);
-int cyw43_wifi_get_rssi(cyw43_t *self, int32_t *rssi);
-int cyw43_wifi_get_bssid(cyw43_t *self, uint8_t bssid[6]);
-static inline void cyw43_wifi_ap_get_ssid(cyw43_t *self, size_t *len, const uint8_t **buf) {
-    *len = self->ap_ssid_len;
-    *buf = self->ap_ssid;
+static inline uint _pio_arg1(uint instr) {
+    return (instr >> 5) & 0x7u;
 }
-static inline uint32_t cyw43_wifi_ap_get_auth(cyw43_t *self) {
-    return self->ap_auth;
+static inline uint _pio_encode_instr_and_args(enum pio_instr_bits instr_bits, uint arg1, uint arg2) {
+    ({if (((0 || 0) && !0)) ((arg1 <= 0x7) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 87, __func__, "arg1 <= 0x7"));});
+    return instr_bits | (arg1 << 5u) | (arg2 & 0x1fu);
 }
-static inline void cyw43_wifi_ap_set_channel(cyw43_t *self, uint32_t channel) {
-    self->ap_channel = (uint8_t)channel;
+static inline uint _pio_encode_instr_and_src_dest(enum pio_instr_bits instr_bits, enum pio_src_dest dest, uint value) {
+    return _pio_encode_instr_and_args(instr_bits, dest & 7u, value);
 }
-static inline void cyw43_wifi_ap_set_ssid(cyw43_t *self, size_t len, const uint8_t *buf) {
-    self->ap_ssid_len = (uint8_t)((sizeof(self->ap_ssid))>(len)?(len):(sizeof(self->ap_ssid)));
-    memcpy(self->ap_ssid, buf, self->ap_ssid_len);
+static inline uint pio_encode_delay(uint cycles) {
+    ({if (((0 || 0) && !0)) ((cycles <= 0x1f) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 116, __func__, "cycles <= 0x1f"));});
+    return cycles << 8u;
 }
-static inline void cyw43_wifi_ap_set_password(cyw43_t *self, size_t len, const uint8_t *buf) {
-    self->ap_key_len = (uint8_t)((sizeof(self->ap_key))>(len)?(len):(sizeof(self->ap_key)));
-    memcpy(self->ap_key, buf, self->ap_key_len);
+static inline uint pio_encode_sideset(uint sideset_bit_count, uint value) {
+    ({if (((0 || 0) && !0)) ((sideset_bit_count >= 1 && sideset_bit_count <= 5) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 133, __func__, "sideset_bit_count >= 1 && sideset_bit_count <= 5"));});
+    ({if (((0 || 0) && !0)) ((value <= ((1u << sideset_bit_count) - 1)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 134, __func__, "value <= ((1u << sideset_bit_count) - 1)"));});
+    return value << (13u - sideset_bit_count);
 }
-static inline void cyw43_wifi_ap_set_auth(cyw43_t *self, uint32_t auth) {
-    self->ap_auth = auth;
+static inline uint pio_encode_sideset_opt(uint sideset_bit_count, uint value) {
+    ({if (((0 || 0) && !0)) ((sideset_bit_count >= 0 && sideset_bit_count <= 4) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 151, __func__, "sideset_bit_count >= 0 && sideset_bit_count <= 4"));});
+    ({if (((0 || 0) && !0)) ((value <= ((1u << sideset_bit_count) - 1)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 152, __func__, "value <= ((1u << sideset_bit_count) - 1)"));});
+    return 0x1000u | value << (12u - sideset_bit_count);
 }
-void cyw43_wifi_ap_get_max_stas(cyw43_t *self, int *max_stas);
-void cyw43_wifi_ap_get_stas(cyw43_t *self, int *num_stas, uint8_t *macs);
-static inline _Bool cyw43_is_initialized(cyw43_t *self) {
-    return self->initted;
+static inline uint pio_encode_jmp(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 0, addr);
 }
-void cyw43_cb_tcpip_init(cyw43_t *self, int itf);
-void cyw43_cb_tcpip_deinit(cyw43_t *self, int itf);
-void cyw43_cb_tcpip_set_link_up(cyw43_t *self, int itf);
-void cyw43_cb_tcpip_set_link_down(cyw43_t *self, int itf);
-int cyw43_tcpip_link_status(cyw43_t *self, int itf);
-int cyw43_gpio_set(cyw43_t *self, int gpio, _Bool val);
-int cyw43_gpio_get(cyw43_t *self, int gpio, _Bool *val);
-static inline uint32_t cyw43_pm_value(uint8_t pm_mode, uint16_t pm2_sleep_ret_ms, uint8_t li_beacon_period, uint8_t li_dtim_period, uint8_t li_assoc) {
-    return li_assoc << 20
-           | li_dtim_period << 16
-           | li_beacon_period << 12
-           | (pm2_sleep_ret_ms / 10) << 4
-           | pm_mode;
+static inline uint pio_encode_jmp_not_x(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 1, addr);
 }
-#define CYW43_DEFAULT_PM (CYW43_PERFORMANCE_PM)
-#define CYW43_NONE_PM (cyw43_pm_value(CYW43_NO_POWERSAVE_MODE, 10, 0, 0, 0))
-#define CYW43_AGGRESSIVE_PM (cyw43_pm_value(CYW43_PM1_POWERSAVE_MODE, 10, 0, 0, 0))
-#define CYW43_PERFORMANCE_PM (cyw43_pm_value(CYW43_PM2_POWERSAVE_MODE, 200, 1, 1, 10))
-struct async_context;
-#define PICO_STATUS_LED_AVAILABLE 1
-#define PICO_COLORED_STATUS_LED_AVAILABLE 0
-#define PICO_STATUS_LED_VIA_COLORED_STATUS_LED (PICO_COLORED_STATUS_LED_AVAILABLE && !PICO_STATUS_LED_AVAILABLE)
-#define PICO_COLORED_STATUS_LED_USES_WRGB 0
-#define PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(r,g,b) (((r) << 16) | ((g) << 8) | (b))
-#define PICO_COLORED_STATUS_LED_COLOR_FROM_WRGB(w,r,g,b) (((w) << 24) | ((r) << 16) | ((g) << 8) | (b))
-#define PICO_DEFAULT_COLORED_STATUS_LED_ON_COLOR PICO_COLORED_STATUS_LED_COLOR_FROM_RGB(0xaa, 0xaa, 0xaa)
-_Bool status_led_init(void);
-_Bool status_led_init_with_context(struct async_context *context);
-static inline _Bool colored_status_led_supported(void) {
-    return 0;
+static inline uint pio_encode_jmp_x_dec(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 2, addr);
 }
-static inline _Bool status_led_via_colored_status_led(void) {
-    return (0 && !1);
+static inline uint pio_encode_jmp_not_y(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 3, addr);
 }
-static inline _Bool status_led_supported(void) {
-    if (status_led_via_colored_status_led()) {
-        return colored_status_led_supported();
+static inline uint pio_encode_jmp_y_dec(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 4, addr);
+}
+static inline uint pio_encode_jmp_x_ne_y(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 5, addr);
+}
+static inline uint pio_encode_jmp_pin(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 6, addr);
+}
+static inline uint pio_encode_jmp_not_osre(uint addr) {
+    return _pio_encode_instr_and_args(pio_instr_bits_jmp, 7, addr);
+}
+static inline uint _pio_encode_irq(_Bool relative, uint irq) {
+    ({if (((0 || 0) && !0)) ((irq <= 7) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 261, __func__, "irq <= 7"));});
+    return (relative ? 0x10u : 0x0u) | irq;
+}
+static inline uint pio_encode_wait_gpio(_Bool polarity, uint gpio) {
+    return _pio_encode_instr_and_args(pio_instr_bits_wait, 0u | (polarity ? 4u : 0u), gpio);
+}
+static inline uint pio_encode_wait_pin(_Bool polarity, uint pin) {
+    return _pio_encode_instr_and_args(pio_instr_bits_wait, 1u | (polarity ? 4u : 0u), pin);
+}
+static inline uint pio_encode_wait_irq(_Bool polarity, _Bool relative, uint irq) {
+    ({if (((0 || 0) && !0)) ((irq <= 7) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 309, __func__, "irq <= 7"));});
+    return _pio_encode_instr_and_args(pio_instr_bits_wait, 2u | (polarity ? 4u : 0u), _pio_encode_irq(relative, irq));
+}
+static inline uint pio_encode_in(enum pio_src_dest src, uint count) {
+    ({if (((0 || 0) && !0)) ((!(src & 0x08u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 324, __func__, "!(src & 0x08u)"));});
+    return _pio_encode_instr_and_src_dest(pio_instr_bits_in, src, count);
+}
+static inline uint pio_encode_out(enum pio_src_dest dest, uint count) {
+    ({if (((0 || 0) && !0)) ((!(dest & 0x10u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 339, __func__, "!(dest & 0x10u)"));});
+    return _pio_encode_instr_and_src_dest(pio_instr_bits_out, dest, count);
+}
+static inline uint pio_encode_push(_Bool if_full, _Bool block) {
+    return _pio_encode_instr_and_args(pio_instr_bits_push, (if_full ? 2u : 0u) | (block ? 1u : 0u), 0);
+}
+static inline uint pio_encode_pull(_Bool if_empty, _Bool block) {
+    return _pio_encode_instr_and_args(pio_instr_bits_pull, (if_empty ? 2u : 0u) | (block ? 1u : 0u), 0);
+}
+static inline uint pio_encode_mov(enum pio_src_dest dest, enum pio_src_dest src) {
+    ({if (((0 || 0) && !0)) ((!(dest & 0x80u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 382, __func__, "!(dest & 0x80u)"));});
+    ({if (((0 || 0) && !0)) ((!(src & 0x40u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 383, __func__, "!(src & 0x40u)"));});
+    return _pio_encode_instr_and_src_dest(pio_instr_bits_mov, dest, src & 7u);
+}
+static inline uint pio_encode_mov_not(enum pio_src_dest dest, enum pio_src_dest src) {
+    ({if (((0 || 0) && !0)) ((!(dest & 0x80u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 398, __func__, "!(dest & 0x80u)"));});
+    ({if (((0 || 0) && !0)) ((!(src & 0x40u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 399, __func__, "!(src & 0x40u)"));});
+    return _pio_encode_instr_and_src_dest(pio_instr_bits_mov, dest, (1u << 3u) | (src & 7u));
+}
+static inline uint pio_encode_mov_reverse(enum pio_src_dest dest, enum pio_src_dest src) {
+    ({if (((0 || 0) && !0)) ((!(dest & 0x80u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 414, __func__, "!(dest & 0x80u)"));});
+    ({if (((0 || 0) && !0)) ((!(src & 0x40u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 415, __func__, "!(src & 0x40u)"));});
+    return _pio_encode_instr_and_src_dest(pio_instr_bits_mov, dest, (2u << 3u) | (src & 7u));
+}
+static inline uint pio_encode_irq_set(_Bool relative, uint irq) {
+    return _pio_encode_instr_and_args(pio_instr_bits_irq, 0, _pio_encode_irq(relative, irq));
+}
+static inline uint pio_encode_irq_wait(_Bool relative, uint irq) {
+    return _pio_encode_instr_and_args(pio_instr_bits_irq, 1, _pio_encode_irq(relative, irq));
+}
+static inline uint pio_encode_irq_clear(_Bool relative, uint irq) {
+    return _pio_encode_instr_and_args(pio_instr_bits_irq, 2, _pio_encode_irq(relative, irq));
+}
+static inline uint pio_encode_set(enum pio_src_dest dest, uint value) {
+    ({if (((0 || 0) && !0)) ((!(dest & 0x20u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio_instructions.h", 472, __func__, "!(dest & 0x20u)"));});
+    return _pio_encode_instr_and_src_dest(pio_instr_bits_set, dest, value);
+}
+static inline uint pio_encode_nop(void) {
+    return pio_encode_mov(pio_y, pio_y);
+}
+#define PARAM_ASSERTIONS_ENABLED_HARDWARE_PIO 0
+#define PICO_PIO_VERSION 1
+#define PICO_PIO_CLKDIV_ROUND_NEAREST PICO_CLKDIV_ROUND_NEAREST
+_Static_assert(31u == 30u + 1, "");
+enum pio_fifo_join {
+    PIO_FIFO_JOIN_NONE = 0,
+    PIO_FIFO_JOIN_TX = 1,
+    PIO_FIFO_JOIN_RX = 2,
+    PIO_FIFO_JOIN_TXGET = 4,
+    PIO_FIFO_JOIN_TXPUT = 8,
+    PIO_FIFO_JOIN_PUTGET = 12,
+};
+enum pio_mov_status_type {
+    STATUS_TX_LESSTHAN = 0,
+    STATUS_RX_LESSTHAN = 1,
+    STATUS_IRQ_SET = 2
+};
+typedef pio_hw_t *PIO;
+#define pio0 pio0_hw
+#define pio1 pio1_hw
+#define pio2 pio2_hw
+#define PICO_PIO_USE_GPIO_BASE ((NUM_BANK0_GPIOS) > 32)
+_Static_assert(0x50300000u - 0x50200000u == (1u << 20), "hardware layout mismatch");
+_Static_assert(0x50400000u - 0x50200000u == (2u << 20), "hardware layout mismatch");
+#define PIO_NUM(pio) (((uintptr_t)(pio) - PIO0_BASE) >> 20)
+_Static_assert(0x50300000u - 0x50200000u == (1u << 20), "hardware layout mismatch");
+_Static_assert(0x50400000u - 0x50200000u == (2u << 20), "hardware layout mismatch");
+#define PIO_INSTANCE(instance) ((pio_hw_t *)(PIO0_BASE + (instance) * (1u << 20)))
+#define PIO_FUNCSEL_NUM(pio,gpio) ((gpio_function_t) (GPIO_FUNC_PIO0 + PIO_NUM(pio)))
+_Static_assert(DREQ_PIO0_TX1 == DREQ_PIO0_TX0 + 1, "");
+_Static_assert(DREQ_PIO0_TX2 == DREQ_PIO0_TX0 + 2, "");
+_Static_assert(DREQ_PIO0_TX3 == DREQ_PIO0_TX0 + 3, "");
+_Static_assert(DREQ_PIO0_RX0 == DREQ_PIO0_TX0 + 4u, "");
+_Static_assert(DREQ_PIO1_TX0 == DREQ_PIO0_RX0 + 4u, "");
+_Static_assert(DREQ_PIO1_RX0 == DREQ_PIO1_TX0 + 4u, "");
+_Static_assert(DREQ_PIO2_TX0 == DREQ_PIO1_RX0 + 4u, "");
+_Static_assert(DREQ_PIO2_RX0 == DREQ_PIO2_TX0 + 4u, "");
+#define PIO_DREQ_NUM(pio,sm,is_tx) (DREQ_PIO0_TX0 + (sm) + (((is_tx) ? 0 : NUM_PIO_STATE_MACHINES) + PIO_NUM(pio) * (DREQ_PIO1_TX0 - DREQ_PIO0_TX0)))
+#define PIO_IRQ_NUM(pio,irqn) (PIO0_IRQ_0 + NUM_PIO_IRQS * PIO_NUM(pio) + (irqn))
+typedef struct {
+    uint32_t clkdiv;
+    uint32_t execctrl;
+    uint32_t shiftctrl;
+    uint32_t pinctrl;
+} pio_sm_config;
+static inline void check_sm_param(__attribute__((__unused__)) uint sm) {
+    ({if (((0 || 0) && !0)) ((sm < 4u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 313, __func__, "sm < 4u"));});
+}
+static inline void check_sm_mask(__attribute__((__unused__)) uint mask) {
+    ({if (((0 || 0) && !0)) ((mask < (1u << 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 317, __func__, "mask < (1u << 4u)"));});
+}
+static inline void check_pio_param(__attribute__((__unused__)) PIO pio) {
+    ({if (((0 || 0) && !0)) ((pio == ((pio_hw_t *)0x50200000u) || pio == ((pio_hw_t *)0x50300000u) || pio == ((pio_hw_t *)0x50400000u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 324, __func__, "pio == ((pio_hw_t *)0x50200000u) || pio == ((pio_hw_t *)0x50300000u) || pio == ((pio_hw_t *)0x50400000u)"));});
+}
+static inline void check_pio_pin_param(__attribute__((__unused__)) uint pin) {
+    ({if (((0 || 0) && !0)) ((!(pin >= 32)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 330, __func__, "!(pin >= 32)"));});
+}
+static inline void sm_config_set_out_pin_base(pio_sm_config *c, uint out_base) {
+    check_pio_pin_param(out_base);
+    c->pinctrl = (c->pinctrl & ~0x0000001fu) |
+                 ((out_base & 31) << 0u);
+}
+static inline void sm_config_set_out_pin_count(pio_sm_config *c, uint out_count) {
+    ({if (((0 || 0) && !0)) ((out_count <= 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 364, __func__, "out_count <= 32"));});
+    c->pinctrl = (c->pinctrl & ~0x03f00000u) |
+                 (out_count << 20u);
+}
+static inline void sm_config_set_out_pins(pio_sm_config *c, uint out_base, uint out_count) {
+    sm_config_set_out_pin_base(c, out_base);
+    sm_config_set_out_pin_count(c, out_count);
+}
+static inline void sm_config_set_set_pin_base(pio_sm_config *c, uint set_base) {
+    check_pio_pin_param(set_base);
+    c->pinctrl = (c->pinctrl & ~0x000003e0u) |
+                 ((set_base & 31) << 5u);
+}
+static inline void sm_config_set_set_pin_count(pio_sm_config *c, uint set_count) {
+    ({if (((0 || 0) && !0)) ((set_count <= 5) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 410, __func__, "set_count <= 5"));});
+    c->pinctrl = (c->pinctrl & ~0x1c000000u) |
+                 (set_count << 26u);
+}
+static inline void sm_config_set_set_pins(pio_sm_config *c, uint set_base, uint set_count) {
+    sm_config_set_set_pin_base(c, set_base);
+    sm_config_set_set_pin_count(c, set_count);
+}
+static inline void sm_config_set_in_pin_base(pio_sm_config *c, uint in_base) {
+    check_pio_pin_param(in_base);
+    c->pinctrl = (c->pinctrl & ~0x000f8000u) |
+                 ((in_base & 31) << 15u);
+}
+static inline void sm_config_set_in_pins(pio_sm_config *c, uint in_base) {
+    sm_config_set_in_pin_base(c, in_base);
+}
+static inline void sm_config_set_in_pin_count(pio_sm_config *c, uint in_count) {
+    ({if (((0 || 0) && !0)) ((in_count && in_count <= 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 478, __func__, "in_count && in_count <= 32"));});
+    c->shiftctrl = (c->shiftctrl & ~0x0000001fu) |
+                   ((in_count & 0x1fu) << 0u);
+}
+static inline void sm_config_set_sideset_pin_base(pio_sm_config *c, uint sideset_base) {
+    check_pio_pin_param(sideset_base);
+    c->pinctrl = (c->pinctrl & ~0x00007c00u) |
+                 ((sideset_base & 31) << 10u);
+}
+static inline void sm_config_set_sideset_pins(pio_sm_config *c, uint sideset_base) {
+    sm_config_set_sideset_pin_base(c, sideset_base);
+}
+static inline void sm_config_set_sideset(pio_sm_config *c, uint bit_count, _Bool optional, _Bool pindirs) {
+    ({if (((0 || 0) && !0)) ((bit_count <= 5) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 526, __func__, "bit_count <= 5"));});
+    ({if (((0 || 0) && !0)) ((!optional || bit_count >= 1) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 527, __func__, "!optional || bit_count >= 1"));});
+    c->pinctrl = (c->pinctrl & ~0xe0000000u) |
+                 (bit_count << 29u);
+    c->execctrl = (c->execctrl & ~(0x40000000u | 0x20000000u)) |
+                  (((uint)!!(optional)) << 30u) |
+                  (((uint)!!(pindirs)) << 29u);
+}
+static inline void sm_config_set_clkdiv_int_frac8(pio_sm_config *c, uint32_t div_int, uint8_t div_frac8) {
+    _Static_assert((31u + 1 - 16u) == 16, "");
+    ({if (((0 || 0) && !0)) ((!(div_int >> 16)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 550, __func__, "!(div_int >> 16)"));});
+    ({if (((0 || 0) && !0)) ((!(div_int == 0 && div_frac8 != 0)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 551, __func__, "!(div_int == 0 && div_frac8 != 0)"));});
+    _Static_assert((15u + 1 - 8u) == 8, "");
+    c->clkdiv =
+            (((uint)div_frac8) << 8u) |
+            (((uint)div_int) << 16u);
+}
+static inline void sm_config_set_clkdiv_int_frac(pio_sm_config *c, uint16_t div_int, uint8_t div_frac8) {
+    sm_config_set_clkdiv_int_frac8(c, div_int, div_frac8);
+}
+static inline void pio_calculate_clkdiv8_from_float(float div, uint32_t *div_int, uint8_t *div_frac8) {
+    ({if (((0 || 0) && !0)) ((div >= 1 && div <= 65536) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 564, __func__, "div >= 1 && div <= 65536"));});
+    const int frac_bit_count = (15u + 1 - 8u);
+    div += 0.5f / (1 << frac_bit_count);
+    *div_int = (uint16_t)div;
+    _Static_assert((15u + 1 - 8u) == 8, "");
+    if (*div_int == 0) {
+        *div_frac8 = 0;
+    } else {
+        *div_frac8 = (uint8_t)((div - (float)*div_int) * (1u << frac_bit_count));
     }
-    return 1;
 }
-_Bool colored_status_led_set_state(_Bool led_on);
-_Bool colored_status_led_get_state(void);
-_Bool colored_status_led_set_on_with_color(uint32_t color);
-uint32_t colored_status_led_get_on_color(void);
-static inline _Bool status_led_set_state(_Bool led_on) {
-    if (status_led_via_colored_status_led()) {
-        return colored_status_led_set_state(led_on);
-    } else if (status_led_supported()) {
-        cyw43_gpio_set(&cyw43_state, 0, led_on);
-        return 1;
+static inline void pio_calculate_clkdiv_from_float(float div, uint16_t *div_int16, uint8_t *div_frac8) {
+    uint32_t div_int;
+    pio_calculate_clkdiv8_from_float(div, &div_int, div_frac8);
+    *div_int16 = (uint16_t) div_int;
+}
+static inline void sm_config_set_clkdiv(pio_sm_config *c, float div) {
+    uint32_t div_int;
+    uint8_t div_frac8;
+    pio_calculate_clkdiv8_from_float(div, &div_int, &div_frac8);
+    sm_config_set_clkdiv_int_frac8(c, div_int, div_frac8);
+}
+static inline void sm_config_set_wrap(pio_sm_config *c, uint wrap_target, uint wrap) {
+    ({if (((0 || 0) && !0)) ((wrap < 32u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 618, __func__, "wrap < 32u"));});
+    ({if (((0 || 0) && !0)) ((wrap_target < 32u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 619, __func__, "wrap_target < 32u"));});
+    c->execctrl = (c->execctrl & ~(0x0001f000u | 0x00000f80u)) |
+                  (wrap_target << 7u) |
+                  (wrap << 12u);
+}
+static inline void sm_config_set_jmp_pin(pio_sm_config *c, uint pin) {
+    check_pio_pin_param(pin);
+    c->execctrl = (c->execctrl & ~0x1f000000u) |
+                  ((pin & 31) << 24u);
+}
+static inline void sm_config_set_in_shift(pio_sm_config *c, _Bool shift_right, _Bool autopush, uint push_threshold) {
+    ({if (((0 || 0) && !0)) ((push_threshold <= 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 650, __func__, "push_threshold <= 32"));});
+    c->shiftctrl = (c->shiftctrl &
+                    ~(0x00040000u |
+                      0x00010000u |
+                      0x01f00000u)) |
+                   (((uint)!!(shift_right)) << 18u) |
+                   (((uint)!!(autopush)) << 16u) |
+                   ((push_threshold & 0x1fu) << 20u);
+}
+static inline void sm_config_set_out_shift(pio_sm_config *c, _Bool shift_right, _Bool autopull, uint pull_threshold) {
+    ({if (((0 || 0) && !0)) ((pull_threshold <= 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 669, __func__, "pull_threshold <= 32"));});
+    c->shiftctrl = (c->shiftctrl &
+                    ~(0x00080000u |
+                      0x00020000u |
+                      0x3e000000u)) |
+                   (((uint)!!(shift_right)) << 19u) |
+                   (((uint)!!(autopull)) << 17u) |
+                   ((pull_threshold & 0x1fu) << 25u);
+}
+static inline void sm_config_set_fifo_join(pio_sm_config *c, enum pio_fifo_join join) {
+    ({if (((0 || 0) && !0)) ((join == PIO_FIFO_JOIN_NONE || join == PIO_FIFO_JOIN_TX || join == PIO_FIFO_JOIN_RX || join == PIO_FIFO_JOIN_TXPUT || join == PIO_FIFO_JOIN_TXGET || join == PIO_FIFO_JOIN_PUTGET) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 686, __func__, "join == PIO_FIFO_JOIN_NONE || join == PIO_FIFO_JOIN_TX || join == PIO_FIFO_JOIN_RX || join == PIO_FIFO_JOIN_TXPUT || join == PIO_FIFO_JOIN_TXGET || join == PIO_FIFO_JOIN_PUTGET"));});
+    c->shiftctrl = (c->shiftctrl & (uint)~(0x40000000u | 0x80000000u |
+                                           0x00008000u | 0x00004000u)) |
+                   (((uint)(join & 3)) << 30u) |
+                   (((uint)(join >> 2)) << 14u);
+}
+static inline void sm_config_set_out_special(pio_sm_config *c, _Bool sticky, _Bool has_enable_pin, uint enable_bit_index) {
+    c->execctrl = (c->execctrl &
+                   (uint)~(0x00020000u | 0x00040000u |
+                     0x00f80000u)) |
+                  (((uint)!!(sticky)) << 17u) |
+                  (((uint)!!(has_enable_pin)) << 18u) |
+                  ((enable_bit_index << 19u) & 0x00f80000u);
+}
+static inline void sm_config_set_mov_status(pio_sm_config *c, enum pio_mov_status_type status_sel, uint status_n) {
+    ({if (((0 || 0) && !0)) ((status_sel == STATUS_TX_LESSTHAN || status_sel == STATUS_RX_LESSTHAN || status_sel == STATUS_IRQ_SET) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 727, __func__, "status_sel == STATUS_TX_LESSTHAN || status_sel == STATUS_RX_LESSTHAN || status_sel == STATUS_IRQ_SET"));});
+    c->execctrl = (c->execctrl
+                  & ~(0x00000060u | 0x0000001fu))
+                  | ((((uint)status_sel) << 5u) & 0x00000060u)
+                  | ((status_n << 0u) & 0x0000001fu);
+}
+static inline pio_sm_config pio_get_default_sm_config(void) {
+    pio_sm_config c = {};
+    sm_config_set_clkdiv_int_frac8(&c, 1, 0);
+    sm_config_set_wrap(&c, 0, 31);
+    sm_config_set_in_shift(&c, 1, 0, 32);
+    sm_config_set_out_shift(&c, 1, 0, 32);
+    return c;
+}
+static inline uint pio_get_gpio_base(PIO pio) {
+    return pio->gpiobase;
+}
+static inline void check_pio_pin_mask64(__attribute__((__unused__)) PIO pio, __attribute__((__unused__)) uint sm, __attribute__((__unused__)) uint64_t pinmask) {
+    ({if (((0 || 0) && !0)) (((pinmask & ~0xffffffffull) == 0) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 794, __func__, "(pinmask & ~0xffffffffull) == 0"));});
+}
+static inline int pio_sm_set_config(PIO pio, uint sm, const pio_sm_config *config) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    pio->sm[sm].clkdiv = config->clkdiv;
+    pio->sm[sm].shiftctrl = config->shiftctrl;
+    pio->sm[sm].execctrl = config->execctrl;
+    pio->sm[sm].pinctrl = config->pinctrl;
+    return PICO_OK;
+}
+static inline uint pio_get_index(PIO pio) {
+    check_pio_param(pio);
+    return (((uintptr_t)(pio) - 0x50200000u) >> 20);
+}
+static inline uint pio_get_funcsel(PIO pio) {
+    check_pio_param(pio);
+    return ((gpio_function_t) (GPIO_FUNC_PIO0 + (((uintptr_t)(pio) - 0x50200000u) >> 20)));
+}
+static inline PIO pio_get_instance(uint instance) {
+    ({if (((0 || 0) && !0)) ((!(instance >= 3u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 866, __func__, "!(instance >= 3u)"));});
+    return ((pio_hw_t *)(0x50200000u + (instance) * (1u << 20)));
+}
+static inline void pio_gpio_init(PIO pio, uint pin) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((pin < 30u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 900, __func__, "pin < 30u"));});
+    gpio_set_function(pin, ((gpio_function_t) (GPIO_FUNC_PIO0 + (((uintptr_t)(pio) - 0x50200000u) >> 20))));
+}
+static inline uint pio_get_dreq(PIO pio, uint sm, _Bool is_tx) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return (DREQ_PIO0_TX0 + (sm) + (((is_tx) ? 0 : 4u) + (((uintptr_t)(pio) - 0x50200000u) >> 20) * (DREQ_PIO1_TX0 - DREQ_PIO0_TX0)));
+}
+typedef struct pio_program {
+    const uint16_t *instructions;
+    uint8_t length;
+    int8_t origin;
+    uint8_t pio_version;
+    uint8_t used_gpio_ranges;
+} pio_program_t;
+int pio_set_gpio_base(PIO pio, uint gpio_base);
+_Bool pio_can_add_program(PIO pio, const pio_program_t *program);
+_Bool pio_can_add_program_at_offset(PIO pio, const pio_program_t *program, uint offset);
+int pio_add_program(PIO pio, const pio_program_t *program);
+int pio_add_program_at_offset(PIO pio, const pio_program_t *program, uint offset);
+void pio_remove_program(PIO pio, const pio_program_t *program, uint loaded_offset);
+void pio_clear_instruction_memory(PIO pio);
+int pio_sm_init(PIO pio, uint sm, uint initial_pc, const pio_sm_config *config);
+static inline void pio_sm_set_enabled(PIO pio, uint sm, _Bool enabled) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    pio->ctrl = (pio->ctrl & ~(1u << sm)) | (((uint)!!(enabled)) << sm);
+}
+static inline void pio_set_sm_mask_enabled(PIO pio, uint32_t mask, _Bool enabled) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    pio->ctrl = (pio->ctrl & ~mask) | (enabled ? mask : 0u);
+}
+static inline void pio_set_sm_multi_mask_enabled(PIO pio, uint32_t mask_prev, uint32_t mask, uint32_t mask_next, _Bool enabled) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    pio->ctrl = (pio->ctrl & ~(mask << 0u)) |
+                (enabled ? ((mask << 0u) & 0x0000000fu) : 0) |
+                (enabled ? 0x01000000u : 0x02000000u) |
+                ((mask_prev << 16u) & 0x000f0000u) |
+                ((mask_next << 20u) & 0x00f00000u);
+}
+static inline void pio_sm_restart(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    hw_set_bits(&pio->ctrl, 1u << (4u + sm));
+}
+static inline void pio_restart_sm_mask(PIO pio, uint32_t mask) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    hw_set_bits(&pio->ctrl, (mask << 4u) & 0x000000f0u);
+}
+static inline void pio_sm_clkdiv_restart(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    hw_set_bits(&pio->ctrl, 1u << (8u + sm));
+}
+static inline void pio_clkdiv_restart_sm_mask(PIO pio, uint32_t mask) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    hw_set_bits(&pio->ctrl, (mask << 8u) & 0x00000f00u);
+}
+static inline void pio_clkdiv_restart_sm_multi_mask(PIO pio, uint32_t mask_prev, uint32_t mask, uint32_t mask_next) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    hw_set_bits(&pio->ctrl, ((mask << 8u) & 0x00000f00u) |
+                            0x04000000u |
+                            ((mask_prev << 16u) & 0x000f0000u) |
+                            ((mask_next << 20u) & 0x00f00000u));
+}
+static inline void pio_enable_sm_mask_in_sync(PIO pio, uint32_t mask) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    hw_set_bits(&pio->ctrl,
+        ((mask << 8u) & 0x00000f00u) |
+        ((mask << 0u) & 0x0000000fu));
+}
+static inline void pio_enable_sm_multi_mask_in_sync(PIO pio, uint32_t mask_prev, uint32_t mask, uint32_t mask_next) {
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    check_pio_param(pio);
+    check_sm_mask(mask);
+    hw_set_bits(&pio->ctrl, ((mask << 8u) & 0x00000f00u) |
+                            ((mask << 0u) & 0x0000000fu) |
+                            0x04000000u | 0x01000000u |
+                            ((mask_prev << 16u) & 0x000f0000u) |
+                            ((mask_next << 20u) & 0x00f00000u));
+}
+typedef enum pio_interrupt_source {
+    pis_interrupt0 = 8u,
+    pis_interrupt1 = 9u,
+    pis_interrupt2 = 10u,
+    pis_interrupt3 = 11u,
+    pis_interrupt4 = 12u,
+    pis_interrupt5 = 13u,
+    pis_interrupt6 = 14u,
+    pis_interrupt7 = 15u,
+    pis_sm0_tx_fifo_not_full = 4u,
+    pis_sm1_tx_fifo_not_full = 5u,
+    pis_sm2_tx_fifo_not_full = 6u,
+    pis_sm3_tx_fifo_not_full = 7u,
+    pis_sm0_rx_fifo_not_empty = 0u,
+    pis_sm1_rx_fifo_not_empty = 1u,
+    pis_sm2_rx_fifo_not_empty = 2u,
+    pis_sm3_rx_fifo_not_empty = 3u,
+} pio_interrupt_source_t;
+static inline void pio_set_irq0_source_enabled(PIO pio, pio_interrupt_source_t source, _Bool enabled) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((!(source >= 32u || (1u << source) > 0x0000ffffu)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1302, __func__, "!(source >= 32u || (1u << source) > 0x0000ffffu)"));});
+    if (enabled)
+        hw_set_bits(&pio->inte0, 1u << source);
+    else
+        hw_clear_bits(&pio->inte0, 1u << source);
+}
+static inline void pio_set_irq1_source_enabled(PIO pio, pio_interrupt_source_t source, _Bool enabled) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((!(source >= 32 || (1u << source) > 0x0000ffffu)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1318, __func__, "!(source >= 32 || (1u << source) > 0x0000ffffu)"));});
+    if (enabled)
+        hw_set_bits(&pio->inte1, 1u << source);
+    else
+        hw_clear_bits(&pio->inte1, 1u << source);
+}
+static inline void pio_set_irq0_source_mask_enabled(PIO pio, uint32_t source_mask, _Bool enabled) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((!(source_mask > 0x0000ffffu)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1334, __func__, "!(source_mask > 0x0000ffffu)"));});
+    if (enabled) {
+        hw_set_bits(&pio->inte0, source_mask);
+    } else {
+        hw_clear_bits(&pio->inte0, source_mask);
     }
-    return 0;
 }
-static inline _Bool status_led_get_state() {
-    if (status_led_via_colored_status_led()) {
-        return colored_status_led_get_state();
-    } else if (status_led_supported()) {
-        _Bool value = 0;
-        cyw43_gpio_get(&cyw43_state, 0, &value);
-        return value;
+static inline void pio_set_irq1_source_mask_enabled(PIO pio, uint32_t source_mask, _Bool enabled) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((!(source_mask > 0x0000ffffu)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1351, __func__, "!(source_mask > 0x0000ffffu)"));});
+    if (enabled) {
+        hw_set_bits(&pio->inte1, source_mask);
+    } else {
+        hw_clear_bits(&pio->inte1, source_mask);
     }
-    return 0;
 }
-void status_led_deinit();
+static inline void pio_set_irqn_source_enabled(PIO pio, uint irq_index, pio_interrupt_source_t source, _Bool enabled) {
+    ({if (((0 || 0) && !0)) ((!(irq_index > 2u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1368, __func__, "!(irq_index > 2u)"));});
+    ({if (((0 || 0) && !0)) ((!(source >= 32 || (1u << source) > 0x0000ffffu)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1369, __func__, "!(source >= 32 || (1u << source) > 0x0000ffffu)"));});
+    if (enabled)
+        hw_set_bits(&pio->irq_ctrl[irq_index].inte, 1u << source);
+    else
+        hw_clear_bits(&pio->irq_ctrl[irq_index].inte, 1u << source);
+}
+static inline void pio_set_irqn_source_mask_enabled(PIO pio, uint irq_index, uint32_t source_mask, _Bool enabled) {
+    ({if (((0 || 0) && !0)) ((!(irq_index > 2u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1385, __func__, "!(irq_index > 2u)"));});
+    _Static_assert(2u == 2, "");
+    ({if (((0 || 0) && !0)) ((!(source_mask > 0x0000ffffu)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1387, __func__, "!(source_mask > 0x0000ffffu)"));});
+    if (enabled) {
+        hw_set_bits(&pio->irq_ctrl[irq_index].inte, source_mask);
+    } else {
+        hw_clear_bits(&pio->irq_ctrl[irq_index].inte, source_mask);
+    }
+}
+static inline _Bool pio_interrupt_get(PIO pio, uint pio_interrupt_num) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((!(pio_interrupt_num >= 8)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1404, __func__, "!(pio_interrupt_num >= 8)"));});
+    return pio->irq & (1u << pio_interrupt_num);
+}
+static inline void pio_interrupt_clear(PIO pio, uint pio_interrupt_num) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((!(pio_interrupt_num >= 8)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1416, __func__, "!(pio_interrupt_num >= 8)"));});
+    pio->irq = (1u << pio_interrupt_num);
+}
+static inline uint8_t pio_sm_get_pc(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return (uint8_t) pio->sm[sm].addr;
+}
+inline static void pio_sm_exec(PIO pio, uint sm, uint instr) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    pio->sm[sm].instr = instr;
+}
+static inline _Bool pio_sm_is_exec_stalled(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return pio->sm[sm].execctrl & 0x80000000u;
+}
+static inline void pio_sm_exec_wait_blocking(PIO pio, uint sm, uint instr) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    pio_sm_exec(pio, sm, instr);
+    while (pio_sm_is_exec_stalled(pio, sm)) tight_loop_contents();
+}
+static inline void pio_sm_set_wrap(PIO pio, uint sm, uint wrap_target, uint wrap) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    ({if (((0 || 0) && !0)) ((wrap < 32u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1495, __func__, "wrap < 32u"));});
+    ({if (((0 || 0) && !0)) ((wrap_target < 32u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1496, __func__, "wrap_target < 32u"));});
+    pio->sm[sm].execctrl =
+            (pio->sm[sm].execctrl & ~(0x0001f000u | 0x00000f80u)) |
+            (wrap_target << 7u) |
+            (wrap << 12u);
+}
+static inline void pio_sm_set_out_pins(PIO pio, uint sm, uint out_base, uint out_count) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    ({if (((0 || 0) && !0)) ((out_base < 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1519, __func__, "out_base < 32"));});
+    ({if (((0 || 0) && !0)) ((out_count <= 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1520, __func__, "out_count <= 32"));});
+    pio->sm[sm].pinctrl = (pio->sm[sm].pinctrl & ~(0x0000001fu | 0x03f00000u)) |
+                 (out_base << 0u) |
+                 (out_count << 20u);
+}
+static inline void pio_sm_set_set_pins(PIO pio, uint sm, uint set_base, uint set_count) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    ({if (((0 || 0) && !0)) ((set_base < 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1543, __func__, "set_base < 32"));});
+    ({if (((0 || 0) && !0)) ((set_count <= 5) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1544, __func__, "set_count <= 5"));});
+    pio->sm[sm].pinctrl = (pio->sm[sm].pinctrl & ~(0x000003e0u | 0x1c000000u)) |
+                 (set_base << 5u) |
+                 (set_count << 26u);
+}
+static inline void pio_sm_set_in_pins(PIO pio, uint sm, uint in_base) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    ({if (((0 || 0) && !0)) ((in_base < 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1565, __func__, "in_base < 32"));});
+    pio->sm[sm].pinctrl = (pio->sm[sm].pinctrl & ~0x000f8000u) |
+                 (in_base << 15u);
+}
+static inline void pio_sm_set_sideset_pins(PIO pio, uint sm, uint sideset_base) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    ({if (((0 || 0) && !0)) ((sideset_base < 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1585, __func__, "sideset_base < 32"));});
+    pio->sm[sm].pinctrl = (pio->sm[sm].pinctrl & ~0x00007c00u) |
+                 (sideset_base << 10u);
+}
+static inline void pio_sm_set_jmp_pin(PIO pio, uint sm, uint pin) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    ({if (((0 || 0) && !0)) ((pin < 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1604, __func__, "pin < 32"));});
+    pio->sm[sm].execctrl =
+        (pio->sm[sm].execctrl & ~0x1f000000u)
+        | (pin << 24u);
+}
+static inline void pio_sm_put(PIO pio, uint sm, uint32_t data) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    pio->txf[sm] = data;
+}
+static inline uint32_t pio_sm_get(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return pio->rxf[sm];
+}
+static inline _Bool pio_sm_is_rx_fifo_full(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return (pio->fstat & (1u << (0u + sm))) != 0;
+}
+static inline _Bool pio_sm_is_rx_fifo_empty(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return (pio->fstat & (1u << (8u + sm))) != 0;
+}
+static inline uint pio_sm_get_rx_fifo_level(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    uint bitoffs = 4u + sm * (12u - 4u);
+    const uint32_t mask = 0x000000f0u >> 4u;
+    return (pio->flevel >> bitoffs) & mask;
+}
+static inline _Bool pio_sm_is_tx_fifo_full(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return (pio->fstat & (1u << (16u + sm))) != 0;
+}
+static inline _Bool pio_sm_is_tx_fifo_empty(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    return (pio->fstat & (1u << (24u + sm))) != 0;
+}
+static inline uint pio_sm_get_tx_fifo_level(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    unsigned int bitoffs = 0u + sm * (8u - 0u);
+    const uint32_t mask = 0x0000000fu >> 0u;
+    return (pio->flevel >> bitoffs) & mask;
+}
+static inline void pio_sm_put_blocking(PIO pio, uint sm, uint32_t data) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    while (pio_sm_is_tx_fifo_full(pio, sm)) tight_loop_contents();
+    pio_sm_put(pio, sm, data);
+}
+static inline uint32_t pio_sm_get_blocking(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    while (pio_sm_is_rx_fifo_empty(pio, sm)) tight_loop_contents();
+    return pio_sm_get(pio, sm);
+}
+void pio_sm_drain_tx_fifo(PIO pio, uint sm);
+static inline void pio_sm_set_clkdiv_int_frac8(PIO pio, uint sm, uint32_t div_int, uint8_t div_frac8) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    _Static_assert((31u + 1 - 16u) == 16, "");
+    ({if (((0 || 0) && !0)) ((!(div_int >> 16)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1787, __func__, "!(div_int >> 16)"));});
+    ({if (((0 || 0) && !0)) ((!(div_int == 0 && div_frac8 != 0)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 1788, __func__, "!(div_int == 0 && div_frac8 != 0)"));});
+    _Static_assert((15u + 1 - 8u) == 8, "");
+    pio->sm[sm].clkdiv =
+            (((uint)div_frac8) << 8u) |
+            (((uint)div_int) << 16u);
+}
+static inline void pio_sm_set_clkdiv_int_frac(PIO pio, uint sm, uint16_t div_int, uint8_t div_frac8) {
+    pio_sm_set_clkdiv_int_frac8(pio, sm, div_int, div_frac8);
+}
+static inline void pio_sm_set_clkdiv(PIO pio, uint sm, float div) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    uint32_t div_int;
+    uint8_t div_frac8;
+    pio_calculate_clkdiv8_from_float(div, &div_int, &div_frac8);
+    pio_sm_set_clkdiv_int_frac8(pio, sm, div_int, div_frac8);
+}
+static inline void pio_sm_clear_fifos(PIO pio, uint sm) {
+    check_pio_param(pio);
+    check_sm_param(sm);
+    hw_xor_bits(&pio->sm[sm].shiftctrl, 0x80000000u);
+    hw_xor_bits(&pio->sm[sm].shiftctrl, 0x80000000u);
+}
+void pio_sm_set_pins(PIO pio, uint sm, uint32_t pin_values);
+void pio_sm_set_pins64(PIO pio, uint sm, uint64_t pin_values);
+void pio_sm_set_pins_with_mask(PIO pio, uint sm, uint32_t pin_values, uint32_t pin_mask);
+void pio_sm_set_pins_with_mask64(PIO pio, uint sm, uint64_t pin_values, uint64_t pin_mask);
+void pio_sm_set_pindirs_with_mask(PIO pio, uint sm, uint32_t pin_dirs, uint32_t pin_mask);
+void pio_sm_set_pindirs_with_mask64(PIO pio, uint sm, uint64_t pin_dirs, uint64_t pin_mask);
+int pio_sm_set_consecutive_pindirs(PIO pio, uint sm, uint pins_base, uint pin_count, _Bool is_out);
+void pio_sm_claim(PIO pio, uint sm);
+void pio_claim_sm_mask(PIO pio, uint sm_mask);
+void pio_sm_unclaim(PIO pio, uint sm);
+int pio_claim_unused_sm(PIO pio, _Bool required);
+_Bool pio_sm_is_claimed(PIO pio, uint sm);
+_Bool pio_claim_free_sm_and_add_program(const pio_program_t *program, PIO *pio, uint *sm, uint *offset);
+_Bool pio_claim_free_sm_and_add_program_for_gpio_range(const pio_program_t *program, PIO *pio, uint *sm, uint *offset, uint gpio_base, uint gpio_count, _Bool set_gpio_base);
+void pio_remove_program_and_unclaim_sm(const pio_program_t *program, PIO pio, uint sm, uint offset);
+static inline int pio_get_irq_num(PIO pio, uint irqn) {
+    check_pio_param(pio);
+    ({if (((0 || 0) && !0)) ((irqn < 2u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_pio/include/hardware/pio.h", 2049, __func__, "irqn < 2u"));});
+    return (PIO0_IRQ_0 + 2u * (((uintptr_t)(pio) - 0x50200000u) >> 20) + (irqn));
+}
+static inline pio_interrupt_source_t pio_get_tx_fifo_not_full_interrupt_source(uint sm) {
+    check_sm_param(sm);
+    return ((pio_interrupt_source_t)(pis_sm0_tx_fifo_not_full + sm));
+}
+static inline pio_interrupt_source_t pio_get_rx_fifo_not_empty_interrupt_source(uint sm) {
+    check_sm_param(sm);
+    return ((pio_interrupt_source_t)(pis_sm0_rx_fifo_not_empty + sm));
+}
+#define _PICO_MULTICORE_H 
+#define _PICO_SYNC_H 
+#define _PICO_SEM_H 
+#define _PICO_LOCK_CORE_H 
+#define _HARDWARE_SYNC_H 
+#define PARAM_ASSERTIONS_ENABLED_HARDWARE_SYNC 0
+__inline__ __attribute__((__always_inline__)) static void __nop(void) {
+    __asm volatile ("nop.w");
+}
+__inline__ __attribute__((__always_inline__)) static void __sev(void) {
+    __asm volatile (".syntax unified\n" "sev");
+}
+__inline__ __attribute__((__always_inline__)) static void __wfe(void) {
+    __asm volatile (".syntax unified\n" "wfe");
+}
+__inline__ __attribute__((__always_inline__)) static void __wfi(void) {
+    __asm volatile (".syntax unified\n" "wfi");
+}
+__inline__ __attribute__((__always_inline__)) static void __dmb(void) {
+    __asm volatile (".syntax unified\n" "dmb" : : : "memory");
+}
+__inline__ __attribute__((__always_inline__)) static void __dsb(void) {
+    __asm volatile (".syntax unified\n" "dsb" : : : "memory");
+}
+__inline__ __attribute__((__always_inline__)) static void __isb(void) {
+    __asm volatile (".syntax unified\n" "isb" ::: "memory");
+}
+__inline__ __attribute__((__always_inline__)) static void __mem_fence_acquire(void) {
+    __dmb();
+}
+__inline__ __attribute__((__always_inline__)) static void __mem_fence_release(void) {
+    __dmb();
+}
+__inline__ __attribute__((__always_inline__)) static void disable_interrupts(void) {
+    __asm volatile (".syntax unified\n" "cpsid i" : : : "memory");
+}
+__inline__ __attribute__((__always_inline__)) static void enable_interrupts(void) {
+    __asm volatile (".syntax unified\n" "cpsie i" : : : "memory");
+}
+__inline__ __attribute__((__always_inline__)) static uint32_t save_and_disable_interrupts(void) {
+    uint32_t status;
+    __asm volatile (".syntax unified\n" "mrs %0, PRIMASK\n" "cpsid i" : "=r" (status) :: "memory");
+    return status;
+}
+__inline__ __attribute__((__always_inline__)) static void restore_interrupts(uint32_t status) {
+    __asm volatile (".syntax unified\n" "msr PRIMASK,%0"::"r" (status) : "memory");
+}
+__inline__ __attribute__((__always_inline__)) static void restore_interrupts_from_disabled(uint32_t status) {
+    __asm volatile (".syntax unified\n" "msr PRIMASK,%0"::"r" (status) : "memory");
+}
+#define _HARDWARE_SYNC_SPIN_LOCK_H 
+#define PICO_USE_SW_SPIN_LOCKS 1
+#define PICO_SPINLOCK_ID_IRQ 9
+#define PICO_SPINLOCK_ID_TIMER 10
+#define PICO_SPINLOCK_ID_HARDWARE_CLAIM 11
+#define PICO_SPINLOCK_ID_RAND 12
+#define PICO_SPINLOCK_ID_ATOMIC 13
+#define PICO_SPINLOCK_ID_OS1 14
+#define PICO_SPINLOCK_ID_OS2 15
+#define PICO_SPINLOCK_ID_STRIPED_FIRST 16
+#define PICO_SPINLOCK_ID_STRIPED_LAST 23
+#define PICO_SPINLOCK_ID_CLAIM_FREE_FIRST 24
+#define PICO_SPINLOCK_ID_CLAIM_FREE_LAST 31
+#define SW_SPIN_LOCK_TYPE volatile uint8_t
+typedef volatile uint8_t spin_lock_t;
+#define SW_SPIN_LOCK_INSTANCE(lock_num) ({ extern spin_lock_t _sw_spin_locks[NUM_SPIN_LOCKS]; &_sw_spin_locks[lock_num]; })
+#define SW_SPIN_LOCK_NUM(lock) ({ extern spin_lock_t _sw_spin_locks[NUM_SPIN_LOCKS]; (lock) - _sw_spin_locks; })
+#define SW_SPIN_LOCK_IS_LOCKED(lock) ((bool) *(lock))
+#define SW_SPIN_LOCK_LOCK(lock) ({ uint32_t _tmp0, _tmp1; pico_default_asm_volatile ( "1:\n" "ldaexb %1, [%2]\n" "movs %0, #1\n" "cmp %1, #0\n" "bne 1b\n" "strexb %1, %0, [%2]\n" "cmp %1, #0\n" "bne 1b\n" : "=&r" (_tmp0), "=&r" (_tmp1) : "r" (lock) ); __mem_fence_acquire(); })
+#define SW_SPIN_TRY_LOCK(lock) ({ uint32_t _tmp0, _tmp1; pico_default_asm_volatile ( "ldaexb %1, [%2]\n" "movs %0, #1\n" "cmp %1, #0\n" "bne 1f\n" "strexb %1, %0, [%2]\n" "1:\n" : "=&r" (_tmp0), "=&r" (_tmp1) : "r" (lock) ); __mem_fence_acquire(); !_tmp1; })
+#define SW_SPIN_LOCK_UNLOCK(lock) ({ uint32_t zero = 0; pico_default_asm_volatile( "stlb %0, [%1]\n" : : "r" (zero), "r" (lock) ); })
+__inline__ __attribute__((__always_inline__)) static spin_lock_t *spin_lock_instance(uint lock_num) {
+    ({if (((0 || 0) && !0)) ((!(lock_num >= 32u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_sync_spin_lock/include/hardware/sync/spin_lock.h", 226, __func__, "!(lock_num >= 32u)"));});
+    return ({ extern spin_lock_t _sw_spin_locks[32u]; &_sw_spin_locks[lock_num]; });
+}
+__inline__ __attribute__((__always_inline__)) static uint spin_lock_get_num(spin_lock_t *lock) {
+    uint lock_num = ({ extern spin_lock_t _sw_spin_locks[32u]; (lock) - _sw_spin_locks; });
+    ({if (((0 || 0) && !0)) ((!(lock_num >= (uint)32u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_sync_spin_lock/include/hardware/sync/spin_lock.h", 243, __func__, "!(lock_num >= (uint)32u)"));});
+    return lock_num;
+}
+__inline__ __attribute__((__always_inline__)) static void spin_lock_unsafe_blocking(spin_lock_t *lock) {
+    ({ uint32_t _tmp0, _tmp1; __asm volatile (".syntax unified\n" "1:\n" "ldaexb %1, [%2]\n" "movs %0, #1\n" "cmp %1, #0\n" "bne 1b\n" "strexb %1, %0, [%2]\n" "cmp %1, #0\n" "bne 1b\n" : "=&r" (_tmp0), "=&r" (_tmp1) : "r" (lock)); __mem_fence_acquire(); });
+}
+__inline__ __attribute__((__always_inline__)) static _Bool spin_try_lock_unsafe(spin_lock_t *lock) {
+    return ({ uint32_t _tmp0, _tmp1; __asm volatile (".syntax unified\n" "ldaexb %1, [%2]\n" "movs %0, #1\n" "cmp %1, #0\n" "bne 1f\n" "strexb %1, %0, [%2]\n" "1:\n" : "=&r" (_tmp0), "=&r" (_tmp1) : "r" (lock)); __mem_fence_acquire(); !_tmp1; });
+}
+__inline__ __attribute__((__always_inline__)) static void spin_unlock_unsafe(spin_lock_t *lock) {
+    ({ uint32_t zero = 0; __asm volatile (".syntax unified\n" "stlb %0, [%1]\n" : : "r" (zero), "r" (lock)); });
+}
+__inline__ __attribute__((__always_inline__)) static uint32_t spin_lock_blocking(spin_lock_t *lock) {
+    uint32_t save = save_and_disable_interrupts();
+    spin_lock_unsafe_blocking(lock);
+    return save;
+}
+inline static _Bool is_spin_locked(spin_lock_t *lock) {
+    return ((_Bool) *(lock));
+}
+__inline__ __attribute__((__always_inline__)) static void spin_unlock(spin_lock_t *lock, uint32_t saved_irq) {
+    spin_unlock_unsafe(lock);
+    restore_interrupts_from_disabled(saved_irq);
+}
+spin_lock_t *spin_lock_init(uint lock_num);
+void spin_locks_reset(void);
+uint next_striped_spin_lock_num(void);
+void spin_lock_claim(uint lock_num);
+void spin_lock_claim_mask(uint32_t lock_num_mask);
+void spin_lock_unclaim(uint lock_num);
+int spin_lock_claim_unused(_Bool required);
+_Bool spin_lock_is_claimed(uint lock_num);
+#define remove_volatile_cast(t,x) (t)(x)
+#define remove_volatile_cast_no_barrier(t,x) (t)(x)
+#define PARAM_ASSERTIONS_ENABLED_LOCK_CORE 0
+struct lock_core {
+    spin_lock_t *spin_lock;
+};
+typedef struct lock_core lock_core_t;
+void lock_init(lock_core_t *core, uint lock_num);
+#define lock_owner_id_t int8_t
+#define LOCK_INVALID_OWNER_ID ((lock_owner_id_t)-1)
+#define lock_get_caller_owner_id() ((lock_owner_id_t)get_core_num())
+#define lock_is_owner_id_valid(id) ((id)>=0)
+#define lock_internal_spin_unlock_with_wait(lock,save) spin_unlock((lock)->spin_lock, save), __wfe()
+#define lock_internal_spin_unlock_with_notify(lock,save) spin_unlock((lock)->spin_lock, save), __sev()
+#define lock_internal_spin_unlock_with_best_effort_wait_or_timeout(lock,save,until) ({ spin_unlock((lock)->spin_lock, save); best_effort_wfe_or_timeout(until); })
+#define sync_internal_yield_until_before(until) ((void)0)
+typedef struct semaphore {
+    struct lock_core core;
+    int16_t permits;
+    int16_t max_permits;
+} semaphore_t;
+void sem_init(semaphore_t *sem, int16_t initial_permits, int16_t max_permits);
+int sem_available(semaphore_t *sem);
+_Bool sem_release(semaphore_t *sem);
+void sem_reset(semaphore_t *sem, int16_t permits);
+void sem_acquire_blocking(semaphore_t *sem);
+_Bool sem_acquire_timeout_ms(semaphore_t *sem, uint32_t timeout_ms);
+_Bool sem_acquire_timeout_us(semaphore_t *sem, uint32_t timeout_us);
+_Bool sem_acquire_block_until(semaphore_t *sem, absolute_time_t until);
+_Bool sem_try_acquire(semaphore_t *sem);
+#define _PICO_MUTEX_H 
+typedef struct {
+    lock_core_t core;
+    int8_t owner;
+    uint8_t enter_count;
+} recursive_mutex_t;
+typedef struct mutex {
+    lock_core_t core;
+    int8_t owner;
+} mutex_t;
+void mutex_init(mutex_t *mtx);
+void recursive_mutex_init(recursive_mutex_t *mtx);
+void mutex_enter_blocking(mutex_t *mtx);
+void recursive_mutex_enter_blocking(recursive_mutex_t *mtx);
+_Bool mutex_try_enter(mutex_t *mtx, uint32_t *owner_out);
+_Bool mutex_try_enter_block_until(mutex_t *mtx, absolute_time_t until);
+_Bool recursive_mutex_try_enter(recursive_mutex_t *mtx, uint32_t *owner_out);
+_Bool mutex_enter_timeout_ms(mutex_t *mtx, uint32_t timeout_ms);
+_Bool recursive_mutex_enter_timeout_ms(recursive_mutex_t *mtx, uint32_t timeout_ms);
+_Bool mutex_enter_timeout_us(mutex_t *mtx, uint32_t timeout_us);
+_Bool recursive_mutex_enter_timeout_us(recursive_mutex_t *mtx, uint32_t timeout_us);
+_Bool mutex_enter_block_until(mutex_t *mtx, absolute_time_t until);
+_Bool recursive_mutex_enter_block_until(recursive_mutex_t *mtx, absolute_time_t until);
+void mutex_exit(mutex_t *mtx);
+void recursive_mutex_exit(recursive_mutex_t *mtx);
+static inline _Bool mutex_is_initialized(mutex_t *mtx) {
+    return mtx->core.spin_lock != 0;
+}
+static inline _Bool recursive_mutex_is_initialized(recursive_mutex_t *mtx) {
+    return mtx->core.spin_lock != 0;
+}
+#define auto_init_mutex(name) static __attribute__((section(".mutex_array"))) mutex_t name
+#define auto_init_recursive_mutex(name) static __attribute__((section(".mutex_array"))) recursive_mutex_t name = { .core = { .spin_lock = (spin_lock_t *)1 }, .owner = 0, .enter_count = 0 }
+void runtime_init_mutex(void);
+#define _PICO_CRITICAL_SECTION_H 
+typedef struct __attribute__((__packed__)) __attribute__((__aligned__(4))) critical_section {
+    spin_lock_t *spin_lock;
+    uint32_t save;
+} critical_section_t;
+void critical_section_init(critical_section_t *crit_sec);
+void critical_section_init_with_lock_num(critical_section_t *crit_sec, uint lock_num);
+__inline__ __attribute__((__always_inline__)) static void critical_section_enter_blocking(critical_section_t *crit_sec) {
+    crit_sec->save = spin_lock_blocking(crit_sec->spin_lock);
+}
+__inline__ __attribute__((__always_inline__)) static void critical_section_exit(critical_section_t *crit_sec) {
+    spin_unlock(crit_sec->spin_lock, crit_sec->save);
+}
+void critical_section_deinit(critical_section_t *crit_sec);
+static inline _Bool critical_section_is_initialized(critical_section_t *crit_sec) {
+    return crit_sec->spin_lock != 0;
+}
+#define PARAM_ASSERTIONS_ENABLED_PICO_MULTICORE 0
+#define PICO_CORE1_STACK_SIZE PICO_STACK_SIZE
+#define SIO_FIFO_IRQ_NUM(core) SIO_IRQ_FIFO
+void multicore_reset_core1(void);
+void multicore_launch_core1(void (*entry)(void));
+void multicore_launch_core1_with_stack(void (*entry)(void), uint32_t *stack_bottom, size_t stack_size_bytes);
+void multicore_launch_core1_raw(void (*entry)(void), uint32_t *sp, uint32_t vector_table);
+static inline _Bool multicore_fifo_rvalid(void) {
+    return ((sio_hw_t *)0xd0000000u)->fifo_st & 0x00000001u;
+}
+static inline _Bool multicore_fifo_wready(void) {
+    return ((sio_hw_t *)0xd0000000u)->fifo_st & 0x00000002u;
+}
+void multicore_fifo_push_blocking(uint32_t data);
+static inline void multicore_fifo_push_blocking_inline(uint32_t data) {
+    while (!multicore_fifo_wready())
+        tight_loop_contents();
+    ((sio_hw_t *)0xd0000000u)->fifo_wr = data;
+    __sev();
+}
+_Bool multicore_fifo_push_timeout_us(uint32_t data, uint64_t timeout_us);
+uint32_t multicore_fifo_pop_blocking(void);
+static inline uint32_t multicore_fifo_pop_blocking_inline(void) {
+    while (!multicore_fifo_rvalid())
+        __wfe();
+    return ((sio_hw_t *)0xd0000000u)->fifo_rd;
+}
+_Bool multicore_fifo_pop_timeout_us(uint64_t timeout_us, uint32_t *out);
+static inline void multicore_fifo_drain(void) {
+    while (multicore_fifo_rvalid())
+        (void) ((sio_hw_t *)0xd0000000u)->fifo_rd;
+}
+static inline void multicore_fifo_clear_irq(void) {
+    ((sio_hw_t *)0xd0000000u)->fifo_st = 0xff;
+}
+static inline uint32_t multicore_fifo_get_status(void) {
+    return ((sio_hw_t *)0xd0000000u)->fifo_st;
+}
+static inline void check_doorbell_num_param(__attribute__((__unused__)) uint doorbell_num) {
+    ({if (((0 || 0) && !0)) ((!(doorbell_num >= 8u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/pico_multicore/include/pico/multicore.h", 309, __func__, "!(doorbell_num >= 8u)"));});
+}
+void multicore_doorbell_claim(uint doorbell_num, uint core_mask);
+int multicore_doorbell_claim_unused(uint core_mask, _Bool required);
+void multicore_doorbell_unclaim(uint doorbell_num, uint core_mask);
+static inline void multicore_doorbell_set_other_core(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    ((sio_hw_t *)0xd0000000u)->doorbell_out_set = 1u << doorbell_num;
+}
+static inline void multicore_doorbell_clear_other_core(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    ((sio_hw_t *)0xd0000000u)->doorbell_out_clr = 1u << doorbell_num;
+}
+static inline void multicore_doorbell_set_current_core(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    ((sio_hw_t *)0xd0000000u)->doorbell_in_set = 1u << doorbell_num;
+}
+static inline void multicore_doorbell_clear_current_core(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    ((sio_hw_t *)0xd0000000u)->doorbell_in_clr = 1u << doorbell_num;
+}
+static inline _Bool multicore_doorbell_is_set_current_core(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    return ((sio_hw_t *)0xd0000000u)->doorbell_in_set & (1u << doorbell_num);
+}
+static inline _Bool multicore_doorbell_is_set_other_core(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    return ((sio_hw_t *)0xd0000000u)->doorbell_out_set & (1u << doorbell_num);
+}
+#define DOORBELL_IRQ_NUM(doorbell_num) SIO_IRQ_BELL
+static inline uint multicore_doorbell_irq_num(uint doorbell_num) {
+    check_doorbell_num_param(doorbell_num);
+    return SIO_IRQ_BELL;
+}
+void multicore_lockout_victim_init(void);
+void multicore_lockout_victim_deinit(void);
+_Bool multicore_lockout_victim_is_initialized(uint core_num);
+void multicore_lockout_start_blocking(void);
+_Bool multicore_lockout_start_timeout_us(uint64_t timeout_us);
+void multicore_lockout_end_blocking(void);
+_Bool multicore_lockout_end_timeout_us(uint64_t timeout_us);
+#define _PICO_CYW43_ARCH_H 
+#define CYW43_INCLUDED_CYW43_COUNTRY_H 
+#define CYW43_COUNTRY(A,B,REV) ((unsigned char)(A) | ((unsigned char)(B) << 8) | ((REV) << 16))
+#define CYW43_COUNTRY_WORLDWIDE CYW43_COUNTRY('X', 'X', 0)
+#define CYW43_COUNTRY_AUSTRALIA CYW43_COUNTRY('A', 'U', 0)
+#define CYW43_COUNTRY_AUSTRIA CYW43_COUNTRY('A', 'T', 0)
+#define CYW43_COUNTRY_BELGIUM CYW43_COUNTRY('B', 'E', 0)
+#define CYW43_COUNTRY_BRAZIL CYW43_COUNTRY('B', 'R', 0)
+#define CYW43_COUNTRY_CANADA CYW43_COUNTRY('C', 'A', 0)
+#define CYW43_COUNTRY_CHILE CYW43_COUNTRY('C', 'L', 0)
+#define CYW43_COUNTRY_CHINA CYW43_COUNTRY('C', 'N', 0)
+#define CYW43_COUNTRY_COLOMBIA CYW43_COUNTRY('C', 'O', 0)
+#define CYW43_COUNTRY_CZECH_REPUBLIC CYW43_COUNTRY('C', 'Z', 0)
+#define CYW43_COUNTRY_DENMARK CYW43_COUNTRY('D', 'K', 0)
+#define CYW43_COUNTRY_ESTONIA CYW43_COUNTRY('E', 'E', 0)
+#define CYW43_COUNTRY_FINLAND CYW43_COUNTRY('F', 'I', 0)
+#define CYW43_COUNTRY_FRANCE CYW43_COUNTRY('F', 'R', 0)
+#define CYW43_COUNTRY_GERMANY CYW43_COUNTRY('D', 'E', 0)
+#define CYW43_COUNTRY_GREECE CYW43_COUNTRY('G', 'R', 0)
+#define CYW43_COUNTRY_HONG_KONG CYW43_COUNTRY('H', 'K', 0)
+#define CYW43_COUNTRY_HUNGARY CYW43_COUNTRY('H', 'U', 0)
+#define CYW43_COUNTRY_ICELAND CYW43_COUNTRY('I', 'S', 0)
+#define CYW43_COUNTRY_INDIA CYW43_COUNTRY('I', 'N', 0)
+#define CYW43_COUNTRY_ISRAEL CYW43_COUNTRY('I', 'L', 0)
+#define CYW43_COUNTRY_ITALY CYW43_COUNTRY('I', 'T', 0)
+#define CYW43_COUNTRY_JAPAN CYW43_COUNTRY('J', 'P', 0)
+#define CYW43_COUNTRY_KENYA CYW43_COUNTRY('K', 'E', 0)
+#define CYW43_COUNTRY_LATVIA CYW43_COUNTRY('L', 'V', 0)
+#define CYW43_COUNTRY_LIECHTENSTEIN CYW43_COUNTRY('L', 'I', 0)
+#define CYW43_COUNTRY_LITHUANIA CYW43_COUNTRY('L', 'T', 0)
+#define CYW43_COUNTRY_LUXEMBOURG CYW43_COUNTRY('L', 'U', 0)
+#define CYW43_COUNTRY_MALAYSIA CYW43_COUNTRY('M', 'Y', 0)
+#define CYW43_COUNTRY_MALTA CYW43_COUNTRY('M', 'T', 0)
+#define CYW43_COUNTRY_MEXICO CYW43_COUNTRY('M', 'X', 0)
+#define CYW43_COUNTRY_NETHERLANDS CYW43_COUNTRY('N', 'L', 0)
+#define CYW43_COUNTRY_NEW_ZEALAND CYW43_COUNTRY('N', 'Z', 0)
+#define CYW43_COUNTRY_NIGERIA CYW43_COUNTRY('N', 'G', 0)
+#define CYW43_COUNTRY_NORWAY CYW43_COUNTRY('N', 'O', 0)
+#define CYW43_COUNTRY_PERU CYW43_COUNTRY('P', 'E', 0)
+#define CYW43_COUNTRY_PHILIPPINES CYW43_COUNTRY('P', 'H', 0)
+#define CYW43_COUNTRY_POLAND CYW43_COUNTRY('P', 'L', 0)
+#define CYW43_COUNTRY_PORTUGAL CYW43_COUNTRY('P', 'T', 0)
+#define CYW43_COUNTRY_SINGAPORE CYW43_COUNTRY('S', 'G', 0)
+#define CYW43_COUNTRY_SLOVAKIA CYW43_COUNTRY('S', 'K', 0)
+#define CYW43_COUNTRY_SLOVENIA CYW43_COUNTRY('S', 'I', 0)
+#define CYW43_COUNTRY_SOUTH_AFRICA CYW43_COUNTRY('Z', 'A', 0)
+#define CYW43_COUNTRY_SOUTH_KOREA CYW43_COUNTRY('K', 'R', 0)
+#define CYW43_COUNTRY_SPAIN CYW43_COUNTRY('E', 'S', 0)
+#define CYW43_COUNTRY_SWEDEN CYW43_COUNTRY('S', 'E', 0)
+#define CYW43_COUNTRY_SWITZERLAND CYW43_COUNTRY('C', 'H', 0)
+#define CYW43_COUNTRY_TAIWAN CYW43_COUNTRY('T', 'W', 0)
+#define CYW43_COUNTRY_THAILAND CYW43_COUNTRY('T', 'H', 0)
+#define CYW43_COUNTRY_TURKEY CYW43_COUNTRY('T', 'R', 0)
+#define CYW43_COUNTRY_UK CYW43_COUNTRY('G', 'B', 0)
+#define CYW43_COUNTRY_USA CYW43_COUNTRY('U', 'S', 0)
+#define _PICO_ASYNC_CONTEXT_H 
+enum {
+    ASYNC_CONTEXT_POLL = 1,
+    ASYNC_CONTEXT_THREADSAFE_BACKGROUND = 2,
+    ASYNC_CONTEXT_FREERTOS = 3,
+};
+typedef struct async_context async_context_t;
+typedef struct async_work_on_timeout {
+    struct async_work_on_timeout *next;
+    void (*do_work)(async_context_t *context, struct async_work_on_timeout *timeout);
+    absolute_time_t next_time;
+    void *user_data;
+} async_at_time_worker_t;
+typedef struct async_when_pending_worker {
+    struct async_when_pending_worker *next;
+    void (*do_work)(async_context_t *context, struct async_when_pending_worker *worker);
+    _Bool work_pending;
+    void *user_data;
+} async_when_pending_worker_t;
+#define ASYNC_CONTEXT_FLAG_CALLBACK_FROM_NON_IRQ 0x1
+#define ASYNC_CONTEXT_FLAG_CALLBACK_FROM_IRQ 0x2
+#define ASYNC_CONTEXT_FLAG_POLLED 0x4
+typedef struct async_context_type {
+    uint16_t type;
+    void (*acquire_lock_blocking)(async_context_t *self);
+    void (*release_lock)(async_context_t *self);
+    void (*lock_check)(async_context_t *self);
+    uint32_t (*execute_sync)(async_context_t *context, uint32_t (*func)(void *param), void *param);
+    _Bool (*add_at_time_worker)(async_context_t *self, async_at_time_worker_t *worker);
+    _Bool (*remove_at_time_worker)(async_context_t *self, async_at_time_worker_t *worker);
+    _Bool (*add_when_pending_worker)(async_context_t *self, async_when_pending_worker_t *worker);
+    _Bool (*remove_when_pending_worker)(async_context_t *self, async_when_pending_worker_t *worker);
+    void (*set_work_pending)(async_context_t *self, async_when_pending_worker_t *worker);
+    void (*poll)(async_context_t *self);
+    void (*wait_until)(async_context_t *self, absolute_time_t until);
+    void (*wait_for_work_until)(async_context_t *self, absolute_time_t until);
+    void (*deinit)(async_context_t *self);
+} async_context_type_t;
+struct async_context {
+    const async_context_type_t *type;
+    async_when_pending_worker_t *when_pending_list;
+    async_at_time_worker_t *at_time_list;
+    absolute_time_t next_time;
+    uint16_t flags;
+    uint8_t core_num;
+};
+static inline void async_context_acquire_lock_blocking(async_context_t *context) {
+    context->type->acquire_lock_blocking(context);
+}
+static inline void async_context_release_lock(async_context_t *context) {
+    context->type->release_lock(context);
+}
+static inline void async_context_lock_check(async_context_t *context) {
+    context->type->lock_check(context);
+}
+static inline uint32_t async_context_execute_sync(async_context_t *context, uint32_t (*func)(void *param), void *param) {
+    return context->type->execute_sync(context, func, param);
+}
+static inline _Bool async_context_add_at_time_worker(async_context_t *context, async_at_time_worker_t *worker) {
+    return context->type->add_at_time_worker(context, worker);
+}
+static inline _Bool async_context_add_at_time_worker_at(async_context_t *context, async_at_time_worker_t *worker, absolute_time_t at) {
+    worker->next_time = at;
+    return context->type->add_at_time_worker(context, worker);
+}
+static inline _Bool async_context_add_at_time_worker_in_ms(async_context_t *context, async_at_time_worker_t *worker, uint32_t ms) {
+    worker->next_time = make_timeout_time_ms(ms);
+    return context->type->add_at_time_worker(context, worker);
+}
+static inline _Bool async_context_remove_at_time_worker(async_context_t *context, async_at_time_worker_t *worker) {
+    return context->type->remove_at_time_worker(context, worker);
+}
+static inline _Bool async_context_add_when_pending_worker(async_context_t *context, async_when_pending_worker_t *worker) {
+    return context->type->add_when_pending_worker(context, worker);
+}
+static inline _Bool async_context_remove_when_pending_worker(async_context_t *context, async_when_pending_worker_t *worker) {
+    return context->type->remove_when_pending_worker(context, worker);
+}
+static inline void async_context_set_work_pending(async_context_t *context, async_when_pending_worker_t *worker) {
+    context->type->set_work_pending(context, worker);
+}
+static inline void async_context_poll(async_context_t *context) {
+    if (context->type->poll) context->type->poll(context);
+}
+static inline void async_context_wait_until(async_context_t *context, absolute_time_t until) {
+    context->type->wait_until(context, until);
+}
+static inline void async_context_wait_for_work_until(async_context_t *context, absolute_time_t until) {
+    context->type->wait_for_work_until(context, until);
+}
+static inline void async_context_wait_for_work_ms(async_context_t *context, uint32_t ms) {
+    async_context_wait_for_work_until(context, make_timeout_time_ms(ms));
+}
+static inline uint async_context_core_num(const async_context_t *context) {
+    return context->core_num;
+}
+static inline void async_context_deinit(async_context_t *context) {
+    context->type->deinit(context);
+}
+#define _PICO_CYW43_ARCH_ARCH_THREADSAFE_BACKGROUND_H 
+#define PARAM_ASSERTIONS_ENABLED_PICO_CYW43_ARCH 0
+#define PICO_CYW43_ARCH_DEBUG_ENABLED 1
+#define PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE CYW43_COUNTRY_WORLDWIDE
+int cyw43_arch_init(void);
+int cyw43_arch_init_with_country(uint32_t country);
+void cyw43_arch_deinit(void);
+async_context_t *cyw43_arch_async_context(void);
+void cyw43_arch_set_async_context(async_context_t *context);
+async_context_t *cyw43_arch_init_default_async_context(void);
+void cyw43_arch_poll(void);
+void cyw43_arch_wait_for_work_until(absolute_time_t until);
+static inline void cyw43_arch_lwip_begin(void) {
+    cyw43_thread_enter();
+}
+static inline void cyw43_arch_lwip_end(void) {
+    cyw43_thread_exit();
+}
+static inline int cyw43_arch_lwip_protect(int (*func)(void *param), void *param) {
+    cyw43_arch_lwip_begin();
+    int rc = func(param);
+    cyw43_arch_lwip_end();
+    return rc;
+}
+uint32_t cyw43_arch_get_country_code(void);
+void cyw43_arch_enable_sta_mode(void);
+void cyw43_arch_disable_sta_mode(void);
+void cyw43_arch_enable_ap_mode(const char *ssid, const char *password, uint32_t auth);
+void cyw43_arch_disable_ap_mode(void);
+int cyw43_arch_wifi_connect_blocking(const char *ssid, const char *pw, uint32_t auth);
+int cyw43_arch_wifi_connect_bssid_blocking(const char *ssid, const uint8_t *bssid, const char *pw, uint32_t auth);
+int cyw43_arch_wifi_connect_timeout_ms(const char *ssid, const char *pw, uint32_t auth, uint32_t timeout);
+int cyw43_arch_wifi_connect_bssid_timeout_ms(const char *ssid, const uint8_t *bssid, const char *pw, uint32_t auth, uint32_t timeout);
+int cyw43_arch_wifi_connect_async(const char *ssid, const char *pw, uint32_t auth);
+int cyw43_arch_wifi_connect_bssid_async(const char *ssid, const uint8_t *bssid, const char *pw, uint32_t auth);
+void cyw43_arch_gpio_put(uint wl_gpio, _Bool value);
+_Bool cyw43_arch_gpio_get(uint wl_gpio);
+#define _PICO_CYW43_ARCH_ARCH_FREERTOS_H 
+#define CYW43_NO_DEFAULT_TASK_STACK 0
+#define CYW43_TASK_STACK_SIZE 1024
+#define CYW43_TASK_PRIORITY (tskIDLE_PRIORITY + 4)
+#define _PICO_CYW43_ARCH_ARCH_POLL_H 
+#define _PICO_STDIO_USB_H 
+#define _PICO_STDIO_H 
+#define PICO_STDOUT_MUTEX 1
+#define PICO_STDIO_ENABLE_CRLF_SUPPORT 1
+#define PICO_STDIO_DEFAULT_CRLF 1
+#define PICO_STDIO_STACK_BUFFER_SIZE 128
+#define PICO_STDIO_DEADLOCK_TIMEOUT_MS 1000
+#define PICO_STDIO_SHORT_CIRCUIT_CLIB_FUNCS 1
+#define _STDARG_H 
+#define _ANSI_STDARG_H_ 
+#undef __need___va_list
+#define va_start(v,l) __builtin_va_start(v,l)
+#define va_end(v) __builtin_va_end(v)
+#define va_arg(v,l) __builtin_va_arg(v,l)
+#define va_copy(d,s) __builtin_va_copy(d,s)
+#define __va_copy(d,s) __builtin_va_copy(d,s)
+#define _VA_LIST_ 
+#define _VA_LIST 
+#define _VA_LIST_T_H 
+#define __va_list__ 
+typedef struct stdio_driver stdio_driver_t;
+_Bool stdio_init_all(void);
+_Bool stdio_deinit_all(void);
+void stdio_flush(void);
+int stdio_getchar_timeout_us(uint32_t timeout_us);
+static inline int getchar_timeout_us(uint32_t timeout_us) {
+    return stdio_getchar_timeout_us(timeout_us);
+}
+void stdio_set_driver_enabled(stdio_driver_t *driver, _Bool enabled);
+void stdio_filter_driver(stdio_driver_t *driver);
+void stdio_set_translate_crlf(stdio_driver_t *driver, _Bool translate);
+int stdio_putchar_raw(int c);
+static inline int putchar_raw(int c) {
+    return stdio_putchar_raw(c);
+}
+int stdio_puts_raw(const char *s);
+static inline int puts_raw(const char *s) {
+    return stdio_puts_raw(s);
+}
+void stdio_set_chars_available_callback(void (*fn)(void*), void *param);
+int stdio_get_until(char *buf, int len, absolute_time_t until);
+int stdio_put_string(const char *s, int len, _Bool newline, _Bool cr_translation);
+int stdio_getchar(void);
+int stdio_putchar(int);
+int stdio_puts(const char *s);
+int stdio_vprintf(const char *format, va_list va);
+int __attribute__((__format__ (__printf__, 1, 0))) stdio_printf(const char* format, ...);
+#define PICO_STDIO_USB_DEFAULT_CRLF PICO_STDIO_DEFAULT_CRLF
+#define PICO_STDIO_USB_STDOUT_TIMEOUT_US 500000
+#define PICO_STDIO_USB_TASK_INTERVAL_US 1000
+#define PICO_STDIO_USB_ENABLE_IRQ_BACKGROUND_TASK 1
+#define PICO_STDIO_USB_ENABLE_TINYUSB_INIT 1
+#define PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE 1
+#define PICO_STDIO_USB_RESET_MAGIC_BAUD_RATE 1200
+#define PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS 0
+#define PICO_STDIO_USB_POST_CONNECT_WAIT_DELAY_MS 50
+#define PICO_STDIO_USB_DEINIT_DELAY_MS 110
+#define PICO_STDIO_USB_RESET_BOOTSEL_ACTIVITY_LED_ACTIVE_LOW 0
+#define PICO_STDIO_USB_RESET_BOOTSEL_FIXED_ACTIVITY_LED 0
+#define PICO_STDIO_USB_RESET_BOOTSEL_INTERFACE_DISABLE_MASK 0u
+#define PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE 1
+#define PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_RESET_TO_BOOTSEL 1
+#define PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_RESET_TO_FLASH_BOOT 1
+#define PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_MS_OS_20_DESCRIPTOR 1
+#define PICO_STDIO_USB_RESET_RESET_TO_FLASH_DELAY_MS 100
+#define PICO_STDIO_USB_USE_DEFAULT_DESCRIPTORS 1
+#define PICO_STDIO_USB_CONNECTION_WITHOUT_DTR 0
+#define PICO_STDIO_USB_DEVICE_SELF_POWERED 0
+#define PICO_STDIO_USB_SUPPORT_CHARS_AVAILABLE_CALLBACK 1
+extern stdio_driver_t stdio_usb;
+_Bool stdio_usb_init(void);
+_Bool stdio_usb_deinit(void);
+_Bool stdio_usb_connected(void);
+void stdio_usb_call_chars_available_callback(void);
+#define _PICO_STDIO_USB_RESET_INTERFACE_H 
+#define _PICO_USB_RESET_INTERFACE_H 
+#define RESET_INTERFACE_SUBCLASS 0x00
+#define RESET_INTERFACE_PROTOCOL 0x01
+#define RESET_REQUEST_BOOTSEL 0x01
+#define RESET_REQUEST_FLASH 0x02
+#define _PICO_STDIO_USB_TUSB_CONFIG_H 
+#define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE)
+#define CFG_TUD_CDC (1)
+#define CFG_TUD_CDC_RX_BUFSIZE (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#define CFG_TUD_CDC_TX_BUFSIZE (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#define CFG_TUD_CDC_EP_BUFSIZE (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#define CFG_TUD_VENDOR (1)
+#define CFG_TUD_VENDOR_RX_BUFSIZE (256)
+#define CFG_TUD_VENDOR_TX_BUFSIZE (256)
