@@ -510,7 +510,6 @@
 #define CFG_TUSB_DEBUG 1
 #define LIB_PICO_FLASH 1
 #define __ARM_ARCH_8M_MAIN__ 1
-pico_stdlib,pico_status_led,hardware_uart,hardware_dma,hardware_gpio,hardware_pio,pico_cyw43_arch_lwip_threadsafe_background,pico_multicore,pico_lwip_http,pico_cyw43_arch,pico_stdio_usb,pico_lwip_arch
 #define LWIP_HDR_APPS_HTTP_CLIENT_H 
 #define LWIP_HDR_OPT_H 
 #define __LWIPOPTS_H__ 

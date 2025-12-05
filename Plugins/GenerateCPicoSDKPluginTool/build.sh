@@ -21,7 +21,7 @@ echo "Writing source h file in $SRC_DIR/CPicoSDK.source.h"
 {
     echo "#define __ARM_ARCH_8M_MAIN__ 1"
     
-    if echo "$IMPORTED_LIBS" | grep "pico_lwip_http"; then
+    if echo "$IMPORTED_LIBS" | grep "pico_lwip_http" > /dev/null 2> /dev/null; then
         echo "#include <lwip/apps/http_client.h>"
         echo "#include <lwip/altcp.h>"
         echo "#include <lwip/altcp_tls.h>"
