@@ -510,19 +510,84 @@
 #define CFG_TUSB_DEBUG 1
 #define LIB_PICO_FLASH 1
 #define __ARM_ARCH_8M_MAIN__ 1
-#define _PICO_STATUS_LED_H 
-#define _HARDWARE_GPIO_H 
-#define _PICO_H 
-#define __PICO_STRING(x) #x
-#define __PICO_XSTRING(x) __PICO_STRING(x)
-#define __PICO_CONCAT1(x,y) x ## y
-#define _PICO_TYPES_H 
-#define _PICO_ASSERT_H 
-#define _STDBOOL_H 
-#define bool _Bool
-#define true 1
-#define false 0
-#define __bool_true_false_are_defined 1
+pico_stdlib,pico_status_led,hardware_uart,hardware_dma,hardware_gpio,hardware_pio,pico_cyw43_arch_lwip_threadsafe_background,pico_multicore,pico_lwip_http,pico_cyw43_arch,pico_stdio_usb,pico_lwip_arch
+#define LWIP_HDR_APPS_HTTP_CLIENT_H 
+#define LWIP_HDR_OPT_H 
+#define __LWIPOPTS_H__ 
+#define NO_SYS 1
+#define LWIP_SOCKET 0
+#define MEM_LIBC_MALLOC 0
+#define MEM_ALIGNMENT 4
+#define MEM_SIZE 4000
+#define MEMP_NUM_TCP_SEG 32
+#define MEMP_NUM_ARP_QUEUE 10
+#define PBUF_POOL_SIZE 24
+#define LWIP_ARP 1
+#define LWIP_ETHERNET 1
+#define LWIP_ICMP 1
+#define LWIP_RAW 1
+#define TCP_WND (8 * TCP_MSS)
+#define TCP_MSS 1460
+#define TCP_SND_BUF (8 * TCP_MSS)
+#define TCP_SND_QUEUELEN ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
+#define LWIP_NETIF_STATUS_CALLBACK 1
+#define LWIP_NETIF_LINK_CALLBACK 1
+#define LWIP_NETIF_HOSTNAME 1
+#define LWIP_NETCONN 0
+#define MEM_STATS 1
+#define SYS_STATS 1
+#define MEMP_STATS 1
+#define LINK_STATS 1
+#define LWIP_CHKSUM_ALGORITHM 3
+#define LWIP_DHCP 1
+#define LWIP_IPV4 1
+#define LWIP_TCP 1
+#define LWIP_UDP 1
+#define LWIP_DNS 1
+#define LWIP_TCP_KEEPALIVE 1
+#define LWIP_NETIF_TX_SINGLE_PBUF 1
+#define DHCP_DOES_ARP_CHECK 0
+#define LWIP_DHCP_DOES_ACD_CHECK 0
+#define LWIP_DEBUG 1
+#define LWIP_STATS 1
+#define LWIP_STATS_DISPLAY 1
+#define ETHARP_DEBUG LWIP_DBG_OFF
+#define NETIF_DEBUG LWIP_DBG_OFF
+#define PBUF_DEBUG LWIP_DBG_OFF
+#define API_LIB_DEBUG LWIP_DBG_OFF
+#define API_MSG_DEBUG LWIP_DBG_OFF
+#define SOCKETS_DEBUG LWIP_DBG_OFF
+#define ICMP_DEBUG LWIP_DBG_OFF
+#define INET_DEBUG LWIP_DBG_OFF
+#define IP_DEBUG LWIP_DBG_OFF
+#define IP_REASS_DEBUG LWIP_DBG_OFF
+#define RAW_DEBUG LWIP_DBG_OFF
+#define MEM_DEBUG LWIP_DBG_OFF
+#define MEMP_DEBUG LWIP_DBG_OFF
+#define SYS_DEBUG LWIP_DBG_OFF
+#define TCP_DEBUG LWIP_DBG_OFF
+#define TCP_INPUT_DEBUG LWIP_DBG_OFF
+#define TCP_OUTPUT_DEBUG LWIP_DBG_OFF
+#define TCP_RTO_DEBUG LWIP_DBG_OFF
+#define TCP_CWND_DEBUG LWIP_DBG_OFF
+#define TCP_WND_DEBUG LWIP_DBG_OFF
+#define TCP_FR_DEBUG LWIP_DBG_OFF
+#define TCP_QLEN_DEBUG LWIP_DBG_OFF
+#define TCP_RST_DEBUG LWIP_DBG_OFF
+#define UDP_DEBUG LWIP_DBG_OFF
+#define TCPIP_DEBUG LWIP_DBG_OFF
+#define PPP_DEBUG LWIP_DBG_OFF
+#define SLIP_DEBUG LWIP_DBG_OFF
+#define DHCP_DEBUG LWIP_DBG_OFF
+#undef TCP_WND
+#define TCP_WND 16384
+#undef LWIP_DEBUG
+#define LWIP_HDR_DEBUG_H 
+#define LWIP_HDR_ARCH_H 
+#define LITTLE_ENDIAN 1234
+#define BIG_ENDIAN 4321
+#define __CC_H__ 
+#define _SYS_TIME_H_ 
 #define _ANSIDECL_H_ 
 #define __NEWLIB_H__ 1
 #define _NEWLIB_VERSION_H__ 1
@@ -590,23 +655,7 @@
 #define _ELIDABLE_INLINE static __inline__
 #define _NOINLINE __attribute__ ((__noinline__))
 #define _NOINLINE_STATIC _NOINLINE static
-#undef assert
-#define assert(__e) ((__e) ? (void)0 : __assert_func (__FILE__, __LINE__, __ASSERT_FUNC, #__e))
-#define __ASSERT_FUNC __func__
-void __assert (const char *, int, const char *)
-     __attribute__ ((__noreturn__));
-void __assert_func (const char *, int, const char *, const char *)
-     __attribute__ ((__noreturn__));
-#define static_assert _Static_assert
-#define PARAM_ASSERTIONS_ENABLE_ALL 0
-#define PARAM_ASSERTIONS_DISABLE_ALL 0
-#define PARAM_ASSERTIONS_ENABLED(x) ((PARAM_ASSERTIONS_ENABLED_ ## x || PARAM_ASSERTIONS_ENABLE_ALL) && !PARAM_ASSERTIONS_DISABLE_ALL)
-#define invalid_params_if(x,test) ({if (PARAM_ASSERTIONS_ENABLED(x)) assert(!(test));})
-#define valid_params_if(x,test) ({if (PARAM_ASSERTIONS_ENABLED(x)) assert(test);})
-#define hard_assert_if(x,test) ({if (PARAM_ASSERTIONS_ENABLED(x)) hard_assert(!(test));})
-#define invalid_params_if_and_return(x,test,rc) ({ if (test) return rc; })
-#define hard_assert assert
-#define _STDINT_H 
+#define _SYS_CDEFS_H_ 
 #define _MACHINE__DEFAULT_TYPES_H 
 #define __EXP(x) __ ##x ##__
 #define __have_longlong64 1
@@ -640,177 +689,6 @@ typedef long long unsigned int __uintmax_t;
 typedef int __intptr_t;
 typedef unsigned int __uintptr_t;
 #undef __EXP
-#define _SYS__INTSUP_H 
-#define __STDINT_EXP(x) __ ##x ##__
-       
-       
-       
-       
-       
-       
-       
-       
-#undef signed
-#undef unsigned
-#undef char
-#undef short
-#undef int
-#undef __int20
-#undef __int20__
-#undef long
-#define signed +0
-#define unsigned +0
-#define char +0
-#define short +1
-#define __int20 +2
-#define __int20__ +2
-#define int +2
-#define long +4
-#define _INTPTR_EQ_INT 
-#define _INT32_EQ_LONG 
-#define __INT8 "hh"
-#define __INT16 "h"
-#define __INT32 "l"
-#define __INT64 "ll"
-#define __FAST8 
-#define __FAST16 
-#define __FAST32 
-#define __FAST64 "ll"
-#define __LEAST8 "hh"
-#define __LEAST16 "h"
-#define __LEAST32 "l"
-#define __LEAST64 "ll"
-#undef signed
-#undef unsigned
-#undef char
-#undef short
-#undef int
-#undef long
-       
-       
-       
-       
-       
-#undef __int20
-       
-#undef __int20__
-       
-       
-#define _SYS__STDINT_H 
-typedef __int8_t int8_t ;
-#define _INT8_T_DECLARED 
-typedef __uint8_t uint8_t ;
-#define _UINT8_T_DECLARED 
-#define __int8_t_defined 1
-typedef __int16_t int16_t ;
-#define _INT16_T_DECLARED 
-typedef __uint16_t uint16_t ;
-#define _UINT16_T_DECLARED 
-#define __int16_t_defined 1
-typedef __int32_t int32_t ;
-#define _INT32_T_DECLARED 
-typedef __uint32_t uint32_t ;
-#define _UINT32_T_DECLARED 
-#define __int32_t_defined 1
-typedef __int64_t int64_t ;
-#define _INT64_T_DECLARED 
-typedef __uint64_t uint64_t ;
-#define _UINT64_T_DECLARED 
-#define __int64_t_defined 1
-typedef __intmax_t intmax_t;
-#define _INTMAX_T_DECLARED 
-typedef __uintmax_t uintmax_t;
-#define _UINTMAX_T_DECLARED 
-typedef __intptr_t intptr_t;
-#define _INTPTR_T_DECLARED 
-typedef __uintptr_t uintptr_t;
-#define _UINTPTR_T_DECLARED 
-typedef __int_least8_t int_least8_t;
-typedef __uint_least8_t uint_least8_t;
-#define __int_least8_t_defined 1
-typedef __int_least16_t int_least16_t;
-typedef __uint_least16_t uint_least16_t;
-#define __int_least16_t_defined 1
-typedef __int_least32_t int_least32_t;
-typedef __uint_least32_t uint_least32_t;
-#define __int_least32_t_defined 1
-typedef __int_least64_t int_least64_t;
-typedef __uint_least64_t uint_least64_t;
-#define __int_least64_t_defined 1
-  typedef int int_fast8_t;
-  typedef unsigned int uint_fast8_t;
-#define __int_fast8_t_defined 1
-  typedef int int_fast16_t;
-  typedef unsigned int uint_fast16_t;
-#define __int_fast16_t_defined 1
-  typedef int int_fast32_t;
-  typedef unsigned int uint_fast32_t;
-#define __int_fast32_t_defined 1
-  typedef long long int int_fast64_t;
-  typedef long long unsigned int uint_fast64_t;
-#define __int_fast64_t_defined 1
-#define INTPTR_MIN (-__INTPTR_MAX__ - 1)
-#define INTPTR_MAX (__INTPTR_MAX__)
-#define UINTPTR_MAX (__UINTPTR_MAX__)
-#define INT8_MIN (-__INT8_MAX__ - 1)
-#define INT8_MAX (__INT8_MAX__)
-#define UINT8_MAX (__UINT8_MAX__)
-#define INT_LEAST8_MIN (-__INT_LEAST8_MAX__ - 1)
-#define INT_LEAST8_MAX (__INT_LEAST8_MAX__)
-#define UINT_LEAST8_MAX (__UINT_LEAST8_MAX__)
-#define INT16_MIN (-__INT16_MAX__ - 1)
-#define INT16_MAX (__INT16_MAX__)
-#define UINT16_MAX (__UINT16_MAX__)
-#define INT_LEAST16_MIN (-__INT_LEAST16_MAX__ - 1)
-#define INT_LEAST16_MAX (__INT_LEAST16_MAX__)
-#define UINT_LEAST16_MAX (__UINT_LEAST16_MAX__)
-#define INT32_MIN (-__INT32_MAX__ - 1)
-#define INT32_MAX (__INT32_MAX__)
-#define UINT32_MAX (__UINT32_MAX__)
-#define INT_LEAST32_MIN (-__INT_LEAST32_MAX__ - 1)
-#define INT_LEAST32_MAX (__INT_LEAST32_MAX__)
-#define UINT_LEAST32_MAX (__UINT_LEAST32_MAX__)
-#define INT64_MIN (-__INT64_MAX__ - 1)
-#define INT64_MAX (__INT64_MAX__)
-#define UINT64_MAX (__UINT64_MAX__)
-#define INT_LEAST64_MIN (-__INT_LEAST64_MAX__ - 1)
-#define INT_LEAST64_MAX (__INT_LEAST64_MAX__)
-#define UINT_LEAST64_MAX (__UINT_LEAST64_MAX__)
-#define INT_FAST8_MIN (-__INT_FAST8_MAX__ - 1)
-#define INT_FAST8_MAX (__INT_FAST8_MAX__)
-#define UINT_FAST8_MAX (__UINT_FAST8_MAX__)
-#define INT_FAST16_MIN (-__INT_FAST16_MAX__ - 1)
-#define INT_FAST16_MAX (__INT_FAST16_MAX__)
-#define UINT_FAST16_MAX (__UINT_FAST16_MAX__)
-#define INT_FAST32_MIN (-__INT_FAST32_MAX__ - 1)
-#define INT_FAST32_MAX (__INT_FAST32_MAX__)
-#define UINT_FAST32_MAX (__UINT_FAST32_MAX__)
-#define INT_FAST64_MIN (-__INT_FAST64_MAX__ - 1)
-#define INT_FAST64_MAX (__INT_FAST64_MAX__)
-#define UINT_FAST64_MAX (__UINT_FAST64_MAX__)
-#define INTMAX_MAX (__INTMAX_MAX__)
-#define INTMAX_MIN (-INTMAX_MAX - 1)
-#define UINTMAX_MAX (__UINTMAX_MAX__)
-#define SIZE_MAX (__SIZE_MAX__)
-#define SIG_ATOMIC_MIN (-__STDINT_EXP(INT_MAX) - 1)
-#define SIG_ATOMIC_MAX (__STDINT_EXP(INT_MAX))
-#define PTRDIFF_MAX (__PTRDIFF_MAX__)
-#define PTRDIFF_MIN (-PTRDIFF_MAX - 1)
-#define WCHAR_MIN (__WCHAR_MIN__)
-#define WCHAR_MAX (__WCHAR_MAX__)
-#define WINT_MAX (__WINT_MAX__)
-#define WINT_MIN (__WINT_MIN__)
-#define INT8_C(x) __INT8_C(x)
-#define UINT8_C(x) __UINT8_C(x)
-#define INT16_C(x) __INT16_C(x)
-#define UINT16_C(x) __UINT16_C(x)
-#define INT32_C(x) __INT32_C(x)
-#define UINT32_C(x) __UINT32_C(x)
-#define INT64_C(x) __INT64_C(x)
-#define UINT64_C(x) __UINT64_C(x)
-#define INTMAX_C(x) __INTMAX_C(x)
-#define UINTMAX_C(x) __UINTMAX_C(x)
-#define _GCC_WRAP_STDINT_H 
 #define _STDDEF_H 
 #define _STDDEF_H_ 
 #define _ANSI_STDDEF_H 
@@ -875,130 +753,6 @@ typedef struct {
   long long __max_align_ll __attribute__((__aligned__(__alignof__(long long))));
   long double __max_align_ld __attribute__((__aligned__(__alignof__(long double))));
 } max_align_t;
-typedef unsigned int uint;
-#define PICO_OPAQUE_ABSOLUTE_TIME_T 0
-typedef uint64_t absolute_time_t;
-static inline uint64_t to_us_since_boot(absolute_time_t t) {
-    return t;
-}
-static inline void update_us_since_boot(absolute_time_t *t, uint64_t us_since_boot) {
-    *t = us_since_boot;
-}
-static inline absolute_time_t from_us_since_boot(uint64_t us_since_boot) {
-    absolute_time_t t;
-    update_us_since_boot(&t, us_since_boot);
-    return t;
-}
-#define ABSOLUTE_TIME_INITIALIZED_VAR(name,value) name = {value}
-#define PICO_INCLUDE_RTC_DATETIME PICO_RP2040
-#define bool_to_bit(x) ((uint)!!(x))
-#define _PICO_VERSION_H 
-#define PICO_SDK_VERSION_MAJOR 2
-#define PICO_SDK_VERSION_MINOR 2
-#define PICO_SDK_VERSION_REVISION 0
-#define PICO_SDK_VERSION_STRING "2.2.0"
-#define pico_board_cmake_set(x,y) 
-#define pico_board_cmake_set_default(x,y) 
-#define _PICO_CONFIG_H 
-#define _BOARDS_PICO2_W_H 
-
-
-#define RASPBERRYPI_PICO2_W 
-#define PICO_RP2350A 1
-#define PICO_DEFAULT_UART 0
-#define PICO_DEFAULT_UART_TX_PIN 0
-#define PICO_DEFAULT_UART_RX_PIN 1
-#define PICO_DEFAULT_I2C 0
-#define PICO_DEFAULT_I2C_SDA_PIN 4
-#define PICO_DEFAULT_I2C_SCL_PIN 5
-#define PICO_DEFAULT_SPI 0
-#define PICO_DEFAULT_SPI_SCK_PIN 18
-#define PICO_DEFAULT_SPI_TX_PIN 19
-#define PICO_DEFAULT_SPI_RX_PIN 16
-#define PICO_DEFAULT_SPI_CSN_PIN 17
-#define PICO_BOOT_STAGE2_CHOOSE_W25Q080 1
-#define PICO_FLASH_SPI_CLKDIV 2
-
-#define PICO_FLASH_SIZE_BYTES (4 * 1024 * 1024)
-#define CYW43_WL_GPIO_COUNT 3
-#define CYW43_WL_GPIO_LED_PIN 0
-#define CYW43_WL_GPIO_SMPS_PIN 1
-#define CYW43_WL_GPIO_VBUS_PIN 2
-#define CYW43_USES_VSYS_PIN 1
-#define PICO_VSYS_PIN 29
-
-#define PICO_RP2350_A2_SUPPORTED 1
-#define CYW43_PIN_WL_DYNAMIC 0
-#define CYW43_DEFAULT_PIN_WL_REG_ON 23u
-#define CYW43_DEFAULT_PIN_WL_DATA_OUT 24u
-#define CYW43_DEFAULT_PIN_WL_DATA_IN 24u
-#define CYW43_DEFAULT_PIN_WL_HOST_WAKE 24u
-#define CYW43_DEFAULT_PIN_WL_CLOCK 29u
-#define CYW43_DEFAULT_PIN_WL_CS 25u
-#define _CMSIS_RENAME_EXCEPTIONS_H 
-#define _PICO_PLATFORM_H 
-#define _PICO_PLATFORM_COMPILER_H 
-#define _HARDWARE_PLATFORM_DEFS_H 
-#define _u(x) x ## u
-#define NUM_CORES _u(2)
-#define NUM_DMA_CHANNELS _u(16)
-#define NUM_DMA_TIMERS _u(4)
-#define NUM_DMA_MPU_REGIONS _u(8)
-#define NUM_DMA_IRQS _u(4)
-#define NUM_IRQS _u(52)
-#define NUM_USER_IRQS _u(6)
-#define NUM_PIOS _u(3)
-#define NUM_PIO_STATE_MACHINES _u(4)
-#define NUM_PIO_IRQS _u(2)
-#define NUM_PWM_SLICES _u(12)
-#define NUM_PWM_IRQS _u(2)
-#define NUM_SPIN_LOCKS _u(32)
-#define NUM_UARTS _u(2)
-#define NUM_I2CS _u(2)
-#define NUM_SPIS _u(2)
-#define NUM_GENERIC_TIMERS _u(2)
-#define NUM_ALARMS _u(4)
-#define NUM_ADC_CHANNELS _u(5)
-#define ADC_BASE_PIN _u(26)
-#define NUM_RESETS _u(28)
-#define NUM_DOORBELLS _u(8)
-#define NUM_BANK0_GPIOS _u(30)
-#define NUM_QSPI_GPIOS _u(6)
-#define NUM_OTP_PAGES _u(64)
-#define NUM_OTP_PAGE_ROWS _u(64)
-#define NUM_OTP_ROWS (NUM_OTP_PAGES * NUM_OTP_PAGE_ROWS)
-#define PIO_INSTRUCTION_COUNT _u(32)
-#define NUM_MPU_REGIONS _u(8)
-#define NUM_SAU_REGIONS _u(8)
-#define NUM_BOOT_LOCKS _u(8)
-#define BOOTRAM_SIZE _u(0x400)
-#define USBCTRL_DPRAM_SIZE _u(4096)
-#define HAS_GPIO_COPROCESSOR 1
-#define HAS_DOUBLE_COPROCESSOR 1
-#define HAS_REDUNDANCY_COPROCESSOR 1
-#define HAS_POWMAN_TIMER 1
-#define HAS_RP2350_TRNG 1
-#define HAS_HSTX 1
-#define HAS_PADS_BANK0_ISOLATION 1
-#define __RISCV_PMP_CHECKED 1
-#define FPGA_CLK_SYS_HZ (48 * MHZ)
-#define FPGA_CLK_REF_HZ (12 * MHZ)
-#define XOSC_HZ _u(12000000)
-#define PICO_USE_FASTEST_SUPPORTED_CLOCK 0
-#define SYS_CLK_HZ _u(150000000)
-#define USB_CLK_HZ _u(48000000)
-#define XOSC_KHZ (XOSC_HZ / 1000)
-#define XOSC_MHZ (XOSC_KHZ / 1000)
-#define SYS_CLK_KHZ (SYS_CLK_HZ / 1000)
-#define SYS_CLK_MHZ (SYS_CLK_KHZ / 1000)
-#define USB_CLK_KHZ (USB_CLK_HZ / 1000)
-#define USB_CLK_MHZ (USB_CLK_KHZ / 1000)
-#define ACCESSCTRL_PASSWORD_BITS _u(0xacce0000)
-#define POWMAN_PASSWORD_BITS _u(0x5afe0000)
-#define VTABLE_FIRST_IRQ 16
-#define FIRST_USER_IRQ (NUM_IRQS - NUM_USER_IRQS)
-#define REG_FIELD_WIDTH(f) (f ## _MSB + 1 - f ## _LSB)
-#define _SYS_CDEFS_H_ 
 #define __PMT(args) args
 #define __DOTS , ...
 #define __THROW 
@@ -1126,6 +880,1100 @@ static inline absolute_time_t from_us_since_boot(uint64_t us_since_boot) {
 #define __align_up(x,y) __builtin_align_up(x, y)
 #define __align_down(x,y) __builtin_align_down(x, y)
 #define __is_aligned(x,y) __builtin_is_aligned(x, y)
+#define _SYS__TIMEVAL_H_ 
+#define _SYS__TYPES_H 
+#define __need_size_t 
+#define __need_wint_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#define _WINT_T 
+typedef unsigned int wint_t;
+#undef __need_wint_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _MACHINE__TYPES_H 
+typedef long __blkcnt_t;
+typedef long __blksize_t;
+typedef __uint64_t __fsblkcnt_t;
+typedef __uint32_t __fsfilcnt_t;
+typedef long _off_t;
+typedef int __pid_t;
+typedef short __dev_t;
+typedef unsigned short __uid_t;
+typedef unsigned short __gid_t;
+typedef __uint32_t __id_t;
+typedef unsigned short __ino_t;
+typedef __uint32_t __mode_t;
+__extension__ typedef long long _off64_t;
+typedef _off_t __off_t;
+typedef _off64_t __loff_t;
+typedef long __key_t;
+typedef long _fpos_t;
+#undef __size_t
+typedef unsigned int __size_t;
+#define unsigned signed
+typedef signed int _ssize_t;
+#undef unsigned
+typedef _ssize_t __ssize_t;
+typedef struct
+{
+  int __count;
+  union
+  {
+    wint_t __wch;
+    unsigned char __wchb[4];
+  } __value;
+} _mbstate_t;
+typedef void *_iconv_t;
+#define _CLOCK_T_ unsigned long
+typedef unsigned long __clock_t;
+#define _TIME_T_ __int_least64_t
+typedef __int_least64_t __time_t;
+#define _CLOCKID_T_ unsigned long
+typedef unsigned long __clockid_t;
+typedef long __daddr_t;
+#define _TIMER_T_ unsigned long
+typedef unsigned long __timer_t;
+typedef __uint8_t __sa_family_t;
+typedef __uint32_t __socklen_t;
+typedef int __nl_item;
+typedef unsigned short __nlink_t;
+typedef long __suseconds_t;
+typedef unsigned long __useconds_t;
+typedef __builtin_va_list __va_list;
+typedef __suseconds_t suseconds_t;
+#define _SUSECONDS_T_DECLARED 
+typedef __int_least64_t time_t;
+#define __time_t_defined 
+#define _TIME_T_DECLARED 
+#define _TIMEVAL_DEFINED 
+struct timeval {
+ time_t tv_sec;
+ suseconds_t tv_usec;
+};
+typedef __uint8_t u_int8_t;
+typedef __uint16_t u_int16_t;
+typedef __uint32_t u_int32_t;
+typedef __uint64_t u_int64_t;
+typedef __intptr_t register_t;
+#define __BIT_TYPES_DEFINED__ 1
+#define _SYS_TYPES_H 
+#define _SYS__STDINT_H 
+typedef __int8_t int8_t ;
+#define _INT8_T_DECLARED 
+typedef __uint8_t uint8_t ;
+#define _UINT8_T_DECLARED 
+#define __int8_t_defined 1
+typedef __int16_t int16_t ;
+#define _INT16_T_DECLARED 
+typedef __uint16_t uint16_t ;
+#define _UINT16_T_DECLARED 
+#define __int16_t_defined 1
+typedef __int32_t int32_t ;
+#define _INT32_T_DECLARED 
+typedef __uint32_t uint32_t ;
+#define _UINT32_T_DECLARED 
+#define __int32_t_defined 1
+typedef __int64_t int64_t ;
+#define _INT64_T_DECLARED 
+typedef __uint64_t uint64_t ;
+#define _UINT64_T_DECLARED 
+#define __int64_t_defined 1
+typedef __intmax_t intmax_t;
+#define _INTMAX_T_DECLARED 
+typedef __uintmax_t uintmax_t;
+#define _UINTMAX_T_DECLARED 
+typedef __intptr_t intptr_t;
+#define _INTPTR_T_DECLARED 
+typedef __uintptr_t uintptr_t;
+#define _UINTPTR_T_DECLARED 
+#define __MACHINE_ENDIAN_H__ 
+#define _LITTLE_ENDIAN 1234
+#define _BIG_ENDIAN 4321
+#define _PDP_ENDIAN 3412
+#define _BYTE_ORDER _LITTLE_ENDIAN
+#define _QUAD_HIGHWORD 1
+#define _QUAD_LOWWORD 0
+#define LITTLE_ENDIAN _LITTLE_ENDIAN
+#define BIG_ENDIAN _BIG_ENDIAN
+#define PDP_ENDIAN _PDP_ENDIAN
+#define BYTE_ORDER _BYTE_ORDER
+#define __bswap16(_x) __builtin_bswap16(_x)
+#define __bswap32(_x) __builtin_bswap32(_x)
+#define __bswap64(_x) __builtin_bswap64(_x)
+#define __htonl(_x) __bswap32(_x)
+#define __htons(_x) __bswap16(_x)
+#define __ntohl(_x) __bswap32(_x)
+#define __ntohs(_x) __bswap16(_x)
+#define _SYS_SELECT_H 
+#define _SYS__SIGSET_H_ 
+typedef unsigned long __sigset_t;
+#define _SYS_TIMESPEC_H_ 
+#define _SYS__TIMESPEC_H_ 
+struct timespec {
+ time_t tv_sec;
+ long tv_nsec;
+};
+#define TIMEVAL_TO_TIMESPEC(tv,ts) do { (ts)->tv_sec = (tv)->tv_sec; (ts)->tv_nsec = (tv)->tv_usec * 1000; } while (0)
+#define TIMESPEC_TO_TIMEVAL(tv,ts) do { (tv)->tv_sec = (ts)->tv_sec; (tv)->tv_usec = (ts)->tv_nsec / 1000; } while (0)
+struct itimerspec {
+ struct timespec it_interval;
+ struct timespec it_value;
+};
+#define _SIGSET_T_DECLARED 
+typedef __sigset_t sigset_t;
+#define _SYS_TYPES_FD_SET 
+#define FD_SETSIZE 64
+typedef unsigned long __fd_mask;
+typedef __fd_mask fd_mask;
+#define _NFDBITS ((int)sizeof(__fd_mask) * 8)
+#define NFDBITS _NFDBITS
+#define _howmany(x,y) (((x) + ((y) - 1)) / (y))
+typedef struct fd_set {
+ __fd_mask __fds_bits[(((64) + ((((int)sizeof(__fd_mask) * 8)) - 1)) / (((int)sizeof(__fd_mask) * 8)))];
+} fd_set;
+#define fds_bits __fds_bits
+#define __fdset_mask(n) ((__fd_mask)1 << ((n) % _NFDBITS))
+#define FD_CLR(n,p) ((p)->__fds_bits[(n)/_NFDBITS] &= ~__fdset_mask(n))
+#define FD_COPY(f,t) (void)(*(t) = *(f))
+#define FD_ISSET(n,p) (((p)->__fds_bits[(n)/_NFDBITS] & __fdset_mask(n)) != 0)
+#define FD_SET(n,p) ((p)->__fds_bits[(n)/_NFDBITS] |= __fdset_mask(n))
+#define FD_ZERO(p) do { fd_set *_p; __size_t _n; _p = (p); _n = _howmany(FD_SETSIZE, _NFDBITS); while (_n > 0) _p->__fds_bits[--_n] = 0; } while (0)
+
+int select (int __n, fd_set *__readfds, fd_set *__writefds, fd_set *__exceptfds, struct timeval *__timeout);
+int pselect (int __n, fd_set *__readfds, fd_set *__writefds, fd_set *__exceptfds, const struct timespec *__timeout, const sigset_t *__set);
+
+#define physadr physadr_t
+#define quad quad_t
+typedef __uint32_t in_addr_t;
+#define _IN_ADDR_T_DECLARED 
+typedef __uint16_t in_port_t;
+#define _IN_PORT_T_DECLARED 
+typedef __uintptr_t u_register_t;
+typedef unsigned char u_char;
+#define __u_char_defined 
+typedef unsigned short u_short;
+#define __u_short_defined 
+typedef unsigned int u_int;
+#define __u_int_defined 
+typedef unsigned long u_long;
+#define __u_long_defined 
+#define _BSDTYPES_DEFINED 
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
+typedef __blkcnt_t blkcnt_t;
+#define _BLKCNT_T_DECLARED 
+typedef __blksize_t blksize_t;
+#define _BLKSIZE_T_DECLARED 
+typedef unsigned long clock_t;
+#define __clock_t_defined 
+#define _CLOCK_T_DECLARED 
+typedef __daddr_t daddr_t;
+typedef char * caddr_t;
+#define __caddr_t_defined 
+typedef __fsblkcnt_t fsblkcnt_t;
+typedef __fsfilcnt_t fsfilcnt_t;
+#define _FSBLKCNT_T_DECLARED 
+typedef __id_t id_t;
+#define _ID_T_DECLARED 
+typedef __ino_t ino_t;
+#define _INO_T_DECLARED 
+typedef __off_t off_t;
+#define _OFF_T_DECLARED 
+typedef __dev_t dev_t;
+#define _DEV_T_DECLARED 
+typedef __uid_t uid_t;
+#define _UID_T_DECLARED 
+typedef __gid_t gid_t;
+#define _GID_T_DECLARED 
+typedef __pid_t pid_t;
+#define _PID_T_DECLARED 
+typedef __key_t key_t;
+#define _KEY_T_DECLARED 
+typedef _ssize_t ssize_t;
+#define _SSIZE_T_DECLARED 
+typedef __mode_t mode_t;
+#define _MODE_T_DECLARED 
+typedef __nlink_t nlink_t;
+#define _NLINK_T_DECLARED 
+typedef __clockid_t clockid_t;
+#define __clockid_t_defined 
+#define _CLOCKID_T_DECLARED 
+typedef __timer_t timer_t;
+#define __timer_t_defined 
+#define _TIMER_T_DECLARED 
+typedef __useconds_t useconds_t;
+#define _USECONDS_T_DECLARED 
+typedef __int64_t sbintime_t;
+#define _SYS__PTHREADTYPES_H_ 
+#define _SYS_SCHED_H_ 
+#define SCHED_OTHER 0
+#define SCHED_FIFO 1
+#define SCHED_RR 2
+struct sched_param {
+  int sched_priority;
+};
+typedef __uint32_t pthread_t;
+#define PTHREAD_SCOPE_PROCESS 0
+#define PTHREAD_SCOPE_SYSTEM 1
+#define PTHREAD_INHERIT_SCHED 1
+#define PTHREAD_EXPLICIT_SCHED 2
+#define PTHREAD_CREATE_DETACHED 0
+#define PTHREAD_CREATE_JOINABLE 1
+typedef struct {
+  int is_initialized;
+  void *stackaddr;
+  int stacksize;
+  int contentionscope;
+  int inheritsched;
+  int schedpolicy;
+  struct sched_param schedparam;
+  int detachstate;
+} pthread_attr_t;
+typedef __uint32_t pthread_mutex_t;
+typedef struct {
+  int is_initialized;
+  int recursive;
+} pthread_mutexattr_t;
+#define _PTHREAD_MUTEX_INITIALIZER ((pthread_mutex_t) 0xFFFFFFFF)
+typedef __uint32_t pthread_cond_t;
+#define _PTHREAD_COND_INITIALIZER ((pthread_cond_t) 0xFFFFFFFF)
+typedef struct {
+  int is_initialized;
+  clock_t clock;
+} pthread_condattr_t;
+typedef __uint32_t pthread_key_t;
+typedef struct {
+  int is_initialized;
+  int init_executed;
+} pthread_once_t;
+#define _PTHREAD_ONCE_INIT { 1, 0 }
+#undef __need_inttypes
+struct timezone {
+ int tz_minuteswest;
+ int tz_dsttime;
+};
+#define DST_NONE 0
+#define DST_USA 1
+#define DST_AUST 2
+#define DST_WET 3
+#define DST_MET 4
+#define DST_EET 5
+#define DST_CAN 6
+struct bintime {
+ time_t sec;
+ uint64_t frac;
+};
+static __inline void
+bintime_addx(struct bintime *_bt, uint64_t _x)
+{
+ uint64_t _u;
+ _u = _bt->frac;
+ _bt->frac += _x;
+ if (_u > _bt->frac)
+  _bt->sec++;
+}
+static __inline void
+bintime_add(struct bintime *_bt, const struct bintime *_bt2)
+{
+ uint64_t _u;
+ _u = _bt->frac;
+ _bt->frac += _bt2->frac;
+ if (_u > _bt->frac)
+  _bt->sec++;
+ _bt->sec += _bt2->sec;
+}
+static __inline void
+bintime_sub(struct bintime *_bt, const struct bintime *_bt2)
+{
+ uint64_t _u;
+ _u = _bt->frac;
+ _bt->frac -= _bt2->frac;
+ if (_u < _bt->frac)
+  _bt->sec--;
+ _bt->sec -= _bt2->sec;
+}
+static __inline void
+bintime_mul(struct bintime *_bt, u_int _x)
+{
+ uint64_t _p1, _p2;
+ _p1 = (_bt->frac & 0xffffffffull) * _x;
+ _p2 = (_bt->frac >> 32) * _x + (_p1 >> 32);
+ _bt->sec *= _x;
+ _bt->sec += (_p2 >> 32);
+ _bt->frac = (_p2 << 32) | (_p1 & 0xffffffffull);
+}
+static __inline void
+bintime_shift(struct bintime *_bt, int _exp)
+{
+ if (_exp > 0) {
+  _bt->sec <<= _exp;
+  _bt->sec |= _bt->frac >> (64 - _exp);
+  _bt->frac <<= _exp;
+ } else if (_exp < 0) {
+  _bt->frac >>= -_exp;
+  _bt->frac |= (uint64_t)_bt->sec << (64 + _exp);
+  _bt->sec >>= -_exp;
+ }
+}
+#define bintime_clear(a) ((a)->sec = (a)->frac = 0)
+#define bintime_isset(a) ((a)->sec || (a)->frac)
+#define bintime_cmp(a,b,cmp) (((a)->sec == (b)->sec) ? ((a)->frac cmp (b)->frac) : ((a)->sec cmp (b)->sec))
+#define SBT_1S ((sbintime_t)1 << 32)
+#define SBT_1M (SBT_1S * 60)
+#define SBT_1MS (SBT_1S / 1000)
+#define SBT_1US (SBT_1S / 1000000)
+#define SBT_1NS (SBT_1S / 1000000000)
+#define SBT_MAX 0x7fffffffffffffffLL
+static __inline int
+sbintime_getsec(sbintime_t _sbt)
+{
+ return (_sbt >> 32);
+}
+static __inline sbintime_t
+bttosbt(const struct bintime _bt)
+{
+ return (((sbintime_t)_bt.sec << 32) + (_bt.frac >> 32));
+}
+static __inline struct bintime
+sbttobt(sbintime_t _sbt)
+{
+ struct bintime _bt;
+ _bt.sec = _sbt >> 32;
+ _bt.frac = _sbt << 32;
+ return (_bt);
+}
+static __inline int64_t
+sbttons(sbintime_t _sbt)
+{
+ uint64_t ns;
+ ns = _sbt;
+ if (ns >= ((sbintime_t)1 << 32))
+  ns = (ns >> 32) * 1000000000;
+ else
+  ns = 0;
+ return (ns + (1000000000 * (_sbt & 0xffffffffu) >> 32));
+}
+static __inline sbintime_t
+nstosbt(int64_t _ns)
+{
+ sbintime_t sb = 0;
+ if (_ns >= ((sbintime_t)1 << 32)) {
+  sb = (_ns / 1000000000) * ((sbintime_t)1 << 32);
+  _ns = _ns % 1000000000;
+ }
+ sb += ((_ns * 9223372037ull) + 0x7fffffff) >> 31;
+ return (sb);
+}
+static __inline int64_t
+sbttous(sbintime_t _sbt)
+{
+ return ((1000000 * _sbt) >> 32);
+}
+static __inline sbintime_t
+ustosbt(int64_t _us)
+{
+ sbintime_t sb = 0;
+ if (_us >= ((sbintime_t)1 << 32)) {
+  sb = (_us / 1000000) * ((sbintime_t)1 << 32);
+  _us = _us % 1000000;
+ }
+ sb += ((_us * 9223372036855ull) + 0x7fffffff) >> 31;
+ return (sb);
+}
+static __inline int64_t
+sbttoms(sbintime_t _sbt)
+{
+ return ((1000 * _sbt) >> 32);
+}
+static __inline sbintime_t
+mstosbt(int64_t _ms)
+{
+ sbintime_t sb = 0;
+ if (_ms >= ((sbintime_t)1 << 32)) {
+  sb = (_ms / 1000) * ((sbintime_t)1 << 32);
+  _ms = _ms % 1000;
+ }
+ sb += ((_ms * 9223372036854776ull) + 0x7fffffff) >> 31;
+ return (sb);
+}
+static __inline void
+bintime2timespec(const struct bintime *_bt, struct timespec *_ts)
+{
+ _ts->tv_sec = _bt->sec;
+ _ts->tv_nsec = ((uint64_t)1000000000 *
+     (uint32_t)(_bt->frac >> 32)) >> 32;
+}
+static __inline void
+timespec2bintime(const struct timespec *_ts, struct bintime *_bt)
+{
+ _bt->sec = _ts->tv_sec;
+ _bt->frac = _ts->tv_nsec * (uint64_t)18446744073LL;
+}
+static __inline void
+bintime2timeval(const struct bintime *_bt, struct timeval *_tv)
+{
+ _tv->tv_sec = _bt->sec;
+ _tv->tv_usec = ((uint64_t)1000000 * (uint32_t)(_bt->frac >> 32)) >> 32;
+}
+static __inline void
+timeval2bintime(const struct timeval *_tv, struct bintime *_bt)
+{
+ _bt->sec = _tv->tv_sec;
+ _bt->frac = _tv->tv_usec * (uint64_t)18446744073709LL;
+}
+static __inline struct timespec
+sbttots(sbintime_t _sbt)
+{
+ struct timespec _ts;
+ _ts.tv_sec = _sbt >> 32;
+ _ts.tv_nsec = sbttons((uint32_t)_sbt);
+ return (_ts);
+}
+static __inline sbintime_t
+tstosbt(struct timespec _ts)
+{
+ return (((sbintime_t)_ts.tv_sec << 32) + nstosbt(_ts.tv_nsec));
+}
+static __inline struct timeval
+sbttotv(sbintime_t _sbt)
+{
+ struct timeval _tv;
+ _tv.tv_sec = _sbt >> 32;
+ _tv.tv_usec = sbttous((uint32_t)_sbt);
+ return (_tv);
+}
+static __inline sbintime_t
+tvtosbt(struct timeval _tv)
+{
+ return (((sbintime_t)_tv.tv_sec << 32) + ustosbt(_tv.tv_usec));
+}
+#define timespecclear(tvp) ((tvp)->tv_sec = (tvp)->tv_nsec = 0)
+#define timespecisset(tvp) ((tvp)->tv_sec || (tvp)->tv_nsec)
+#define timespeccmp(tvp,uvp,cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_nsec cmp (uvp)->tv_nsec) : ((tvp)->tv_sec cmp (uvp)->tv_sec))
+#define timespecadd(tsp,usp,vsp) do { (vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec; (vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec; if ((vsp)->tv_nsec >= 1000000000L) { (vsp)->tv_sec++; (vsp)->tv_nsec -= 1000000000L; } } while (0)
+#define timespecsub(tsp,usp,vsp) do { (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec; (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec; if ((vsp)->tv_nsec < 0) { (vsp)->tv_sec--; (vsp)->tv_nsec += 1000000000L; } } while (0)
+#define timerclear(tvp) ((tvp)->tv_sec = (tvp)->tv_usec = 0)
+#define timerisset(tvp) ((tvp)->tv_sec || (tvp)->tv_usec)
+#define timercmp(tvp,uvp,cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_usec cmp (uvp)->tv_usec) : ((tvp)->tv_sec cmp (uvp)->tv_sec))
+#define timeradd(tvp,uvp,vvp) do { (vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec; (vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec; if ((vvp)->tv_usec >= 1000000) { (vvp)->tv_sec++; (vvp)->tv_usec -= 1000000; } } while (0)
+#define timersub(tvp,uvp,vvp) do { (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec; (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec; if ((vvp)->tv_usec < 0) { (vvp)->tv_sec--; (vvp)->tv_usec += 1000000; } } while (0)
+#define ITIMER_REAL 0
+#define ITIMER_VIRTUAL 1
+#define ITIMER_PROF 2
+struct itimerval {
+ struct timeval it_interval;
+ struct timeval it_value;
+};
+#define _TIME_H_ 
+#define _SYS_REENT_H_ 
+#define _NULL 0
+#define __Long long
+typedef unsigned long __ULong;
+#define __SYS_LOCK_H__ 
+struct __lock;
+typedef struct __lock * _LOCK_T;
+#define _LOCK_RECURSIVE_T _LOCK_T
+#define __LOCK_INIT(class,lock) extern struct __lock __lock_ ## lock; class _LOCK_T lock = &__lock_ ## lock
+#define __LOCK_INIT_RECURSIVE(class,lock) __LOCK_INIT(class,lock)
+extern void __retarget_lock_init(_LOCK_T *lock);
+#define __lock_init(lock) __retarget_lock_init(&lock)
+extern void __retarget_lock_init_recursive(_LOCK_T *lock);
+#define __lock_init_recursive(lock) __retarget_lock_init_recursive(&lock)
+extern void __retarget_lock_close(_LOCK_T lock);
+#define __lock_close(lock) __retarget_lock_close(lock)
+extern void __retarget_lock_close_recursive(_LOCK_T lock);
+#define __lock_close_recursive(lock) __retarget_lock_close_recursive(lock)
+extern void __retarget_lock_acquire(_LOCK_T lock);
+#define __lock_acquire(lock) __retarget_lock_acquire(lock)
+extern void __retarget_lock_acquire_recursive(_LOCK_T lock);
+#define __lock_acquire_recursive(lock) __retarget_lock_acquire_recursive(lock)
+extern int __retarget_lock_try_acquire(_LOCK_T lock);
+#define __lock_try_acquire(lock) __retarget_lock_try_acquire(lock)
+extern int __retarget_lock_try_acquire_recursive(_LOCK_T lock);
+#define __lock_try_acquire_recursive(lock) __retarget_lock_try_acquire_recursive(lock)
+extern void __retarget_lock_release(_LOCK_T lock);
+#define __lock_release(lock) __retarget_lock_release(lock)
+extern void __retarget_lock_release_recursive(_LOCK_T lock);
+#define __lock_release_recursive(lock) __retarget_lock_release_recursive(lock)
+typedef _LOCK_T _flock_t;
+struct _reent;
+struct __locale_t;
+struct _Bigint
+{
+  struct _Bigint *_next;
+  int _k, _maxwds, _sign, _wds;
+  __ULong _x[1];
+};
+struct __tm
+{
+  int __tm_sec;
+  int __tm_min;
+  int __tm_hour;
+  int __tm_mday;
+  int __tm_mon;
+  int __tm_year;
+  int __tm_wday;
+  int __tm_yday;
+  int __tm_isdst;
+};
+#define _ATEXIT_SIZE 32
+struct _on_exit_args {
+ void * _fnargs[32];
+ void * _dso_handle[32];
+ __ULong _fntypes;
+ __ULong _is_cxa;
+};
+struct _atexit {
+ struct _atexit *_next;
+ int _ind;
+ void (*_fns[32])(void);
+        struct _on_exit_args _on_exit_args;
+};
+#define _ATEXIT_INIT {_NULL, 0, {_NULL}, {{_NULL}, {_NULL}, 0, 0}}
+struct __sbuf {
+ unsigned char *_base;
+ int _size;
+};
+#define _REENT_SMALL_CHECK_INIT(ptr) 
+struct __sFILE {
+  unsigned char *_p;
+  int _r;
+  int _w;
+  short _flags;
+  short _file;
+  struct __sbuf _bf;
+  int _lbfsize;
+  void * _cookie;
+  int (*_read) (struct _reent *, void *,
+        char *, int);
+  int (*_write) (struct _reent *, void *,
+         const char *,
+         int);
+  _fpos_t (*_seek) (struct _reent *, void *, _fpos_t, int);
+  int (*_close) (struct _reent *, void *);
+  struct __sbuf _ub;
+  unsigned char *_up;
+  int _ur;
+  unsigned char _ubuf[3];
+  unsigned char _nbuf[1];
+  struct __sbuf _lb;
+  int _blksize;
+  _off_t _offset;
+  struct _reent *_data;
+  _flock_t _lock;
+  _mbstate_t _mbstate;
+  int _flags2;
+};
+typedef struct __sFILE __FILE;
+extern __FILE __sf[3];
+struct _glue
+{
+  struct _glue *_next;
+  int _niobs;
+  __FILE *_iobs;
+};
+extern struct _glue __sglue;
+#define _RAND48_SEED_0 (0x330e)
+#define _RAND48_SEED_1 (0xabcd)
+#define _RAND48_SEED_2 (0x1234)
+#define _RAND48_MULT_0 (0xe66d)
+#define _RAND48_MULT_1 (0xdeec)
+#define _RAND48_MULT_2 (0x0005)
+#define _RAND48_ADD (0x000b)
+struct _rand48 {
+  unsigned short _seed[3];
+  unsigned short _mult[3];
+  unsigned short _add;
+};
+#define _REENT_EMERGENCY_SIZE 25
+#define _REENT_ASCTIME_SIZE 26
+#define _REENT_SIGNAL_SIZE 24
+#define _REENT_INIT_RESERVED_0 
+#define _REENT_INIT_RESERVED_1 
+#define _REENT_INIT_RESERVED_2 
+#define _REENT_INIT_RESERVED_6_7 
+#define _REENT_INIT_RESERVED_8 
+struct _reent
+{
+  int _errno;
+  __FILE *_stdin, *_stdout, *_stderr;
+  int _inc;
+  char _emergency[25];
+  struct __locale_t *_locale;
+  void (*__cleanup) (struct _reent *);
+  struct _Bigint *_result;
+  int _result_k;
+  struct _Bigint *_p5s;
+  struct _Bigint **_freelist;
+  int _cvtlen;
+  char *_cvtbuf;
+  union
+    {
+      struct
+        {
+          char * _strtok_last;
+          char _asctime_buf[26];
+          struct __tm _localtime_buf;
+          int _gamma_signgam;
+          __extension__ unsigned long long _rand_next;
+          struct _rand48 _r48;
+          _mbstate_t _mblen_state;
+          _mbstate_t _mbtowc_state;
+          _mbstate_t _wctomb_state;
+          char _l64a_buf[8];
+          char _signal_buf[24];
+          int _getdate_err;
+          _mbstate_t _mbrlen_state;
+          _mbstate_t _mbrtowc_state;
+          _mbstate_t _mbsrtowcs_state;
+          _mbstate_t _wcrtomb_state;
+          _mbstate_t _wcsrtombs_state;
+   int _h_errno;
+   char _getlocalename_l_buf[32 ];
+        } _reent;
+    } _new;
+  void (**_sig_func)(int);
+};
+#define _REENT_INIT(var) { 0, &__sf[0], &__sf[1], &__sf[2], 0, "", _REENT_INIT_RESERVED_1 _NULL, _REENT_INIT_RESERVED_0 _NULL, _NULL, 0, _NULL, _NULL, 0, _NULL, { { _REENT_INIT_RESERVED_2 _NULL, "", {0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 1, { {_RAND48_SEED_0, _RAND48_SEED_1, _RAND48_SEED_2}, {_RAND48_MULT_0, _RAND48_MULT_1, _RAND48_MULT_2}, _RAND48_ADD }, {0, {0}}, {0, {0}}, {0, {0}}, "", "", 0, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}} } }, _REENT_INIT_RESERVED_6_7 _NULL }
+#define _REENT_INIT_PTR_ZEROED(var) { (var)->_stdin = &__sf[0]; (var)->_stdout = &__sf[1]; (var)->_stderr = &__sf[2]; (var)->_new._reent._rand_next = 1; (var)->_new._reent._r48._seed[0] = _RAND48_SEED_0; (var)->_new._reent._r48._seed[1] = _RAND48_SEED_1; (var)->_new._reent._r48._seed[2] = _RAND48_SEED_2; (var)->_new._reent._r48._mult[0] = _RAND48_MULT_0; (var)->_new._reent._r48._mult[1] = _RAND48_MULT_1; (var)->_new._reent._r48._mult[2] = _RAND48_MULT_2; (var)->_new._reent._r48._add = _RAND48_ADD; }
+#define _REENT_CHECK_RAND48(ptr) 
+#define _REENT_CHECK_MP(ptr) 
+#define _REENT_CHECK_TM(ptr) 
+#define _REENT_CHECK_ASCTIME_BUF(ptr) 
+#define _REENT_CHECK_EMERGENCY(ptr) 
+#define _REENT_CHECK_MISC(ptr) 
+#define _REENT_CHECK_SIGNAL_BUF(ptr) 
+#define _REENT_SIGNGAM(ptr) ((ptr)->_new._reent._gamma_signgam)
+#define _REENT_RAND_NEXT(ptr) ((ptr)->_new._reent._rand_next)
+#define _REENT_RAND48_SEED(ptr) ((ptr)->_new._reent._r48._seed)
+#define _REENT_RAND48_MULT(ptr) ((ptr)->_new._reent._r48._mult)
+#define _REENT_RAND48_ADD(ptr) ((ptr)->_new._reent._r48._add)
+#define _REENT_MP_RESULT(ptr) ((ptr)->_result)
+#define _REENT_MP_RESULT_K(ptr) ((ptr)->_result_k)
+#define _REENT_MP_P5S(ptr) ((ptr)->_p5s)
+#define _REENT_MP_FREELIST(ptr) ((ptr)->_freelist)
+#define _REENT_ASCTIME_BUF(ptr) ((ptr)->_new._reent._asctime_buf)
+#define _REENT_TM(ptr) (&(ptr)->_new._reent._localtime_buf)
+#define _REENT_STRTOK_LAST(ptr) ((ptr)->_new._reent._strtok_last)
+#define _REENT_MBLEN_STATE(ptr) ((ptr)->_new._reent._mblen_state)
+#define _REENT_MBTOWC_STATE(ptr) ((ptr)->_new._reent._mbtowc_state)
+#define _REENT_WCTOMB_STATE(ptr) ((ptr)->_new._reent._wctomb_state)
+#define _REENT_MBRLEN_STATE(ptr) ((ptr)->_new._reent._mbrlen_state)
+#define _REENT_MBRTOWC_STATE(ptr) ((ptr)->_new._reent._mbrtowc_state)
+#define _REENT_MBSRTOWCS_STATE(ptr) ((ptr)->_new._reent._mbsrtowcs_state)
+#define _REENT_WCRTOMB_STATE(ptr) ((ptr)->_new._reent._wcrtomb_state)
+#define _REENT_WCSRTOMBS_STATE(ptr) ((ptr)->_new._reent._wcsrtombs_state)
+#define _REENT_L64A_BUF(ptr) ((ptr)->_new._reent._l64a_buf)
+#define _REENT_SIGNAL_BUF(ptr) ((ptr)->_new._reent._signal_buf)
+#define _REENT_GETDATE_ERR_P(ptr) (&((ptr)->_new._reent._getdate_err))
+#define _REENT_GETLOCALENAME_L_BUF(ptr) ((ptr)->_new._reent._getlocalename_l_buf)
+#define _REENT_CLEANUP(_ptr) ((_ptr)->__cleanup)
+#define _REENT_CVTBUF(_ptr) ((_ptr)->_cvtbuf)
+#define _REENT_CVTLEN(_ptr) ((_ptr)->_cvtlen)
+#define _REENT_EMERGENCY(_ptr) ((_ptr)->_emergency)
+#define _REENT_ERRNO(_ptr) ((_ptr)->_errno)
+#define _REENT_INC(_ptr) ((_ptr)->_inc)
+#define _REENT_LOCALE(_ptr) ((_ptr)->_locale)
+#define _REENT_SIG_FUNC(_ptr) ((_ptr)->_sig_func)
+#define _REENT_STDIN(_ptr) ((_ptr)->_stdin)
+#define _REENT_STDOUT(_ptr) ((_ptr)->_stdout)
+#define _REENT_STDERR(_ptr) ((_ptr)->_stderr)
+#define _REENT_INIT_PTR(var) { memset((var), 0, sizeof(*(var))); _REENT_INIT_PTR_ZEROED(var); }
+#define __ATTRIBUTE_IMPURE_PTR__ 
+extern struct _reent *_impure_ptr ;
+#define __ATTRIBUTE_IMPURE_DATA__ 
+extern struct _reent _impure_data ;
+#define _REENT _impure_ptr
+#define _REENT_IS_NULL(_ptr) ((_ptr) == NULL)
+#define _GLOBAL_REENT (&_impure_data)
+#define _Kmax (sizeof (size_t) << 3)
+extern struct _atexit *__atexit;
+extern struct _atexit __atexit0;
+extern void (*__stdio_exit_handler) (void);
+void _reclaim_reent (struct _reent *);
+extern int _fwalk_sglue (struct _reent *, int (*)(struct _reent *, __FILE *),
+    struct _glue *);
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _MACHTIME_H_ 
+#define _CLOCKS_PER_SEC_ 100
+#define CLOCKS_PER_SEC _CLOCKS_PER_SEC_
+#define CLK_TCK CLOCKS_PER_SEC
+#define _SYS__LOCALE_H 
+struct __locale_t;
+typedef struct __locale_t *locale_t;
+
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+};
+clock_t clock (void);
+double difftime (time_t _time2, time_t _time1);
+time_t mktime (struct tm *_timeptr);
+time_t time (time_t *_timer);
+char *asctime (const struct tm *_tblock);
+char *ctime (const time_t *_time);
+struct tm *gmtime (const time_t *_timer);
+struct tm *localtime (const time_t *_timer);
+size_t strftime (char *restrict _s,
+        size_t _maxsize, const char *restrict _fmt,
+        const struct tm *restrict _t);
+extern size_t strftime_l (char *restrict _s, size_t _maxsize,
+     const char *restrict _fmt,
+     const struct tm *restrict _t, locale_t _l);
+char *asctime_r (const struct tm *restrict,
+     char *restrict);
+char *ctime_r (const time_t *, char *);
+struct tm *gmtime_r (const time_t *restrict,
+     struct tm *restrict);
+struct tm *localtime_r (const time_t *restrict,
+     struct tm *restrict);
+
+void tzset (void);
+void _tzset_r (struct _reent *);
+extern long _timezone;
+extern int _daylight;
+extern char *_tzname[2];
+#define tzname _tzname
+#define CLOCK_ENABLED 1
+#define CLOCK_DISABLED 0
+#define CLOCK_ALLOWED 1
+#define CLOCK_DISALLOWED 0
+#define TIMER_ABSTIME 4
+#define CLOCK_REALTIME (1)
+
+int utimes (const char *, const struct timeval [2]);
+int adjtime (const struct timeval *, struct timeval *);
+int futimes (int, const struct timeval [2]);
+int lutimes (const char *, const struct timeval [2]);
+int settimeofday (const struct timeval *, const struct timezone *);
+int getitimer (int __which, struct itimerval *__value);
+int setitimer (int __which, const struct itimerval *restrict __value,
+     struct itimerval *restrict __ovalue);
+int gettimeofday (struct timeval *restrict __p,
+     void *restrict __tz);
+
+#define PICO_LWIP_CUSTOM_LOCK_TCPIP_CORE 1
+typedef int sys_prot_t;
+#define PACK_STRUCT_BEGIN 
+#define PACK_STRUCT_STRUCT __attribute__ ((__packed__))
+#define PACK_STRUCT_END 
+#define PACK_STRUCT_FIELD(x) x
+#define _PICO_H 
+#define __PICO_STRING(x) #x
+#define __PICO_XSTRING(x) __PICO_STRING(x)
+#define __PICO_CONCAT1(x,y) x ## y
+#define _PICO_TYPES_H 
+#define _PICO_ASSERT_H 
+#define _STDBOOL_H 
+#define bool _Bool
+#define true 1
+#define false 0
+#define __bool_true_false_are_defined 1
+#undef assert
+#define assert(__e) ((__e) ? (void)0 : __assert_func (__FILE__, __LINE__, __ASSERT_FUNC, #__e))
+#define __ASSERT_FUNC __func__
+void __assert (const char *, int, const char *)
+     __attribute__ ((__noreturn__));
+void __assert_func (const char *, int, const char *, const char *)
+     __attribute__ ((__noreturn__));
+#define static_assert _Static_assert
+#define PARAM_ASSERTIONS_ENABLE_ALL 0
+#define PARAM_ASSERTIONS_DISABLE_ALL 0
+#define PARAM_ASSERTIONS_ENABLED(x) ((PARAM_ASSERTIONS_ENABLED_ ## x || PARAM_ASSERTIONS_ENABLE_ALL) && !PARAM_ASSERTIONS_DISABLE_ALL)
+#define invalid_params_if(x,test) ({if (PARAM_ASSERTIONS_ENABLED(x)) assert(!(test));})
+#define valid_params_if(x,test) ({if (PARAM_ASSERTIONS_ENABLED(x)) assert(test);})
+#define hard_assert_if(x,test) ({if (PARAM_ASSERTIONS_ENABLED(x)) hard_assert(!(test));})
+#define invalid_params_if_and_return(x,test,rc) ({ if (test) return rc; })
+#define hard_assert assert
+#define _STDINT_H 
+#define _SYS__INTSUP_H 
+#define __STDINT_EXP(x) __ ##x ##__
+       
+       
+       
+       
+       
+       
+       
+       
+#undef signed
+#undef unsigned
+#undef char
+#undef short
+#undef int
+#undef __int20
+#undef __int20__
+#undef long
+#define signed +0
+#define unsigned +0
+#define char +0
+#define short +1
+#define __int20 +2
+#define __int20__ +2
+#define int +2
+#define long +4
+#define _INTPTR_EQ_INT 
+#define _INT32_EQ_LONG 
+#define __INT8 "hh"
+#define __INT16 "h"
+#define __INT32 "l"
+#define __INT64 "ll"
+#define __FAST8 
+#define __FAST16 
+#define __FAST32 
+#define __FAST64 "ll"
+#define __LEAST8 "hh"
+#define __LEAST16 "h"
+#define __LEAST32 "l"
+#define __LEAST64 "ll"
+#undef signed
+#undef unsigned
+#undef char
+#undef short
+#undef int
+#undef long
+       
+       
+       
+       
+       
+#undef __int20
+       
+#undef __int20__
+       
+       
+typedef __int_least8_t int_least8_t;
+typedef __uint_least8_t uint_least8_t;
+#define __int_least8_t_defined 1
+typedef __int_least16_t int_least16_t;
+typedef __uint_least16_t uint_least16_t;
+#define __int_least16_t_defined 1
+typedef __int_least32_t int_least32_t;
+typedef __uint_least32_t uint_least32_t;
+#define __int_least32_t_defined 1
+typedef __int_least64_t int_least64_t;
+typedef __uint_least64_t uint_least64_t;
+#define __int_least64_t_defined 1
+  typedef int int_fast8_t;
+  typedef unsigned int uint_fast8_t;
+#define __int_fast8_t_defined 1
+  typedef int int_fast16_t;
+  typedef unsigned int uint_fast16_t;
+#define __int_fast16_t_defined 1
+  typedef int int_fast32_t;
+  typedef unsigned int uint_fast32_t;
+#define __int_fast32_t_defined 1
+  typedef long long int int_fast64_t;
+  typedef long long unsigned int uint_fast64_t;
+#define __int_fast64_t_defined 1
+#define INTPTR_MIN (-__INTPTR_MAX__ - 1)
+#define INTPTR_MAX (__INTPTR_MAX__)
+#define UINTPTR_MAX (__UINTPTR_MAX__)
+#define INT8_MIN (-__INT8_MAX__ - 1)
+#define INT8_MAX (__INT8_MAX__)
+#define UINT8_MAX (__UINT8_MAX__)
+#define INT_LEAST8_MIN (-__INT_LEAST8_MAX__ - 1)
+#define INT_LEAST8_MAX (__INT_LEAST8_MAX__)
+#define UINT_LEAST8_MAX (__UINT_LEAST8_MAX__)
+#define INT16_MIN (-__INT16_MAX__ - 1)
+#define INT16_MAX (__INT16_MAX__)
+#define UINT16_MAX (__UINT16_MAX__)
+#define INT_LEAST16_MIN (-__INT_LEAST16_MAX__ - 1)
+#define INT_LEAST16_MAX (__INT_LEAST16_MAX__)
+#define UINT_LEAST16_MAX (__UINT_LEAST16_MAX__)
+#define INT32_MIN (-__INT32_MAX__ - 1)
+#define INT32_MAX (__INT32_MAX__)
+#define UINT32_MAX (__UINT32_MAX__)
+#define INT_LEAST32_MIN (-__INT_LEAST32_MAX__ - 1)
+#define INT_LEAST32_MAX (__INT_LEAST32_MAX__)
+#define UINT_LEAST32_MAX (__UINT_LEAST32_MAX__)
+#define INT64_MIN (-__INT64_MAX__ - 1)
+#define INT64_MAX (__INT64_MAX__)
+#define UINT64_MAX (__UINT64_MAX__)
+#define INT_LEAST64_MIN (-__INT_LEAST64_MAX__ - 1)
+#define INT_LEAST64_MAX (__INT_LEAST64_MAX__)
+#define UINT_LEAST64_MAX (__UINT_LEAST64_MAX__)
+#define INT_FAST8_MIN (-__INT_FAST8_MAX__ - 1)
+#define INT_FAST8_MAX (__INT_FAST8_MAX__)
+#define UINT_FAST8_MAX (__UINT_FAST8_MAX__)
+#define INT_FAST16_MIN (-__INT_FAST16_MAX__ - 1)
+#define INT_FAST16_MAX (__INT_FAST16_MAX__)
+#define UINT_FAST16_MAX (__UINT_FAST16_MAX__)
+#define INT_FAST32_MIN (-__INT_FAST32_MAX__ - 1)
+#define INT_FAST32_MAX (__INT_FAST32_MAX__)
+#define UINT_FAST32_MAX (__UINT_FAST32_MAX__)
+#define INT_FAST64_MIN (-__INT_FAST64_MAX__ - 1)
+#define INT_FAST64_MAX (__INT_FAST64_MAX__)
+#define UINT_FAST64_MAX (__UINT_FAST64_MAX__)
+#define INTMAX_MAX (__INTMAX_MAX__)
+#define INTMAX_MIN (-INTMAX_MAX - 1)
+#define UINTMAX_MAX (__UINTMAX_MAX__)
+#define SIZE_MAX (__SIZE_MAX__)
+#define SIG_ATOMIC_MIN (-__STDINT_EXP(INT_MAX) - 1)
+#define SIG_ATOMIC_MAX (__STDINT_EXP(INT_MAX))
+#define PTRDIFF_MAX (__PTRDIFF_MAX__)
+#define PTRDIFF_MIN (-PTRDIFF_MAX - 1)
+#define WCHAR_MIN (__WCHAR_MIN__)
+#define WCHAR_MAX (__WCHAR_MAX__)
+#define WINT_MAX (__WINT_MAX__)
+#define WINT_MIN (__WINT_MIN__)
+#define INT8_C(x) __INT8_C(x)
+#define UINT8_C(x) __UINT8_C(x)
+#define INT16_C(x) __INT16_C(x)
+#define UINT16_C(x) __UINT16_C(x)
+#define INT32_C(x) __INT32_C(x)
+#define UINT32_C(x) __UINT32_C(x)
+#define INT64_C(x) __INT64_C(x)
+#define UINT64_C(x) __UINT64_C(x)
+#define INTMAX_C(x) __INTMAX_C(x)
+#define UINTMAX_C(x) __UINTMAX_C(x)
+#define _GCC_WRAP_STDINT_H 
+typedef unsigned int uint;
+#define PICO_OPAQUE_ABSOLUTE_TIME_T 0
+typedef uint64_t absolute_time_t;
+static inline uint64_t to_us_since_boot(absolute_time_t t) {
+    return t;
+}
+static inline void update_us_since_boot(absolute_time_t *t, uint64_t us_since_boot) {
+    *t = us_since_boot;
+}
+static inline absolute_time_t from_us_since_boot(uint64_t us_since_boot) {
+    absolute_time_t t;
+    update_us_since_boot(&t, us_since_boot);
+    return t;
+}
+#define ABSOLUTE_TIME_INITIALIZED_VAR(name,value) name = {value}
+#define PICO_INCLUDE_RTC_DATETIME PICO_RP2040
+#define bool_to_bit(x) ((uint)!!(x))
+#define _PICO_VERSION_H 
+#define PICO_SDK_VERSION_MAJOR 2
+#define PICO_SDK_VERSION_MINOR 2
+#define PICO_SDK_VERSION_REVISION 0
+#define PICO_SDK_VERSION_STRING "2.2.0"
+#define pico_board_cmake_set(x,y) 
+#define pico_board_cmake_set_default(x,y) 
+#define _PICO_CONFIG_H 
+#define _BOARDS_PICO2_W_H 
+
+
+#define RASPBERRYPI_PICO2_W 
+#define PICO_RP2350A 1
+#define PICO_DEFAULT_UART 0
+#define PICO_DEFAULT_UART_TX_PIN 0
+#define PICO_DEFAULT_UART_RX_PIN 1
+#define PICO_DEFAULT_I2C 0
+#define PICO_DEFAULT_I2C_SDA_PIN 4
+#define PICO_DEFAULT_I2C_SCL_PIN 5
+#define PICO_DEFAULT_SPI 0
+#define PICO_DEFAULT_SPI_SCK_PIN 18
+#define PICO_DEFAULT_SPI_TX_PIN 19
+#define PICO_DEFAULT_SPI_RX_PIN 16
+#define PICO_DEFAULT_SPI_CSN_PIN 17
+#define PICO_BOOT_STAGE2_CHOOSE_W25Q080 1
+#define PICO_FLASH_SPI_CLKDIV 2
+
+#define PICO_FLASH_SIZE_BYTES (4 * 1024 * 1024)
+#define CYW43_WL_GPIO_COUNT 3
+#define CYW43_WL_GPIO_LED_PIN 0
+#define CYW43_WL_GPIO_SMPS_PIN 1
+#define CYW43_WL_GPIO_VBUS_PIN 2
+#define CYW43_USES_VSYS_PIN 1
+#define PICO_VSYS_PIN 29
+
+#define PICO_RP2350_A2_SUPPORTED 1
+#define CYW43_PIN_WL_DYNAMIC 0
+#define CYW43_DEFAULT_PIN_WL_REG_ON 23u
+#define CYW43_DEFAULT_PIN_WL_DATA_OUT 24u
+#define CYW43_DEFAULT_PIN_WL_DATA_IN 24u
+#define CYW43_DEFAULT_PIN_WL_HOST_WAKE 24u
+#define CYW43_DEFAULT_PIN_WL_CLOCK 29u
+#define CYW43_DEFAULT_PIN_WL_CS 25u
+#define _CMSIS_RENAME_EXCEPTIONS_H 
+#define _PICO_PLATFORM_H 
+#define _PICO_PLATFORM_COMPILER_H 
+#define _HARDWARE_PLATFORM_DEFS_H 
+#define _u(x) x ## u
+#define NUM_CORES _u(2)
+#define NUM_DMA_CHANNELS _u(16)
+#define NUM_DMA_TIMERS _u(4)
+#define NUM_DMA_MPU_REGIONS _u(8)
+#define NUM_DMA_IRQS _u(4)
+#define NUM_IRQS _u(52)
+#define NUM_USER_IRQS _u(6)
+#define NUM_PIOS _u(3)
+#define NUM_PIO_STATE_MACHINES _u(4)
+#define NUM_PIO_IRQS _u(2)
+#define NUM_PWM_SLICES _u(12)
+#define NUM_PWM_IRQS _u(2)
+#define NUM_SPIN_LOCKS _u(32)
+#define NUM_UARTS _u(2)
+#define NUM_I2CS _u(2)
+#define NUM_SPIS _u(2)
+#define NUM_GENERIC_TIMERS _u(2)
+#define NUM_ALARMS _u(4)
+#define NUM_ADC_CHANNELS _u(5)
+#define ADC_BASE_PIN _u(26)
+#define NUM_RESETS _u(28)
+#define NUM_DOORBELLS _u(8)
+#define NUM_BANK0_GPIOS _u(30)
+#define NUM_QSPI_GPIOS _u(6)
+#define NUM_OTP_PAGES _u(64)
+#define NUM_OTP_PAGE_ROWS _u(64)
+#define NUM_OTP_ROWS (NUM_OTP_PAGES * NUM_OTP_PAGE_ROWS)
+#define PIO_INSTRUCTION_COUNT _u(32)
+#define NUM_MPU_REGIONS _u(8)
+#define NUM_SAU_REGIONS _u(8)
+#define NUM_BOOT_LOCKS _u(8)
+#define BOOTRAM_SIZE _u(0x400)
+#define USBCTRL_DPRAM_SIZE _u(4096)
+#define HAS_GPIO_COPROCESSOR 1
+#define HAS_DOUBLE_COPROCESSOR 1
+#define HAS_REDUNDANCY_COPROCESSOR 1
+#define HAS_POWMAN_TIMER 1
+#define HAS_RP2350_TRNG 1
+#define HAS_HSTX 1
+#define HAS_PADS_BANK0_ISOLATION 1
+#define __RISCV_PMP_CHECKED 1
+#define FPGA_CLK_SYS_HZ (48 * MHZ)
+#define FPGA_CLK_REF_HZ (12 * MHZ)
+#define XOSC_HZ _u(12000000)
+#define PICO_USE_FASTEST_SUPPORTED_CLOCK 0
+#define SYS_CLK_HZ _u(150000000)
+#define USB_CLK_HZ _u(48000000)
+#define XOSC_KHZ (XOSC_HZ / 1000)
+#define XOSC_MHZ (XOSC_KHZ / 1000)
+#define SYS_CLK_KHZ (SYS_CLK_HZ / 1000)
+#define SYS_CLK_MHZ (SYS_CLK_KHZ / 1000)
+#define USB_CLK_KHZ (USB_CLK_HZ / 1000)
+#define USB_CLK_MHZ (USB_CLK_KHZ / 1000)
+#define ACCESSCTRL_PASSWORD_BITS _u(0xacce0000)
+#define POWMAN_PASSWORD_BITS _u(0x5afe0000)
+#define VTABLE_FIRST_IRQ 16
+#define FIRST_USER_IRQ (NUM_IRQS - NUM_USER_IRQS)
+#define REG_FIELD_WIDTH(f) (f ## _MSB + 1 - f ## _LSB)
 #define PICO_C_COMPILER_IS_GNU 1
 #define __weak __attribute__((weak))
 #define GCC_Like_Pragma _Pragma
@@ -2527,6 +3375,2361 @@ enum pico_error_codes {
     PICO_ERROR_VERSION_MISMATCH = -20,
     PICO_ERROR_RESOURCE_IN_USE = -21
 };
+#define LWIP_PLATFORM_ASSERT(x) panic(x)
+#define _PICO_RAND_H 
+#define PICO_RAND_ENTROPY_SRC_TRNG 1
+#define PICO_RAND_ENTROPY_SRC_TIME 1
+#define PICO_RAND_SEED_ENTROPY_SRC_ROSC PICO_RAND_ENTROPY_SRC_ROSC
+#define PICO_RAND_SEED_ENTROPY_SRC_TRNG PICO_RAND_ENTROPY_SRC_TRNG
+#define PICO_RAND_SEED_ENTROPY_SRC_TIME PICO_RAND_ENTROPY_SRC_TIME
+#define PICO_RAND_SEED_ENTROPY_SRC_BUS_PERF_COUNTER PICO_RAND_ENTROPY_SRC_BUS_PERF_COUNTER
+#define PICO_RAND_SEED_ENTROPY_SRC_BOOT_RANDOM 1
+#define PICO_RAND_SEED_ENTROPY_SRC_BOARD_ID (!PICO_RAND_SEED_ENTROPY_SRC_BOOT_RANDOM)
+#define PICO_RAND_ROSC_BIT_SAMPLE_COUNT 1
+#define PICO_RAND_MIN_ROSC_BIT_SAMPLE_TIME_US 10u
+#define PICO_RAND_BUS_PERF_COUNTER_EVENT arbiter_sram5_perf_event_access
+#define PICO_RAND_RAM_HASH_END SRAM_END
+#define PICO_RAND_RAM_HASH_START (PICO_RAND_RAM_HASH_END - 1024u)
+typedef struct rng_128 {
+    uint64_t r[2];
+} rng_128_t;
+void get_rand_128(rng_128_t *rand128);
+uint64_t get_rand_64(void);
+uint32_t get_rand_32(void);
+#define LWIP_RAND() get_rand_32()
+#define LWIP_PLATFORM_DIAG(x) do {printf x;} while(0)
+#define _STDIO_H_ 
+#define _FSTDIO 
+#define __need_size_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __need___va_list 
+#undef __need___va_list
+#define __GNUC_VA_LIST 
+typedef __builtin_va_list __gnuc_va_list;
+typedef __gnuc_va_list va_list;
+#define _VA_LIST_DEFINED 
+
+typedef __FILE FILE;
+#define __FILE_defined 
+typedef _fpos_t fpos_t;
+#define _NEWLIB_STDIO_H 
+#define _flockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_acquire_recursive((fp)->_lock))
+#define _funlockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_release_recursive((fp)->_lock))
+#define __SLBF 0x0001
+#define __SNBF 0x0002
+#define __SRD 0x0004
+#define __SWR 0x0008
+#define __SRW 0x0010
+#define __SEOF 0x0020
+#define __SERR 0x0040
+#define __SMBF 0x0080
+#define __SAPP 0x0100
+#define __SSTR 0x0200
+#define __SOPT 0x0400
+#define __SNPT 0x0800
+#define __SOFF 0x1000
+#define __SORD 0x2000
+#define __SL64 0x8000
+#define __SNLK 0x0001
+#define __SWID 0x2000
+#define _IOFBF 0
+#define _IOLBF 1
+#define _IONBF 2
+#define EOF (-1)
+#define BUFSIZ 1024
+#define FOPEN_MAX 20
+#define FILENAME_MAX 1024
+#define L_tmpnam FILENAME_MAX
+#define P_tmpdir "/tmp"
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+#define TMP_MAX 26
+#define stdin _REENT_STDIN(_REENT)
+#define stdout _REENT_STDOUT(_REENT)
+#define stderr _REENT_STDERR(_REENT)
+#define _stdin_r(x) _REENT_STDIN(x)
+#define _stdout_r(x) _REENT_STDOUT(x)
+#define _stderr_r(x) _REENT_STDERR(x)
+#define __VALIST __gnuc_va_list
+char * ctermid (char *);
+FILE * tmpfile (void);
+char * tmpnam (char *);
+char * tempnam (const char *, const char *) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
+int fclose (FILE *);
+int fflush (FILE *);
+FILE * freopen (const char *restrict, const char *restrict, FILE *restrict);
+void setbuf (FILE *restrict, char *restrict);
+int setvbuf (FILE *restrict, char *restrict, int, size_t);
+int fprintf (FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int fscanf (FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int printf (const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 1, 2)));
+int scanf (const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 1, 2)));
+int sscanf (const char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int vfprintf (FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vprintf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 1, 0)));
+int vsprintf (char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int fgetc (FILE *);
+char * fgets (char *restrict, int, FILE *restrict);
+int fputc (int, FILE *);
+int fputs (const char *restrict, FILE *restrict);
+int getc (FILE *);
+int getchar (void);
+char * gets (char *);
+int putc (int, FILE *);
+int putchar (int);
+int puts (const char *);
+int ungetc (int, FILE *);
+size_t fread (void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t fwrite (const void *restrict , size_t _size, size_t _n, FILE *);
+int fgetpos (FILE *restrict, fpos_t *restrict);
+int fseek (FILE *, long, int);
+int fsetpos (FILE *, const fpos_t *);
+long ftell ( FILE *);
+void rewind (FILE *);
+void clearerr (FILE *);
+int feof (FILE *);
+int ferror (FILE *);
+void perror (const char *);
+FILE * fopen (const char *restrict _name, const char *restrict _type);
+int sprintf (char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int remove (const char *);
+int rename (const char *, const char *);
+int fseeko (FILE *, off_t, int);
+off_t ftello (FILE *);
+int snprintf (char *restrict, size_t, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int vsnprintf (char *restrict, size_t, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int vfscanf (FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int vscanf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 1, 0)));
+int vsscanf (const char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int asiprintf (char **, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+char * asniprintf (char *, size_t *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+char * asnprintf (char *restrict, size_t *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int diprintf (int, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int fiprintf (FILE *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int fiscanf (FILE *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int iprintf (const char *, ...)
+               __attribute__ ((__format__ (__printf__, 1, 2)));
+int iscanf (const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 1, 2)));
+int siprintf (char *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int siscanf (const char *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int sniprintf (char *, size_t, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int vasiprintf (char **, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+char * vasniprintf (char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+char * vasnprintf (char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int vdiprintf (int, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vfiprintf (FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vfiscanf (FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int viprintf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 1, 0)));
+int viscanf (const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 1, 0)));
+int vsiprintf (char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int vsiscanf (const char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int vsniprintf (char *, size_t, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+FILE * fdopen (int, const char *);
+int fileno (FILE *);
+int pclose (FILE *);
+FILE * popen (const char *, const char *);
+void setbuffer (FILE *, char *, int);
+int setlinebuf (FILE *);
+int getw (FILE *);
+int putw (int, FILE *);
+int getc_unlocked (FILE *);
+int getchar_unlocked (void);
+void flockfile (FILE *);
+int ftrylockfile (FILE *);
+void funlockfile (FILE *);
+int putc_unlocked (int, FILE *);
+int putchar_unlocked (int);
+int dprintf (int, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+FILE * fmemopen (void *restrict, size_t, const char *restrict);
+FILE * open_memstream (char **, size_t *);
+int vdprintf (int, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int renameat (int, const char *, int, const char *);
+int _asiprintf_r (struct _reent *, char **, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+char * _asniprintf_r (struct _reent *, char *, size_t *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+char * _asnprintf_r (struct _reent *, char *restrict, size_t *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+int _asprintf_r (struct _reent *, char **restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _diprintf_r (struct _reent *, int, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _dprintf_r (struct _reent *, int, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _fclose_r (struct _reent *, FILE *);
+int _fcloseall_r (struct _reent *);
+FILE * _fdopen_r (struct _reent *, int, const char *);
+int _fflush_r (struct _reent *, FILE *);
+int _fgetc_r (struct _reent *, FILE *);
+int _fgetc_unlocked_r (struct _reent *, FILE *);
+char * _fgets_r (struct _reent *, char *restrict, int, FILE *restrict);
+char * _fgets_unlocked_r (struct _reent *, char *restrict, int, FILE *restrict);
+int _fgetpos_r (struct _reent *, FILE *, fpos_t *);
+int _fsetpos_r (struct _reent *, FILE *, const fpos_t *);
+int _fiprintf_r (struct _reent *, FILE *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _fiscanf_r (struct _reent *, FILE *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+FILE * _fmemopen_r (struct _reent *, void *restrict, size_t, const char *restrict);
+FILE * _fopen_r (struct _reent *, const char *restrict, const char *restrict);
+FILE * _freopen_r (struct _reent *, const char *restrict, const char *restrict, FILE *restrict);
+int _fprintf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _fpurge_r (struct _reent *, FILE *);
+int _fputc_r (struct _reent *, int, FILE *);
+int _fputc_unlocked_r (struct _reent *, int, FILE *);
+int _fputs_r (struct _reent *, const char *restrict, FILE *restrict);
+int _fputs_unlocked_r (struct _reent *, const char *restrict, FILE *restrict);
+size_t _fread_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t _fread_unlocked_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
+int _fscanf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+int _fseek_r (struct _reent *, FILE *, long, int);
+int _fseeko_r (struct _reent *, FILE *, _off_t, int);
+long _ftell_r (struct _reent *, FILE *);
+_off_t _ftello_r (struct _reent *, FILE *);
+void _rewind_r (struct _reent *, FILE *);
+size_t _fwrite_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t _fwrite_unlocked_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
+int _getc_r (struct _reent *, FILE *);
+int _getc_unlocked_r (struct _reent *, FILE *);
+int _getchar_r (struct _reent *);
+int _getchar_unlocked_r (struct _reent *);
+char * _gets_r (struct _reent *, char *);
+int _iprintf_r (struct _reent *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int _iscanf_r (struct _reent *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+FILE * _open_memstream_r (struct _reent *, char **, size_t *);
+void _perror_r (struct _reent *, const char *);
+int _printf_r (struct _reent *, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 2, 3)));
+int _putc_r (struct _reent *, int, FILE *);
+int _putc_unlocked_r (struct _reent *, int, FILE *);
+int _putchar_unlocked_r (struct _reent *, int);
+int _putchar_r (struct _reent *, int);
+int _puts_r (struct _reent *, const char *);
+int _remove_r (struct _reent *, const char *);
+int _rename_r (struct _reent *,
+      const char *_old, const char *_new);
+int _scanf_r (struct _reent *, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 2, 3)));
+int _siprintf_r (struct _reent *, char *, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _siscanf_r (struct _reent *, const char *, const char *, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+int _sniprintf_r (struct _reent *, char *, size_t, const char *, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+int _snprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 4, 5)));
+int _sprintf_r (struct _reent *, char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__printf__, 3, 4)));
+int _sscanf_r (struct _reent *, const char *restrict, const char *restrict, ...)
+               __attribute__ ((__format__ (__scanf__, 3, 4)));
+char * _tempnam_r (struct _reent *, const char *, const char *);
+FILE * _tmpfile_r (struct _reent *);
+char * _tmpnam_r (struct _reent *, char *);
+int _ungetc_r (struct _reent *, int, FILE *);
+int _vasiprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+char * _vasniprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+char * _vasnprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+int _vasprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vdiprintf_r (struct _reent *, int, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vdprintf_r (struct _reent *, int, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vfiprintf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vfiscanf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int _vfprintf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vfscanf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int _viprintf_r (struct _reent *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int _viscanf_r (struct _reent *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int _vprintf_r (struct _reent *, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 2, 0)));
+int _vscanf_r (struct _reent *, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 2, 0)));
+int _vsiprintf_r (struct _reent *, char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vsiscanf_r (struct _reent *, const char *, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int _vsniprintf_r (struct _reent *, char *, size_t, const char *, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+int _vsnprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 4, 0)));
+int _vsprintf_r (struct _reent *, char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__printf__, 3, 0)));
+int _vsscanf_r (struct _reent *, const char *restrict, const char *restrict, __gnuc_va_list)
+               __attribute__ ((__format__ (__scanf__, 3, 0)));
+int fpurge (FILE *);
+ssize_t __getdelim (char **, size_t *, int, FILE *);
+ssize_t __getline (char **, size_t *, FILE *);
+void clearerr_unlocked (FILE *);
+int feof_unlocked (FILE *);
+int ferror_unlocked (FILE *);
+int fileno_unlocked (FILE *);
+int fflush_unlocked (FILE *);
+int fgetc_unlocked (FILE *);
+int fputc_unlocked (int, FILE *);
+size_t fread_unlocked (void *restrict, size_t _size, size_t _n, FILE *restrict);
+size_t fwrite_unlocked (const void *restrict , size_t _size, size_t _n, FILE *);
+int __srget_r (struct _reent *, FILE *);
+int __swbuf_r (struct _reent *, int, FILE *);
+FILE *funopen (const void *__cookie,
+  int (*__readfn)(void *__cookie, char *__buf,
+    int __n),
+  int (*__writefn)(void *__cookie, const char *__buf,
+     int __n),
+  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
+  int (*__closefn)(void *__cookie));
+FILE *_funopen_r (struct _reent *, const void *__cookie,
+  int (*__readfn)(void *__cookie, char *__buf,
+    int __n),
+  int (*__writefn)(void *__cookie, const char *__buf,
+     int __n),
+  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
+  int (*__closefn)(void *__cookie));
+#define fropen(__cookie,__fn) funopen(__cookie, __fn, NULL, NULL, NULL)
+#define fwopen(__cookie,__fn) funopen(__cookie, NULL, __fn, NULL, NULL)
+#define __sgetc_raw_r(__ptr,__f) (--(__f)->_r < 0 ? __srget_r(__ptr, __f) : (int)(*(__f)->_p++))
+#define __sgetc_r(__ptr,__p) __sgetc_raw_r(__ptr, __p)
+static __inline__ int __sputc_r(struct _reent *_ptr, int _c, FILE *_p) {
+ if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
+  return (*_p->_p++ = _c);
+ else
+  return (__swbuf_r(_ptr, _c, _p));
+}
+#define __sfeof(p) ((int)(((p)->_flags & __SEOF) != 0))
+#define __sferror(p) ((int)(((p)->_flags & __SERR) != 0))
+#define __sclearerr(p) ((void)((p)->_flags &= ~(__SERR|__SEOF)))
+#define __sfileno(p) ((p)->_file)
+#define feof(p) __sfeof(p)
+#define ferror(p) __sferror(p)
+#define clearerr(p) __sclearerr(p)
+#define feof_unlocked(p) __sfeof(p)
+#define ferror_unlocked(p) __sferror(p)
+#define clearerr_unlocked(p) __sclearerr(p)
+static __inline int
+_getchar_unlocked(void)
+{
+ struct _reent *_ptr;
+ _ptr = _impure_ptr;
+ return ((--(((_ptr)->_stdin))->_r < 0 ? __srget_r(_ptr, ((_ptr)->_stdin)) : (int)(*(((_ptr)->_stdin))->_p++)));
+}
+static __inline int
+_putchar_unlocked(int _c)
+{
+ struct _reent *_ptr;
+ _ptr = _impure_ptr;
+ return (__sputc_r(_ptr, _c, ((_ptr)->_stdout)));
+}
+#define getchar_unlocked() _getchar_unlocked()
+#define putchar_unlocked(_c) _putchar_unlocked(_c)
+#define fast_putc(x,p) (--(p)->_w < 0 ? __swbuf_r(_REENT, (int)(x), p) == EOF : (*(p)->_p = (x), (p)->_p++, 0))
+#define L_ctermid 16
+
+#define _STDLIB_H_ 
+#define __need_size_t 
+#define __need_wchar_t 
+#define __need_NULL 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define _MACHSTDLIB_H_ 
+#define _NEWLIB_ALLOCA_H 
+#undef alloca
+#define alloca(size) __builtin_alloca(size)
+
+typedef struct
+{
+  int quot;
+  int rem;
+} div_t;
+typedef struct
+{
+  long quot;
+  long rem;
+} ldiv_t;
+typedef struct
+{
+  long long int quot;
+  long long int rem;
+} lldiv_t;
+#define __compar_fn_t_defined 
+typedef int (*__compar_fn_t) (const void *, const void *);
+#define EXIT_FAILURE 1
+#define EXIT_SUCCESS 0
+#define RAND_MAX __RAND_MAX
+int __locale_mb_cur_max (void);
+#define MB_CUR_MAX __locale_mb_cur_max()
+void abort (void) __attribute__ ((__noreturn__));
+int abs (int);
+__uint32_t arc4random (void);
+__uint32_t arc4random_uniform (__uint32_t);
+void arc4random_buf (void *, size_t);
+int atexit (void (*__func)(void));
+double atof (const char *__nptr);
+float atoff (const char *__nptr);
+int atoi (const char *__nptr);
+int _atoi_r (struct _reent *, const char *__nptr);
+long atol (const char *__nptr);
+long _atol_r (struct _reent *, const char *__nptr);
+void * bsearch (const void *__key,
+         const void *__base,
+         size_t __nmemb,
+         size_t __size,
+         __compar_fn_t _compar);
+void *calloc(size_t, size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__))
+      __attribute__((__alloc_size__(1, 2))) ;
+div_t div (int __numer, int __denom);
+void exit (int __status) __attribute__ ((__noreturn__));
+void free (void *) ;
+char * getenv (const char *__string);
+char * _getenv_r (struct _reent *, const char *__string);
+char * _findenv (const char *, int *);
+char * _findenv_r (struct _reent *, const char *, int *);
+extern char *suboptarg;
+int getsubopt (char **, char * const *, char **);
+long labs (long);
+ldiv_t ldiv (long __numer, long __denom);
+void *malloc(size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(1))) ;
+int mblen (const char *, size_t);
+int _mblen_r (struct _reent *, const char *, size_t, _mbstate_t *);
+int mbtowc (wchar_t *restrict, const char *restrict, size_t);
+int _mbtowc_r (struct _reent *, wchar_t *restrict, const char *restrict, size_t, _mbstate_t *);
+int wctomb (char *, wchar_t);
+int _wctomb_r (struct _reent *, char *, wchar_t, _mbstate_t *);
+size_t mbstowcs (wchar_t *restrict, const char *restrict, size_t);
+size_t _mbstowcs_r (struct _reent *, wchar_t *restrict, const char *restrict, size_t, _mbstate_t *);
+size_t wcstombs (char *restrict, const wchar_t *restrict, size_t);
+size_t _wcstombs_r (struct _reent *, char *restrict, const wchar_t *restrict, size_t, _mbstate_t *);
+char * mkdtemp (char *);
+int mkstemp (char *);
+int mkstemps (char *, int);
+char * mktemp (char *) __attribute__ ((__deprecated__("the use of `mktemp' is dangerous; use `mkstemp' instead")));
+char * _mkdtemp_r (struct _reent *, char *);
+int _mkostemp_r (struct _reent *, char *, int);
+int _mkostemps_r (struct _reent *, char *, int, int);
+int _mkstemp_r (struct _reent *, char *);
+int _mkstemps_r (struct _reent *, char *, int);
+char * _mktemp_r (struct _reent *, char *) __attribute__ ((__deprecated__("the use of `mktemp' is dangerous; use `mkstemp' instead")));
+void qsort (void *__base, size_t __nmemb, size_t __size, __compar_fn_t _compar);
+int rand (void);
+void *realloc(void *, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2))) ;
+void *reallocarray(void *, size_t, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2, 3)));
+void *reallocf(void *, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2)));
+char * realpath (const char *restrict path, char *restrict resolved_path);
+int rpmatch (const char *response);
+void srand (unsigned __seed);
+double strtod (const char *restrict __n, char **restrict __end_PTR);
+double _strtod_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR);
+float strtof (const char *restrict __n, char **restrict __end_PTR);
+#define strtodf strtof
+long strtol (const char *restrict __n, char **restrict __end_PTR, int __base);
+long _strtol_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long strtoul (const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long _strtoul_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR, int __base);
+int system (const char *__string);
+long a64l (const char *__input);
+char * l64a (long __input);
+char * _l64a_r (struct _reent *,long __input);
+int on_exit (void (*__func)(int, void *),void *__arg);
+void _Exit (int __status) __attribute__ ((__noreturn__));
+int putenv (char *__string);
+int _putenv_r (struct _reent *, char *__string);
+void * _reallocf_r (struct _reent *, void *, size_t);
+int setenv (const char *__string, const char *__value, int __overwrite);
+int _setenv_r (struct _reent *, const char *__string, const char *__value, int __overwrite);
+char * __itoa (int, char *, int);
+char * __utoa (unsigned, char *, int);
+char * itoa (int, char *, int);
+char * utoa (unsigned, char *, int);
+int rand_r (unsigned *__seed);
+double drand48 (void);
+double _drand48_r (struct _reent *);
+double erand48 (unsigned short [3]);
+double _erand48_r (struct _reent *, unsigned short [3]);
+long jrand48 (unsigned short [3]);
+long _jrand48_r (struct _reent *, unsigned short [3]);
+void lcong48 (unsigned short [7]);
+void _lcong48_r (struct _reent *, unsigned short [7]);
+long lrand48 (void);
+long _lrand48_r (struct _reent *);
+long mrand48 (void);
+long _mrand48_r (struct _reent *);
+long nrand48 (unsigned short [3]);
+long _nrand48_r (struct _reent *, unsigned short [3]);
+unsigned short *
+       seed48 (unsigned short [3]);
+unsigned short *
+       _seed48_r (struct _reent *, unsigned short [3]);
+void srand48 (long);
+void _srand48_r (struct _reent *, long);
+char * initstate (unsigned, char *, size_t);
+long random (void);
+char * setstate (char *);
+void srandom (unsigned);
+long long atoll (const char *__nptr);
+long long _atoll_r (struct _reent *, const char *__nptr);
+long long llabs (long long);
+lldiv_t lldiv (long long __numer, long long __denom);
+long long strtoll (const char *restrict __n, char **restrict __end_PTR, int __base);
+long long _strtoll_r (struct _reent *, const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long long strtoull (const char *restrict __n, char **restrict __end_PTR, int __base);
+unsigned long long _strtoull_r (struct _reent *, const char *restrict __n, char **restrict __end_PTR, int __base);
+void cfree (void *);
+int unsetenv (const char *__string);
+int _unsetenv_r (struct _reent *, const char *__string);
+int posix_memalign (void **, size_t, size_t) __attribute__((__nonnull__ (1)))
+     __attribute__((__warn_unused_result__));
+char * _dtoa_r (struct _reent *, double, int, int, int *, int*, char**);
+void * _malloc_r (struct _reent *, size_t) ;
+void * _calloc_r (struct _reent *, size_t, size_t) ;
+void _free_r (struct _reent *, void *) ;
+void * _realloc_r (struct _reent *, void *, size_t) ;
+void _mstats_r (struct _reent *, char *);
+int _system_r (struct _reent *, const char *);
+void __eprintf (const char *, const char *, unsigned int, const char *);
+void qsort_r (void *__base, size_t __nmemb, size_t __size, void *__thunk, int (*_compar)(void *, const void *, const void *))
+             __asm__ ("" "__bsd_qsort_r");
+extern long double _strtold_r (struct _reent *, const char *restrict, char **restrict);
+extern long double strtold (const char *restrict, char **restrict);
+void * aligned_alloc(size_t, size_t) __attribute__((__malloc__)) __attribute__((__alloc_align__(1)))
+     __attribute__((__alloc_size__(2))) __attribute__((__warn_unused_result__));
+int at_quick_exit(void (*)(void));
+_Noreturn void
+ quick_exit(int);
+
+#define LWIP_NO_STDDEF_H 0
+#define LWIP_NO_STDINT_H 0
+#define LWIP_HAVE_INT64 1
+typedef uint8_t u8_t;
+typedef int8_t s8_t;
+typedef uint16_t u16_t;
+typedef int16_t s16_t;
+typedef uint32_t u32_t;
+typedef int32_t s32_t;
+typedef uint64_t u64_t;
+typedef int64_t s64_t;
+typedef uintptr_t mem_ptr_t;
+#define LWIP_NO_INTTYPES_H 0
+#define _INTTYPES_H 
+#define __need_wchar_t 
+#undef __need_ptrdiff_t
+#undef __need_size_t
+#undef __need_wchar_t
+#undef NULL
+#define NULL ((void *)0)
+#undef __need_NULL
+#undef offsetof
+#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
+#define __STRINGIFY(a) #a
+#define __PRI8(x) __INT8 __STRINGIFY(x)
+#define __PRI8LEAST(x) __LEAST8 __STRINGIFY(x)
+#define __PRI8FAST(x) __FAST8 __STRINGIFY(x)
+#define __SCN8(x) __INT8 __STRINGIFY(x)
+#define __SCN8LEAST(x) __LEAST8 __STRINGIFY(x)
+#define __SCN8FAST(x) __FAST8 __STRINGIFY(x)
+#define PRId8 __PRI8(d)
+#define PRIi8 __PRI8(i)
+#define PRIo8 __PRI8(o)
+#define PRIu8 __PRI8(u)
+#define PRIx8 __PRI8(x)
+#define PRIX8 __PRI8(X)
+#define SCNd8 __SCN8(d)
+#define SCNi8 __SCN8(i)
+#define SCNo8 __SCN8(o)
+#define SCNu8 __SCN8(u)
+#define SCNx8 __SCN8(x)
+#define PRIdLEAST8 __PRI8LEAST(d)
+#define PRIiLEAST8 __PRI8LEAST(i)
+#define PRIoLEAST8 __PRI8LEAST(o)
+#define PRIuLEAST8 __PRI8LEAST(u)
+#define PRIxLEAST8 __PRI8LEAST(x)
+#define PRIXLEAST8 __PRI8LEAST(X)
+#define SCNdLEAST8 __SCN8LEAST(d)
+#define SCNiLEAST8 __SCN8LEAST(i)
+#define SCNoLEAST8 __SCN8LEAST(o)
+#define SCNuLEAST8 __SCN8LEAST(u)
+#define SCNxLEAST8 __SCN8LEAST(x)
+#define PRIdFAST8 __PRI8FAST(d)
+#define PRIiFAST8 __PRI8FAST(i)
+#define PRIoFAST8 __PRI8FAST(o)
+#define PRIuFAST8 __PRI8FAST(u)
+#define PRIxFAST8 __PRI8FAST(x)
+#define PRIXFAST8 __PRI8FAST(X)
+#define SCNdFAST8 __SCN8FAST(d)
+#define SCNiFAST8 __SCN8FAST(i)
+#define SCNoFAST8 __SCN8FAST(o)
+#define SCNuFAST8 __SCN8FAST(u)
+#define SCNxFAST8 __SCN8FAST(x)
+#define __PRI16(x) __INT16 __STRINGIFY(x)
+#define __PRI16LEAST(x) __LEAST16 __STRINGIFY(x)
+#define __PRI16FAST(x) __FAST16 __STRINGIFY(x)
+#define __SCN16(x) __INT16 __STRINGIFY(x)
+#define __SCN16LEAST(x) __LEAST16 __STRINGIFY(x)
+#define __SCN16FAST(x) __FAST16 __STRINGIFY(x)
+#define PRId16 __PRI16(d)
+#define PRIi16 __PRI16(i)
+#define PRIo16 __PRI16(o)
+#define PRIu16 __PRI16(u)
+#define PRIx16 __PRI16(x)
+#define PRIX16 __PRI16(X)
+#define SCNd16 __SCN16(d)
+#define SCNi16 __SCN16(i)
+#define SCNo16 __SCN16(o)
+#define SCNu16 __SCN16(u)
+#define SCNx16 __SCN16(x)
+#define PRIdLEAST16 __PRI16LEAST(d)
+#define PRIiLEAST16 __PRI16LEAST(i)
+#define PRIoLEAST16 __PRI16LEAST(o)
+#define PRIuLEAST16 __PRI16LEAST(u)
+#define PRIxLEAST16 __PRI16LEAST(x)
+#define PRIXLEAST16 __PRI16LEAST(X)
+#define SCNdLEAST16 __SCN16LEAST(d)
+#define SCNiLEAST16 __SCN16LEAST(i)
+#define SCNoLEAST16 __SCN16LEAST(o)
+#define SCNuLEAST16 __SCN16LEAST(u)
+#define SCNxLEAST16 __SCN16LEAST(x)
+#define PRIdFAST16 __PRI16FAST(d)
+#define PRIiFAST16 __PRI16FAST(i)
+#define PRIoFAST16 __PRI16FAST(o)
+#define PRIuFAST16 __PRI16FAST(u)
+#define PRIxFAST16 __PRI16FAST(x)
+#define PRIXFAST16 __PRI16FAST(X)
+#define SCNdFAST16 __SCN16FAST(d)
+#define SCNiFAST16 __SCN16FAST(i)
+#define SCNoFAST16 __SCN16FAST(o)
+#define SCNuFAST16 __SCN16FAST(u)
+#define SCNxFAST16 __SCN16FAST(x)
+#define __PRI32(x) __INT32 __STRINGIFY(x)
+#define __SCN32(x) __INT32 __STRINGIFY(x)
+#define __PRI32LEAST(x) __LEAST32 __STRINGIFY(x)
+#define __SCN32LEAST(x) __LEAST32 __STRINGIFY(x)
+#define __PRI32FAST(x) __FAST32 __STRINGIFY(x)
+#define __SCN32FAST(x) __FAST32 __STRINGIFY(x)
+#define PRId32 __PRI32(d)
+#define PRIi32 __PRI32(i)
+#define PRIo32 __PRI32(o)
+#define PRIu32 __PRI32(u)
+#define PRIx32 __PRI32(x)
+#define PRIX32 __PRI32(X)
+#define SCNd32 __SCN32(d)
+#define SCNi32 __SCN32(i)
+#define SCNo32 __SCN32(o)
+#define SCNu32 __SCN32(u)
+#define SCNx32 __SCN32(x)
+#define PRIdLEAST32 __PRI32LEAST(d)
+#define PRIiLEAST32 __PRI32LEAST(i)
+#define PRIoLEAST32 __PRI32LEAST(o)
+#define PRIuLEAST32 __PRI32LEAST(u)
+#define PRIxLEAST32 __PRI32LEAST(x)
+#define PRIXLEAST32 __PRI32LEAST(X)
+#define SCNdLEAST32 __SCN32LEAST(d)
+#define SCNiLEAST32 __SCN32LEAST(i)
+#define SCNoLEAST32 __SCN32LEAST(o)
+#define SCNuLEAST32 __SCN32LEAST(u)
+#define SCNxLEAST32 __SCN32LEAST(x)
+#define PRIdFAST32 __PRI32FAST(d)
+#define PRIiFAST32 __PRI32FAST(i)
+#define PRIoFAST32 __PRI32FAST(o)
+#define PRIuFAST32 __PRI32FAST(u)
+#define PRIxFAST32 __PRI32FAST(x)
+#define PRIXFAST32 __PRI32FAST(X)
+#define SCNdFAST32 __SCN32FAST(d)
+#define SCNiFAST32 __SCN32FAST(i)
+#define SCNoFAST32 __SCN32FAST(o)
+#define SCNuFAST32 __SCN32FAST(u)
+#define SCNxFAST32 __SCN32FAST(x)
+#define __PRI64(x) __INT64 __STRINGIFY(x)
+#define __SCN64(x) __INT64 __STRINGIFY(x)
+#define __PRI64LEAST(x) __LEAST64 __STRINGIFY(x)
+#define __SCN64LEAST(x) __LEAST64 __STRINGIFY(x)
+#define __PRI64FAST(x) __FAST64 __STRINGIFY(x)
+#define __SCN64FAST(x) __FAST64 __STRINGIFY(x)
+#define PRId64 __PRI64(d)
+#define PRIi64 __PRI64(i)
+#define PRIo64 __PRI64(o)
+#define PRIu64 __PRI64(u)
+#define PRIx64 __PRI64(x)
+#define PRIX64 __PRI64(X)
+#define SCNd64 __SCN64(d)
+#define SCNi64 __SCN64(i)
+#define SCNo64 __SCN64(o)
+#define SCNu64 __SCN64(u)
+#define SCNx64 __SCN64(x)
+#define PRIdLEAST64 __PRI64LEAST(d)
+#define PRIiLEAST64 __PRI64LEAST(i)
+#define PRIoLEAST64 __PRI64LEAST(o)
+#define PRIuLEAST64 __PRI64LEAST(u)
+#define PRIxLEAST64 __PRI64LEAST(x)
+#define PRIXLEAST64 __PRI64LEAST(X)
+#define SCNdLEAST64 __SCN64LEAST(d)
+#define SCNiLEAST64 __SCN64LEAST(i)
+#define SCNoLEAST64 __SCN64LEAST(o)
+#define SCNuLEAST64 __SCN64LEAST(u)
+#define SCNxLEAST64 __SCN64LEAST(x)
+#define PRIdFAST64 __PRI64FAST(d)
+#define PRIiFAST64 __PRI64FAST(i)
+#define PRIoFAST64 __PRI64FAST(o)
+#define PRIuFAST64 __PRI64FAST(u)
+#define PRIxFAST64 __PRI64FAST(x)
+#define PRIXFAST64 __PRI64FAST(X)
+#define SCNdFAST64 __SCN64FAST(d)
+#define SCNiFAST64 __SCN64FAST(i)
+#define SCNoFAST64 __SCN64FAST(o)
+#define SCNuFAST64 __SCN64FAST(u)
+#define SCNxFAST64 __SCN64FAST(x)
+#define __PRIMAX(x) __STRINGIFY(ll ##x)
+#define __SCNMAX(x) __STRINGIFY(ll ##x)
+#define PRIdMAX __PRIMAX(d)
+#define PRIiMAX __PRIMAX(i)
+#define PRIoMAX __PRIMAX(o)
+#define PRIuMAX __PRIMAX(u)
+#define PRIxMAX __PRIMAX(x)
+#define PRIXMAX __PRIMAX(X)
+#define SCNdMAX __SCNMAX(d)
+#define SCNiMAX __SCNMAX(i)
+#define SCNoMAX __SCNMAX(o)
+#define SCNuMAX __SCNMAX(u)
+#define SCNxMAX __SCNMAX(x)
+#define __PRIPTR(x) __STRINGIFY(x)
+#define __SCNPTR(x) __STRINGIFY(x)
+#define PRIdPTR __PRIPTR(d)
+#define PRIiPTR __PRIPTR(i)
+#define PRIoPTR __PRIPTR(o)
+#define PRIuPTR __PRIPTR(u)
+#define PRIxPTR __PRIPTR(x)
+#define PRIXPTR __PRIPTR(X)
+#define SCNdPTR __SCNPTR(d)
+#define SCNiPTR __SCNPTR(i)
+#define SCNoPTR __SCNPTR(o)
+#define SCNuPTR __SCNPTR(u)
+#define SCNxPTR __SCNPTR(x)
+typedef struct {
+  intmax_t quot;
+  intmax_t rem;
+} imaxdiv_t;
+struct _reent;
+extern intmax_t imaxabs(intmax_t);
+extern imaxdiv_t imaxdiv(intmax_t __numer, intmax_t __denomer);
+extern intmax_t strtoimax(const char *restrict, char **restrict, int);
+extern intmax_t _strtoimax_r(struct _reent *, const char *restrict, char **restrict, int);
+extern uintmax_t strtoumax(const char *restrict, char **restrict, int);
+extern uintmax_t _strtoumax_r(struct _reent *, const char *restrict, char **restrict, int);
+extern intmax_t wcstoimax(const wchar_t *restrict, wchar_t **restrict, int);
+extern intmax_t _wcstoimax_r(struct _reent *, const wchar_t *restrict, wchar_t **restrict, int);
+extern uintmax_t wcstoumax(const wchar_t *restrict, wchar_t **restrict, int);
+extern uintmax_t _wcstoumax_r(struct _reent *, const wchar_t *restrict, wchar_t **restrict, int);
+extern intmax_t strtoimax_l(const char *restrict, char **_restrict, int, locale_t);
+extern uintmax_t strtoumax_l(const char *restrict, char **_restrict, int, locale_t);
+extern intmax_t wcstoimax_l(const wchar_t *restrict, wchar_t **_restrict, int, locale_t);
+extern uintmax_t wcstoumax_l(const wchar_t *restrict, wchar_t **_restrict, int, locale_t);
+#define X8_F "02" PRIx8
+#define U16_F PRIu16
+#define S16_F PRId16
+#define X16_F PRIx16
+#define U32_F PRIu32
+#define S32_F PRId32
+#define X32_F PRIx32
+#define SZT_F PRIuPTR
+#define LWIP_NO_LIMITS_H 0
+#define _GCC_LIMITS_H_ 
+#define _GCC_NEXT_LIMITS_H 
+#define _LIBC_LIMITS_H_ 1
+#define _SYS_SYSLIMITS_H_ 
+#define ARG_MAX 65536
+#define CHILD_MAX 40
+#define LINK_MAX 32767
+#define MAX_CANON 255
+#define MAX_INPUT 255
+#define NAME_MAX 255
+#define NGROUPS_MAX 16
+#define OPEN_MAX 64
+#define PATH_MAX 1024
+#define PIPE_BUF 512
+#define IOV_MAX 1024
+#define BC_BASE_MAX 99
+#define BC_DIM_MAX 2048
+#define BC_SCALE_MAX 99
+#define BC_STRING_MAX 1000
+#define COLL_WEIGHTS_MAX 0
+#define EXPR_NEST_MAX 32
+#define LINE_MAX 2048
+#define RE_DUP_MAX 255
+#define MB_LEN_MAX _MB_LEN_MAX
+#define NL_ARGMAX 32
+#define _POSIX2_RE_DUP_MAX 255
+#undef _GCC_NEXT_LIMITS_H
+#define _LIMITS_H___ 
+#undef CHAR_BIT
+#define CHAR_BIT __CHAR_BIT__
+#undef SCHAR_MIN
+#define SCHAR_MIN (-SCHAR_MAX - 1)
+#undef SCHAR_MAX
+#define SCHAR_MAX __SCHAR_MAX__
+#undef UCHAR_MAX
+#define UCHAR_MAX (SCHAR_MAX * 2 + 1)
+#undef CHAR_MIN
+#define CHAR_MIN 0
+#undef CHAR_MAX
+#define CHAR_MAX UCHAR_MAX
+#undef SHRT_MIN
+#define SHRT_MIN (-SHRT_MAX - 1)
+#undef SHRT_MAX
+#define SHRT_MAX __SHRT_MAX__
+#undef USHRT_MAX
+#define USHRT_MAX (SHRT_MAX * 2 + 1)
+#undef INT_MIN
+#define INT_MIN (-INT_MAX - 1)
+#undef INT_MAX
+#define INT_MAX __INT_MAX__
+#undef UINT_MAX
+#define UINT_MAX (INT_MAX * 2U + 1U)
+#undef LONG_MIN
+#define LONG_MIN (-LONG_MAX - 1L)
+#undef LONG_MAX
+#define LONG_MAX __LONG_MAX__
+#undef ULONG_MAX
+#define ULONG_MAX (LONG_MAX * 2UL + 1UL)
+#undef LLONG_MIN
+#define LLONG_MIN (-LLONG_MAX - 1LL)
+#undef LLONG_MAX
+#define LLONG_MAX __LONG_LONG_MAX__
+#undef ULLONG_MAX
+#define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
+#undef LONG_LONG_MIN
+#define LONG_LONG_MIN (-LONG_LONG_MAX - 1LL)
+#undef LONG_LONG_MAX
+#define LONG_LONG_MAX __LONG_LONG_MAX__
+#undef ULONG_LONG_MAX
+#define ULONG_LONG_MAX (LONG_LONG_MAX * 2ULL + 1ULL)
+typedef int ssize_t;
+#define SSIZE_MAX INT_MAX
+#define LWIP_UINT32_MAX 0xffffffff
+#define LWIP_NO_CTYPE_H 0
+#define _CTYPE_H_ 
+
+int isalnum (int __c);
+int isalpha (int __c);
+int iscntrl (int __c);
+int isdigit (int __c);
+int isgraph (int __c);
+int islower (int __c);
+int isprint (int __c);
+int ispunct (int __c);
+int isspace (int __c);
+int isupper (int __c);
+int isxdigit (int __c);
+int tolower (int __c);
+int toupper (int __c);
+int isblank (int __c);
+int isascii (int __c);
+int toascii (int __c);
+#define _tolower(__c) ((unsigned char)(__c) - 'A' + 'a')
+#define _toupper(__c) ((unsigned char)(__c) - 'a' + 'A')
+extern int isalnum_l (int __c, locale_t __l);
+extern int isalpha_l (int __c, locale_t __l);
+extern int isblank_l (int __c, locale_t __l);
+extern int iscntrl_l (int __c, locale_t __l);
+extern int isdigit_l (int __c, locale_t __l);
+extern int isgraph_l (int __c, locale_t __l);
+extern int islower_l (int __c, locale_t __l);
+extern int isprint_l (int __c, locale_t __l);
+extern int ispunct_l (int __c, locale_t __l);
+extern int isspace_l (int __c, locale_t __l);
+extern int isupper_l (int __c, locale_t __l);
+extern int isxdigit_l(int __c, locale_t __l);
+extern int tolower_l (int __c, locale_t __l);
+extern int toupper_l (int __c, locale_t __l);
+extern int isascii_l (int __c, locale_t __l);
+extern int toascii_l (int __c, locale_t __l);
+#define _U 01
+#define _L 02
+#define _N 04
+#define _S 010
+#define _P 020
+#define _C 040
+#define _X 0100
+#define _B 0200
+extern const char _ctype_[];
+#define __locale_ctype_ptr() _ctype_
+#define __CTYPE_PTR (__locale_ctype_ptr ())
+#define __ctype_lookup(__c) ((__CTYPE_PTR+sizeof(""[__c]))[(int)(__c)])
+#define isalpha(__c) (__ctype_lookup(__c)&(_U|_L))
+#define isupper(__c) ((__ctype_lookup(__c)&(_U|_L))==_U)
+#define islower(__c) ((__ctype_lookup(__c)&(_U|_L))==_L)
+#define isdigit(__c) (__ctype_lookup(__c)&_N)
+#define isxdigit(__c) (__ctype_lookup(__c)&(_X|_N))
+#define isspace(__c) (__ctype_lookup(__c)&_S)
+#define ispunct(__c) (__ctype_lookup(__c)&_P)
+#define isalnum(__c) (__ctype_lookup(__c)&(_U|_L|_N))
+#define isprint(__c) (__ctype_lookup(__c)&(_P|_U|_L|_N|_B))
+#define isgraph(__c) (__ctype_lookup(__c)&(_P|_U|_L|_N))
+#define iscntrl(__c) (__ctype_lookup(__c)&_C)
+#define isblank(__c) __extension__ ({ __typeof__ (__c) __x = (__c); (__ctype_lookup(__x)&_B) || (int) (__x) == '\t';})
+static __inline const char *
+__locale_ctype_ptr_l(locale_t _l)
+{
+ (void)_l;
+ return _ctype_;
+}
+#define __ctype_lookup_l(__c,__l) ((__locale_ctype_ptr_l(__l)+sizeof(""[__c]))[(int)(__c)])
+#define isalpha_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_U|_L))
+#define isupper_l(__c,__l) ((__ctype_lookup_l(__c,__l)&(_U|_L))==_U)
+#define islower_l(__c,__l) ((__ctype_lookup_l(__c,__l)&(_U|_L))==_L)
+#define isdigit_l(__c,__l) (__ctype_lookup_l(__c,__l)&_N)
+#define isxdigit_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_X|_N))
+#define isspace_l(__c,__l) (__ctype_lookup_l(__c,__l)&_S)
+#define ispunct_l(__c,__l) (__ctype_lookup_l(__c,__l)&_P)
+#define isalnum_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_U|_L|_N))
+#define isprint_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_P|_U|_L|_N|_B))
+#define isgraph_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_P|_U|_L|_N))
+#define iscntrl_l(__c,__l) (__ctype_lookup_l(__c,__l)&_C)
+#define isblank_l(__c,__l) __extension__ ({ __typeof__ (__c) __x = (__c); (__ctype_lookup_l(__x,__l)&_B) || (int) (__x) == '\t';})
+#define isascii(__c) ((unsigned)(__c)<=0177)
+#define toascii(__c) ((__c)&0177)
+#define isascii_l(__c,__l) ((__l),(unsigned)(__c)<=0177)
+#define toascii_l(__c,__l) ((__l),(__c)&0177)
+#define toupper(__c) __extension__ ({ __typeof__ (__c) __x = (__c); islower (__x) ? (int) __x - 'a' + 'A' : (int) __x;})
+#define tolower(__c) __extension__ ({ __typeof__ (__c) __x = (__c); isupper (__x) ? (int) __x - 'A' + 'a' : (int) __x;})
+
+#define lwip_isdigit(c) isdigit((unsigned char)(c))
+#define lwip_isxdigit(c) isxdigit((unsigned char)(c))
+#define lwip_islower(c) islower((unsigned char)(c))
+#define lwip_isspace(c) isspace((unsigned char)(c))
+#define lwip_isupper(c) isupper((unsigned char)(c))
+#define lwip_tolower(c) tolower((unsigned char)(c))
+#define lwip_toupper(c) toupper((unsigned char)(c))
+#define LWIP_CONST_CAST(target_type,val) ((target_type)((ptrdiff_t)val))
+#define LWIP_ALIGNMENT_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
+#define LWIP_PTR_NUMERIC_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
+#define LWIP_PACKED_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
+#define LWIP_DECLARE_MEMORY_ALIGNED(variable_name,size) u8_t variable_name[LWIP_MEM_ALIGN_BUFFER(size)]
+#define LWIP_MEM_ALIGN_SIZE(size) (((size) + MEM_ALIGNMENT - 1U) & ~(MEM_ALIGNMENT-1U))
+#define LWIP_MEM_ALIGN_BUFFER(size) (((size) + MEM_ALIGNMENT - 1U))
+#define LWIP_MEM_ALIGN(addr) ((void *)(((mem_ptr_t)(addr) + MEM_ALIGNMENT - 1) & ~(mem_ptr_t)(MEM_ALIGNMENT-1)))
+#define PACK_STRUCT_FLD_8(x) PACK_STRUCT_FIELD(x)
+#define PACK_STRUCT_FLD_S(x) PACK_STRUCT_FIELD(x)
+#define LWIP_UNUSED_ARG(x) (void)x
+#define LWIP_DBG_LEVEL_ALL 0x00
+#define LWIP_DBG_LEVEL_WARNING 0x01
+#define LWIP_DBG_LEVEL_SERIOUS 0x02
+#define LWIP_DBG_LEVEL_SEVERE 0x03
+#define LWIP_DBG_MASK_LEVEL 0x03
+#define LWIP_DBG_LEVEL_OFF LWIP_DBG_LEVEL_ALL
+#define LWIP_DBG_ON 0x80U
+#define LWIP_DBG_OFF 0x00U
+#define LWIP_DBG_TRACE 0x40U
+#define LWIP_DBG_STATE 0x20U
+#define LWIP_DBG_FRESH 0x10U
+#define LWIP_DBG_HALT 0x08U
+#define LWIP_ASSERT(message,assertion) do { if (!(assertion)) { LWIP_PLATFORM_ASSERT(message); }} while(0)
+#define LWIP_PLATFORM_ERROR(message) 
+#define LWIP_ERROR(message,expression,handler) do { if (!(expression)) { LWIP_PLATFORM_ERROR(message); handler;}} while(0)
+#define LWIP_DEBUG_ENABLED(debug) 0
+#define LWIP_DEBUGF(debug,message) 
+#define LWIP_TIMERS 1
+#define LWIP_TIMERS_CUSTOM 0
+#define MEMCPY(dst,src,len) memcpy(dst,src,len)
+#define SMEMCPY(dst,src,len) memcpy(dst,src,len)
+#define MEMMOVE(dst,src,len) memmove(dst,src,len)
+#define LWIP_MPU_COMPATIBLE 0
+#define LWIP_TCPIP_CORE_LOCKING 1
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 0
+#define SYS_LIGHTWEIGHT_PROT 1
+#define LWIP_ASSERT_CORE_LOCKED() 
+#define MEM_CUSTOM_ALLOCATOR 0
+#define MEMP_MEM_MALLOC 0
+#define MEMP_MEM_INIT 0
+#define MEMP_OVERFLOW_CHECK 0
+#define MEMP_SANITY_CHECK 0
+#define MEM_OVERFLOW_CHECK 0
+#define MEM_SANITY_CHECK 0
+#define MEM_USE_POOLS 0
+#define MEM_USE_POOLS_TRY_BIGGER_POOL 0
+#define MEMP_USE_CUSTOM_POOLS 0
+#define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 0
+#define MEMP_NUM_PBUF 16
+#define MEMP_NUM_RAW_PCB 4
+#define MEMP_NUM_UDP_PCB 4
+#define MEMP_NUM_TCP_PCB 5
+#define MEMP_NUM_TCP_PCB_LISTEN 8
+#define MEMP_NUM_ALTCP_PCB MEMP_NUM_TCP_PCB
+#define MEMP_NUM_REASSDATA 5
+#define MEMP_NUM_FRAG_PBUF 15
+#define MEMP_NUM_IGMP_GROUP 8
+#define LWIP_NUM_SYS_TIMEOUT_INTERNAL (LWIP_TCP + IP_REASSEMBLY + LWIP_ARP + (2*LWIP_DHCP) + LWIP_ACD + LWIP_IGMP + LWIP_DNS + PPP_NUM_TIMEOUTS + (LWIP_IPV6 * (1 + LWIP_IPV6_REASS + LWIP_IPV6_MLD + LWIP_IPV6_DHCP6)))
+#define MEMP_NUM_SYS_TIMEOUT LWIP_NUM_SYS_TIMEOUT_INTERNAL
+#define MEMP_NUM_NETBUF 2
+#define MEMP_NUM_NETCONN 4
+#define MEMP_NUM_SELECT_CB 4
+#define MEMP_NUM_TCPIP_MSG_API 8
+#define MEMP_NUM_TCPIP_MSG_INPKT 8
+#define MEMP_NUM_NETDB 1
+#define MEMP_NUM_LOCALHOSTLIST 1
+#define MEMP_NUM_API_MSG MEMP_NUM_TCPIP_MSG_API
+#define MEMP_NUM_DNS_API_MSG MEMP_NUM_TCPIP_MSG_API
+#define MEMP_NUM_SOCKET_SETGETSOCKOPT_DATA MEMP_NUM_TCPIP_MSG_API
+#define MEMP_NUM_NETIFAPI_MSG MEMP_NUM_TCPIP_MSG_API
+#define ARP_TABLE_SIZE 10
+#define ARP_MAXAGE 300
+#define ARP_QUEUEING 0
+#define ARP_QUEUE_LEN 3
+#define ETHARP_SUPPORT_VLAN 0
+#define LWIP_VLAN_PCP 0
+#define ETH_PAD_SIZE 0
+#define ETHARP_SUPPORT_STATIC_ENTRIES 0
+#define ETHARP_TABLE_MATCH_NETIF !LWIP_SINGLE_NETIF
+#define IP_FORWARD 0
+#define IP_REASSEMBLY 1
+#define IP_FRAG 1
+#define IP_OPTIONS_ALLOWED 1
+#define IP_REASS_MAXAGE 15
+#define IP_REASS_MAX_PBUFS 10
+#define IP_DEFAULT_TTL 255
+#define IP_SOF_BROADCAST 0
+#define IP_SOF_BROADCAST_RECV 0
+#define IP_FORWARD_ALLOW_TX_ON_RX_NETIF 0
+#define ICMP_TTL IP_DEFAULT_TTL
+#define LWIP_BROADCAST_PING 0
+#define LWIP_MULTICAST_PING 0
+#define RAW_TTL IP_DEFAULT_TTL
+#define LWIP_DHCP_BOOTP_FILE 0
+#define LWIP_DHCP_GET_NTP_SRV 0
+#define LWIP_DHCP_MAX_NTP_SERVERS 1
+#define LWIP_DHCP_MAX_DNS_SERVERS DNS_MAX_SERVERS
+#define LWIP_DHCP_DISCOVER_ADD_HOSTNAME 1
+#define LWIP_AUTOIP 0
+#define LWIP_DHCP_AUTOIP_COOP 0
+#define LWIP_DHCP_AUTOIP_COOP_TRIES 9
+#define LWIP_ACD (LWIP_AUTOIP || LWIP_DHCP_DOES_ACD_CHECK)
+#define LWIP_MIB2_CALLBACKS 0
+#define LWIP_MULTICAST_TX_OPTIONS ((LWIP_IGMP || LWIP_IPV6_MLD) && (LWIP_UDP || LWIP_RAW))
+#define LWIP_IGMP 0
+#define DNS_TABLE_SIZE 4
+#define DNS_MAX_NAME_LENGTH 256
+#define DNS_MAX_SERVERS 2
+#define DNS_MAX_RETRIES 4
+#define DNS_DOES_NAME_CHECK 1
+#define LWIP_DNS_SECURE (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT)
+#define LWIP_DNS_SECURE_RAND_XID 1
+#define LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING 2
+#define LWIP_DNS_SECURE_RAND_SRC_PORT 4
+#define DNS_LOCAL_HOSTLIST 0
+#define DNS_LOCAL_HOSTLIST_IS_DYNAMIC 0
+#define LWIP_DNS_SUPPORT_MDNS_QUERIES 0
+#define LWIP_UDPLITE 0
+#define UDP_TTL IP_DEFAULT_TTL
+#define LWIP_NETBUF_RECVINFO 0
+#define TCP_TTL IP_DEFAULT_TTL
+#define TCP_MAXRTX 12
+#define TCP_SYNMAXRTX 6
+#define TCP_QUEUE_OOSEQ LWIP_TCP
+#define LWIP_TCP_SACK_OUT 0
+#define LWIP_TCP_MAX_SACK_NUM 4
+#define TCP_CALCULATE_EFF_SEND_MSS 1
+#define LWIP_TCP_RTO_TIME 3000
+#define TCP_SNDLOWAT LWIP_MIN(LWIP_MAX(((TCP_SND_BUF)/2), (2 * TCP_MSS) + 1), (TCP_SND_BUF) - 1)
+#define TCP_SNDQUEUELOWAT LWIP_MAX(((TCP_SND_QUEUELEN)/2), 5)
+#define TCP_OOSEQ_MAX_BYTES 0
+#define TCP_OOSEQ_MAX_PBUFS 0
+#define TCP_LISTEN_BACKLOG 0
+#define TCP_DEFAULT_LISTEN_BACKLOG 0xff
+#define TCP_OVERSIZE TCP_MSS
+#define LWIP_TCP_TIMESTAMPS 0
+#define TCP_WND_UPDATE_THRESHOLD LWIP_MIN((TCP_WND / 4), (TCP_MSS * 4))
+#define LWIP_EVENT_API 0
+#define LWIP_CALLBACK_API 1
+#define LWIP_WND_SCALE 0
+#define TCP_RCV_SCALE 0
+#define LWIP_TCP_PCB_NUM_EXT_ARGS 0
+#define LWIP_ALTCP 0
+#define LWIP_ALTCP_TLS 0
+#define PBUF_LINK_HLEN (14 + ETH_PAD_SIZE)
+#define PBUF_LINK_ENCAPSULATION_HLEN 0
+#define PBUF_POOL_BUFSIZE LWIP_MEM_ALIGN_SIZE(TCP_MSS+PBUF_IP_HLEN+PBUF_TRANSPORT_HLEN+PBUF_LINK_ENCAPSULATION_HLEN+PBUF_LINK_HLEN)
+#define LWIP_PBUF_REF_T u8_t
+#define LWIP_PBUF_CUSTOM_DATA 
+#define LWIP_PBUF_CUSTOM_DATA_INIT(p) 
+#define LWIP_SINGLE_NETIF 0
+#define LWIP_NETIF_API 0
+#define LWIP_NETIF_EXT_STATUS_CALLBACK 0
+#define LWIP_NETIF_REMOVE_CALLBACK 0
+#define LWIP_NETIF_HWADDRHINT 0
+#define LWIP_NUM_NETIF_CLIENT_DATA 0
+#define LWIP_HAVE_LOOPIF (LWIP_NETIF_LOOPBACK && !LWIP_SINGLE_NETIF)
+#define LWIP_LOOPIF_MULTICAST 0
+#define LWIP_NETIF_LOOPBACK 0
+#define LWIP_LOOPBACK_MAX_PBUFS 0
+#define LWIP_NETIF_LOOPBACK_MULTITHREADING (!NO_SYS)
+#define TCPIP_THREAD_NAME "tcpip_thread"
+#define TCPIP_THREAD_STACKSIZE 0
+#define TCPIP_THREAD_PRIO 1
+#define TCPIP_MBOX_SIZE 0
+#define LWIP_TCPIP_THREAD_ALIVE() 
+#define SLIPIF_THREAD_NAME "slipif_loop"
+#define SLIPIF_THREAD_STACKSIZE 0
+#define SLIPIF_THREAD_PRIO 1
+#define DEFAULT_THREAD_NAME "lwIP"
+#define DEFAULT_THREAD_STACKSIZE 0
+#define DEFAULT_THREAD_PRIO 1
+#define DEFAULT_RAW_RECVMBOX_SIZE 0
+#define DEFAULT_UDP_RECVMBOX_SIZE 0
+#define DEFAULT_TCP_RECVMBOX_SIZE 0
+#define DEFAULT_ACCEPTMBOX_SIZE 0
+#define LWIP_TCPIP_TIMEOUT 0
+#define LWIP_NETCONN_SEM_PER_THREAD 0
+#define LWIP_NETCONN_FULLDUPLEX 0
+#define LWIP_COMPAT_SOCKETS 1
+#define LWIP_POSIX_SOCKETS_IO_NAMES 1
+#define LWIP_SOCKET_OFFSET 0
+#define LWIP_SOCKET_EXTERNAL_HEADERS 0
+#define LWIP_SO_SNDTIMEO 0
+#define LWIP_SO_RCVTIMEO 0
+#define LWIP_SO_SNDRCVTIMEO_NONSTANDARD 0
+#define LWIP_SO_RCVBUF 0
+#define LWIP_SO_LINGER 0
+#define RECV_BUFSIZE_DEFAULT INT_MAX
+#define LWIP_TCP_CLOSE_TIMEOUT_MS_DEFAULT 20000
+#define SO_REUSE 0
+#define SO_REUSE_RXTOALL 0
+#define LWIP_FIONREAD_LINUXMODE 0
+#define LWIP_SOCKET_SELECT 1
+#define LWIP_SOCKET_POLL 1
+#define ETHARP_STATS (LWIP_ARP)
+#define IP_STATS 1
+#define IPFRAG_STATS (IP_REASSEMBLY || IP_FRAG)
+#define ICMP_STATS 1
+#define IGMP_STATS (LWIP_IGMP)
+#define UDP_STATS (LWIP_UDP)
+#define TCP_STATS (LWIP_TCP)
+#define IP6_STATS (LWIP_IPV6)
+#define ICMP6_STATS (LWIP_IPV6 && LWIP_ICMP6)
+#define IP6_FRAG_STATS (LWIP_IPV6 && (LWIP_IPV6_FRAG || LWIP_IPV6_REASS))
+#define MLD6_STATS (LWIP_IPV6 && LWIP_IPV6_MLD)
+#define ND6_STATS (LWIP_IPV6)
+#define MIB2_STATS 0
+#define LWIP_CHECKSUM_CTRL_PER_NETIF 0
+#define CHECKSUM_GEN_IP 1
+#define CHECKSUM_GEN_UDP 1
+#define CHECKSUM_GEN_TCP 1
+#define CHECKSUM_GEN_ICMP 1
+#define CHECKSUM_GEN_ICMP6 1
+#define CHECKSUM_CHECK_IP 1
+#define CHECKSUM_CHECK_UDP 1
+#define CHECKSUM_CHECK_TCP 1
+#define CHECKSUM_CHECK_ICMP 1
+#define CHECKSUM_CHECK_ICMP6 1
+#define LWIP_CHECKSUM_ON_COPY 0
+#define LWIP_IPV6 0
+#define IPV6_REASS_MAXAGE 60
+#define LWIP_IPV6_SCOPES (LWIP_IPV6 && !LWIP_SINGLE_NETIF)
+#define LWIP_IPV6_SCOPES_DEBUG 0
+#define LWIP_IPV6_NUM_ADDRESSES 3
+#define LWIP_IPV6_FORWARD 0
+#define LWIP_IPV6_FRAG 1
+#define LWIP_IPV6_REASS LWIP_IPV6
+#define LWIP_IPV6_SEND_ROUTER_SOLICIT LWIP_IPV6
+#define LWIP_IPV6_AUTOCONFIG LWIP_IPV6
+#define LWIP_IPV6_ADDRESS_LIFETIMES LWIP_IPV6_AUTOCONFIG
+#define LWIP_IPV6_DUP_DETECT_ATTEMPTS 1
+#define LWIP_ICMP6 LWIP_IPV6
+#define LWIP_ICMP6_DATASIZE 0
+#define LWIP_ICMP6_HL 255
+#define LWIP_IPV6_MLD LWIP_IPV6
+#define MEMP_NUM_MLD6_GROUP 4
+#define LWIP_ND6_QUEUEING LWIP_IPV6
+#define MEMP_NUM_ND6_QUEUE 20
+#define LWIP_ND6_NUM_NEIGHBORS 10
+#define LWIP_ND6_NUM_DESTINATIONS 10
+#define LWIP_ND6_NUM_PREFIXES 5
+#define LWIP_ND6_NUM_ROUTERS 3
+#define LWIP_ND6_MAX_MULTICAST_SOLICIT 3
+#define LWIP_ND6_MAX_UNICAST_SOLICIT 3
+#define LWIP_ND6_MAX_ANYCAST_DELAY_TIME 1000
+#define LWIP_ND6_MAX_NEIGHBOR_ADVERTISEMENT 3
+#define LWIP_ND6_REACHABLE_TIME 30000
+#define LWIP_ND6_RETRANS_TIMER 1000
+#define LWIP_ND6_DELAY_FIRST_PROBE_TIME 5000
+#define LWIP_ND6_ALLOW_RA_UPDATES 1
+#define LWIP_ND6_TCP_REACHABILITY_HINTS 1
+#define LWIP_ND6_RDNSS_MAX_DNS_SERVERS 0
+#define LWIP_IPV6_DHCP6 0
+#define LWIP_IPV6_DHCP6_STATEFUL 0
+#define LWIP_IPV6_DHCP6_STATELESS LWIP_IPV6_DHCP6
+#define LWIP_DHCP6_GET_NTP_SRV 0
+#define LWIP_DHCP6_MAX_NTP_SERVERS 1
+#define LWIP_DHCP6_MAX_DNS_SERVERS DNS_MAX_SERVERS
+#define LWIP_DBG_MIN_LEVEL LWIP_DBG_LEVEL_ALL
+#define LWIP_DBG_TYPES_ON LWIP_DBG_ON
+#define IGMP_DEBUG LWIP_DBG_OFF
+#define TIMERS_DEBUG LWIP_DBG_OFF
+#define AUTOIP_DEBUG LWIP_DBG_OFF
+#define ACD_DEBUG LWIP_DBG_OFF
+#define DNS_DEBUG LWIP_DBG_OFF
+#define IP6_DEBUG LWIP_DBG_OFF
+#define DHCP6_DEBUG LWIP_DBG_OFF
+#define LWIP_TESTMODE 0
+#define LWIP_PERF 0
+#define LWIP_HDR_IP_ADDR_H 
+#define LWIP_HDR_DEF_H 
+#define PERF_START 
+#define PERF_STOP(x) 
+#define LWIP_MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define LWIP_MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define LWIP_ARRAYSIZE(x) (sizeof(x)/sizeof((x)[0]))
+#define LWIP_MAKEU32(a,b,c,d) (((u32_t)((a) & 0xff) << 24) | ((u32_t)((b) & 0xff) << 16) | ((u32_t)((c) & 0xff) << 8) | (u32_t)((d) & 0xff))
+u16_t lwip_htons(u16_t x);
+#define lwip_ntohs(x) lwip_htons(x)
+u32_t lwip_htonl(u32_t x);
+#define lwip_ntohl(x) lwip_htonl(x)
+#define PP_HTONS(x) ((u16_t)((((x) & (u16_t)0x00ffU) << 8) | (((x) & (u16_t)0xff00U) >> 8)))
+#define PP_NTOHS(x) PP_HTONS(x)
+#define PP_HTONL(x) ((((x) & (u32_t)0x000000ffUL) << 24) | (((x) & (u32_t)0x0000ff00UL) << 8) | (((x) & (u32_t)0x00ff0000UL) >> 8) | (((x) & (u32_t)0xff000000UL) >> 24))
+#define PP_NTOHL(x) PP_HTONL(x)
+#define htons(x) lwip_htons(x)
+#define ntohs(x) lwip_ntohs(x)
+#define htonl(x) lwip_htonl(x)
+#define ntohl(x) lwip_ntohl(x)
+void lwip_itoa(char* result, size_t bufsize, int number);
+int lwip_strnicmp(const char* str1, const char* str2, size_t len);
+int lwip_stricmp(const char* str1, const char* str2);
+char* lwip_strnstr(const char* buffer, const char* token, size_t n);
+char* lwip_strnistr(const char* buffer, const char* token, size_t n);
+int lwip_memcmp_consttime(const void* s1, const void* s2, size_t len);
+#define LWIP_HDR_IP4_ADDR_H 
+struct ip4_addr {
+  u32_t addr;
+};
+typedef struct ip4_addr ip4_addr_t;
+struct netif;
+#define IPADDR_NONE ((u32_t)0xffffffffUL)
+#define IPADDR_LOOPBACK ((u32_t)0x7f000001UL)
+#define IPADDR_ANY ((u32_t)0x00000000UL)
+#define IPADDR_BROADCAST ((u32_t)0xffffffffUL)
+#define IP_CLASSA(a) ((((u32_t)(a)) & 0x80000000UL) == 0)
+#define IP_CLASSA_NET 0xff000000
+#define IP_CLASSA_NSHIFT 24
+#define IP_CLASSA_HOST (0xffffffff & ~IP_CLASSA_NET)
+#define IP_CLASSA_MAX 128
+#define IP_CLASSB(a) ((((u32_t)(a)) & 0xc0000000UL) == 0x80000000UL)
+#define IP_CLASSB_NET 0xffff0000
+#define IP_CLASSB_NSHIFT 16
+#define IP_CLASSB_HOST (0xffffffff & ~IP_CLASSB_NET)
+#define IP_CLASSB_MAX 65536
+#define IP_CLASSC(a) ((((u32_t)(a)) & 0xe0000000UL) == 0xc0000000UL)
+#define IP_CLASSC_NET 0xffffff00
+#define IP_CLASSC_NSHIFT 8
+#define IP_CLASSC_HOST (0xffffffff & ~IP_CLASSC_NET)
+#define IP_CLASSD(a) (((u32_t)(a) & 0xf0000000UL) == 0xe0000000UL)
+#define IP_CLASSD_NET 0xf0000000
+#define IP_CLASSD_NSHIFT 28
+#define IP_CLASSD_HOST 0x0fffffff
+#define IP_MULTICAST(a) IP_CLASSD(a)
+#define IP_EXPERIMENTAL(a) (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
+#define IP_BADCLASS(a) (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
+#define IP_LOOPBACKNET 127
+#define IP4_ADDR(ipaddr,a,b,c,d) (ipaddr)->addr = PP_HTONL(LWIP_MAKEU32(a,b,c,d))
+#define ip4_addr_copy(dest,src) ((dest).addr = (src).addr)
+#define ip4_addr_set(dest,src) ((dest)->addr = ((src) == NULL ? 0 : (src)->addr))
+#define ip4_addr_set_zero(ipaddr) ((ipaddr)->addr = 0)
+#define ip4_addr_set_any(ipaddr) ((ipaddr)->addr = IPADDR_ANY)
+#define ip4_addr_set_loopback(ipaddr) ((ipaddr)->addr = PP_HTONL(IPADDR_LOOPBACK))
+#define ip4_addr_isloopback(ipaddr) (((ipaddr)->addr & PP_HTONL(IP_CLASSA_NET)) == PP_HTONL(((u32_t)IP_LOOPBACKNET) << 24))
+#define ip4_addr_set_hton(dest,src) ((dest)->addr = ((src) == NULL ? 0: lwip_htonl((src)->addr)))
+#define ip4_addr_set_u32(dest_ipaddr,src_u32) ((dest_ipaddr)->addr = (src_u32))
+#define ip4_addr_get_u32(src_ipaddr) ((src_ipaddr)->addr)
+#define ip4_addr_get_network(target,host,netmask) do { ((target)->addr = ((host)->addr) & ((netmask)->addr)); } while(0)
+#define ip4_addr_netcmp(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
+#define ip4_addr_net_eq(addr1,addr2,mask) (((addr1)->addr & (mask)->addr) == ((addr2)->addr & (mask)->addr))
+#define ip4_addr_cmp(addr1,addr2) ip4_addr_eq(addr1, addr2)
+#define ip4_addr_eq(addr1,addr2) ((addr1)->addr == (addr2)->addr)
+#define ip4_addr_isany_val(addr1) ((addr1).addr == IPADDR_ANY)
+#define ip4_addr_isany(addr1) ((addr1) == NULL || ip4_addr_isany_val(*(addr1)))
+#define ip4_addr_isbroadcast(addr1,netif) ip4_addr_isbroadcast_u32((addr1)->addr, netif)
+u8_t ip4_addr_isbroadcast_u32(u32_t addr, const struct netif *netif);
+#define ip_addr_netmask_valid(netmask) ip4_addr_netmask_valid((netmask)->addr)
+u8_t ip4_addr_netmask_valid(u32_t netmask);
+#define ip4_addr_ismulticast(addr1) (((addr1)->addr & PP_HTONL(0xf0000000UL)) == PP_HTONL(0xe0000000UL))
+#define ip4_addr_islinklocal(addr1) (((addr1)->addr & PP_HTONL(0xffff0000UL)) == PP_HTONL(0xa9fe0000UL))
+#define ip4_addr_debug_print_parts(debug,a,b,c,d) LWIP_DEBUGF(debug, ("%" U16_F ".%" U16_F ".%" U16_F ".%" U16_F, a, b, c, d))
+#define ip4_addr_debug_print(debug,ipaddr) ip4_addr_debug_print_parts(debug, (u16_t)((ipaddr) != NULL ? ip4_addr1_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr2_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr3_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr4_16(ipaddr) : 0))
+#define ip4_addr_debug_print_val(debug,ipaddr) ip4_addr_debug_print_parts(debug, ip4_addr1_16_val(ipaddr), ip4_addr2_16_val(ipaddr), ip4_addr3_16_val(ipaddr), ip4_addr4_16_val(ipaddr))
+#define ip4_addr_get_byte(ipaddr,idx) (((const u8_t*)(&(ipaddr)->addr))[idx])
+#define ip4_addr1(ipaddr) ip4_addr_get_byte(ipaddr, 0)
+#define ip4_addr2(ipaddr) ip4_addr_get_byte(ipaddr, 1)
+#define ip4_addr3(ipaddr) ip4_addr_get_byte(ipaddr, 2)
+#define ip4_addr4(ipaddr) ip4_addr_get_byte(ipaddr, 3)
+#define ip4_addr_get_byte_val(ipaddr,idx) ((u8_t)(((ipaddr).addr >> (idx * 8)) & 0xff))
+#define ip4_addr1_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 0)
+#define ip4_addr2_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 1)
+#define ip4_addr3_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 2)
+#define ip4_addr4_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 3)
+#define ip4_addr1_16(ipaddr) ((u16_t)ip4_addr1(ipaddr))
+#define ip4_addr2_16(ipaddr) ((u16_t)ip4_addr2(ipaddr))
+#define ip4_addr3_16(ipaddr) ((u16_t)ip4_addr3(ipaddr))
+#define ip4_addr4_16(ipaddr) ((u16_t)ip4_addr4(ipaddr))
+#define ip4_addr1_16_val(ipaddr) ((u16_t)ip4_addr1_val(ipaddr))
+#define ip4_addr2_16_val(ipaddr) ((u16_t)ip4_addr2_val(ipaddr))
+#define ip4_addr3_16_val(ipaddr) ((u16_t)ip4_addr3_val(ipaddr))
+#define ip4_addr4_16_val(ipaddr) ((u16_t)ip4_addr4_val(ipaddr))
+#define IP4ADDR_STRLEN_MAX 16
+#define ip_ntoa(ipaddr) ipaddr_ntoa(ipaddr)
+u32_t ipaddr_addr(const char *cp);
+int ip4addr_aton(const char *cp, ip4_addr_t *addr);
+char *ip4addr_ntoa(const ip4_addr_t *addr);
+char *ip4addr_ntoa_r(const ip4_addr_t *addr, char *buf, int buflen);
+#define LWIP_HDR_IP6_ADDR_H 
+enum lwip_ip_addr_type {
+  IPADDR_TYPE_V4 = 0U,
+  IPADDR_TYPE_V6 = 6U,
+  IPADDR_TYPE_ANY = 46U
+};
+#define IP_ADDR_PCB_VERSION_MATCH(addr,pcb) 1
+#define IP_ADDR_PCB_VERSION_MATCH_EXACT(pcb,ipaddr) 1
+#define ip_addr_set_any_val(is_ipv6,ipaddr) ip_addr_set_any(is_ipv6, &(ipaddr))
+#define ip_addr_set_loopback_val(is_ipv6,ipaddr) ip_addr_set_loopback(is_ipv6, &(ipaddr))
+typedef ip4_addr_t ip_addr_t;
+#define IPADDR4_INIT(u32val) { u32val }
+#define IPADDR4_INIT_BYTES(a,b,c,d) IPADDR4_INIT(PP_HTONL(LWIP_MAKEU32(a,b,c,d)))
+#define IP_IS_V4_VAL(ipaddr) 1
+#define IP_IS_V6_VAL(ipaddr) 0
+#define IP_IS_V4(ipaddr) 1
+#define IP_IS_V6(ipaddr) 0
+#define IP_IS_ANY_TYPE_VAL(ipaddr) 0
+#define IP_SET_TYPE_VAL(ipaddr,iptype) 
+#define IP_SET_TYPE(ipaddr,iptype) 
+#define IP_GET_TYPE(ipaddr) IPADDR_TYPE_V4
+#define IP_ADDR_RAW_SIZE(ipaddr) sizeof(ip4_addr_t)
+#define ip_2_ip4(ipaddr) (ipaddr)
+#define IP_ADDR4(ipaddr,a,b,c,d) IP4_ADDR(ipaddr,a,b,c,d)
+#define ip_addr_copy(dest,src) ip4_addr_copy(dest, src)
+#define ip_addr_copy_from_ip4(dest,src) ip4_addr_copy(dest, src)
+#define ip_addr_set_ip4_u32(ipaddr,val) ip4_addr_set_u32(ip_2_ip4(ipaddr), val)
+#define ip_addr_set_ip4_u32_val(ipaddr,val) ip_addr_set_ip4_u32(&(ipaddr), val)
+#define ip_addr_get_ip4_u32(ipaddr) ip4_addr_get_u32(ip_2_ip4(ipaddr))
+#define ip_addr_set(dest,src) ip4_addr_set(dest, src)
+#define ip_addr_set_ipaddr(dest,src) ip4_addr_set(dest, src)
+#define ip_addr_set_zero(ipaddr) ip4_addr_set_zero(ipaddr)
+#define ip_addr_set_zero_ip4(ipaddr) ip4_addr_set_zero(ipaddr)
+#define ip_addr_set_any(is_ipv6,ipaddr) ip4_addr_set_any(ipaddr)
+#define ip_addr_set_loopback(is_ipv6,ipaddr) ip4_addr_set_loopback(ipaddr)
+#define ip_addr_set_hton(dest,src) ip4_addr_set_hton(dest, src)
+#define ip_addr_get_network(target,host,mask) ip4_addr_get_network(target, host, mask)
+#define ip_addr_netcmp(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
+#define ip_addr_net_eq(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
+#define ip_addr_cmp(addr1,addr2) ip4_addr_eq(addr1, addr2)
+#define ip_addr_eq(addr1,addr2) ip4_addr_eq(addr1, addr2)
+#define ip_addr_isany(ipaddr) ip4_addr_isany(ipaddr)
+#define ip_addr_isany_val(ipaddr) ip4_addr_isany_val(ipaddr)
+#define ip_addr_isloopback(ipaddr) ip4_addr_isloopback(ipaddr)
+#define ip_addr_islinklocal(ipaddr) ip4_addr_islinklocal(ipaddr)
+#define ip_addr_isbroadcast(addr,netif) ip4_addr_isbroadcast(addr, netif)
+#define ip_addr_ismulticast(ipaddr) ip4_addr_ismulticast(ipaddr)
+#define ip_addr_debug_print(debug,ipaddr) ip4_addr_debug_print(debug, ipaddr)
+#define ip_addr_debug_print_val(debug,ipaddr) ip4_addr_debug_print_val(debug, ipaddr)
+#define ipaddr_ntoa(ipaddr) ip4addr_ntoa(ipaddr)
+#define ipaddr_ntoa_r(ipaddr,buf,buflen) ip4addr_ntoa_r(ipaddr, buf, buflen)
+#define ipaddr_aton(cp,addr) ip4addr_aton(cp, addr)
+#define IPADDR_STRLEN_MAX IP4ADDR_STRLEN_MAX
+#define IP46_ADDR_ANY(type) (IP4_ADDR_ANY)
+extern const ip_addr_t ip_addr_any;
+extern const ip_addr_t ip_addr_broadcast;
+#define IP_ADDR_ANY IP4_ADDR_ANY
+#define IP4_ADDR_ANY (&ip_addr_any)
+#define IP4_ADDR_ANY4 (ip_2_ip4(&ip_addr_any))
+#define IP_ADDR_BROADCAST (&ip_addr_broadcast)
+#define IP4_ADDR_BROADCAST (ip_2_ip4(&ip_addr_broadcast))
+#define IP_ANY_TYPE IP_ADDR_ANY
+#define LWIP_HDR_ERR_H 
+typedef enum {
+  ERR_OK = 0,
+  ERR_MEM = -1,
+  ERR_BUF = -2,
+  ERR_TIMEOUT = -3,
+  ERR_RTE = -4,
+  ERR_INPROGRESS = -5,
+  ERR_VAL = -6,
+  ERR_WOULDBLOCK = -7,
+  ERR_USE = -8,
+  ERR_ALREADY = -9,
+  ERR_ISCONN = -10,
+  ERR_CONN = -11,
+  ERR_IF = -12,
+  ERR_ABRT = -13,
+  ERR_RST = -14,
+  ERR_CLSD = -15,
+  ERR_ARG = -16
+} err_enum_t;
+typedef s8_t err_t;
+#define lwip_strerr(x) ""
+#define LWIP_HDR_ALTCP_H 
+#define LWIP_HDR_TCP_H 
+#define LWIP_HDR_TCPBASE_H 
+typedef u16_t tcpwnd_size_t;
+enum tcp_state {
+  CLOSED = 0,
+  LISTEN = 1,
+  SYN_SENT = 2,
+  SYN_RCVD = 3,
+  ESTABLISHED = 4,
+  FIN_WAIT_1 = 5,
+  FIN_WAIT_2 = 6,
+  CLOSE_WAIT = 7,
+  CLOSING = 8,
+  LAST_ACK = 9,
+  TIME_WAIT = 10
+};
+#define TCP_STATE_IS_CLOSING(state) ((state) >= FIN_WAIT_1)
+#define TCP_WRITE_FLAG_COPY 0x01
+#define TCP_WRITE_FLAG_MORE 0x02
+#define TCP_PRIO_MIN 1
+#define TCP_PRIO_NORMAL 64
+#define TCP_PRIO_MAX 127
+const char* tcp_debug_state_str(enum tcp_state s);
+#define LWIP_HDR_MEM_H 
+typedef u16_t mem_size_t;
+#define MEM_SIZE_F U16_F
+void mem_init(void);
+void *mem_trim(void *mem, mem_size_t size);
+void *mem_malloc(mem_size_t size);
+void *mem_calloc(mem_size_t count, mem_size_t size);
+void mem_free(void *mem);
+#define LWIP_HDR_PBUF_H 
+#define LWIP_SUPPORT_CUSTOM_PBUF ((IP_FRAG && !LWIP_NETIF_TX_SINGLE_PBUF) || (LWIP_IPV6 && LWIP_IPV6_FRAG))
+#define PBUF_NEEDS_COPY(p) ((p)->type_internal & PBUF_TYPE_FLAG_DATA_VOLATILE)
+#define PBUF_TRANSPORT_HLEN 20
+#define PBUF_IP_HLEN 20
+typedef enum {
+  PBUF_TRANSPORT = 0 + (14 + 0) + 20 + 20,
+  PBUF_IP = 0 + (14 + 0) + 20,
+  PBUF_LINK = 0 + (14 + 0),
+  PBUF_RAW_TX = 0,
+  PBUF_RAW = 0
+} pbuf_layer;
+#define PBUF_TYPE_FLAG_STRUCT_DATA_CONTIGUOUS 0x80
+#define PBUF_TYPE_FLAG_DATA_VOLATILE 0x40
+#define PBUF_TYPE_ALLOC_SRC_MASK 0x0F
+#define PBUF_ALLOC_FLAG_RX 0x0100
+#define PBUF_ALLOC_FLAG_DATA_CONTIGUOUS 0x0200
+#define PBUF_TYPE_ALLOC_SRC_MASK_STD_HEAP 0x00
+#define PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF 0x01
+#define PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF_POOL 0x02
+#define PBUF_TYPE_ALLOC_SRC_MASK_APP_MIN 0x03
+#define PBUF_TYPE_ALLOC_SRC_MASK_APP_MAX PBUF_TYPE_ALLOC_SRC_MASK
+typedef enum {
+  PBUF_RAM = (0x0200 | 0x80 | 0x00),
+  PBUF_ROM = 0x01,
+  PBUF_REF = (0x40 | 0x01),
+  PBUF_POOL = (0x0100 | 0x80 | 0x02)
+} pbuf_type;
+#define PBUF_FLAG_PUSH 0x01U
+#define PBUF_FLAG_IS_CUSTOM 0x02U
+#define PBUF_FLAG_MCASTLOOP 0x04U
+#define PBUF_FLAG_LLBCAST 0x08U
+#define PBUF_FLAG_LLMCAST 0x10U
+#define PBUF_FLAG_TCP_FIN 0x20U
+struct pbuf {
+  struct pbuf *next;
+  void *payload;
+  u16_t tot_len;
+  u16_t len;
+  u8_t type_internal;
+  u8_t flags;
+  u8_t ref;
+  u8_t if_idx;
+ 
+};
+struct pbuf_rom {
+  struct pbuf *next;
+  const void *payload;
+};
+#define PBUF_POOL_FREE_OOSEQ 1
+extern volatile u8_t pbuf_free_ooseq_pending;
+void pbuf_free_ooseq(void);
+#define PBUF_CHECK_FREE_OOSEQ() do { if(pbuf_free_ooseq_pending) { pbuf_free_ooseq(); }}while(0)
+#define pbuf_init() 
+struct pbuf *pbuf_alloc(pbuf_layer l, u16_t length, pbuf_type type);
+struct pbuf *pbuf_alloc_reference(void *payload, u16_t length, pbuf_type type);
+void pbuf_realloc(struct pbuf *p, u16_t size);
+#define pbuf_get_allocsrc(p) ((p)->type_internal & PBUF_TYPE_ALLOC_SRC_MASK)
+#define pbuf_match_allocsrc(p,type) (pbuf_get_allocsrc(p) == ((type) & PBUF_TYPE_ALLOC_SRC_MASK))
+#define pbuf_match_type(p,type) pbuf_match_allocsrc(p, type)
+u8_t pbuf_header(struct pbuf *p, s16_t header_size);
+u8_t pbuf_header_force(struct pbuf *p, s16_t header_size);
+u8_t pbuf_add_header(struct pbuf *p, size_t header_size_increment);
+u8_t pbuf_add_header_force(struct pbuf *p, size_t header_size_increment);
+u8_t pbuf_remove_header(struct pbuf *p, size_t header_size);
+struct pbuf *pbuf_free_header(struct pbuf *q, u16_t size);
+void pbuf_ref(struct pbuf *p);
+u8_t pbuf_free(struct pbuf *p);
+u16_t pbuf_clen(const struct pbuf *p);
+void pbuf_cat(struct pbuf *head, struct pbuf *tail);
+void pbuf_chain(struct pbuf *head, struct pbuf *tail);
+struct pbuf *pbuf_dechain(struct pbuf *p);
+err_t pbuf_copy(struct pbuf *p_to, const struct pbuf *p_from);
+err_t pbuf_copy_partial_pbuf(struct pbuf *p_to, const struct pbuf *p_from, u16_t copy_len, u16_t offset);
+u16_t pbuf_copy_partial(const struct pbuf *p, void *dataptr, u16_t len, u16_t offset);
+void *pbuf_get_contiguous(const struct pbuf *p, void *buffer, size_t bufsize, u16_t len, u16_t offset);
+err_t pbuf_take(struct pbuf *buf, const void *dataptr, u16_t len);
+err_t pbuf_take_at(struct pbuf *buf, const void *dataptr, u16_t len, u16_t offset);
+struct pbuf *pbuf_skip(struct pbuf* in, u16_t in_offset, u16_t* out_offset);
+struct pbuf *pbuf_coalesce(struct pbuf *p, pbuf_layer layer);
+struct pbuf *pbuf_clone(pbuf_layer l, pbuf_type type, struct pbuf *p);
+u8_t pbuf_get_at(const struct pbuf* p, u16_t offset);
+int pbuf_try_get_at(const struct pbuf* p, u16_t offset);
+void pbuf_put_at(struct pbuf* p, u16_t offset, u8_t data);
+u16_t pbuf_memcmp(const struct pbuf* p, u16_t offset, const void* s2, u16_t n);
+u16_t pbuf_memfind(const struct pbuf* p, const void* mem, u16_t mem_len, u16_t start_offset);
+u16_t pbuf_strstr(const struct pbuf* p, const char* substr);
+#define LWIP_HDR_IP_H 
+#define LWIP_HDR_NETIF_H 
+#define ENABLE_LOOPBACK (LWIP_NETIF_LOOPBACK || LWIP_HAVE_LOOPIF)
+#define LWIP_HDR_STATS_H 
+#define LWIP_HDR_MEMP_H 
+#define LWIP_MEMPOOL(name,num,size,desc) 
+#define LWIP_MALLOC_MEMPOOL(num,size) LWIP_MEMPOOL(POOL_ ##size, num, (size + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper))), "MALLOC_"#size)
+#define LWIP_MALLOC_MEMPOOL_START 
+#define LWIP_MALLOC_MEMPOOL_END 
+#define LWIP_PBUF_MEMPOOL(name,num,payload,desc) LWIP_MEMPOOL(name, num, (LWIP_MEM_ALIGN_SIZE(sizeof(struct pbuf)) + LWIP_MEM_ALIGN_SIZE(payload)), desc)
+
+
+
+
+
+
+
+
+
+#undef LWIP_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL_START
+#undef LWIP_MALLOC_MEMPOOL_END
+#undef LWIP_PBUF_MEMPOOL
+typedef enum {
+#define LWIP_MEMPOOL(name,num,size,desc) MEMP_ ##name,
+#define LWIP_MALLOC_MEMPOOL(num,size) LWIP_MEMPOOL(POOL_ ##size, num, (size + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper))), "MALLOC_"#size)
+#define LWIP_MALLOC_MEMPOOL_START 
+#define LWIP_MALLOC_MEMPOOL_END 
+#define LWIP_PBUF_MEMPOOL(name,num,payload,desc) LWIP_MEMPOOL(name, num, (LWIP_MEM_ALIGN_SIZE(sizeof(struct pbuf)) + LWIP_MEM_ALIGN_SIZE(payload)), desc)
+MEMP_RAW_PCB,
+MEMP_UDP_PCB,
+MEMP_TCP_PCB,
+MEMP_TCP_PCB_LISTEN,
+MEMP_TCP_SEG,
+MEMP_REASSDATA,
+MEMP_SYS_TIMEOUT,
+MEMP_PBUF,
+MEMP_PBUF_POOL,
+#undef LWIP_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL
+#undef LWIP_MALLOC_MEMPOOL_START
+#undef LWIP_MALLOC_MEMPOOL_END
+#undef LWIP_PBUF_MEMPOOL
+  MEMP_MAX
+} memp_t;
+#define LWIP_HDR_MEMP_PRIV_H 
+#define LWIP_HDR_MEM_PRIV_H 
+#define MEMP_SIZE 0
+#define MEMP_ALIGN_SIZE(x) (LWIP_MEM_ALIGN_SIZE(x))
+struct memp {
+  struct memp *next;
+};
+struct memp_desc {
+  const char *desc;
+  struct stats_mem *stats;
+  u16_t size;
+  u16_t num;
+  u8_t *base;
+  struct memp **tab;
+};
+#define DECLARE_LWIP_MEMPOOL_DESC(desc) (desc),
+#define LWIP_MEMPOOL_DECLARE_STATS_INSTANCE(name) static struct stats_mem name;
+#define LWIP_MEMPOOL_DECLARE_STATS_REFERENCE(name) &name,
+void memp_init_pool(const struct memp_desc *desc);
+void *memp_malloc_pool(const struct memp_desc *desc);
+void memp_free_pool(const struct memp_desc* desc, void *mem);
+extern const struct memp_desc* const memp_pools[MEMP_MAX];
+#define LWIP_MEMPOOL_PROTOTYPE(name) extern const struct memp_desc memp_ ## name
+#define LWIP_MEMPOOL_DECLARE(name,num,size,desc) LWIP_DECLARE_MEMORY_ALIGNED(memp_memory_ ## name ## _base, ((num) * (MEMP_SIZE + MEMP_ALIGN_SIZE(size)))); LWIP_MEMPOOL_DECLARE_STATS_INSTANCE(memp_stats_ ## name) static struct memp *memp_tab_ ## name; const struct memp_desc memp_ ## name = { DECLARE_LWIP_MEMPOOL_DESC(desc) LWIP_MEMPOOL_DECLARE_STATS_REFERENCE(memp_stats_ ## name) LWIP_MEM_ALIGN_SIZE(size), (num), memp_memory_ ## name ## _base, &memp_tab_ ## name };
+#define LWIP_MEMPOOL_INIT(name) memp_init_pool(&memp_ ## name)
+#define LWIP_MEMPOOL_ALLOC(name) memp_malloc_pool(&memp_ ## name)
+#define LWIP_MEMPOOL_FREE(name,x) memp_free_pool(&memp_ ## name, (x))
+void memp_init(void);
+void *memp_malloc(memp_t type);
+void memp_free(memp_t type, void *mem);
+#define LWIP_STATS_LARGE 0
+#define STAT_COUNTER u16_t
+#define STAT_COUNTER_F U16_F
+struct stats_proto {
+  u16_t xmit;
+  u16_t recv;
+  u16_t fw;
+  u16_t drop;
+  u16_t chkerr;
+  u16_t lenerr;
+  u16_t memerr;
+  u16_t rterr;
+  u16_t proterr;
+  u16_t opterr;
+  u16_t err;
+  u16_t cachehit;
+};
+struct stats_igmp {
+  u16_t xmit;
+  u16_t recv;
+  u16_t drop;
+  u16_t chkerr;
+  u16_t lenerr;
+  u16_t memerr;
+  u16_t proterr;
+  u16_t rx_v1;
+  u16_t rx_group;
+  u16_t rx_general;
+  u16_t rx_report;
+  u16_t tx_join;
+  u16_t tx_leave;
+  u16_t tx_report;
+};
+struct stats_mem {
+  const char *name;
+  u16_t err;
+  mem_size_t avail;
+  mem_size_t used;
+  mem_size_t max;
+  u16_t illegal;
+};
+struct stats_syselem {
+  u16_t used;
+  u16_t max;
+  u16_t err;
+};
+struct stats_sys {
+  struct stats_syselem sem;
+  struct stats_syselem mutex;
+  struct stats_syselem mbox;
+};
+struct stats_mib2 {
+  u32_t ipinhdrerrors;
+  u32_t ipinaddrerrors;
+  u32_t ipinunknownprotos;
+  u32_t ipindiscards;
+  u32_t ipindelivers;
+  u32_t ipoutrequests;
+  u32_t ipoutdiscards;
+  u32_t ipoutnoroutes;
+  u32_t ipreasmoks;
+  u32_t ipreasmfails;
+  u32_t ipfragoks;
+  u32_t ipfragfails;
+  u32_t ipfragcreates;
+  u32_t ipreasmreqds;
+  u32_t ipforwdatagrams;
+  u32_t ipinreceives;
+  u32_t ip6reasmoks;
+  u32_t tcpactiveopens;
+  u32_t tcppassiveopens;
+  u32_t tcpattemptfails;
+  u32_t tcpestabresets;
+  u32_t tcpoutsegs;
+  u32_t tcpretranssegs;
+  u32_t tcpinsegs;
+  u32_t tcpinerrs;
+  u32_t tcpoutrsts;
+  u32_t udpindatagrams;
+  u32_t udpnoports;
+  u32_t udpinerrors;
+  u32_t udpoutdatagrams;
+  u32_t icmpinmsgs;
+  u32_t icmpinerrors;
+  u32_t icmpindestunreachs;
+  u32_t icmpintimeexcds;
+  u32_t icmpinparmprobs;
+  u32_t icmpinsrcquenchs;
+  u32_t icmpinredirects;
+  u32_t icmpinechos;
+  u32_t icmpinechoreps;
+  u32_t icmpintimestamps;
+  u32_t icmpintimestampreps;
+  u32_t icmpinaddrmasks;
+  u32_t icmpinaddrmaskreps;
+  u32_t icmpoutmsgs;
+  u32_t icmpouterrors;
+  u32_t icmpoutdestunreachs;
+  u32_t icmpouttimeexcds;
+  u32_t icmpoutechos;
+  u32_t icmpoutechoreps;
+};
+struct stats_mib2_netif_ctrs {
+  u32_t ifinoctets;
+  u32_t ifinucastpkts;
+  u32_t ifinnucastpkts;
+  u32_t ifindiscards;
+  u32_t ifinerrors;
+  u32_t ifinunknownprotos;
+  u32_t ifoutoctets;
+  u32_t ifoutucastpkts;
+  u32_t ifoutnucastpkts;
+  u32_t ifoutdiscards;
+  u32_t ifouterrors;
+};
+struct stats_ {
+  struct stats_proto link;
+  struct stats_proto etharp;
+  struct stats_proto ip_frag;
+  struct stats_proto ip;
+  struct stats_proto icmp;
+  struct stats_proto udp;
+  struct stats_proto tcp;
+  struct stats_mem mem;
+  struct stats_mem *memp[MEMP_MAX];
+  struct stats_sys sys;
+};
+extern struct stats_ lwip_stats;
+void stats_init(void);
+#define STATS_INC(x) ++lwip_stats.x
+#define STATS_DEC(x) --lwip_stats.x
+#define STATS_INC_USED(x,y,type) do { lwip_stats.x.used = (type)(lwip_stats.x.used + y); if (lwip_stats.x.max < lwip_stats.x.used) { lwip_stats.x.max = lwip_stats.x.used; } } while(0)
+#define STATS_GET(x) lwip_stats.x
+#define TCP_STATS_INC(x) STATS_INC(x)
+#define TCP_STATS_DISPLAY() stats_display_proto(&lwip_stats.tcp, "TCP")
+#define UDP_STATS_INC(x) STATS_INC(x)
+#define UDP_STATS_DISPLAY() stats_display_proto(&lwip_stats.udp, "UDP")
+#define ICMP_STATS_INC(x) STATS_INC(x)
+#define ICMP_STATS_DISPLAY() stats_display_proto(&lwip_stats.icmp, "ICMP")
+#define IGMP_STATS_INC(x) 
+#define IGMP_STATS_DISPLAY() 
+#define IP_STATS_INC(x) STATS_INC(x)
+#define IP_STATS_DISPLAY() stats_display_proto(&lwip_stats.ip, "IP")
+#define IPFRAG_STATS_INC(x) STATS_INC(x)
+#define IPFRAG_STATS_DISPLAY() stats_display_proto(&lwip_stats.ip_frag, "IP_FRAG")
+#define ETHARP_STATS_INC(x) STATS_INC(x)
+#define ETHARP_STATS_DISPLAY() stats_display_proto(&lwip_stats.etharp, "ETHARP")
+#define LINK_STATS_INC(x) STATS_INC(x)
+#define LINK_STATS_DISPLAY() stats_display_proto(&lwip_stats.link, "LINK")
+#define MEM_STATS_AVAIL(x,y) lwip_stats.mem.x = y
+#define MEM_STATS_INC(x) STATS_INC(mem.x)
+#define MEM_STATS_INC_USED(x,y) STATS_INC_USED(mem, y, mem_size_t)
+#define MEM_STATS_DEC_USED(x,y) lwip_stats.mem.x = (mem_size_t)((lwip_stats.mem.x) - (y))
+#define MEM_STATS_DISPLAY() stats_display_mem(&lwip_stats.mem, "HEAP")
+#define MEMP_STATS_DEC(x,i) STATS_DEC(memp[i]->x)
+#define MEMP_STATS_DISPLAY(i) stats_display_memp(lwip_stats.memp[i], i)
+#define MEMP_STATS_GET(x,i) STATS_GET(memp[i]->x)
+#define SYS_STATS_INC(x) STATS_INC(sys.x)
+#define SYS_STATS_DEC(x) STATS_DEC(sys.x)
+#define SYS_STATS_INC_USED(x) STATS_INC_USED(sys.x, 1, STAT_COUNTER)
+#define SYS_STATS_DISPLAY() stats_display_sys(&lwip_stats.sys)
+#define IP6_STATS_INC(x) 
+#define IP6_STATS_DISPLAY() 
+#define ICMP6_STATS_INC(x) 
+#define ICMP6_STATS_DISPLAY() 
+#define IP6_FRAG_STATS_INC(x) 
+#define IP6_FRAG_STATS_DISPLAY() 
+#define MLD6_STATS_INC(x) 
+#define MLD6_STATS_DISPLAY() 
+#define ND6_STATS_INC(x) 
+#define ND6_STATS_DISPLAY() 
+#define MIB2_STATS_INC(x) 
+void stats_display(void);
+void stats_display_proto(struct stats_proto *proto, const char *name);
+void stats_display_igmp(struct stats_igmp *igmp, const char *name);
+void stats_display_mem(struct stats_mem *mem, const char *name);
+void stats_display_memp(struct stats_mem *mem, int index);
+void stats_display_sys(struct stats_sys *sys);
+#define NETIF_MAX_HWADDR_LEN 6U
+#define NETIF_NAMESIZE 6
+#define NETIF_FLAG_UP 0x01U
+#define NETIF_FLAG_BROADCAST 0x02U
+#define NETIF_FLAG_LINK_UP 0x04U
+#define NETIF_FLAG_ETHARP 0x08U
+#define NETIF_FLAG_ETHERNET 0x10U
+#define NETIF_FLAG_IGMP 0x20U
+#define NETIF_FLAG_MLD6 0x40U
+enum lwip_internal_netif_client_data_index
+{
+   LWIP_NETIF_CLIENT_DATA_INDEX_DHCP,
+   LWIP_NETIF_CLIENT_DATA_INDEX_MAX
+};
+struct netif;
+enum netif_mac_filter_action {
+  NETIF_DEL_MAC_FILTER = 0,
+  NETIF_ADD_MAC_FILTER = 1
+};
+typedef err_t (*netif_init_fn)(struct netif *netif);
+typedef err_t (*netif_input_fn)(struct pbuf *p, struct netif *inp);
+typedef err_t (*netif_output_fn)(struct netif *netif, struct pbuf *p,
+       const ip4_addr_t *ipaddr);
+typedef err_t (*netif_linkoutput_fn)(struct netif *netif, struct pbuf *p);
+typedef void (*netif_status_callback_fn)(struct netif *netif);
+#define netif_set_client_data(netif,id,data) netif_get_client_data(netif, id) = (data)
+#define netif_get_client_data(netif,id) (netif)->client_data[(id)]
+typedef u8_t netif_addr_idx_t;
+#define NETIF_ADDR_IDX_MAX 0x7F
+#define LWIP_NETIF_USE_HINTS 0
+struct netif {
+  struct netif *next;
+  ip_addr_t ip_addr;
+  ip_addr_t netmask;
+  ip_addr_t gw;
+  netif_input_fn input;
+  netif_output_fn output;
+  netif_linkoutput_fn linkoutput;
+  netif_status_callback_fn status_callback;
+  netif_status_callback_fn link_callback;
+  void *state;
+  void* client_data[LWIP_NETIF_CLIENT_DATA_INDEX_MAX + 0];
+  const char* hostname;
+  u16_t mtu;
+  u8_t hwaddr[6U];
+  u8_t hwaddr_len;
+  u8_t flags;
+  char name[2];
+  u8_t num;
+};
+#define NETIF_CHECKSUM_ENABLED(netif,chksumflag) 0
+#define NETIF_SET_CHECKSUM_CTRL(netif,chksumflags) 
+#define IF__NETIF_CHECKSUM_ENABLED(netif,chksumflag) 
+extern struct netif *netif_list;
+#define NETIF_FOREACH(netif) for ((netif) = netif_list; (netif) != NULL; (netif) = (netif)->next)
+extern struct netif *netif_default;
+void netif_init(void);
+struct netif *netif_add_noaddr(struct netif *netif, void *state, netif_init_fn init, netif_input_fn input);
+struct netif *netif_add(struct netif *netif,
+                            const ip4_addr_t *ipaddr, const ip4_addr_t *netmask, const ip4_addr_t *gw,
+                            void *state, netif_init_fn init, netif_input_fn input);
+void netif_set_addr(struct netif *netif, const ip4_addr_t *ipaddr, const ip4_addr_t *netmask,
+                    const ip4_addr_t *gw);
+void netif_remove(struct netif * netif);
+struct netif *netif_find(const char *name);
+void netif_set_default(struct netif *netif);
+void netif_set_ipaddr(struct netif *netif, const ip4_addr_t *ipaddr);
+void netif_set_netmask(struct netif *netif, const ip4_addr_t *netmask);
+void netif_set_gw(struct netif *netif, const ip4_addr_t *gw);
+#define netif_ip4_addr(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->ip_addr)))
+#define netif_ip4_netmask(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->netmask)))
+#define netif_ip4_gw(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->gw)))
+#define netif_ip_addr4(netif) ((const ip_addr_t*)&((netif)->ip_addr))
+#define netif_ip_netmask4(netif) ((const ip_addr_t*)&((netif)->netmask))
+#define netif_ip_gw4(netif) ((const ip_addr_t*)&((netif)->gw))
+#define netif_set_flags(netif,set_flags) do { (netif)->flags = (u8_t)((netif)->flags | (set_flags)); } while(0)
+#define netif_clear_flags(netif,clr_flags) do { (netif)->flags = (u8_t)((netif)->flags & (u8_t)(~(clr_flags) & 0xff)); } while(0)
+#define netif_is_flag_set(netif,flag) (((netif)->flags & (flag)) != 0)
+void netif_set_up(struct netif *netif);
+void netif_set_down(struct netif *netif);
+#define netif_is_up(netif) (((netif)->flags & NETIF_FLAG_UP) ? (u8_t)1 : (u8_t)0)
+void netif_set_status_callback(struct netif *netif, netif_status_callback_fn status_callback);
+void netif_set_link_up(struct netif *netif);
+void netif_set_link_down(struct netif *netif);
+#define netif_is_link_up(netif) (((netif)->flags & NETIF_FLAG_LINK_UP) ? (u8_t)1 : (u8_t)0)
+void netif_set_link_callback(struct netif *netif, netif_status_callback_fn link_callback);
+#define netif_set_hostname(netif,name) do { if((netif) != NULL) { (netif)->hostname = name; }}while(0)
+#define netif_get_hostname(netif) (((netif) != NULL) ? ((netif)->hostname) : NULL)
+err_t netif_input(struct pbuf *p, struct netif *inp);
+#define NETIF_SET_HINTS(netif,netifhint) 
+#define NETIF_RESET_HINTS(netif) 
+u8_t netif_name_to_index(const char *name);
+char * netif_index_to_name(u8_t idx, char *name);
+struct netif* netif_get_by_index(u8_t idx);
+#define netif_get_index(netif) ((u8_t)((netif)->num + 1))
+#define NETIF_NO_INDEX (0)
+typedef u16_t netif_nsc_reason_t;
+#define LWIP_NSC_NONE 0x0000
+#define LWIP_NSC_NETIF_ADDED 0x0001
+#define LWIP_NSC_NETIF_REMOVED 0x0002
+#define LWIP_NSC_LINK_CHANGED 0x0004
+#define LWIP_NSC_STATUS_CHANGED 0x0008
+#define LWIP_NSC_IPV4_ADDRESS_CHANGED 0x0010
+#define LWIP_NSC_IPV4_GATEWAY_CHANGED 0x0020
+#define LWIP_NSC_IPV4_NETMASK_CHANGED 0x0040
+#define LWIP_NSC_IPV4_SETTINGS_CHANGED 0x0080
+#define LWIP_NSC_IPV6_SET 0x0100
+#define LWIP_NSC_IPV6_ADDR_STATE_CHANGED 0x0200
+#define LWIP_NSC_IPV4_ADDR_VALID 0x0400
+typedef union
+{
+  struct link_changed_s
+  {
+    u8_t state;
+  } link_changed;
+  struct status_changed_s
+  {
+    u8_t state;
+  } status_changed;
+  struct ipv4_changed_s
+  {
+    const ip_addr_t* old_address;
+    const ip_addr_t* old_netmask;
+    const ip_addr_t* old_gw;
+  } ipv4_changed;
+  struct ipv6_set_s
+  {
+    s8_t addr_index;
+    const ip_addr_t* old_address;
+  } ipv6_set;
+  struct ipv6_addr_state_changed_s
+  {
+    s8_t addr_index;
+    u8_t old_state;
+    const ip_addr_t* address;
+  } ipv6_addr_state_changed;
+} netif_ext_callback_args_t;
+typedef void (*netif_ext_callback_fn)(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
+#define NETIF_DECLARE_EXT_CALLBACK(name) 
+#define netif_add_ext_callback(callback,fn) 
+#define netif_remove_ext_callback(callback) 
+#define netif_invoke_ext_callback(netif,reason,args) 
+#define LWIP_HDR_IP4_H 
+#define LWIP_HDR_PROT_IP4_H 
+
+struct ip4_addr_packed {
+  u32_t addr;
+} __attribute__ ((__packed__));
+
+typedef struct ip4_addr_packed ip4_addr_p_t;
+#define IP_HLEN 20
+#define IP_HLEN_MAX 60
+
+struct ip_hdr {
+  u8_t _v_hl;
+  u8_t _tos;
+  u16_t _len;
+  u16_t _id;
+  u16_t _offset;
+#define IP_RF 0x8000U
+#define IP_DF 0x4000U
+#define IP_MF 0x2000U
+#define IP_OFFMASK 0x1fffU
+  u8_t _ttl;
+  u8_t _proto;
+  u16_t _chksum;
+  ip4_addr_p_t src;
+  ip4_addr_p_t dest;
+} __attribute__ ((__packed__));
+
+#define IPH_V(hdr) ((hdr)->_v_hl >> 4)
+#define IPH_HL(hdr) ((hdr)->_v_hl & 0x0f)
+#define IPH_HL_BYTES(hdr) ((u8_t)(IPH_HL(hdr) * 4))
+#define IPH_TOS(hdr) ((hdr)->_tos)
+#define IPH_LEN(hdr) ((hdr)->_len)
+#define IPH_ID(hdr) ((hdr)->_id)
+#define IPH_OFFSET(hdr) ((hdr)->_offset)
+#define IPH_OFFSET_BYTES(hdr) ((u16_t)((lwip_ntohs(IPH_OFFSET(hdr)) & IP_OFFMASK) * 8U))
+#define IPH_TTL(hdr) ((hdr)->_ttl)
+#define IPH_PROTO(hdr) ((hdr)->_proto)
+#define IPH_CHKSUM(hdr) ((hdr)->_chksum)
+#define IPH_VHL_SET(hdr,v,hl) (hdr)->_v_hl = (u8_t)((((v) << 4) | (hl)))
+#define IPH_TOS_SET(hdr,tos) (hdr)->_tos = (tos)
+#define IPH_LEN_SET(hdr,len) (hdr)->_len = (len)
+#define IPH_ID_SET(hdr,id) (hdr)->_id = (id)
+#define IPH_OFFSET_SET(hdr,off) (hdr)->_offset = (off)
+#define IPH_TTL_SET(hdr,ttl) (hdr)->_ttl = (u8_t)(ttl)
+#define IPH_PROTO_SET(hdr,proto) (hdr)->_proto = (u8_t)(proto)
+#define IPH_CHKSUM_SET(hdr,chksum) (hdr)->_chksum = (chksum)
+#define LWIP_IPV4_SRC_ROUTING 0
+#define IP_OPTIONS_SEND (LWIP_IPV4 && LWIP_IGMP)
+#define ip_init() 
+struct netif *ip4_route(const ip4_addr_t *dest);
+#define ip4_route_src(src,dest) ip4_route(dest)
+err_t ip4_input(struct pbuf *p, struct netif *inp);
+err_t ip4_output(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
+       u8_t ttl, u8_t tos, u8_t proto);
+err_t ip4_output_if(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
+       u8_t ttl, u8_t tos, u8_t proto, struct netif *netif);
+err_t ip4_output_if_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
+       u8_t ttl, u8_t tos, u8_t proto, struct netif *netif);
+#define ip4_netif_get_local_ip(netif) (((netif) != NULL) ? netif_ip_addr4(netif) : NULL)
+#define ip4_debug_print(p) 
+#define LWIP_HDR_IP6_H 
+#define LWIP_HDR_PROT_IP_H 
+#define IP_PROTO_ICMP 1
+#define IP_PROTO_IGMP 2
+#define IP_PROTO_UDP 17
+#define IP_PROTO_UDPLITE 136
+#define IP_PROTO_TCP 6
+#define IP_HDR_GET_VERSION(ptr) ((*(u8_t*)(ptr)) >> 4)
+#define LWIP_IP_HDRINCL NULL
+#define LWIP_IP_CHECK_PBUF_REF_COUNT_FOR_TX(p) LWIP_ASSERT("p->ref == 1", (p)->ref == 1)
+#define IP_PCB_NETIFHINT 
+#define IP_PCB ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl IP_PCB_NETIFHINT
+struct ip_pcb {
+  ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl ;
+};
+#define pcb_tci_init(pcb) 
+#define SOF_REUSEADDR 0x04U
+#define SOF_KEEPALIVE 0x08U
+#define SOF_BROADCAST 0x20U
+#define SOF_INHERITED (SOF_REUSEADDR|SOF_KEEPALIVE)
+struct ip_globals
+{
+  struct netif *current_netif;
+  struct netif *current_input_netif;
+  const struct ip_hdr *current_ip4_header;
+  u16_t current_ip_header_tot_len;
+  ip_addr_t current_iphdr_src;
+  ip_addr_t current_iphdr_dest;
+};
+extern struct ip_globals ip_data;
+#define ip_current_netif() (ip_data.current_netif)
+#define ip_current_input_netif() (ip_data.current_input_netif)
+#define ip_current_header_tot_len() (ip_data.current_ip_header_tot_len)
+#define ip_current_src_addr() (&ip_data.current_iphdr_src)
+#define ip_current_dest_addr() (&ip_data.current_iphdr_dest)
+#define ip4_current_header() ip_data.current_ip4_header
+#define ip_current_is_v6() 0
+#define ip_current_header_proto() IPH_PROTO(ip4_current_header())
+#define ip_next_header_ptr() ((const void*)((const u8_t*)ip4_current_header() + ip_current_header_tot_len()))
+#define ip4_current_src_addr() (&ip_data.current_iphdr_src)
+#define ip4_current_dest_addr() (&ip_data.current_iphdr_dest)
+#define ip_current_src_addr() (&ip_data.current_iphdr_src)
+#define ip_current_dest_addr() (&ip_data.current_iphdr_dest)
+#define ip_get_option(pcb,opt) ((pcb)->so_options & (opt))
+#define ip_set_option(pcb,opt) ((pcb)->so_options = (u8_t)((pcb)->so_options | (opt)))
+#define ip_reset_option(pcb,opt) ((pcb)->so_options = (u8_t)((pcb)->so_options & ~(opt)))
+#define ip_output(p,src,dest,ttl,tos,proto) ip4_output(p, src, dest, ttl, tos, proto)
+#define ip_output_if(p,src,dest,ttl,tos,proto,netif) ip4_output_if(p, src, dest, ttl, tos, proto, netif)
+#define ip_output_if_src(p,src,dest,ttl,tos,proto,netif) ip4_output_if_src(p, src, dest, ttl, tos, proto, netif)
+#define ip_output_hinted(p,src,dest,ttl,tos,proto,netif_hint) ip4_output_hinted(p, src, dest, ttl, tos, proto, netif_hint)
+#define ip_output_if_hdrincl(p,src,dest,netif) ip4_output_if(p, src, LWIP_IP_HDRINCL, 0, 0, 0, netif)
+#define ip_route(src,dest) ip4_route_src(src, dest)
+#define ip_netif_get_local_ip(netif,dest) ip4_netif_get_local_ip(netif)
+#define ip_debug_print(is_ipv6,p) ip4_debug_print(p)
+#define ip_input ip4_input
+#define ip_route_get_local_ip(src,dest,netif,ipaddr) do { (netif) = ip_route(src, dest); (ipaddr) = ip_netif_get_local_ip(netif, dest); }while(0)
+#define LWIP_HDR_ICMP_H 
+#define LWIP_HDR_PROT_ICMP_H 
+#define ICMP_ER 0
+#define ICMP_DUR 3
+#define ICMP_SQ 4
+#define ICMP_RD 5
+#define ICMP_ECHO 8
+#define ICMP_TE 11
+#define ICMP_PP 12
+#define ICMP_TS 13
+#define ICMP_TSR 14
+#define ICMP_IRQ 15
+#define ICMP_IR 16
+#define ICMP_AM 17
+#define ICMP_AMR 18
+
+struct icmp_hdr {
+  u8_t type;
+  u8_t code;
+  u16_t chksum;
+  u32_t data;
+} __attribute__ ((__packed__));
+
+#define ICMPH_TYPE(hdr) ((hdr)->type)
+#define ICMPH_CODE(hdr) ((hdr)->code)
+#define ICMPH_TYPE_SET(hdr,t) ((hdr)->type = (t))
+#define ICMPH_CODE_SET(hdr,c) ((hdr)->code = (c))
+
+struct icmp_echo_hdr {
+  u8_t type;
+  u8_t code;
+  u16_t chksum;
+  u16_t id;
+  u16_t seqno;
+} __attribute__ ((__packed__));
+
+enum icmp_dur_type {
+  ICMP_DUR_NET = 0,
+  ICMP_DUR_HOST = 1,
+  ICMP_DUR_PROTO = 2,
+  ICMP_DUR_PORT = 3,
+  ICMP_DUR_FRAG = 4,
+  ICMP_DUR_SR = 5
+};
+enum icmp_te_type {
+  ICMP_TE_TTL = 0,
+  ICMP_TE_FRAG = 1
+};
+void icmp_input(struct pbuf *p, struct netif *inp);
+void icmp_dest_unreach(struct pbuf *p, enum icmp_dur_type t);
+void icmp_time_exceeded(struct pbuf *p, enum icmp_te_type t);
+#define icmp_port_unreach(isipv6,pbuf) icmp_dest_unreach(pbuf, ICMP_DUR_PORT)
+struct tcp_pcb;
+struct tcp_pcb_listen;
+typedef err_t (*tcp_accept_fn)(void *arg, struct tcp_pcb *newpcb, err_t err);
+typedef err_t (*tcp_recv_fn)(void *arg, struct tcp_pcb *tpcb,
+                             struct pbuf *p, err_t err);
+typedef err_t (*tcp_sent_fn)(void *arg, struct tcp_pcb *tpcb,
+                              u16_t len);
+typedef err_t (*tcp_poll_fn)(void *arg, struct tcp_pcb *tpcb);
+typedef void (*tcp_err_fn)(void *arg, err_t err);
+typedef err_t (*tcp_connected_fn)(void *arg, struct tcp_pcb *tpcb, err_t err);
+#define RCV_WND_SCALE(pcb,wnd) (wnd)
+#define SND_WND_SCALE(pcb,wnd) (wnd)
+#define TCPWND16(x) (x)
+#define TCP_WND_MAX(pcb) TCP_WND
+#define TCP_WND_INC(wnd,inc) do { if ((tcpwnd_size_t)(wnd + inc) >= wnd) { wnd = (tcpwnd_size_t)(wnd + inc); } else { wnd = (tcpwnd_size_t)-1; } } while(0)
+typedef void (*tcp_extarg_callback_pcb_destroyed_fn)(u8_t id, void *data);
+typedef err_t (*tcp_extarg_callback_passive_open_fn)(u8_t id, struct tcp_pcb_listen *lpcb, struct tcp_pcb *cpcb);
+struct tcp_ext_arg_callbacks {
+  tcp_extarg_callback_pcb_destroyed_fn destroy;
+  tcp_extarg_callback_passive_open_fn passive_open;
+};
+#define LWIP_TCP_PCB_NUM_EXT_ARG_ID_INVALID 0xFF
+#define TCP_PCB_EXTARGS 
+typedef u16_t tcpflags_t;
+#define TCP_ALLFLAGS 0xffffU
+#define TCP_PCB_COMMON(type) type *next; void *callback_arg; TCP_PCB_EXTARGS enum tcp_state state; u8_t prio; u16_t local_port
+struct tcp_pcb_listen {
+  ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl ;
+  struct tcp_pcb_listen *next; void *callback_arg; enum tcp_state state; u8_t prio; u16_t local_port;
+  tcp_accept_fn accept;
+};
+struct tcp_pcb {
+  ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl ;
+  struct tcp_pcb *next; void *callback_arg; enum tcp_state state; u8_t prio; u16_t local_port;
+  u16_t remote_port;
+  tcpflags_t flags;
+#define TF_ACK_DELAY 0x01U
+#define TF_ACK_NOW 0x02U
+#define TF_INFR 0x04U
+#define TF_CLOSEPEND 0x08U
+#define TF_RXCLOSED 0x10U
+#define TF_FIN 0x20U
+#define TF_NODELAY 0x40U
+#define TF_NAGLEMEMERR 0x80U
+#define TF_RTO 0x0800U
+  u8_t polltmr, pollinterval;
+  u8_t last_timer;
+  u32_t tmr;
+  u32_t rcv_nxt;
+  tcpwnd_size_t rcv_wnd;
+  tcpwnd_size_t rcv_ann_wnd;
+  u32_t rcv_ann_right_edge;
+  s16_t rtime;
+  u16_t mss;
+  u32_t rttest;
+  u32_t rtseq;
+  s16_t sa, sv;
+  s16_t rto;
+  u8_t nrtx;
+  u8_t dupacks;
+  u32_t lastack;
+  tcpwnd_size_t cwnd;
+  tcpwnd_size_t ssthresh;
+  u32_t rto_end;
+  u32_t snd_nxt;
+  u32_t snd_wl1, snd_wl2;
+  u32_t snd_lbb;
+  tcpwnd_size_t snd_wnd;
+  tcpwnd_size_t snd_wnd_max;
+  tcpwnd_size_t snd_buf;
+#define TCP_SNDQUEUELEN_OVERFLOW (0xffffU-3)
+  u16_t snd_queuelen;
+  u16_t unsent_oversize;
+  tcpwnd_size_t bytes_acked;
+  struct tcp_seg *unsent;
+  struct tcp_seg *unacked;
+  struct tcp_seg *ooseq;
+  struct pbuf *refused_data;
+  struct tcp_pcb_listen* listener;
+  tcp_sent_fn sent;
+  tcp_recv_fn recv;
+  tcp_connected_fn connected;
+  tcp_poll_fn poll;
+  tcp_err_fn errf;
+  u32_t keep_idle;
+  u32_t keep_intvl;
+  u32_t keep_cnt;
+  u8_t persist_cnt;
+  u8_t persist_backoff;
+  u8_t persist_probe;
+  u8_t keep_cnt_sent;
+};
+struct tcp_pcb * tcp_new (void);
+struct tcp_pcb * tcp_new_ip_type (u8_t type);
+void tcp_arg (struct tcp_pcb *pcb, void *arg);
+void tcp_recv (struct tcp_pcb *pcb, tcp_recv_fn recv);
+void tcp_sent (struct tcp_pcb *pcb, tcp_sent_fn sent);
+void tcp_err (struct tcp_pcb *pcb, tcp_err_fn err);
+void tcp_accept (struct tcp_pcb *pcb, tcp_accept_fn accept);
+void tcp_poll (struct tcp_pcb *pcb, tcp_poll_fn poll, u8_t interval);
+#define tcp_set_flags(pcb,set_flags) do { (pcb)->flags = (tcpflags_t)((pcb)->flags | (set_flags)); } while(0)
+#define tcp_clear_flags(pcb,clr_flags) do { (pcb)->flags = (tcpflags_t)((pcb)->flags & (tcpflags_t)(~(clr_flags) & TCP_ALLFLAGS)); } while(0)
+#define tcp_is_flag_set(pcb,flag) (((pcb)->flags & (flag)) != 0)
+#define tcp_mss(pcb) ((pcb)->mss)
+#define tcp_sndbuf(pcb) (TCPWND16((pcb)->snd_buf))
+#define tcp_sndqueuelen(pcb) ((pcb)->snd_queuelen)
+#define tcp_nagle_disable(pcb) tcp_set_flags(pcb, TF_NODELAY)
+#define tcp_nagle_enable(pcb) tcp_clear_flags(pcb, TF_NODELAY)
+#define tcp_nagle_disabled(pcb) tcp_is_flag_set(pcb, TF_NODELAY)
+#define tcp_backlog_set(pcb,new_backlog) 
+#define tcp_backlog_delayed(pcb) 
+#define tcp_backlog_accepted(pcb) 
+#define tcp_accepted(pcb) do { LWIP_UNUSED_ARG(pcb); } while(0)
+void tcp_recved (struct tcp_pcb *pcb, u16_t len);
+err_t tcp_bind (struct tcp_pcb *pcb, const ip_addr_t *ipaddr,
+                              u16_t port);
+void tcp_bind_netif(struct tcp_pcb *pcb, const struct netif *netif);
+err_t tcp_connect (struct tcp_pcb *pcb, const ip_addr_t *ipaddr,
+                              u16_t port, tcp_connected_fn connected);
+struct tcp_pcb * tcp_listen_with_backlog_and_err(struct tcp_pcb *pcb, u8_t backlog, err_t *err);
+struct tcp_pcb * tcp_listen_with_backlog(struct tcp_pcb *pcb, u8_t backlog);
+#define tcp_listen(pcb) tcp_listen_with_backlog(pcb, TCP_DEFAULT_LISTEN_BACKLOG)
+void tcp_abort (struct tcp_pcb *pcb);
+err_t tcp_close (struct tcp_pcb *pcb);
+err_t tcp_shutdown(struct tcp_pcb *pcb, int shut_rx, int shut_tx);
+err_t tcp_write (struct tcp_pcb *pcb, const void *dataptr, u16_t len,
+                              u8_t apiflags);
+void tcp_setprio (struct tcp_pcb *pcb, u8_t prio);
+err_t tcp_output (struct tcp_pcb *pcb);
+err_t tcp_tcp_get_tcp_addrinfo(struct tcp_pcb *pcb, int local, ip_addr_t *addr, u16_t *port);
+#define tcp_dbg_get_tcp_state(pcb) ((pcb)->state)
+#define tcp_new_ip6() tcp_new_ip_type(IPADDR_TYPE_V6)
+#define altcp_accept_fn tcp_accept_fn
+#define altcp_connected_fn tcp_connected_fn
+#define altcp_recv_fn tcp_recv_fn
+#define altcp_sent_fn tcp_sent_fn
+#define altcp_poll_fn tcp_poll_fn
+#define altcp_err_fn tcp_err_fn
+#define altcp_pcb tcp_pcb
+#define altcp_tcp_new_ip_type tcp_new_ip_type
+#define altcp_tcp_new tcp_new
+#define altcp_tcp_new_ip6 tcp_new_ip6
+#define altcp_new(allocator) tcp_new()
+#define altcp_new_ip6(allocator) tcp_new_ip6()
+#define altcp_new_ip_type(allocator,ip_type) tcp_new_ip_type(ip_type)
+#define altcp_arg tcp_arg
+#define altcp_accept tcp_accept
+#define altcp_recv tcp_recv
+#define altcp_sent tcp_sent
+#define altcp_poll tcp_poll
+#define altcp_err tcp_err
+#define altcp_recved tcp_recved
+#define altcp_bind tcp_bind
+#define altcp_connect tcp_connect
+#define altcp_listen_with_backlog_and_err tcp_listen_with_backlog_and_err
+#define altcp_listen_with_backlog tcp_listen_with_backlog
+#define altcp_listen tcp_listen
+#define altcp_abort tcp_abort
+#define altcp_close tcp_close
+#define altcp_shutdown tcp_shutdown
+#define altcp_write tcp_write
+#define altcp_output tcp_output
+#define altcp_mss tcp_mss
+#define altcp_sndbuf tcp_sndbuf
+#define altcp_sndqueuelen tcp_sndqueuelen
+#define altcp_nagle_disable tcp_nagle_disable
+#define altcp_nagle_enable tcp_nagle_enable
+#define altcp_nagle_disabled tcp_nagle_disabled
+#define altcp_setprio tcp_setprio
+#define altcp_get_tcp_addrinfo tcp_get_tcp_addrinfo
+#define altcp_get_ip(pcb,local) ((local) ? (&(pcb)->local_ip) : (&(pcb)->remote_ip))
+#define LWIP_HDR_PROT_IANA_H 
+enum lwip_iana_hwtype {
+  LWIP_IANA_HWTYPE_ETHERNET = 1
+};
+enum lwip_iana_port_number {
+  LWIP_IANA_PORT_SMTP = 25,
+  LWIP_IANA_PORT_DHCP_SERVER = 67,
+  LWIP_IANA_PORT_DHCP_CLIENT = 68,
+  LWIP_IANA_PORT_TFTP = 69,
+  LWIP_IANA_PORT_HTTP = 80,
+  LWIP_IANA_PORT_SNTP = 123,
+  LWIP_IANA_PORT_NETBIOS = 137,
+  LWIP_IANA_PORT_SNMP = 161,
+  LWIP_IANA_PORT_SNMP_TRAP = 162,
+  LWIP_IANA_PORT_HTTPS = 443,
+  LWIP_IANA_PORT_SMTPS = 465,
+  LWIP_IANA_PORT_MQTT = 1883,
+  LWIP_IANA_PORT_MDNS = 5353,
+  LWIP_IANA_PORT_SECURE_MQTT = 8883
+};
+#define LWIP_HTTPC_HAVE_FILE_IO 0
+#define HTTP_DEFAULT_PORT LWIP_IANA_PORT_HTTP
+typedef enum ehttpc_result {
+  HTTPC_RESULT_OK = 0,
+  HTTPC_RESULT_ERR_UNKNOWN = 1,
+  HTTPC_RESULT_ERR_CONNECT = 2,
+  HTTPC_RESULT_ERR_HOSTNAME = 3,
+  HTTPC_RESULT_ERR_CLOSED = 4,
+  HTTPC_RESULT_ERR_TIMEOUT = 5,
+  HTTPC_RESULT_ERR_SVR_RESP = 6,
+  HTTPC_RESULT_ERR_MEM = 7,
+  HTTPC_RESULT_LOCAL_ABORT = 8,
+  HTTPC_RESULT_ERR_CONTENT_LEN = 9
+} httpc_result_t;
+typedef struct _httpc_state httpc_state_t;
+typedef void (*httpc_result_fn)(void *arg, httpc_result_t httpc_result, u32_t rx_content_len, u32_t srv_res, err_t err);
+typedef err_t (*httpc_headers_done_fn)(httpc_state_t *connection, void *arg, struct pbuf *hdr, u16_t hdr_len, u32_t content_len);
+typedef struct _httpc_connection {
+  ip_addr_t proxy_addr;
+  u16_t proxy_port;
+  u8_t use_proxy;
+  httpc_result_fn result_fn;
+  httpc_headers_done_fn headers_done_fn;
+} httpc_connection_t;
+err_t httpc_get_file(const ip_addr_t* server_addr, u16_t port, const char* uri, const httpc_connection_t *settings,
+                     tcp_recv_fn recv_fn, void* callback_arg, httpc_state_t **connection);
+err_t httpc_get_file_dns(const char* server_name, u16_t port, const char* uri, const httpc_connection_t *settings,
+                     tcp_recv_fn recv_fn, void* callback_arg, httpc_state_t **connection);
+#define LWIP_HDR_ALTCP_TLS_H 
+#define _PICO_STATUS_LED_H 
+#define _HARDWARE_GPIO_H 
 #define _HARDWARE_STRUCTS_SIO_H 
 #define _HARDWARE_ADDRESS_MAPPED_H 
 #define check_hw_layout(type,member,offset) static_assert(offsetof(type, member) == (offset), "hw offset mismatch")
@@ -29215,687 +32418,6 @@ void cyw43_post_poll_hook(void);
 #define CYW43_SLEEP_MAX (50)
 #define CYW43_HAL_UART_READCHAR_BLOCKING_WAIT cyw43_delay_us(10)
 #define CYW43_NETUTILS (0)
-#define _STDIO_H_ 
-#define _FSTDIO 
-#define __need_size_t 
-#define __need_NULL 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define __need___va_list 
-#undef __need___va_list
-#define __GNUC_VA_LIST 
-typedef __builtin_va_list __gnuc_va_list;
-typedef __gnuc_va_list va_list;
-#define _VA_LIST_DEFINED 
-#define _SYS_REENT_H_ 
-#define _SYS__TYPES_H 
-#define __need_size_t 
-#define __need_wint_t 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#define _WINT_T 
-typedef unsigned int wint_t;
-#undef __need_wint_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define _MACHINE__TYPES_H 
-typedef long __blkcnt_t;
-typedef long __blksize_t;
-typedef __uint64_t __fsblkcnt_t;
-typedef __uint32_t __fsfilcnt_t;
-typedef long _off_t;
-typedef int __pid_t;
-typedef short __dev_t;
-typedef unsigned short __uid_t;
-typedef unsigned short __gid_t;
-typedef __uint32_t __id_t;
-typedef unsigned short __ino_t;
-typedef __uint32_t __mode_t;
-__extension__ typedef long long _off64_t;
-typedef _off_t __off_t;
-typedef _off64_t __loff_t;
-typedef long __key_t;
-typedef long _fpos_t;
-#undef __size_t
-typedef unsigned int __size_t;
-#define unsigned signed
-typedef signed int _ssize_t;
-#undef unsigned
-typedef _ssize_t __ssize_t;
-typedef struct
-{
-  int __count;
-  union
-  {
-    wint_t __wch;
-    unsigned char __wchb[4];
-  } __value;
-} _mbstate_t;
-typedef void *_iconv_t;
-#define _CLOCK_T_ unsigned long
-typedef unsigned long __clock_t;
-#define _TIME_T_ __int_least64_t
-typedef __int_least64_t __time_t;
-#define _CLOCKID_T_ unsigned long
-typedef unsigned long __clockid_t;
-typedef long __daddr_t;
-#define _TIMER_T_ unsigned long
-typedef unsigned long __timer_t;
-typedef __uint8_t __sa_family_t;
-typedef __uint32_t __socklen_t;
-typedef int __nl_item;
-typedef unsigned short __nlink_t;
-typedef long __suseconds_t;
-typedef unsigned long __useconds_t;
-typedef __builtin_va_list __va_list;
-#define _NULL 0
-#define __Long long
-typedef unsigned long __ULong;
-#define __SYS_LOCK_H__ 
-struct __lock;
-typedef struct __lock * _LOCK_T;
-#define _LOCK_RECURSIVE_T _LOCK_T
-#define __LOCK_INIT(class,lock) extern struct __lock __lock_ ## lock; class _LOCK_T lock = &__lock_ ## lock
-#define __LOCK_INIT_RECURSIVE(class,lock) __LOCK_INIT(class,lock)
-extern void __retarget_lock_init(_LOCK_T *lock);
-#define __lock_init(lock) __retarget_lock_init(&lock)
-extern void __retarget_lock_init_recursive(_LOCK_T *lock);
-#define __lock_init_recursive(lock) __retarget_lock_init_recursive(&lock)
-extern void __retarget_lock_close(_LOCK_T lock);
-#define __lock_close(lock) __retarget_lock_close(lock)
-extern void __retarget_lock_close_recursive(_LOCK_T lock);
-#define __lock_close_recursive(lock) __retarget_lock_close_recursive(lock)
-extern void __retarget_lock_acquire(_LOCK_T lock);
-#define __lock_acquire(lock) __retarget_lock_acquire(lock)
-extern void __retarget_lock_acquire_recursive(_LOCK_T lock);
-#define __lock_acquire_recursive(lock) __retarget_lock_acquire_recursive(lock)
-extern int __retarget_lock_try_acquire(_LOCK_T lock);
-#define __lock_try_acquire(lock) __retarget_lock_try_acquire(lock)
-extern int __retarget_lock_try_acquire_recursive(_LOCK_T lock);
-#define __lock_try_acquire_recursive(lock) __retarget_lock_try_acquire_recursive(lock)
-extern void __retarget_lock_release(_LOCK_T lock);
-#define __lock_release(lock) __retarget_lock_release(lock)
-extern void __retarget_lock_release_recursive(_LOCK_T lock);
-#define __lock_release_recursive(lock) __retarget_lock_release_recursive(lock)
-typedef _LOCK_T _flock_t;
-struct _reent;
-struct __locale_t;
-struct _Bigint
-{
-  struct _Bigint *_next;
-  int _k, _maxwds, _sign, _wds;
-  __ULong _x[1];
-};
-struct __tm
-{
-  int __tm_sec;
-  int __tm_min;
-  int __tm_hour;
-  int __tm_mday;
-  int __tm_mon;
-  int __tm_year;
-  int __tm_wday;
-  int __tm_yday;
-  int __tm_isdst;
-};
-#define _ATEXIT_SIZE 32
-struct _on_exit_args {
- void * _fnargs[32];
- void * _dso_handle[32];
- __ULong _fntypes;
- __ULong _is_cxa;
-};
-struct _atexit {
- struct _atexit *_next;
- int _ind;
- void (*_fns[32])(void);
-        struct _on_exit_args _on_exit_args;
-};
-#define _ATEXIT_INIT {_NULL, 0, {_NULL}, {{_NULL}, {_NULL}, 0, 0}}
-struct __sbuf {
- unsigned char *_base;
- int _size;
-};
-#define _REENT_SMALL_CHECK_INIT(ptr) 
-struct __sFILE {
-  unsigned char *_p;
-  int _r;
-  int _w;
-  short _flags;
-  short _file;
-  struct __sbuf _bf;
-  int _lbfsize;
-  void * _cookie;
-  int (*_read) (struct _reent *, void *,
-        char *, int);
-  int (*_write) (struct _reent *, void *,
-         const char *,
-         int);
-  _fpos_t (*_seek) (struct _reent *, void *, _fpos_t, int);
-  int (*_close) (struct _reent *, void *);
-  struct __sbuf _ub;
-  unsigned char *_up;
-  int _ur;
-  unsigned char _ubuf[3];
-  unsigned char _nbuf[1];
-  struct __sbuf _lb;
-  int _blksize;
-  _off_t _offset;
-  struct _reent *_data;
-  _flock_t _lock;
-  _mbstate_t _mbstate;
-  int _flags2;
-};
-typedef struct __sFILE __FILE;
-extern __FILE __sf[3];
-struct _glue
-{
-  struct _glue *_next;
-  int _niobs;
-  __FILE *_iobs;
-};
-extern struct _glue __sglue;
-#define _RAND48_SEED_0 (0x330e)
-#define _RAND48_SEED_1 (0xabcd)
-#define _RAND48_SEED_2 (0x1234)
-#define _RAND48_MULT_0 (0xe66d)
-#define _RAND48_MULT_1 (0xdeec)
-#define _RAND48_MULT_2 (0x0005)
-#define _RAND48_ADD (0x000b)
-struct _rand48 {
-  unsigned short _seed[3];
-  unsigned short _mult[3];
-  unsigned short _add;
-};
-#define _REENT_EMERGENCY_SIZE 25
-#define _REENT_ASCTIME_SIZE 26
-#define _REENT_SIGNAL_SIZE 24
-#define _REENT_INIT_RESERVED_0 
-#define _REENT_INIT_RESERVED_1 
-#define _REENT_INIT_RESERVED_2 
-#define _REENT_INIT_RESERVED_6_7 
-#define _REENT_INIT_RESERVED_8 
-struct _reent
-{
-  int _errno;
-  __FILE *_stdin, *_stdout, *_stderr;
-  int _inc;
-  char _emergency[25];
-  struct __locale_t *_locale;
-  void (*__cleanup) (struct _reent *);
-  struct _Bigint *_result;
-  int _result_k;
-  struct _Bigint *_p5s;
-  struct _Bigint **_freelist;
-  int _cvtlen;
-  char *_cvtbuf;
-  union
-    {
-      struct
-        {
-          char * _strtok_last;
-          char _asctime_buf[26];
-          struct __tm _localtime_buf;
-          int _gamma_signgam;
-          __extension__ unsigned long long _rand_next;
-          struct _rand48 _r48;
-          _mbstate_t _mblen_state;
-          _mbstate_t _mbtowc_state;
-          _mbstate_t _wctomb_state;
-          char _l64a_buf[8];
-          char _signal_buf[24];
-          int _getdate_err;
-          _mbstate_t _mbrlen_state;
-          _mbstate_t _mbrtowc_state;
-          _mbstate_t _mbsrtowcs_state;
-          _mbstate_t _wcrtomb_state;
-          _mbstate_t _wcsrtombs_state;
-   int _h_errno;
-   char _getlocalename_l_buf[32 ];
-        } _reent;
-    } _new;
-  void (**_sig_func)(int);
-};
-#define _REENT_INIT(var) { 0, &__sf[0], &__sf[1], &__sf[2], 0, "", _REENT_INIT_RESERVED_1 _NULL, _REENT_INIT_RESERVED_0 _NULL, _NULL, 0, _NULL, _NULL, 0, _NULL, { { _REENT_INIT_RESERVED_2 _NULL, "", {0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 1, { {_RAND48_SEED_0, _RAND48_SEED_1, _RAND48_SEED_2}, {_RAND48_MULT_0, _RAND48_MULT_1, _RAND48_MULT_2}, _RAND48_ADD }, {0, {0}}, {0, {0}}, {0, {0}}, "", "", 0, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}}, {0, {0}} } }, _REENT_INIT_RESERVED_6_7 _NULL }
-#define _REENT_INIT_PTR_ZEROED(var) { (var)->_stdin = &__sf[0]; (var)->_stdout = &__sf[1]; (var)->_stderr = &__sf[2]; (var)->_new._reent._rand_next = 1; (var)->_new._reent._r48._seed[0] = _RAND48_SEED_0; (var)->_new._reent._r48._seed[1] = _RAND48_SEED_1; (var)->_new._reent._r48._seed[2] = _RAND48_SEED_2; (var)->_new._reent._r48._mult[0] = _RAND48_MULT_0; (var)->_new._reent._r48._mult[1] = _RAND48_MULT_1; (var)->_new._reent._r48._mult[2] = _RAND48_MULT_2; (var)->_new._reent._r48._add = _RAND48_ADD; }
-#define _REENT_CHECK_RAND48(ptr) 
-#define _REENT_CHECK_MP(ptr) 
-#define _REENT_CHECK_TM(ptr) 
-#define _REENT_CHECK_ASCTIME_BUF(ptr) 
-#define _REENT_CHECK_EMERGENCY(ptr) 
-#define _REENT_CHECK_MISC(ptr) 
-#define _REENT_CHECK_SIGNAL_BUF(ptr) 
-#define _REENT_SIGNGAM(ptr) ((ptr)->_new._reent._gamma_signgam)
-#define _REENT_RAND_NEXT(ptr) ((ptr)->_new._reent._rand_next)
-#define _REENT_RAND48_SEED(ptr) ((ptr)->_new._reent._r48._seed)
-#define _REENT_RAND48_MULT(ptr) ((ptr)->_new._reent._r48._mult)
-#define _REENT_RAND48_ADD(ptr) ((ptr)->_new._reent._r48._add)
-#define _REENT_MP_RESULT(ptr) ((ptr)->_result)
-#define _REENT_MP_RESULT_K(ptr) ((ptr)->_result_k)
-#define _REENT_MP_P5S(ptr) ((ptr)->_p5s)
-#define _REENT_MP_FREELIST(ptr) ((ptr)->_freelist)
-#define _REENT_ASCTIME_BUF(ptr) ((ptr)->_new._reent._asctime_buf)
-#define _REENT_TM(ptr) (&(ptr)->_new._reent._localtime_buf)
-#define _REENT_STRTOK_LAST(ptr) ((ptr)->_new._reent._strtok_last)
-#define _REENT_MBLEN_STATE(ptr) ((ptr)->_new._reent._mblen_state)
-#define _REENT_MBTOWC_STATE(ptr) ((ptr)->_new._reent._mbtowc_state)
-#define _REENT_WCTOMB_STATE(ptr) ((ptr)->_new._reent._wctomb_state)
-#define _REENT_MBRLEN_STATE(ptr) ((ptr)->_new._reent._mbrlen_state)
-#define _REENT_MBRTOWC_STATE(ptr) ((ptr)->_new._reent._mbrtowc_state)
-#define _REENT_MBSRTOWCS_STATE(ptr) ((ptr)->_new._reent._mbsrtowcs_state)
-#define _REENT_WCRTOMB_STATE(ptr) ((ptr)->_new._reent._wcrtomb_state)
-#define _REENT_WCSRTOMBS_STATE(ptr) ((ptr)->_new._reent._wcsrtombs_state)
-#define _REENT_L64A_BUF(ptr) ((ptr)->_new._reent._l64a_buf)
-#define _REENT_SIGNAL_BUF(ptr) ((ptr)->_new._reent._signal_buf)
-#define _REENT_GETDATE_ERR_P(ptr) (&((ptr)->_new._reent._getdate_err))
-#define _REENT_GETLOCALENAME_L_BUF(ptr) ((ptr)->_new._reent._getlocalename_l_buf)
-#define _REENT_CLEANUP(_ptr) ((_ptr)->__cleanup)
-#define _REENT_CVTBUF(_ptr) ((_ptr)->_cvtbuf)
-#define _REENT_CVTLEN(_ptr) ((_ptr)->_cvtlen)
-#define _REENT_EMERGENCY(_ptr) ((_ptr)->_emergency)
-#define _REENT_ERRNO(_ptr) ((_ptr)->_errno)
-#define _REENT_INC(_ptr) ((_ptr)->_inc)
-#define _REENT_LOCALE(_ptr) ((_ptr)->_locale)
-#define _REENT_SIG_FUNC(_ptr) ((_ptr)->_sig_func)
-#define _REENT_STDIN(_ptr) ((_ptr)->_stdin)
-#define _REENT_STDOUT(_ptr) ((_ptr)->_stdout)
-#define _REENT_STDERR(_ptr) ((_ptr)->_stderr)
-#define _REENT_INIT_PTR(var) { memset((var), 0, sizeof(*(var))); _REENT_INIT_PTR_ZEROED(var); }
-#define __ATTRIBUTE_IMPURE_PTR__ 
-extern struct _reent *_impure_ptr ;
-#define __ATTRIBUTE_IMPURE_DATA__ 
-extern struct _reent _impure_data ;
-#define _REENT _impure_ptr
-#define _REENT_IS_NULL(_ptr) ((_ptr) == NULL)
-#define _GLOBAL_REENT (&_impure_data)
-#define _Kmax (sizeof (size_t) << 3)
-extern struct _atexit *__atexit;
-extern struct _atexit __atexit0;
-extern void (*__stdio_exit_handler) (void);
-void _reclaim_reent (struct _reent *);
-extern int _fwalk_sglue (struct _reent *, int (*)(struct _reent *, __FILE *),
-    struct _glue *);
-
-typedef __FILE FILE;
-#define __FILE_defined 
-typedef _fpos_t fpos_t;
-typedef __off_t off_t;
-#define _OFF_T_DECLARED 
-typedef _ssize_t ssize_t;
-#define _SSIZE_T_DECLARED 
-#define _NEWLIB_STDIO_H 
-#define _flockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_acquire_recursive((fp)->_lock))
-#define _funlockfile(fp) (((fp)->_flags & __SSTR) ? 0 : __lock_release_recursive((fp)->_lock))
-#define __SLBF 0x0001
-#define __SNBF 0x0002
-#define __SRD 0x0004
-#define __SWR 0x0008
-#define __SRW 0x0010
-#define __SEOF 0x0020
-#define __SERR 0x0040
-#define __SMBF 0x0080
-#define __SAPP 0x0100
-#define __SSTR 0x0200
-#define __SOPT 0x0400
-#define __SNPT 0x0800
-#define __SOFF 0x1000
-#define __SORD 0x2000
-#define __SL64 0x8000
-#define __SNLK 0x0001
-#define __SWID 0x2000
-#define _IOFBF 0
-#define _IOLBF 1
-#define _IONBF 2
-#define EOF (-1)
-#define BUFSIZ 1024
-#define FOPEN_MAX 20
-#define FILENAME_MAX 1024
-#define L_tmpnam FILENAME_MAX
-#define P_tmpdir "/tmp"
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
-#define TMP_MAX 26
-#define stdin _REENT_STDIN(_REENT)
-#define stdout _REENT_STDOUT(_REENT)
-#define stderr _REENT_STDERR(_REENT)
-#define _stdin_r(x) _REENT_STDIN(x)
-#define _stdout_r(x) _REENT_STDOUT(x)
-#define _stderr_r(x) _REENT_STDERR(x)
-#define __VALIST __gnuc_va_list
-char * ctermid (char *);
-FILE * tmpfile (void);
-char * tmpnam (char *);
-char * tempnam (const char *, const char *) __attribute__((__malloc__)) __attribute__((__warn_unused_result__));
-int fclose (FILE *);
-int fflush (FILE *);
-FILE * freopen (const char *restrict, const char *restrict, FILE *restrict);
-void setbuf (FILE *restrict, char *restrict);
-int setvbuf (FILE *restrict, char *restrict, int, size_t);
-int fprintf (FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int fscanf (FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int printf (const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 1, 2)));
-int scanf (const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 1, 2)));
-int sscanf (const char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int vfprintf (FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vprintf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 1, 0)));
-int vsprintf (char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int fgetc (FILE *);
-char * fgets (char *restrict, int, FILE *restrict);
-int fputc (int, FILE *);
-int fputs (const char *restrict, FILE *restrict);
-int getc (FILE *);
-int getchar (void);
-char * gets (char *);
-int putc (int, FILE *);
-int putchar (int);
-int puts (const char *);
-int ungetc (int, FILE *);
-size_t fread (void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t fwrite (const void *restrict , size_t _size, size_t _n, FILE *);
-int fgetpos (FILE *restrict, fpos_t *restrict);
-int fseek (FILE *, long, int);
-int fsetpos (FILE *, const fpos_t *);
-long ftell ( FILE *);
-void rewind (FILE *);
-void clearerr (FILE *);
-int feof (FILE *);
-int ferror (FILE *);
-void perror (const char *);
-FILE * fopen (const char *restrict _name, const char *restrict _type);
-int sprintf (char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int remove (const char *);
-int rename (const char *, const char *);
-int fseeko (FILE *, off_t, int);
-off_t ftello (FILE *);
-int snprintf (char *restrict, size_t, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int vsnprintf (char *restrict, size_t, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int vfscanf (FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int vscanf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 1, 0)));
-int vsscanf (const char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int asiprintf (char **, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-char * asniprintf (char *, size_t *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-char * asnprintf (char *restrict, size_t *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int diprintf (int, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int fiprintf (FILE *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int fiscanf (FILE *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int iprintf (const char *, ...)
-               __attribute__ ((__format__ (__printf__, 1, 2)));
-int iscanf (const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 1, 2)));
-int siprintf (char *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int siscanf (const char *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int sniprintf (char *, size_t, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int vasiprintf (char **, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-char * vasniprintf (char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-char * vasnprintf (char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int vdiprintf (int, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vfiprintf (FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vfiscanf (FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int viprintf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 1, 0)));
-int viscanf (const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 1, 0)));
-int vsiprintf (char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int vsiscanf (const char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int vsniprintf (char *, size_t, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-FILE * fdopen (int, const char *);
-int fileno (FILE *);
-int pclose (FILE *);
-FILE * popen (const char *, const char *);
-void setbuffer (FILE *, char *, int);
-int setlinebuf (FILE *);
-int getw (FILE *);
-int putw (int, FILE *);
-int getc_unlocked (FILE *);
-int getchar_unlocked (void);
-void flockfile (FILE *);
-int ftrylockfile (FILE *);
-void funlockfile (FILE *);
-int putc_unlocked (int, FILE *);
-int putchar_unlocked (int);
-int dprintf (int, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-FILE * fmemopen (void *restrict, size_t, const char *restrict);
-FILE * open_memstream (char **, size_t *);
-int vdprintf (int, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int renameat (int, const char *, int, const char *);
-int _asiprintf_r (struct _reent *, char **, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-char * _asniprintf_r (struct _reent *, char *, size_t *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-char * _asnprintf_r (struct _reent *, char *restrict, size_t *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-int _asprintf_r (struct _reent *, char **restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _diprintf_r (struct _reent *, int, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _dprintf_r (struct _reent *, int, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _fclose_r (struct _reent *, FILE *);
-int _fcloseall_r (struct _reent *);
-FILE * _fdopen_r (struct _reent *, int, const char *);
-int _fflush_r (struct _reent *, FILE *);
-int _fgetc_r (struct _reent *, FILE *);
-int _fgetc_unlocked_r (struct _reent *, FILE *);
-char * _fgets_r (struct _reent *, char *restrict, int, FILE *restrict);
-char * _fgets_unlocked_r (struct _reent *, char *restrict, int, FILE *restrict);
-int _fgetpos_r (struct _reent *, FILE *, fpos_t *);
-int _fsetpos_r (struct _reent *, FILE *, const fpos_t *);
-int _fiprintf_r (struct _reent *, FILE *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _fiscanf_r (struct _reent *, FILE *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-FILE * _fmemopen_r (struct _reent *, void *restrict, size_t, const char *restrict);
-FILE * _fopen_r (struct _reent *, const char *restrict, const char *restrict);
-FILE * _freopen_r (struct _reent *, const char *restrict, const char *restrict, FILE *restrict);
-int _fprintf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _fpurge_r (struct _reent *, FILE *);
-int _fputc_r (struct _reent *, int, FILE *);
-int _fputc_unlocked_r (struct _reent *, int, FILE *);
-int _fputs_r (struct _reent *, const char *restrict, FILE *restrict);
-int _fputs_unlocked_r (struct _reent *, const char *restrict, FILE *restrict);
-size_t _fread_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t _fread_unlocked_r (struct _reent *, void *restrict, size_t _size, size_t _n, FILE *restrict);
-int _fscanf_r (struct _reent *, FILE *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-int _fseek_r (struct _reent *, FILE *, long, int);
-int _fseeko_r (struct _reent *, FILE *, _off_t, int);
-long _ftell_r (struct _reent *, FILE *);
-_off_t _ftello_r (struct _reent *, FILE *);
-void _rewind_r (struct _reent *, FILE *);
-size_t _fwrite_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t _fwrite_unlocked_r (struct _reent *, const void *restrict, size_t _size, size_t _n, FILE *restrict);
-int _getc_r (struct _reent *, FILE *);
-int _getc_unlocked_r (struct _reent *, FILE *);
-int _getchar_r (struct _reent *);
-int _getchar_unlocked_r (struct _reent *);
-char * _gets_r (struct _reent *, char *);
-int _iprintf_r (struct _reent *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int _iscanf_r (struct _reent *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-FILE * _open_memstream_r (struct _reent *, char **, size_t *);
-void _perror_r (struct _reent *, const char *);
-int _printf_r (struct _reent *, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 2, 3)));
-int _putc_r (struct _reent *, int, FILE *);
-int _putc_unlocked_r (struct _reent *, int, FILE *);
-int _putchar_unlocked_r (struct _reent *, int);
-int _putchar_r (struct _reent *, int);
-int _puts_r (struct _reent *, const char *);
-int _remove_r (struct _reent *, const char *);
-int _rename_r (struct _reent *,
-      const char *_old, const char *_new);
-int _scanf_r (struct _reent *, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 2, 3)));
-int _siprintf_r (struct _reent *, char *, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _siscanf_r (struct _reent *, const char *, const char *, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-int _sniprintf_r (struct _reent *, char *, size_t, const char *, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-int _snprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 4, 5)));
-int _sprintf_r (struct _reent *, char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__printf__, 3, 4)));
-int _sscanf_r (struct _reent *, const char *restrict, const char *restrict, ...)
-               __attribute__ ((__format__ (__scanf__, 3, 4)));
-char * _tempnam_r (struct _reent *, const char *, const char *);
-FILE * _tmpfile_r (struct _reent *);
-char * _tmpnam_r (struct _reent *, char *);
-int _ungetc_r (struct _reent *, int, FILE *);
-int _vasiprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-char * _vasniprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-char * _vasnprintf_r (struct _reent*, char *, size_t *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-int _vasprintf_r (struct _reent *, char **, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vdiprintf_r (struct _reent *, int, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vdprintf_r (struct _reent *, int, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vfiprintf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vfiscanf_r (struct _reent *, FILE *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int _vfprintf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vfscanf_r (struct _reent *, FILE *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int _viprintf_r (struct _reent *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int _viscanf_r (struct _reent *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int _vprintf_r (struct _reent *, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 2, 0)));
-int _vscanf_r (struct _reent *, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 2, 0)));
-int _vsiprintf_r (struct _reent *, char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vsiscanf_r (struct _reent *, const char *, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int _vsniprintf_r (struct _reent *, char *, size_t, const char *, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-int _vsnprintf_r (struct _reent *, char *restrict, size_t, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 4, 0)));
-int _vsprintf_r (struct _reent *, char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__printf__, 3, 0)));
-int _vsscanf_r (struct _reent *, const char *restrict, const char *restrict, __gnuc_va_list)
-               __attribute__ ((__format__ (__scanf__, 3, 0)));
-int fpurge (FILE *);
-ssize_t __getdelim (char **, size_t *, int, FILE *);
-ssize_t __getline (char **, size_t *, FILE *);
-void clearerr_unlocked (FILE *);
-int feof_unlocked (FILE *);
-int ferror_unlocked (FILE *);
-int fileno_unlocked (FILE *);
-int fflush_unlocked (FILE *);
-int fgetc_unlocked (FILE *);
-int fputc_unlocked (int, FILE *);
-size_t fread_unlocked (void *restrict, size_t _size, size_t _n, FILE *restrict);
-size_t fwrite_unlocked (const void *restrict , size_t _size, size_t _n, FILE *);
-int __srget_r (struct _reent *, FILE *);
-int __swbuf_r (struct _reent *, int, FILE *);
-FILE *funopen (const void *__cookie,
-  int (*__readfn)(void *__cookie, char *__buf,
-    int __n),
-  int (*__writefn)(void *__cookie, const char *__buf,
-     int __n),
-  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
-  int (*__closefn)(void *__cookie));
-FILE *_funopen_r (struct _reent *, const void *__cookie,
-  int (*__readfn)(void *__cookie, char *__buf,
-    int __n),
-  int (*__writefn)(void *__cookie, const char *__buf,
-     int __n),
-  fpos_t (*__seekfn)(void *__cookie, fpos_t __off, int __whence),
-  int (*__closefn)(void *__cookie));
-#define fropen(__cookie,__fn) funopen(__cookie, __fn, NULL, NULL, NULL)
-#define fwopen(__cookie,__fn) funopen(__cookie, NULL, __fn, NULL, NULL)
-#define __sgetc_raw_r(__ptr,__f) (--(__f)->_r < 0 ? __srget_r(__ptr, __f) : (int)(*(__f)->_p++))
-#define __sgetc_r(__ptr,__p) __sgetc_raw_r(__ptr, __p)
-static __inline__ int __sputc_r(struct _reent *_ptr, int _c, FILE *_p) {
- if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
-  return (*_p->_p++ = _c);
- else
-  return (__swbuf_r(_ptr, _c, _p));
-}
-#define __sfeof(p) ((int)(((p)->_flags & __SEOF) != 0))
-#define __sferror(p) ((int)(((p)->_flags & __SERR) != 0))
-#define __sclearerr(p) ((void)((p)->_flags &= ~(__SERR|__SEOF)))
-#define __sfileno(p) ((p)->_file)
-#define feof(p) __sfeof(p)
-#define ferror(p) __sferror(p)
-#define clearerr(p) __sclearerr(p)
-#define feof_unlocked(p) __sfeof(p)
-#define ferror_unlocked(p) __sferror(p)
-#define clearerr_unlocked(p) __sclearerr(p)
-static __inline int
-_getchar_unlocked(void)
-{
- struct _reent *_ptr;
- _ptr = _impure_ptr;
- return ((--(((_ptr)->_stdin))->_r < 0 ? __srget_r(_ptr, ((_ptr)->_stdin)) : (int)(*(((_ptr)->_stdin))->_p++)));
-}
-static __inline int
-_putchar_unlocked(int _c)
-{
- struct _reent *_ptr;
- _ptr = _impure_ptr;
- return (__sputc_r(_ptr, _c, ((_ptr)->_stdout)));
-}
-#define getchar_unlocked() _getchar_unlocked()
-#define putchar_unlocked(_c) _putchar_unlocked(_c)
-#define fast_putc(x,p) (--(p)->_w < 0 ? __swbuf_r(_REENT, (int)(x), p) == EOF : (*(p)->_p = (x), (p)->_p++, 0))
-#define L_ctermid 16
-
 #define CYW43_PRINTF(...) printf(__VA_ARGS__)
 #define CYW43_VDEBUG(...) (void)0
 #define CYW43_VERBOSE_DEBUG 0
@@ -29912,2232 +32434,8 @@ _putchar_unlocked(int _c)
 #define CYW43_DEFAULT_IP_DNS LWIP_MAKEU32(8, 8, 8, 8)
 #define CYW43_CB_TCPIP_INIT_EXTRA(self,itf) do { } while (0)
 #define CYW43_CB_TCPIP_DEINIT_EXTRA(self,itf) do { } while (0)
-#define LWIP_HDR_NETIF_H 
-#define LWIP_HDR_OPT_H 
-#define __LWIPOPTS_H__ 
-#define NO_SYS 1
-#define LWIP_SOCKET 0
-#define MEM_LIBC_MALLOC 0
-#define MEM_ALIGNMENT 4
-#define MEM_SIZE 4000
-#define MEMP_NUM_TCP_SEG 32
-#define MEMP_NUM_ARP_QUEUE 10
-#define PBUF_POOL_SIZE 24
-#define LWIP_ARP 1
-#define LWIP_ETHERNET 1
-#define LWIP_ICMP 1
-#define LWIP_RAW 1
-#define TCP_WND (8 * TCP_MSS)
-#define TCP_MSS 1460
-#define TCP_SND_BUF (8 * TCP_MSS)
-#define TCP_SND_QUEUELEN ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
-#define LWIP_NETIF_STATUS_CALLBACK 1
-#define LWIP_NETIF_LINK_CALLBACK 1
-#define LWIP_NETIF_HOSTNAME 1
-#define LWIP_NETCONN 0
-#define MEM_STATS 1
-#define SYS_STATS 1
-#define MEMP_STATS 1
-#define LINK_STATS 1
-#define LWIP_CHKSUM_ALGORITHM 3
-#define LWIP_DHCP 1
-#define LWIP_IPV4 1
-#define LWIP_TCP 1
-#define LWIP_UDP 1
-#define LWIP_DNS 1
-#define LWIP_TCP_KEEPALIVE 1
-#define LWIP_NETIF_TX_SINGLE_PBUF 1
-#define DHCP_DOES_ARP_CHECK 0
-#define LWIP_DHCP_DOES_ACD_CHECK 0
-#define LWIP_DEBUG 1
-#define LWIP_STATS 1
-#define LWIP_STATS_DISPLAY 1
-#define ETHARP_DEBUG LWIP_DBG_OFF
-#define NETIF_DEBUG LWIP_DBG_OFF
-#define PBUF_DEBUG LWIP_DBG_OFF
-#define API_LIB_DEBUG LWIP_DBG_OFF
-#define API_MSG_DEBUG LWIP_DBG_OFF
-#define SOCKETS_DEBUG LWIP_DBG_OFF
-#define ICMP_DEBUG LWIP_DBG_OFF
-#define INET_DEBUG LWIP_DBG_OFF
-#define IP_DEBUG LWIP_DBG_OFF
-#define IP_REASS_DEBUG LWIP_DBG_OFF
-#define RAW_DEBUG LWIP_DBG_OFF
-#define MEM_DEBUG LWIP_DBG_OFF
-#define MEMP_DEBUG LWIP_DBG_OFF
-#define SYS_DEBUG LWIP_DBG_OFF
-#define TCP_DEBUG LWIP_DBG_OFF
-#define TCP_INPUT_DEBUG LWIP_DBG_OFF
-#define TCP_OUTPUT_DEBUG LWIP_DBG_OFF
-#define TCP_RTO_DEBUG LWIP_DBG_OFF
-#define TCP_CWND_DEBUG LWIP_DBG_OFF
-#define TCP_WND_DEBUG LWIP_DBG_OFF
-#define TCP_FR_DEBUG LWIP_DBG_OFF
-#define TCP_QLEN_DEBUG LWIP_DBG_OFF
-#define TCP_RST_DEBUG LWIP_DBG_OFF
-#define UDP_DEBUG LWIP_DBG_OFF
-#define TCPIP_DEBUG LWIP_DBG_OFF
-#define PPP_DEBUG LWIP_DBG_OFF
-#define SLIP_DEBUG LWIP_DBG_OFF
-#define DHCP_DEBUG LWIP_DBG_OFF
-#undef TCP_WND
-#define TCP_WND 16384
-#undef LWIP_DEBUG
-#define LWIP_HDR_DEBUG_H 
-#define LWIP_HDR_ARCH_H 
-#define LITTLE_ENDIAN 1234
-#define BIG_ENDIAN 4321
-#define __CC_H__ 
-#define _SYS_TIME_H_ 
-#define _SYS__TIMEVAL_H_ 
-typedef __suseconds_t suseconds_t;
-#define _SUSECONDS_T_DECLARED 
-typedef __int_least64_t time_t;
-#define __time_t_defined 
-#define _TIME_T_DECLARED 
-#define _TIMEVAL_DEFINED 
-struct timeval {
- time_t tv_sec;
- suseconds_t tv_usec;
-};
-typedef __uint8_t u_int8_t;
-typedef __uint16_t u_int16_t;
-typedef __uint32_t u_int32_t;
-typedef __uint64_t u_int64_t;
-typedef __intptr_t register_t;
-#define __BIT_TYPES_DEFINED__ 1
-#define _SYS_TYPES_H 
-#define __MACHINE_ENDIAN_H__ 
-#define _LITTLE_ENDIAN 1234
-#define _BIG_ENDIAN 4321
-#define _PDP_ENDIAN 3412
-#define _BYTE_ORDER _LITTLE_ENDIAN
-#define _QUAD_HIGHWORD 1
-#define _QUAD_LOWWORD 0
-#define LITTLE_ENDIAN _LITTLE_ENDIAN
-#define BIG_ENDIAN _BIG_ENDIAN
-#define PDP_ENDIAN _PDP_ENDIAN
-#define BYTE_ORDER _BYTE_ORDER
-#define __bswap16(_x) __builtin_bswap16(_x)
-#define __bswap32(_x) __builtin_bswap32(_x)
-#define __bswap64(_x) __builtin_bswap64(_x)
-#define __htonl(_x) __bswap32(_x)
-#define __htons(_x) __bswap16(_x)
-#define __ntohl(_x) __bswap32(_x)
-#define __ntohs(_x) __bswap16(_x)
-#define _SYS_SELECT_H 
-#define _SYS__SIGSET_H_ 
-typedef unsigned long __sigset_t;
-#define _SYS_TIMESPEC_H_ 
-#define _SYS__TIMESPEC_H_ 
-struct timespec {
- time_t tv_sec;
- long tv_nsec;
-};
-#define TIMEVAL_TO_TIMESPEC(tv,ts) do { (ts)->tv_sec = (tv)->tv_sec; (ts)->tv_nsec = (tv)->tv_usec * 1000; } while (0)
-#define TIMESPEC_TO_TIMEVAL(tv,ts) do { (tv)->tv_sec = (ts)->tv_sec; (tv)->tv_usec = (ts)->tv_nsec / 1000; } while (0)
-struct itimerspec {
- struct timespec it_interval;
- struct timespec it_value;
-};
-#define _SIGSET_T_DECLARED 
-typedef __sigset_t sigset_t;
-#define _SYS_TYPES_FD_SET 
-#define FD_SETSIZE 64
-typedef unsigned long __fd_mask;
-typedef __fd_mask fd_mask;
-#define _NFDBITS ((int)sizeof(__fd_mask) * 8)
-#define NFDBITS _NFDBITS
-#define _howmany(x,y) (((x) + ((y) - 1)) / (y))
-typedef struct fd_set {
- __fd_mask __fds_bits[(((64) + ((((int)sizeof(__fd_mask) * 8)) - 1)) / (((int)sizeof(__fd_mask) * 8)))];
-} fd_set;
-#define fds_bits __fds_bits
-#define __fdset_mask(n) ((__fd_mask)1 << ((n) % _NFDBITS))
-#define FD_CLR(n,p) ((p)->__fds_bits[(n)/_NFDBITS] &= ~__fdset_mask(n))
-#define FD_COPY(f,t) (void)(*(t) = *(f))
-#define FD_ISSET(n,p) (((p)->__fds_bits[(n)/_NFDBITS] & __fdset_mask(n)) != 0)
-#define FD_SET(n,p) ((p)->__fds_bits[(n)/_NFDBITS] |= __fdset_mask(n))
-#define FD_ZERO(p) do { fd_set *_p; __size_t _n; _p = (p); _n = _howmany(FD_SETSIZE, _NFDBITS); while (_n > 0) _p->__fds_bits[--_n] = 0; } while (0)
-
-int select (int __n, fd_set *__readfds, fd_set *__writefds, fd_set *__exceptfds, struct timeval *__timeout);
-int pselect (int __n, fd_set *__readfds, fd_set *__writefds, fd_set *__exceptfds, const struct timespec *__timeout, const sigset_t *__set);
-
-#define physadr physadr_t
-#define quad quad_t
-typedef __uint32_t in_addr_t;
-#define _IN_ADDR_T_DECLARED 
-typedef __uint16_t in_port_t;
-#define _IN_PORT_T_DECLARED 
-typedef __uintptr_t u_register_t;
-typedef unsigned char u_char;
-#define __u_char_defined 
-typedef unsigned short u_short;
-#define __u_short_defined 
-typedef unsigned int u_int;
-#define __u_int_defined 
-typedef unsigned long u_long;
-#define __u_long_defined 
-#define _BSDTYPES_DEFINED 
-typedef unsigned short ushort;
-typedef unsigned int uint;
-typedef unsigned long ulong;
-typedef __blkcnt_t blkcnt_t;
-#define _BLKCNT_T_DECLARED 
-typedef __blksize_t blksize_t;
-#define _BLKSIZE_T_DECLARED 
-typedef unsigned long clock_t;
-#define __clock_t_defined 
-#define _CLOCK_T_DECLARED 
-typedef __daddr_t daddr_t;
-typedef char * caddr_t;
-#define __caddr_t_defined 
-typedef __fsblkcnt_t fsblkcnt_t;
-typedef __fsfilcnt_t fsfilcnt_t;
-#define _FSBLKCNT_T_DECLARED 
-typedef __id_t id_t;
-#define _ID_T_DECLARED 
-typedef __ino_t ino_t;
-#define _INO_T_DECLARED 
-typedef __dev_t dev_t;
-#define _DEV_T_DECLARED 
-typedef __uid_t uid_t;
-#define _UID_T_DECLARED 
-typedef __gid_t gid_t;
-#define _GID_T_DECLARED 
-typedef __pid_t pid_t;
-#define _PID_T_DECLARED 
-typedef __key_t key_t;
-#define _KEY_T_DECLARED 
-typedef __mode_t mode_t;
-#define _MODE_T_DECLARED 
-typedef __nlink_t nlink_t;
-#define _NLINK_T_DECLARED 
-typedef __clockid_t clockid_t;
-#define __clockid_t_defined 
-#define _CLOCKID_T_DECLARED 
-typedef __timer_t timer_t;
-#define __timer_t_defined 
-#define _TIMER_T_DECLARED 
-typedef __useconds_t useconds_t;
-#define _USECONDS_T_DECLARED 
-typedef __int64_t sbintime_t;
-#define _SYS__PTHREADTYPES_H_ 
-#define _SYS_SCHED_H_ 
-#define SCHED_OTHER 0
-#define SCHED_FIFO 1
-#define SCHED_RR 2
-struct sched_param {
-  int sched_priority;
-};
-typedef __uint32_t pthread_t;
-#define PTHREAD_SCOPE_PROCESS 0
-#define PTHREAD_SCOPE_SYSTEM 1
-#define PTHREAD_INHERIT_SCHED 1
-#define PTHREAD_EXPLICIT_SCHED 2
-#define PTHREAD_CREATE_DETACHED 0
-#define PTHREAD_CREATE_JOINABLE 1
-typedef struct {
-  int is_initialized;
-  void *stackaddr;
-  int stacksize;
-  int contentionscope;
-  int inheritsched;
-  int schedpolicy;
-  struct sched_param schedparam;
-  int detachstate;
-} pthread_attr_t;
-typedef __uint32_t pthread_mutex_t;
-typedef struct {
-  int is_initialized;
-  int recursive;
-} pthread_mutexattr_t;
-#define _PTHREAD_MUTEX_INITIALIZER ((pthread_mutex_t) 0xFFFFFFFF)
-typedef __uint32_t pthread_cond_t;
-#define _PTHREAD_COND_INITIALIZER ((pthread_cond_t) 0xFFFFFFFF)
-typedef struct {
-  int is_initialized;
-  clock_t clock;
-} pthread_condattr_t;
-typedef __uint32_t pthread_key_t;
-typedef struct {
-  int is_initialized;
-  int init_executed;
-} pthread_once_t;
-#define _PTHREAD_ONCE_INIT { 1, 0 }
-#undef __need_inttypes
-struct timezone {
- int tz_minuteswest;
- int tz_dsttime;
-};
-#define DST_NONE 0
-#define DST_USA 1
-#define DST_AUST 2
-#define DST_WET 3
-#define DST_MET 4
-#define DST_EET 5
-#define DST_CAN 6
-struct bintime {
- time_t sec;
- uint64_t frac;
-};
-static __inline void
-bintime_addx(struct bintime *_bt, uint64_t _x)
-{
- uint64_t _u;
- _u = _bt->frac;
- _bt->frac += _x;
- if (_u > _bt->frac)
-  _bt->sec++;
-}
-static __inline void
-bintime_add(struct bintime *_bt, const struct bintime *_bt2)
-{
- uint64_t _u;
- _u = _bt->frac;
- _bt->frac += _bt2->frac;
- if (_u > _bt->frac)
-  _bt->sec++;
- _bt->sec += _bt2->sec;
-}
-static __inline void
-bintime_sub(struct bintime *_bt, const struct bintime *_bt2)
-{
- uint64_t _u;
- _u = _bt->frac;
- _bt->frac -= _bt2->frac;
- if (_u < _bt->frac)
-  _bt->sec--;
- _bt->sec -= _bt2->sec;
-}
-static __inline void
-bintime_mul(struct bintime *_bt, u_int _x)
-{
- uint64_t _p1, _p2;
- _p1 = (_bt->frac & 0xffffffffull) * _x;
- _p2 = (_bt->frac >> 32) * _x + (_p1 >> 32);
- _bt->sec *= _x;
- _bt->sec += (_p2 >> 32);
- _bt->frac = (_p2 << 32) | (_p1 & 0xffffffffull);
-}
-static __inline void
-bintime_shift(struct bintime *_bt, int _exp)
-{
- if (_exp > 0) {
-  _bt->sec <<= _exp;
-  _bt->sec |= _bt->frac >> (64 - _exp);
-  _bt->frac <<= _exp;
- } else if (_exp < 0) {
-  _bt->frac >>= -_exp;
-  _bt->frac |= (uint64_t)_bt->sec << (64 + _exp);
-  _bt->sec >>= -_exp;
- }
-}
-#define bintime_clear(a) ((a)->sec = (a)->frac = 0)
-#define bintime_isset(a) ((a)->sec || (a)->frac)
-#define bintime_cmp(a,b,cmp) (((a)->sec == (b)->sec) ? ((a)->frac cmp (b)->frac) : ((a)->sec cmp (b)->sec))
-#define SBT_1S ((sbintime_t)1 << 32)
-#define SBT_1M (SBT_1S * 60)
-#define SBT_1MS (SBT_1S / 1000)
-#define SBT_1US (SBT_1S / 1000000)
-#define SBT_1NS (SBT_1S / 1000000000)
-#define SBT_MAX 0x7fffffffffffffffLL
-static __inline int
-sbintime_getsec(sbintime_t _sbt)
-{
- return (_sbt >> 32);
-}
-static __inline sbintime_t
-bttosbt(const struct bintime _bt)
-{
- return (((sbintime_t)_bt.sec << 32) + (_bt.frac >> 32));
-}
-static __inline struct bintime
-sbttobt(sbintime_t _sbt)
-{
- struct bintime _bt;
- _bt.sec = _sbt >> 32;
- _bt.frac = _sbt << 32;
- return (_bt);
-}
-static __inline int64_t
-sbttons(sbintime_t _sbt)
-{
- uint64_t ns;
- ns = _sbt;
- if (ns >= ((sbintime_t)1 << 32))
-  ns = (ns >> 32) * 1000000000;
- else
-  ns = 0;
- return (ns + (1000000000 * (_sbt & 0xffffffffu) >> 32));
-}
-static __inline sbintime_t
-nstosbt(int64_t _ns)
-{
- sbintime_t sb = 0;
- if (_ns >= ((sbintime_t)1 << 32)) {
-  sb = (_ns / 1000000000) * ((sbintime_t)1 << 32);
-  _ns = _ns % 1000000000;
- }
- sb += ((_ns * 9223372037ull) + 0x7fffffff) >> 31;
- return (sb);
-}
-static __inline int64_t
-sbttous(sbintime_t _sbt)
-{
- return ((1000000 * _sbt) >> 32);
-}
-static __inline sbintime_t
-ustosbt(int64_t _us)
-{
- sbintime_t sb = 0;
- if (_us >= ((sbintime_t)1 << 32)) {
-  sb = (_us / 1000000) * ((sbintime_t)1 << 32);
-  _us = _us % 1000000;
- }
- sb += ((_us * 9223372036855ull) + 0x7fffffff) >> 31;
- return (sb);
-}
-static __inline int64_t
-sbttoms(sbintime_t _sbt)
-{
- return ((1000 * _sbt) >> 32);
-}
-static __inline sbintime_t
-mstosbt(int64_t _ms)
-{
- sbintime_t sb = 0;
- if (_ms >= ((sbintime_t)1 << 32)) {
-  sb = (_ms / 1000) * ((sbintime_t)1 << 32);
-  _ms = _ms % 1000;
- }
- sb += ((_ms * 9223372036854776ull) + 0x7fffffff) >> 31;
- return (sb);
-}
-static __inline void
-bintime2timespec(const struct bintime *_bt, struct timespec *_ts)
-{
- _ts->tv_sec = _bt->sec;
- _ts->tv_nsec = ((uint64_t)1000000000 *
-     (uint32_t)(_bt->frac >> 32)) >> 32;
-}
-static __inline void
-timespec2bintime(const struct timespec *_ts, struct bintime *_bt)
-{
- _bt->sec = _ts->tv_sec;
- _bt->frac = _ts->tv_nsec * (uint64_t)18446744073LL;
-}
-static __inline void
-bintime2timeval(const struct bintime *_bt, struct timeval *_tv)
-{
- _tv->tv_sec = _bt->sec;
- _tv->tv_usec = ((uint64_t)1000000 * (uint32_t)(_bt->frac >> 32)) >> 32;
-}
-static __inline void
-timeval2bintime(const struct timeval *_tv, struct bintime *_bt)
-{
- _bt->sec = _tv->tv_sec;
- _bt->frac = _tv->tv_usec * (uint64_t)18446744073709LL;
-}
-static __inline struct timespec
-sbttots(sbintime_t _sbt)
-{
- struct timespec _ts;
- _ts.tv_sec = _sbt >> 32;
- _ts.tv_nsec = sbttons((uint32_t)_sbt);
- return (_ts);
-}
-static __inline sbintime_t
-tstosbt(struct timespec _ts)
-{
- return (((sbintime_t)_ts.tv_sec << 32) + nstosbt(_ts.tv_nsec));
-}
-static __inline struct timeval
-sbttotv(sbintime_t _sbt)
-{
- struct timeval _tv;
- _tv.tv_sec = _sbt >> 32;
- _tv.tv_usec = sbttous((uint32_t)_sbt);
- return (_tv);
-}
-static __inline sbintime_t
-tvtosbt(struct timeval _tv)
-{
- return (((sbintime_t)_tv.tv_sec << 32) + ustosbt(_tv.tv_usec));
-}
-#define timespecclear(tvp) ((tvp)->tv_sec = (tvp)->tv_nsec = 0)
-#define timespecisset(tvp) ((tvp)->tv_sec || (tvp)->tv_nsec)
-#define timespeccmp(tvp,uvp,cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_nsec cmp (uvp)->tv_nsec) : ((tvp)->tv_sec cmp (uvp)->tv_sec))
-#define timespecadd(tsp,usp,vsp) do { (vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec; (vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec; if ((vsp)->tv_nsec >= 1000000000L) { (vsp)->tv_sec++; (vsp)->tv_nsec -= 1000000000L; } } while (0)
-#define timespecsub(tsp,usp,vsp) do { (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec; (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec; if ((vsp)->tv_nsec < 0) { (vsp)->tv_sec--; (vsp)->tv_nsec += 1000000000L; } } while (0)
-#define timerclear(tvp) ((tvp)->tv_sec = (tvp)->tv_usec = 0)
-#define timerisset(tvp) ((tvp)->tv_sec || (tvp)->tv_usec)
-#define timercmp(tvp,uvp,cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_usec cmp (uvp)->tv_usec) : ((tvp)->tv_sec cmp (uvp)->tv_sec))
-#define timeradd(tvp,uvp,vvp) do { (vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec; (vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec; if ((vvp)->tv_usec >= 1000000) { (vvp)->tv_sec++; (vvp)->tv_usec -= 1000000; } } while (0)
-#define timersub(tvp,uvp,vvp) do { (vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec; (vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec; if ((vvp)->tv_usec < 0) { (vvp)->tv_sec--; (vvp)->tv_usec += 1000000; } } while (0)
-#define ITIMER_REAL 0
-#define ITIMER_VIRTUAL 1
-#define ITIMER_PROF 2
-struct itimerval {
- struct timeval it_interval;
- struct timeval it_value;
-};
-#define _TIME_H_ 
-#define __need_size_t 
-#define __need_NULL 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define _MACHTIME_H_ 
-#define _CLOCKS_PER_SEC_ 100
-#define CLOCKS_PER_SEC _CLOCKS_PER_SEC_
-#define CLK_TCK CLOCKS_PER_SEC
-#define _SYS__LOCALE_H 
-struct __locale_t;
-typedef struct __locale_t *locale_t;
-
-struct tm
-{
-  int tm_sec;
-  int tm_min;
-  int tm_hour;
-  int tm_mday;
-  int tm_mon;
-  int tm_year;
-  int tm_wday;
-  int tm_yday;
-  int tm_isdst;
-};
-clock_t clock (void);
-double difftime (time_t _time2, time_t _time1);
-time_t mktime (struct tm *_timeptr);
-time_t time (time_t *_timer);
-char *asctime (const struct tm *_tblock);
-char *ctime (const time_t *_time);
-struct tm *gmtime (const time_t *_timer);
-struct tm *localtime (const time_t *_timer);
-size_t strftime (char *restrict _s,
-        size_t _maxsize, const char *restrict _fmt,
-        const struct tm *restrict _t);
-extern size_t strftime_l (char *restrict _s, size_t _maxsize,
-     const char *restrict _fmt,
-     const struct tm *restrict _t, locale_t _l);
-char *asctime_r (const struct tm *restrict,
-     char *restrict);
-char *ctime_r (const time_t *, char *);
-struct tm *gmtime_r (const time_t *restrict,
-     struct tm *restrict);
-struct tm *localtime_r (const time_t *restrict,
-     struct tm *restrict);
-
-void tzset (void);
-void _tzset_r (struct _reent *);
-extern long _timezone;
-extern int _daylight;
-extern char *_tzname[2];
-#define tzname _tzname
-#define CLOCK_ENABLED 1
-#define CLOCK_DISABLED 0
-#define CLOCK_ALLOWED 1
-#define CLOCK_DISALLOWED 0
-#define TIMER_ABSTIME 4
-#define CLOCK_REALTIME (1)
-
-int utimes (const char *, const struct timeval [2]);
-int adjtime (const struct timeval *, struct timeval *);
-int futimes (int, const struct timeval [2]);
-int lutimes (const char *, const struct timeval [2]);
-int settimeofday (const struct timeval *, const struct timezone *);
-int getitimer (int __which, struct itimerval *__value);
-int setitimer (int __which, const struct itimerval *restrict __value,
-     struct itimerval *restrict __ovalue);
-int gettimeofday (struct timeval *restrict __p,
-     void *restrict __tz);
-
-#define PICO_LWIP_CUSTOM_LOCK_TCPIP_CORE 1
-typedef int sys_prot_t;
-#define PACK_STRUCT_BEGIN 
-#define PACK_STRUCT_STRUCT __attribute__ ((__packed__))
-#define PACK_STRUCT_END 
-#define PACK_STRUCT_FIELD(x) x
-#define LWIP_PLATFORM_ASSERT(x) panic(x)
-#define _PICO_RAND_H 
-#define PICO_RAND_ENTROPY_SRC_TRNG 1
-#define PICO_RAND_ENTROPY_SRC_TIME 1
-#define PICO_RAND_SEED_ENTROPY_SRC_ROSC PICO_RAND_ENTROPY_SRC_ROSC
-#define PICO_RAND_SEED_ENTROPY_SRC_TRNG PICO_RAND_ENTROPY_SRC_TRNG
-#define PICO_RAND_SEED_ENTROPY_SRC_TIME PICO_RAND_ENTROPY_SRC_TIME
-#define PICO_RAND_SEED_ENTROPY_SRC_BUS_PERF_COUNTER PICO_RAND_ENTROPY_SRC_BUS_PERF_COUNTER
-#define PICO_RAND_SEED_ENTROPY_SRC_BOOT_RANDOM 1
-#define PICO_RAND_SEED_ENTROPY_SRC_BOARD_ID (!PICO_RAND_SEED_ENTROPY_SRC_BOOT_RANDOM)
-#define PICO_RAND_ROSC_BIT_SAMPLE_COUNT 1
-#define PICO_RAND_MIN_ROSC_BIT_SAMPLE_TIME_US 10u
-#define PICO_RAND_BUS_PERF_COUNTER_EVENT arbiter_sram5_perf_event_access
-#define PICO_RAND_RAM_HASH_END SRAM_END
-#define PICO_RAND_RAM_HASH_START (PICO_RAND_RAM_HASH_END - 1024u)
-typedef struct rng_128 {
-    uint64_t r[2];
-} rng_128_t;
-void get_rand_128(rng_128_t *rand128);
-uint64_t get_rand_64(void);
-uint32_t get_rand_32(void);
-#define LWIP_RAND() get_rand_32()
-#define LWIP_PLATFORM_DIAG(x) do {printf x;} while(0)
-#define _STDLIB_H_ 
-#define __need_size_t 
-#define __need_wchar_t 
-#define __need_NULL 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define _MACHSTDLIB_H_ 
-#define _NEWLIB_ALLOCA_H 
-#undef alloca
-#define alloca(size) __builtin_alloca(size)
-
-typedef struct
-{
-  int quot;
-  int rem;
-} div_t;
-typedef struct
-{
-  long quot;
-  long rem;
-} ldiv_t;
-typedef struct
-{
-  long long int quot;
-  long long int rem;
-} lldiv_t;
-#define __compar_fn_t_defined 
-typedef int (*__compar_fn_t) (const void *, const void *);
-#define EXIT_FAILURE 1
-#define EXIT_SUCCESS 0
-#define RAND_MAX __RAND_MAX
-int __locale_mb_cur_max (void);
-#define MB_CUR_MAX __locale_mb_cur_max()
-void abort (void) __attribute__ ((__noreturn__));
-int abs (int);
-__uint32_t arc4random (void);
-__uint32_t arc4random_uniform (__uint32_t);
-void arc4random_buf (void *, size_t);
-int atexit (void (*__func)(void));
-double atof (const char *__nptr);
-float atoff (const char *__nptr);
-int atoi (const char *__nptr);
-int _atoi_r (struct _reent *, const char *__nptr);
-long atol (const char *__nptr);
-long _atol_r (struct _reent *, const char *__nptr);
-void * bsearch (const void *__key,
-         const void *__base,
-         size_t __nmemb,
-         size_t __size,
-         __compar_fn_t _compar);
-void *calloc(size_t, size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__))
-      __attribute__((__alloc_size__(1, 2))) ;
-div_t div (int __numer, int __denom);
-void exit (int __status) __attribute__ ((__noreturn__));
-void free (void *) ;
-char * getenv (const char *__string);
-char * _getenv_r (struct _reent *, const char *__string);
-char * _findenv (const char *, int *);
-char * _findenv_r (struct _reent *, const char *, int *);
-extern char *suboptarg;
-int getsubopt (char **, char * const *, char **);
-long labs (long);
-ldiv_t ldiv (long __numer, long __denom);
-void *malloc(size_t) __attribute__((__malloc__)) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(1))) ;
-int mblen (const char *, size_t);
-int _mblen_r (struct _reent *, const char *, size_t, _mbstate_t *);
-int mbtowc (wchar_t *restrict, const char *restrict, size_t);
-int _mbtowc_r (struct _reent *, wchar_t *restrict, const char *restrict, size_t, _mbstate_t *);
-int wctomb (char *, wchar_t);
-int _wctomb_r (struct _reent *, char *, wchar_t, _mbstate_t *);
-size_t mbstowcs (wchar_t *restrict, const char *restrict, size_t);
-size_t _mbstowcs_r (struct _reent *, wchar_t *restrict, const char *restrict, size_t, _mbstate_t *);
-size_t wcstombs (char *restrict, const wchar_t *restrict, size_t);
-size_t _wcstombs_r (struct _reent *, char *restrict, const wchar_t *restrict, size_t, _mbstate_t *);
-char * mkdtemp (char *);
-int mkstemp (char *);
-int mkstemps (char *, int);
-char * mktemp (char *) __attribute__ ((__deprecated__("the use of `mktemp' is dangerous; use `mkstemp' instead")));
-char * _mkdtemp_r (struct _reent *, char *);
-int _mkostemp_r (struct _reent *, char *, int);
-int _mkostemps_r (struct _reent *, char *, int, int);
-int _mkstemp_r (struct _reent *, char *);
-int _mkstemps_r (struct _reent *, char *, int);
-char * _mktemp_r (struct _reent *, char *) __attribute__ ((__deprecated__("the use of `mktemp' is dangerous; use `mkstemp' instead")));
-void qsort (void *__base, size_t __nmemb, size_t __size, __compar_fn_t _compar);
-int rand (void);
-void *realloc(void *, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2))) ;
-void *reallocarray(void *, size_t, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2, 3)));
-void *reallocf(void *, size_t) __attribute__((__warn_unused_result__)) __attribute__((__alloc_size__(2)));
-char * realpath (const char *restrict path, char *restrict resolved_path);
-int rpmatch (const char *response);
-void srand (unsigned __seed);
-double strtod (const char *restrict __n, char **restrict __end_PTR);
-double _strtod_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR);
-float strtof (const char *restrict __n, char **restrict __end_PTR);
-#define strtodf strtof
-long strtol (const char *restrict __n, char **restrict __end_PTR, int __base);
-long _strtol_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR, int __base);
-unsigned long strtoul (const char *restrict __n, char **restrict __end_PTR, int __base);
-unsigned long _strtoul_r (struct _reent *,const char *restrict __n, char **restrict __end_PTR, int __base);
-int system (const char *__string);
-long a64l (const char *__input);
-char * l64a (long __input);
-char * _l64a_r (struct _reent *,long __input);
-int on_exit (void (*__func)(int, void *),void *__arg);
-void _Exit (int __status) __attribute__ ((__noreturn__));
-int putenv (char *__string);
-int _putenv_r (struct _reent *, char *__string);
-void * _reallocf_r (struct _reent *, void *, size_t);
-int setenv (const char *__string, const char *__value, int __overwrite);
-int _setenv_r (struct _reent *, const char *__string, const char *__value, int __overwrite);
-char * __itoa (int, char *, int);
-char * __utoa (unsigned, char *, int);
-char * itoa (int, char *, int);
-char * utoa (unsigned, char *, int);
-int rand_r (unsigned *__seed);
-double drand48 (void);
-double _drand48_r (struct _reent *);
-double erand48 (unsigned short [3]);
-double _erand48_r (struct _reent *, unsigned short [3]);
-long jrand48 (unsigned short [3]);
-long _jrand48_r (struct _reent *, unsigned short [3]);
-void lcong48 (unsigned short [7]);
-void _lcong48_r (struct _reent *, unsigned short [7]);
-long lrand48 (void);
-long _lrand48_r (struct _reent *);
-long mrand48 (void);
-long _mrand48_r (struct _reent *);
-long nrand48 (unsigned short [3]);
-long _nrand48_r (struct _reent *, unsigned short [3]);
-unsigned short *
-       seed48 (unsigned short [3]);
-unsigned short *
-       _seed48_r (struct _reent *, unsigned short [3]);
-void srand48 (long);
-void _srand48_r (struct _reent *, long);
-char * initstate (unsigned, char *, size_t);
-long random (void);
-char * setstate (char *);
-void srandom (unsigned);
-long long atoll (const char *__nptr);
-long long _atoll_r (struct _reent *, const char *__nptr);
-long long llabs (long long);
-lldiv_t lldiv (long long __numer, long long __denom);
-long long strtoll (const char *restrict __n, char **restrict __end_PTR, int __base);
-long long _strtoll_r (struct _reent *, const char *restrict __n, char **restrict __end_PTR, int __base);
-unsigned long long strtoull (const char *restrict __n, char **restrict __end_PTR, int __base);
-unsigned long long _strtoull_r (struct _reent *, const char *restrict __n, char **restrict __end_PTR, int __base);
-void cfree (void *);
-int unsetenv (const char *__string);
-int _unsetenv_r (struct _reent *, const char *__string);
-int posix_memalign (void **, size_t, size_t) __attribute__((__nonnull__ (1)))
-     __attribute__((__warn_unused_result__));
-char * _dtoa_r (struct _reent *, double, int, int, int *, int*, char**);
-void * _malloc_r (struct _reent *, size_t) ;
-void * _calloc_r (struct _reent *, size_t, size_t) ;
-void _free_r (struct _reent *, void *) ;
-void * _realloc_r (struct _reent *, void *, size_t) ;
-void _mstats_r (struct _reent *, char *);
-int _system_r (struct _reent *, const char *);
-void __eprintf (const char *, const char *, unsigned int, const char *);
-void qsort_r (void *__base, size_t __nmemb, size_t __size, void *__thunk, int (*_compar)(void *, const void *, const void *))
-             __asm__ ("" "__bsd_qsort_r");
-extern long double _strtold_r (struct _reent *, const char *restrict, char **restrict);
-extern long double strtold (const char *restrict, char **restrict);
-void * aligned_alloc(size_t, size_t) __attribute__((__malloc__)) __attribute__((__alloc_align__(1)))
-     __attribute__((__alloc_size__(2))) __attribute__((__warn_unused_result__));
-int at_quick_exit(void (*)(void));
-_Noreturn void
- quick_exit(int);
-
-#define LWIP_NO_STDDEF_H 0
-#define LWIP_NO_STDINT_H 0
-#define LWIP_HAVE_INT64 1
-typedef uint8_t u8_t;
-typedef int8_t s8_t;
-typedef uint16_t u16_t;
-typedef int16_t s16_t;
-typedef uint32_t u32_t;
-typedef int32_t s32_t;
-typedef uint64_t u64_t;
-typedef int64_t s64_t;
-typedef uintptr_t mem_ptr_t;
-#define LWIP_NO_INTTYPES_H 0
-#define _INTTYPES_H 
-#define __need_wchar_t 
-#undef __need_ptrdiff_t
-#undef __need_size_t
-#undef __need_wchar_t
-#undef NULL
-#define NULL ((void *)0)
-#undef __need_NULL
-#undef offsetof
-#define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define __STRINGIFY(a) #a
-#define __PRI8(x) __INT8 __STRINGIFY(x)
-#define __PRI8LEAST(x) __LEAST8 __STRINGIFY(x)
-#define __PRI8FAST(x) __FAST8 __STRINGIFY(x)
-#define __SCN8(x) __INT8 __STRINGIFY(x)
-#define __SCN8LEAST(x) __LEAST8 __STRINGIFY(x)
-#define __SCN8FAST(x) __FAST8 __STRINGIFY(x)
-#define PRId8 __PRI8(d)
-#define PRIi8 __PRI8(i)
-#define PRIo8 __PRI8(o)
-#define PRIu8 __PRI8(u)
-#define PRIx8 __PRI8(x)
-#define PRIX8 __PRI8(X)
-#define SCNd8 __SCN8(d)
-#define SCNi8 __SCN8(i)
-#define SCNo8 __SCN8(o)
-#define SCNu8 __SCN8(u)
-#define SCNx8 __SCN8(x)
-#define PRIdLEAST8 __PRI8LEAST(d)
-#define PRIiLEAST8 __PRI8LEAST(i)
-#define PRIoLEAST8 __PRI8LEAST(o)
-#define PRIuLEAST8 __PRI8LEAST(u)
-#define PRIxLEAST8 __PRI8LEAST(x)
-#define PRIXLEAST8 __PRI8LEAST(X)
-#define SCNdLEAST8 __SCN8LEAST(d)
-#define SCNiLEAST8 __SCN8LEAST(i)
-#define SCNoLEAST8 __SCN8LEAST(o)
-#define SCNuLEAST8 __SCN8LEAST(u)
-#define SCNxLEAST8 __SCN8LEAST(x)
-#define PRIdFAST8 __PRI8FAST(d)
-#define PRIiFAST8 __PRI8FAST(i)
-#define PRIoFAST8 __PRI8FAST(o)
-#define PRIuFAST8 __PRI8FAST(u)
-#define PRIxFAST8 __PRI8FAST(x)
-#define PRIXFAST8 __PRI8FAST(X)
-#define SCNdFAST8 __SCN8FAST(d)
-#define SCNiFAST8 __SCN8FAST(i)
-#define SCNoFAST8 __SCN8FAST(o)
-#define SCNuFAST8 __SCN8FAST(u)
-#define SCNxFAST8 __SCN8FAST(x)
-#define __PRI16(x) __INT16 __STRINGIFY(x)
-#define __PRI16LEAST(x) __LEAST16 __STRINGIFY(x)
-#define __PRI16FAST(x) __FAST16 __STRINGIFY(x)
-#define __SCN16(x) __INT16 __STRINGIFY(x)
-#define __SCN16LEAST(x) __LEAST16 __STRINGIFY(x)
-#define __SCN16FAST(x) __FAST16 __STRINGIFY(x)
-#define PRId16 __PRI16(d)
-#define PRIi16 __PRI16(i)
-#define PRIo16 __PRI16(o)
-#define PRIu16 __PRI16(u)
-#define PRIx16 __PRI16(x)
-#define PRIX16 __PRI16(X)
-#define SCNd16 __SCN16(d)
-#define SCNi16 __SCN16(i)
-#define SCNo16 __SCN16(o)
-#define SCNu16 __SCN16(u)
-#define SCNx16 __SCN16(x)
-#define PRIdLEAST16 __PRI16LEAST(d)
-#define PRIiLEAST16 __PRI16LEAST(i)
-#define PRIoLEAST16 __PRI16LEAST(o)
-#define PRIuLEAST16 __PRI16LEAST(u)
-#define PRIxLEAST16 __PRI16LEAST(x)
-#define PRIXLEAST16 __PRI16LEAST(X)
-#define SCNdLEAST16 __SCN16LEAST(d)
-#define SCNiLEAST16 __SCN16LEAST(i)
-#define SCNoLEAST16 __SCN16LEAST(o)
-#define SCNuLEAST16 __SCN16LEAST(u)
-#define SCNxLEAST16 __SCN16LEAST(x)
-#define PRIdFAST16 __PRI16FAST(d)
-#define PRIiFAST16 __PRI16FAST(i)
-#define PRIoFAST16 __PRI16FAST(o)
-#define PRIuFAST16 __PRI16FAST(u)
-#define PRIxFAST16 __PRI16FAST(x)
-#define PRIXFAST16 __PRI16FAST(X)
-#define SCNdFAST16 __SCN16FAST(d)
-#define SCNiFAST16 __SCN16FAST(i)
-#define SCNoFAST16 __SCN16FAST(o)
-#define SCNuFAST16 __SCN16FAST(u)
-#define SCNxFAST16 __SCN16FAST(x)
-#define __PRI32(x) __INT32 __STRINGIFY(x)
-#define __SCN32(x) __INT32 __STRINGIFY(x)
-#define __PRI32LEAST(x) __LEAST32 __STRINGIFY(x)
-#define __SCN32LEAST(x) __LEAST32 __STRINGIFY(x)
-#define __PRI32FAST(x) __FAST32 __STRINGIFY(x)
-#define __SCN32FAST(x) __FAST32 __STRINGIFY(x)
-#define PRId32 __PRI32(d)
-#define PRIi32 __PRI32(i)
-#define PRIo32 __PRI32(o)
-#define PRIu32 __PRI32(u)
-#define PRIx32 __PRI32(x)
-#define PRIX32 __PRI32(X)
-#define SCNd32 __SCN32(d)
-#define SCNi32 __SCN32(i)
-#define SCNo32 __SCN32(o)
-#define SCNu32 __SCN32(u)
-#define SCNx32 __SCN32(x)
-#define PRIdLEAST32 __PRI32LEAST(d)
-#define PRIiLEAST32 __PRI32LEAST(i)
-#define PRIoLEAST32 __PRI32LEAST(o)
-#define PRIuLEAST32 __PRI32LEAST(u)
-#define PRIxLEAST32 __PRI32LEAST(x)
-#define PRIXLEAST32 __PRI32LEAST(X)
-#define SCNdLEAST32 __SCN32LEAST(d)
-#define SCNiLEAST32 __SCN32LEAST(i)
-#define SCNoLEAST32 __SCN32LEAST(o)
-#define SCNuLEAST32 __SCN32LEAST(u)
-#define SCNxLEAST32 __SCN32LEAST(x)
-#define PRIdFAST32 __PRI32FAST(d)
-#define PRIiFAST32 __PRI32FAST(i)
-#define PRIoFAST32 __PRI32FAST(o)
-#define PRIuFAST32 __PRI32FAST(u)
-#define PRIxFAST32 __PRI32FAST(x)
-#define PRIXFAST32 __PRI32FAST(X)
-#define SCNdFAST32 __SCN32FAST(d)
-#define SCNiFAST32 __SCN32FAST(i)
-#define SCNoFAST32 __SCN32FAST(o)
-#define SCNuFAST32 __SCN32FAST(u)
-#define SCNxFAST32 __SCN32FAST(x)
-#define __PRI64(x) __INT64 __STRINGIFY(x)
-#define __SCN64(x) __INT64 __STRINGIFY(x)
-#define __PRI64LEAST(x) __LEAST64 __STRINGIFY(x)
-#define __SCN64LEAST(x) __LEAST64 __STRINGIFY(x)
-#define __PRI64FAST(x) __FAST64 __STRINGIFY(x)
-#define __SCN64FAST(x) __FAST64 __STRINGIFY(x)
-#define PRId64 __PRI64(d)
-#define PRIi64 __PRI64(i)
-#define PRIo64 __PRI64(o)
-#define PRIu64 __PRI64(u)
-#define PRIx64 __PRI64(x)
-#define PRIX64 __PRI64(X)
-#define SCNd64 __SCN64(d)
-#define SCNi64 __SCN64(i)
-#define SCNo64 __SCN64(o)
-#define SCNu64 __SCN64(u)
-#define SCNx64 __SCN64(x)
-#define PRIdLEAST64 __PRI64LEAST(d)
-#define PRIiLEAST64 __PRI64LEAST(i)
-#define PRIoLEAST64 __PRI64LEAST(o)
-#define PRIuLEAST64 __PRI64LEAST(u)
-#define PRIxLEAST64 __PRI64LEAST(x)
-#define PRIXLEAST64 __PRI64LEAST(X)
-#define SCNdLEAST64 __SCN64LEAST(d)
-#define SCNiLEAST64 __SCN64LEAST(i)
-#define SCNoLEAST64 __SCN64LEAST(o)
-#define SCNuLEAST64 __SCN64LEAST(u)
-#define SCNxLEAST64 __SCN64LEAST(x)
-#define PRIdFAST64 __PRI64FAST(d)
-#define PRIiFAST64 __PRI64FAST(i)
-#define PRIoFAST64 __PRI64FAST(o)
-#define PRIuFAST64 __PRI64FAST(u)
-#define PRIxFAST64 __PRI64FAST(x)
-#define PRIXFAST64 __PRI64FAST(X)
-#define SCNdFAST64 __SCN64FAST(d)
-#define SCNiFAST64 __SCN64FAST(i)
-#define SCNoFAST64 __SCN64FAST(o)
-#define SCNuFAST64 __SCN64FAST(u)
-#define SCNxFAST64 __SCN64FAST(x)
-#define __PRIMAX(x) __STRINGIFY(ll ##x)
-#define __SCNMAX(x) __STRINGIFY(ll ##x)
-#define PRIdMAX __PRIMAX(d)
-#define PRIiMAX __PRIMAX(i)
-#define PRIoMAX __PRIMAX(o)
-#define PRIuMAX __PRIMAX(u)
-#define PRIxMAX __PRIMAX(x)
-#define PRIXMAX __PRIMAX(X)
-#define SCNdMAX __SCNMAX(d)
-#define SCNiMAX __SCNMAX(i)
-#define SCNoMAX __SCNMAX(o)
-#define SCNuMAX __SCNMAX(u)
-#define SCNxMAX __SCNMAX(x)
-#define __PRIPTR(x) __STRINGIFY(x)
-#define __SCNPTR(x) __STRINGIFY(x)
-#define PRIdPTR __PRIPTR(d)
-#define PRIiPTR __PRIPTR(i)
-#define PRIoPTR __PRIPTR(o)
-#define PRIuPTR __PRIPTR(u)
-#define PRIxPTR __PRIPTR(x)
-#define PRIXPTR __PRIPTR(X)
-#define SCNdPTR __SCNPTR(d)
-#define SCNiPTR __SCNPTR(i)
-#define SCNoPTR __SCNPTR(o)
-#define SCNuPTR __SCNPTR(u)
-#define SCNxPTR __SCNPTR(x)
-typedef struct {
-  intmax_t quot;
-  intmax_t rem;
-} imaxdiv_t;
-struct _reent;
-extern intmax_t imaxabs(intmax_t);
-extern imaxdiv_t imaxdiv(intmax_t __numer, intmax_t __denomer);
-extern intmax_t strtoimax(const char *restrict, char **restrict, int);
-extern intmax_t _strtoimax_r(struct _reent *, const char *restrict, char **restrict, int);
-extern uintmax_t strtoumax(const char *restrict, char **restrict, int);
-extern uintmax_t _strtoumax_r(struct _reent *, const char *restrict, char **restrict, int);
-extern intmax_t wcstoimax(const wchar_t *restrict, wchar_t **restrict, int);
-extern intmax_t _wcstoimax_r(struct _reent *, const wchar_t *restrict, wchar_t **restrict, int);
-extern uintmax_t wcstoumax(const wchar_t *restrict, wchar_t **restrict, int);
-extern uintmax_t _wcstoumax_r(struct _reent *, const wchar_t *restrict, wchar_t **restrict, int);
-extern intmax_t strtoimax_l(const char *restrict, char **_restrict, int, locale_t);
-extern uintmax_t strtoumax_l(const char *restrict, char **_restrict, int, locale_t);
-extern intmax_t wcstoimax_l(const wchar_t *restrict, wchar_t **_restrict, int, locale_t);
-extern uintmax_t wcstoumax_l(const wchar_t *restrict, wchar_t **_restrict, int, locale_t);
-#define X8_F "02" PRIx8
-#define U16_F PRIu16
-#define S16_F PRId16
-#define X16_F PRIx16
-#define U32_F PRIu32
-#define S32_F PRId32
-#define X32_F PRIx32
-#define SZT_F PRIuPTR
-#define LWIP_NO_LIMITS_H 0
-#define _GCC_LIMITS_H_ 
-#define _GCC_NEXT_LIMITS_H 
-#define _LIBC_LIMITS_H_ 1
-#define _SYS_SYSLIMITS_H_ 
-#define ARG_MAX 65536
-#define CHILD_MAX 40
-#define LINK_MAX 32767
-#define MAX_CANON 255
-#define MAX_INPUT 255
-#define NAME_MAX 255
-#define NGROUPS_MAX 16
-#define OPEN_MAX 64
-#define PATH_MAX 1024
-#define PIPE_BUF 512
-#define IOV_MAX 1024
-#define BC_BASE_MAX 99
-#define BC_DIM_MAX 2048
-#define BC_SCALE_MAX 99
-#define BC_STRING_MAX 1000
-#define COLL_WEIGHTS_MAX 0
-#define EXPR_NEST_MAX 32
-#define LINE_MAX 2048
-#define RE_DUP_MAX 255
-#define MB_LEN_MAX _MB_LEN_MAX
-#define NL_ARGMAX 32
-#define _POSIX2_RE_DUP_MAX 255
-#undef _GCC_NEXT_LIMITS_H
-#define _LIMITS_H___ 
-#undef CHAR_BIT
-#define CHAR_BIT __CHAR_BIT__
-#undef SCHAR_MIN
-#define SCHAR_MIN (-SCHAR_MAX - 1)
-#undef SCHAR_MAX
-#define SCHAR_MAX __SCHAR_MAX__
-#undef UCHAR_MAX
-#define UCHAR_MAX (SCHAR_MAX * 2 + 1)
-#undef CHAR_MIN
-#define CHAR_MIN 0
-#undef CHAR_MAX
-#define CHAR_MAX UCHAR_MAX
-#undef SHRT_MIN
-#define SHRT_MIN (-SHRT_MAX - 1)
-#undef SHRT_MAX
-#define SHRT_MAX __SHRT_MAX__
-#undef USHRT_MAX
-#define USHRT_MAX (SHRT_MAX * 2 + 1)
-#undef INT_MIN
-#define INT_MIN (-INT_MAX - 1)
-#undef INT_MAX
-#define INT_MAX __INT_MAX__
-#undef UINT_MAX
-#define UINT_MAX (INT_MAX * 2U + 1U)
-#undef LONG_MIN
-#define LONG_MIN (-LONG_MAX - 1L)
-#undef LONG_MAX
-#define LONG_MAX __LONG_MAX__
-#undef ULONG_MAX
-#define ULONG_MAX (LONG_MAX * 2UL + 1UL)
-#undef LLONG_MIN
-#define LLONG_MIN (-LLONG_MAX - 1LL)
-#undef LLONG_MAX
-#define LLONG_MAX __LONG_LONG_MAX__
-#undef ULLONG_MAX
-#define ULLONG_MAX (LLONG_MAX * 2ULL + 1ULL)
-#undef LONG_LONG_MIN
-#define LONG_LONG_MIN (-LONG_LONG_MAX - 1LL)
-#undef LONG_LONG_MAX
-#define LONG_LONG_MAX __LONG_LONG_MAX__
-#undef ULONG_LONG_MAX
-#define ULONG_LONG_MAX (LONG_LONG_MAX * 2ULL + 1ULL)
-typedef int ssize_t;
-#define SSIZE_MAX INT_MAX
-#define LWIP_UINT32_MAX 0xffffffff
-#define LWIP_NO_CTYPE_H 0
-#define _CTYPE_H_ 
-
-int isalnum (int __c);
-int isalpha (int __c);
-int iscntrl (int __c);
-int isdigit (int __c);
-int isgraph (int __c);
-int islower (int __c);
-int isprint (int __c);
-int ispunct (int __c);
-int isspace (int __c);
-int isupper (int __c);
-int isxdigit (int __c);
-int tolower (int __c);
-int toupper (int __c);
-int isblank (int __c);
-int isascii (int __c);
-int toascii (int __c);
-#define _tolower(__c) ((unsigned char)(__c) - 'A' + 'a')
-#define _toupper(__c) ((unsigned char)(__c) - 'a' + 'A')
-extern int isalnum_l (int __c, locale_t __l);
-extern int isalpha_l (int __c, locale_t __l);
-extern int isblank_l (int __c, locale_t __l);
-extern int iscntrl_l (int __c, locale_t __l);
-extern int isdigit_l (int __c, locale_t __l);
-extern int isgraph_l (int __c, locale_t __l);
-extern int islower_l (int __c, locale_t __l);
-extern int isprint_l (int __c, locale_t __l);
-extern int ispunct_l (int __c, locale_t __l);
-extern int isspace_l (int __c, locale_t __l);
-extern int isupper_l (int __c, locale_t __l);
-extern int isxdigit_l(int __c, locale_t __l);
-extern int tolower_l (int __c, locale_t __l);
-extern int toupper_l (int __c, locale_t __l);
-extern int isascii_l (int __c, locale_t __l);
-extern int toascii_l (int __c, locale_t __l);
-#define _U 01
-#define _L 02
-#define _N 04
-#define _S 010
-#define _P 020
-#define _C 040
-#define _X 0100
-#define _B 0200
-extern const char _ctype_[];
-#define __locale_ctype_ptr() _ctype_
-#define __CTYPE_PTR (__locale_ctype_ptr ())
-#define __ctype_lookup(__c) ((__CTYPE_PTR+sizeof(""[__c]))[(int)(__c)])
-#define isalpha(__c) (__ctype_lookup(__c)&(_U|_L))
-#define isupper(__c) ((__ctype_lookup(__c)&(_U|_L))==_U)
-#define islower(__c) ((__ctype_lookup(__c)&(_U|_L))==_L)
-#define isdigit(__c) (__ctype_lookup(__c)&_N)
-#define isxdigit(__c) (__ctype_lookup(__c)&(_X|_N))
-#define isspace(__c) (__ctype_lookup(__c)&_S)
-#define ispunct(__c) (__ctype_lookup(__c)&_P)
-#define isalnum(__c) (__ctype_lookup(__c)&(_U|_L|_N))
-#define isprint(__c) (__ctype_lookup(__c)&(_P|_U|_L|_N|_B))
-#define isgraph(__c) (__ctype_lookup(__c)&(_P|_U|_L|_N))
-#define iscntrl(__c) (__ctype_lookup(__c)&_C)
-#define isblank(__c) __extension__ ({ __typeof__ (__c) __x = (__c); (__ctype_lookup(__x)&_B) || (int) (__x) == '\t';})
-static __inline const char *
-__locale_ctype_ptr_l(locale_t _l)
-{
- (void)_l;
- return _ctype_;
-}
-#define __ctype_lookup_l(__c,__l) ((__locale_ctype_ptr_l(__l)+sizeof(""[__c]))[(int)(__c)])
-#define isalpha_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_U|_L))
-#define isupper_l(__c,__l) ((__ctype_lookup_l(__c,__l)&(_U|_L))==_U)
-#define islower_l(__c,__l) ((__ctype_lookup_l(__c,__l)&(_U|_L))==_L)
-#define isdigit_l(__c,__l) (__ctype_lookup_l(__c,__l)&_N)
-#define isxdigit_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_X|_N))
-#define isspace_l(__c,__l) (__ctype_lookup_l(__c,__l)&_S)
-#define ispunct_l(__c,__l) (__ctype_lookup_l(__c,__l)&_P)
-#define isalnum_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_U|_L|_N))
-#define isprint_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_P|_U|_L|_N|_B))
-#define isgraph_l(__c,__l) (__ctype_lookup_l(__c,__l)&(_P|_U|_L|_N))
-#define iscntrl_l(__c,__l) (__ctype_lookup_l(__c,__l)&_C)
-#define isblank_l(__c,__l) __extension__ ({ __typeof__ (__c) __x = (__c); (__ctype_lookup_l(__x,__l)&_B) || (int) (__x) == '\t';})
-#define isascii(__c) ((unsigned)(__c)<=0177)
-#define toascii(__c) ((__c)&0177)
-#define isascii_l(__c,__l) ((__l),(unsigned)(__c)<=0177)
-#define toascii_l(__c,__l) ((__l),(__c)&0177)
-#define toupper(__c) __extension__ ({ __typeof__ (__c) __x = (__c); islower (__x) ? (int) __x - 'a' + 'A' : (int) __x;})
-#define tolower(__c) __extension__ ({ __typeof__ (__c) __x = (__c); isupper (__x) ? (int) __x - 'A' + 'a' : (int) __x;})
-
-#define lwip_isdigit(c) isdigit((unsigned char)(c))
-#define lwip_isxdigit(c) isxdigit((unsigned char)(c))
-#define lwip_islower(c) islower((unsigned char)(c))
-#define lwip_isspace(c) isspace((unsigned char)(c))
-#define lwip_isupper(c) isupper((unsigned char)(c))
-#define lwip_tolower(c) tolower((unsigned char)(c))
-#define lwip_toupper(c) toupper((unsigned char)(c))
-#define LWIP_CONST_CAST(target_type,val) ((target_type)((ptrdiff_t)val))
-#define LWIP_ALIGNMENT_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
-#define LWIP_PTR_NUMERIC_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
-#define LWIP_PACKED_CAST(target_type,val) LWIP_CONST_CAST(target_type, val)
-#define LWIP_DECLARE_MEMORY_ALIGNED(variable_name,size) u8_t variable_name[LWIP_MEM_ALIGN_BUFFER(size)]
-#define LWIP_MEM_ALIGN_SIZE(size) (((size) + MEM_ALIGNMENT - 1U) & ~(MEM_ALIGNMENT-1U))
-#define LWIP_MEM_ALIGN_BUFFER(size) (((size) + MEM_ALIGNMENT - 1U))
-#define LWIP_MEM_ALIGN(addr) ((void *)(((mem_ptr_t)(addr) + MEM_ALIGNMENT - 1) & ~(mem_ptr_t)(MEM_ALIGNMENT-1)))
-#define PACK_STRUCT_FLD_8(x) PACK_STRUCT_FIELD(x)
-#define PACK_STRUCT_FLD_S(x) PACK_STRUCT_FIELD(x)
-#define LWIP_UNUSED_ARG(x) (void)x
-#define LWIP_DBG_LEVEL_ALL 0x00
-#define LWIP_DBG_LEVEL_WARNING 0x01
-#define LWIP_DBG_LEVEL_SERIOUS 0x02
-#define LWIP_DBG_LEVEL_SEVERE 0x03
-#define LWIP_DBG_MASK_LEVEL 0x03
-#define LWIP_DBG_LEVEL_OFF LWIP_DBG_LEVEL_ALL
-#define LWIP_DBG_ON 0x80U
-#define LWIP_DBG_OFF 0x00U
-#define LWIP_DBG_TRACE 0x40U
-#define LWIP_DBG_STATE 0x20U
-#define LWIP_DBG_FRESH 0x10U
-#define LWIP_DBG_HALT 0x08U
-#define LWIP_ASSERT(message,assertion) do { if (!(assertion)) { LWIP_PLATFORM_ASSERT(message); }} while(0)
-#define LWIP_PLATFORM_ERROR(message) 
-#define LWIP_ERROR(message,expression,handler) do { if (!(expression)) { LWIP_PLATFORM_ERROR(message); handler;}} while(0)
-#define LWIP_DEBUG_ENABLED(debug) 0
-#define LWIP_DEBUGF(debug,message) 
-#define LWIP_TIMERS 1
-#define LWIP_TIMERS_CUSTOM 0
-#define MEMCPY(dst,src,len) memcpy(dst,src,len)
-#define SMEMCPY(dst,src,len) memcpy(dst,src,len)
-#define MEMMOVE(dst,src,len) memmove(dst,src,len)
-#define LWIP_MPU_COMPATIBLE 0
-#define LWIP_TCPIP_CORE_LOCKING 1
-#define LWIP_TCPIP_CORE_LOCKING_INPUT 0
-#define SYS_LIGHTWEIGHT_PROT 1
-#define LWIP_ASSERT_CORE_LOCKED() 
-#define MEM_CUSTOM_ALLOCATOR 0
-#define MEMP_MEM_MALLOC 0
-#define MEMP_MEM_INIT 0
-#define MEMP_OVERFLOW_CHECK 0
-#define MEMP_SANITY_CHECK 0
-#define MEM_OVERFLOW_CHECK 0
-#define MEM_SANITY_CHECK 0
-#define MEM_USE_POOLS 0
-#define MEM_USE_POOLS_TRY_BIGGER_POOL 0
-#define MEMP_USE_CUSTOM_POOLS 0
-#define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 0
-#define MEMP_NUM_PBUF 16
-#define MEMP_NUM_RAW_PCB 4
-#define MEMP_NUM_UDP_PCB 4
-#define MEMP_NUM_TCP_PCB 5
-#define MEMP_NUM_TCP_PCB_LISTEN 8
-#define MEMP_NUM_ALTCP_PCB MEMP_NUM_TCP_PCB
-#define MEMP_NUM_REASSDATA 5
-#define MEMP_NUM_FRAG_PBUF 15
-#define MEMP_NUM_IGMP_GROUP 8
-#define LWIP_NUM_SYS_TIMEOUT_INTERNAL (LWIP_TCP + IP_REASSEMBLY + LWIP_ARP + (2*LWIP_DHCP) + LWIP_ACD + LWIP_IGMP + LWIP_DNS + PPP_NUM_TIMEOUTS + (LWIP_IPV6 * (1 + LWIP_IPV6_REASS + LWIP_IPV6_MLD + LWIP_IPV6_DHCP6)))
-#define MEMP_NUM_SYS_TIMEOUT LWIP_NUM_SYS_TIMEOUT_INTERNAL
-#define MEMP_NUM_NETBUF 2
-#define MEMP_NUM_NETCONN 4
-#define MEMP_NUM_SELECT_CB 4
-#define MEMP_NUM_TCPIP_MSG_API 8
-#define MEMP_NUM_TCPIP_MSG_INPKT 8
-#define MEMP_NUM_NETDB 1
-#define MEMP_NUM_LOCALHOSTLIST 1
-#define MEMP_NUM_API_MSG MEMP_NUM_TCPIP_MSG_API
-#define MEMP_NUM_DNS_API_MSG MEMP_NUM_TCPIP_MSG_API
-#define MEMP_NUM_SOCKET_SETGETSOCKOPT_DATA MEMP_NUM_TCPIP_MSG_API
-#define MEMP_NUM_NETIFAPI_MSG MEMP_NUM_TCPIP_MSG_API
-#define ARP_TABLE_SIZE 10
-#define ARP_MAXAGE 300
-#define ARP_QUEUEING 0
-#define ARP_QUEUE_LEN 3
-#define ETHARP_SUPPORT_VLAN 0
-#define LWIP_VLAN_PCP 0
-#define ETH_PAD_SIZE 0
-#define ETHARP_SUPPORT_STATIC_ENTRIES 0
-#define ETHARP_TABLE_MATCH_NETIF !LWIP_SINGLE_NETIF
-#define IP_FORWARD 0
-#define IP_REASSEMBLY 1
-#define IP_FRAG 1
-#define IP_OPTIONS_ALLOWED 1
-#define IP_REASS_MAXAGE 15
-#define IP_REASS_MAX_PBUFS 10
-#define IP_DEFAULT_TTL 255
-#define IP_SOF_BROADCAST 0
-#define IP_SOF_BROADCAST_RECV 0
-#define IP_FORWARD_ALLOW_TX_ON_RX_NETIF 0
-#define ICMP_TTL IP_DEFAULT_TTL
-#define LWIP_BROADCAST_PING 0
-#define LWIP_MULTICAST_PING 0
-#define RAW_TTL IP_DEFAULT_TTL
-#define LWIP_DHCP_BOOTP_FILE 0
-#define LWIP_DHCP_GET_NTP_SRV 0
-#define LWIP_DHCP_MAX_NTP_SERVERS 1
-#define LWIP_DHCP_MAX_DNS_SERVERS DNS_MAX_SERVERS
-#define LWIP_DHCP_DISCOVER_ADD_HOSTNAME 1
-#define LWIP_AUTOIP 0
-#define LWIP_DHCP_AUTOIP_COOP 0
-#define LWIP_DHCP_AUTOIP_COOP_TRIES 9
-#define LWIP_ACD (LWIP_AUTOIP || LWIP_DHCP_DOES_ACD_CHECK)
-#define LWIP_MIB2_CALLBACKS 0
-#define LWIP_MULTICAST_TX_OPTIONS ((LWIP_IGMP || LWIP_IPV6_MLD) && (LWIP_UDP || LWIP_RAW))
-#define LWIP_IGMP 0
-#define DNS_TABLE_SIZE 4
-#define DNS_MAX_NAME_LENGTH 256
-#define DNS_MAX_SERVERS 2
-#define DNS_MAX_RETRIES 4
-#define DNS_DOES_NAME_CHECK 1
-#define LWIP_DNS_SECURE (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT)
-#define LWIP_DNS_SECURE_RAND_XID 1
-#define LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING 2
-#define LWIP_DNS_SECURE_RAND_SRC_PORT 4
-#define DNS_LOCAL_HOSTLIST 0
-#define DNS_LOCAL_HOSTLIST_IS_DYNAMIC 0
-#define LWIP_DNS_SUPPORT_MDNS_QUERIES 0
-#define LWIP_UDPLITE 0
-#define UDP_TTL IP_DEFAULT_TTL
-#define LWIP_NETBUF_RECVINFO 0
-#define TCP_TTL IP_DEFAULT_TTL
-#define TCP_MAXRTX 12
-#define TCP_SYNMAXRTX 6
-#define TCP_QUEUE_OOSEQ LWIP_TCP
-#define LWIP_TCP_SACK_OUT 0
-#define LWIP_TCP_MAX_SACK_NUM 4
-#define TCP_CALCULATE_EFF_SEND_MSS 1
-#define LWIP_TCP_RTO_TIME 3000
-#define TCP_SNDLOWAT LWIP_MIN(LWIP_MAX(((TCP_SND_BUF)/2), (2 * TCP_MSS) + 1), (TCP_SND_BUF) - 1)
-#define TCP_SNDQUEUELOWAT LWIP_MAX(((TCP_SND_QUEUELEN)/2), 5)
-#define TCP_OOSEQ_MAX_BYTES 0
-#define TCP_OOSEQ_MAX_PBUFS 0
-#define TCP_LISTEN_BACKLOG 0
-#define TCP_DEFAULT_LISTEN_BACKLOG 0xff
-#define TCP_OVERSIZE TCP_MSS
-#define LWIP_TCP_TIMESTAMPS 0
-#define TCP_WND_UPDATE_THRESHOLD LWIP_MIN((TCP_WND / 4), (TCP_MSS * 4))
-#define LWIP_EVENT_API 0
-#define LWIP_CALLBACK_API 1
-#define LWIP_WND_SCALE 0
-#define TCP_RCV_SCALE 0
-#define LWIP_TCP_PCB_NUM_EXT_ARGS 0
-#define LWIP_ALTCP 0
-#define LWIP_ALTCP_TLS 0
-#define PBUF_LINK_HLEN (14 + ETH_PAD_SIZE)
-#define PBUF_LINK_ENCAPSULATION_HLEN 0
-#define PBUF_POOL_BUFSIZE LWIP_MEM_ALIGN_SIZE(TCP_MSS+PBUF_IP_HLEN+PBUF_TRANSPORT_HLEN+PBUF_LINK_ENCAPSULATION_HLEN+PBUF_LINK_HLEN)
-#define LWIP_PBUF_REF_T u8_t
-#define LWIP_PBUF_CUSTOM_DATA 
-#define LWIP_PBUF_CUSTOM_DATA_INIT(p) 
-#define LWIP_SINGLE_NETIF 0
-#define LWIP_NETIF_API 0
-#define LWIP_NETIF_EXT_STATUS_CALLBACK 0
-#define LWIP_NETIF_REMOVE_CALLBACK 0
-#define LWIP_NETIF_HWADDRHINT 0
-#define LWIP_NUM_NETIF_CLIENT_DATA 0
-#define LWIP_HAVE_LOOPIF (LWIP_NETIF_LOOPBACK && !LWIP_SINGLE_NETIF)
-#define LWIP_LOOPIF_MULTICAST 0
-#define LWIP_NETIF_LOOPBACK 0
-#define LWIP_LOOPBACK_MAX_PBUFS 0
-#define LWIP_NETIF_LOOPBACK_MULTITHREADING (!NO_SYS)
-#define TCPIP_THREAD_NAME "tcpip_thread"
-#define TCPIP_THREAD_STACKSIZE 0
-#define TCPIP_THREAD_PRIO 1
-#define TCPIP_MBOX_SIZE 0
-#define LWIP_TCPIP_THREAD_ALIVE() 
-#define SLIPIF_THREAD_NAME "slipif_loop"
-#define SLIPIF_THREAD_STACKSIZE 0
-#define SLIPIF_THREAD_PRIO 1
-#define DEFAULT_THREAD_NAME "lwIP"
-#define DEFAULT_THREAD_STACKSIZE 0
-#define DEFAULT_THREAD_PRIO 1
-#define DEFAULT_RAW_RECVMBOX_SIZE 0
-#define DEFAULT_UDP_RECVMBOX_SIZE 0
-#define DEFAULT_TCP_RECVMBOX_SIZE 0
-#define DEFAULT_ACCEPTMBOX_SIZE 0
-#define LWIP_TCPIP_TIMEOUT 0
-#define LWIP_NETCONN_SEM_PER_THREAD 0
-#define LWIP_NETCONN_FULLDUPLEX 0
-#define LWIP_COMPAT_SOCKETS 1
-#define LWIP_POSIX_SOCKETS_IO_NAMES 1
-#define LWIP_SOCKET_OFFSET 0
-#define LWIP_SOCKET_EXTERNAL_HEADERS 0
-#define LWIP_SO_SNDTIMEO 0
-#define LWIP_SO_RCVTIMEO 0
-#define LWIP_SO_SNDRCVTIMEO_NONSTANDARD 0
-#define LWIP_SO_RCVBUF 0
-#define LWIP_SO_LINGER 0
-#define RECV_BUFSIZE_DEFAULT INT_MAX
-#define LWIP_TCP_CLOSE_TIMEOUT_MS_DEFAULT 20000
-#define SO_REUSE 0
-#define SO_REUSE_RXTOALL 0
-#define LWIP_FIONREAD_LINUXMODE 0
-#define LWIP_SOCKET_SELECT 1
-#define LWIP_SOCKET_POLL 1
-#define ETHARP_STATS (LWIP_ARP)
-#define IP_STATS 1
-#define IPFRAG_STATS (IP_REASSEMBLY || IP_FRAG)
-#define ICMP_STATS 1
-#define IGMP_STATS (LWIP_IGMP)
-#define UDP_STATS (LWIP_UDP)
-#define TCP_STATS (LWIP_TCP)
-#define IP6_STATS (LWIP_IPV6)
-#define ICMP6_STATS (LWIP_IPV6 && LWIP_ICMP6)
-#define IP6_FRAG_STATS (LWIP_IPV6 && (LWIP_IPV6_FRAG || LWIP_IPV6_REASS))
-#define MLD6_STATS (LWIP_IPV6 && LWIP_IPV6_MLD)
-#define ND6_STATS (LWIP_IPV6)
-#define MIB2_STATS 0
-#define LWIP_CHECKSUM_CTRL_PER_NETIF 0
-#define CHECKSUM_GEN_IP 1
-#define CHECKSUM_GEN_UDP 1
-#define CHECKSUM_GEN_TCP 1
-#define CHECKSUM_GEN_ICMP 1
-#define CHECKSUM_GEN_ICMP6 1
-#define CHECKSUM_CHECK_IP 1
-#define CHECKSUM_CHECK_UDP 1
-#define CHECKSUM_CHECK_TCP 1
-#define CHECKSUM_CHECK_ICMP 1
-#define CHECKSUM_CHECK_ICMP6 1
-#define LWIP_CHECKSUM_ON_COPY 0
-#define LWIP_IPV6 0
-#define IPV6_REASS_MAXAGE 60
-#define LWIP_IPV6_SCOPES (LWIP_IPV6 && !LWIP_SINGLE_NETIF)
-#define LWIP_IPV6_SCOPES_DEBUG 0
-#define LWIP_IPV6_NUM_ADDRESSES 3
-#define LWIP_IPV6_FORWARD 0
-#define LWIP_IPV6_FRAG 1
-#define LWIP_IPV6_REASS LWIP_IPV6
-#define LWIP_IPV6_SEND_ROUTER_SOLICIT LWIP_IPV6
-#define LWIP_IPV6_AUTOCONFIG LWIP_IPV6
-#define LWIP_IPV6_ADDRESS_LIFETIMES LWIP_IPV6_AUTOCONFIG
-#define LWIP_IPV6_DUP_DETECT_ATTEMPTS 1
-#define LWIP_ICMP6 LWIP_IPV6
-#define LWIP_ICMP6_DATASIZE 0
-#define LWIP_ICMP6_HL 255
-#define LWIP_IPV6_MLD LWIP_IPV6
-#define MEMP_NUM_MLD6_GROUP 4
-#define LWIP_ND6_QUEUEING LWIP_IPV6
-#define MEMP_NUM_ND6_QUEUE 20
-#define LWIP_ND6_NUM_NEIGHBORS 10
-#define LWIP_ND6_NUM_DESTINATIONS 10
-#define LWIP_ND6_NUM_PREFIXES 5
-#define LWIP_ND6_NUM_ROUTERS 3
-#define LWIP_ND6_MAX_MULTICAST_SOLICIT 3
-#define LWIP_ND6_MAX_UNICAST_SOLICIT 3
-#define LWIP_ND6_MAX_ANYCAST_DELAY_TIME 1000
-#define LWIP_ND6_MAX_NEIGHBOR_ADVERTISEMENT 3
-#define LWIP_ND6_REACHABLE_TIME 30000
-#define LWIP_ND6_RETRANS_TIMER 1000
-#define LWIP_ND6_DELAY_FIRST_PROBE_TIME 5000
-#define LWIP_ND6_ALLOW_RA_UPDATES 1
-#define LWIP_ND6_TCP_REACHABILITY_HINTS 1
-#define LWIP_ND6_RDNSS_MAX_DNS_SERVERS 0
-#define LWIP_IPV6_DHCP6 0
-#define LWIP_IPV6_DHCP6_STATEFUL 0
-#define LWIP_IPV6_DHCP6_STATELESS LWIP_IPV6_DHCP6
-#define LWIP_DHCP6_GET_NTP_SRV 0
-#define LWIP_DHCP6_MAX_NTP_SERVERS 1
-#define LWIP_DHCP6_MAX_DNS_SERVERS DNS_MAX_SERVERS
-#define LWIP_DBG_MIN_LEVEL LWIP_DBG_LEVEL_ALL
-#define LWIP_DBG_TYPES_ON LWIP_DBG_ON
-#define IGMP_DEBUG LWIP_DBG_OFF
-#define TIMERS_DEBUG LWIP_DBG_OFF
-#define AUTOIP_DEBUG LWIP_DBG_OFF
-#define ACD_DEBUG LWIP_DBG_OFF
-#define DNS_DEBUG LWIP_DBG_OFF
-#define IP6_DEBUG LWIP_DBG_OFF
-#define DHCP6_DEBUG LWIP_DBG_OFF
-#define LWIP_TESTMODE 0
-#define LWIP_PERF 0
-#define ENABLE_LOOPBACK (LWIP_NETIF_LOOPBACK || LWIP_HAVE_LOOPIF)
-#define LWIP_HDR_ERR_H 
-typedef enum {
-  ERR_OK = 0,
-  ERR_MEM = -1,
-  ERR_BUF = -2,
-  ERR_TIMEOUT = -3,
-  ERR_RTE = -4,
-  ERR_INPROGRESS = -5,
-  ERR_VAL = -6,
-  ERR_WOULDBLOCK = -7,
-  ERR_USE = -8,
-  ERR_ALREADY = -9,
-  ERR_ISCONN = -10,
-  ERR_CONN = -11,
-  ERR_IF = -12,
-  ERR_ABRT = -13,
-  ERR_RST = -14,
-  ERR_CLSD = -15,
-  ERR_ARG = -16
-} err_enum_t;
-typedef s8_t err_t;
-#define lwip_strerr(x) ""
-#define LWIP_HDR_IP_ADDR_H 
-#define LWIP_HDR_DEF_H 
-#define PERF_START 
-#define PERF_STOP(x) 
-#define LWIP_MAX(x,y) (((x) > (y)) ? (x) : (y))
-#define LWIP_MIN(x,y) (((x) < (y)) ? (x) : (y))
-#define LWIP_ARRAYSIZE(x) (sizeof(x)/sizeof((x)[0]))
-#define LWIP_MAKEU32(a,b,c,d) (((u32_t)((a) & 0xff) << 24) | ((u32_t)((b) & 0xff) << 16) | ((u32_t)((c) & 0xff) << 8) | (u32_t)((d) & 0xff))
-u16_t lwip_htons(u16_t x);
-#define lwip_ntohs(x) lwip_htons(x)
-u32_t lwip_htonl(u32_t x);
-#define lwip_ntohl(x) lwip_htonl(x)
-#define PP_HTONS(x) ((u16_t)((((x) & (u16_t)0x00ffU) << 8) | (((x) & (u16_t)0xff00U) >> 8)))
-#define PP_NTOHS(x) PP_HTONS(x)
-#define PP_HTONL(x) ((((x) & (u32_t)0x000000ffUL) << 24) | (((x) & (u32_t)0x0000ff00UL) << 8) | (((x) & (u32_t)0x00ff0000UL) >> 8) | (((x) & (u32_t)0xff000000UL) >> 24))
-#define PP_NTOHL(x) PP_HTONL(x)
-#define htons(x) lwip_htons(x)
-#define ntohs(x) lwip_ntohs(x)
-#define htonl(x) lwip_htonl(x)
-#define ntohl(x) lwip_ntohl(x)
-void lwip_itoa(char* result, size_t bufsize, int number);
-int lwip_strnicmp(const char* str1, const char* str2, size_t len);
-int lwip_stricmp(const char* str1, const char* str2);
-char* lwip_strnstr(const char* buffer, const char* token, size_t n);
-char* lwip_strnistr(const char* buffer, const char* token, size_t n);
-int lwip_memcmp_consttime(const void* s1, const void* s2, size_t len);
-#define LWIP_HDR_IP4_ADDR_H 
-struct ip4_addr {
-  u32_t addr;
-};
-typedef struct ip4_addr ip4_addr_t;
-struct netif;
-#define IPADDR_NONE ((u32_t)0xffffffffUL)
-#define IPADDR_LOOPBACK ((u32_t)0x7f000001UL)
-#define IPADDR_ANY ((u32_t)0x00000000UL)
-#define IPADDR_BROADCAST ((u32_t)0xffffffffUL)
-#define IP_CLASSA(a) ((((u32_t)(a)) & 0x80000000UL) == 0)
-#define IP_CLASSA_NET 0xff000000
-#define IP_CLASSA_NSHIFT 24
-#define IP_CLASSA_HOST (0xffffffff & ~IP_CLASSA_NET)
-#define IP_CLASSA_MAX 128
-#define IP_CLASSB(a) ((((u32_t)(a)) & 0xc0000000UL) == 0x80000000UL)
-#define IP_CLASSB_NET 0xffff0000
-#define IP_CLASSB_NSHIFT 16
-#define IP_CLASSB_HOST (0xffffffff & ~IP_CLASSB_NET)
-#define IP_CLASSB_MAX 65536
-#define IP_CLASSC(a) ((((u32_t)(a)) & 0xe0000000UL) == 0xc0000000UL)
-#define IP_CLASSC_NET 0xffffff00
-#define IP_CLASSC_NSHIFT 8
-#define IP_CLASSC_HOST (0xffffffff & ~IP_CLASSC_NET)
-#define IP_CLASSD(a) (((u32_t)(a) & 0xf0000000UL) == 0xe0000000UL)
-#define IP_CLASSD_NET 0xf0000000
-#define IP_CLASSD_NSHIFT 28
-#define IP_CLASSD_HOST 0x0fffffff
-#define IP_MULTICAST(a) IP_CLASSD(a)
-#define IP_EXPERIMENTAL(a) (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
-#define IP_BADCLASS(a) (((u32_t)(a) & 0xf0000000UL) == 0xf0000000UL)
-#define IP_LOOPBACKNET 127
-#define IP4_ADDR(ipaddr,a,b,c,d) (ipaddr)->addr = PP_HTONL(LWIP_MAKEU32(a,b,c,d))
-#define ip4_addr_copy(dest,src) ((dest).addr = (src).addr)
-#define ip4_addr_set(dest,src) ((dest)->addr = ((src) == NULL ? 0 : (src)->addr))
-#define ip4_addr_set_zero(ipaddr) ((ipaddr)->addr = 0)
-#define ip4_addr_set_any(ipaddr) ((ipaddr)->addr = IPADDR_ANY)
-#define ip4_addr_set_loopback(ipaddr) ((ipaddr)->addr = PP_HTONL(IPADDR_LOOPBACK))
-#define ip4_addr_isloopback(ipaddr) (((ipaddr)->addr & PP_HTONL(IP_CLASSA_NET)) == PP_HTONL(((u32_t)IP_LOOPBACKNET) << 24))
-#define ip4_addr_set_hton(dest,src) ((dest)->addr = ((src) == NULL ? 0: lwip_htonl((src)->addr)))
-#define ip4_addr_set_u32(dest_ipaddr,src_u32) ((dest_ipaddr)->addr = (src_u32))
-#define ip4_addr_get_u32(src_ipaddr) ((src_ipaddr)->addr)
-#define ip4_addr_get_network(target,host,netmask) do { ((target)->addr = ((host)->addr) & ((netmask)->addr)); } while(0)
-#define ip4_addr_netcmp(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
-#define ip4_addr_net_eq(addr1,addr2,mask) (((addr1)->addr & (mask)->addr) == ((addr2)->addr & (mask)->addr))
-#define ip4_addr_cmp(addr1,addr2) ip4_addr_eq(addr1, addr2)
-#define ip4_addr_eq(addr1,addr2) ((addr1)->addr == (addr2)->addr)
-#define ip4_addr_isany_val(addr1) ((addr1).addr == IPADDR_ANY)
-#define ip4_addr_isany(addr1) ((addr1) == NULL || ip4_addr_isany_val(*(addr1)))
-#define ip4_addr_isbroadcast(addr1,netif) ip4_addr_isbroadcast_u32((addr1)->addr, netif)
-u8_t ip4_addr_isbroadcast_u32(u32_t addr, const struct netif *netif);
-#define ip_addr_netmask_valid(netmask) ip4_addr_netmask_valid((netmask)->addr)
-u8_t ip4_addr_netmask_valid(u32_t netmask);
-#define ip4_addr_ismulticast(addr1) (((addr1)->addr & PP_HTONL(0xf0000000UL)) == PP_HTONL(0xe0000000UL))
-#define ip4_addr_islinklocal(addr1) (((addr1)->addr & PP_HTONL(0xffff0000UL)) == PP_HTONL(0xa9fe0000UL))
-#define ip4_addr_debug_print_parts(debug,a,b,c,d) LWIP_DEBUGF(debug, ("%" U16_F ".%" U16_F ".%" U16_F ".%" U16_F, a, b, c, d))
-#define ip4_addr_debug_print(debug,ipaddr) ip4_addr_debug_print_parts(debug, (u16_t)((ipaddr) != NULL ? ip4_addr1_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr2_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr3_16(ipaddr) : 0), (u16_t)((ipaddr) != NULL ? ip4_addr4_16(ipaddr) : 0))
-#define ip4_addr_debug_print_val(debug,ipaddr) ip4_addr_debug_print_parts(debug, ip4_addr1_16_val(ipaddr), ip4_addr2_16_val(ipaddr), ip4_addr3_16_val(ipaddr), ip4_addr4_16_val(ipaddr))
-#define ip4_addr_get_byte(ipaddr,idx) (((const u8_t*)(&(ipaddr)->addr))[idx])
-#define ip4_addr1(ipaddr) ip4_addr_get_byte(ipaddr, 0)
-#define ip4_addr2(ipaddr) ip4_addr_get_byte(ipaddr, 1)
-#define ip4_addr3(ipaddr) ip4_addr_get_byte(ipaddr, 2)
-#define ip4_addr4(ipaddr) ip4_addr_get_byte(ipaddr, 3)
-#define ip4_addr_get_byte_val(ipaddr,idx) ((u8_t)(((ipaddr).addr >> (idx * 8)) & 0xff))
-#define ip4_addr1_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 0)
-#define ip4_addr2_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 1)
-#define ip4_addr3_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 2)
-#define ip4_addr4_val(ipaddr) ip4_addr_get_byte_val(ipaddr, 3)
-#define ip4_addr1_16(ipaddr) ((u16_t)ip4_addr1(ipaddr))
-#define ip4_addr2_16(ipaddr) ((u16_t)ip4_addr2(ipaddr))
-#define ip4_addr3_16(ipaddr) ((u16_t)ip4_addr3(ipaddr))
-#define ip4_addr4_16(ipaddr) ((u16_t)ip4_addr4(ipaddr))
-#define ip4_addr1_16_val(ipaddr) ((u16_t)ip4_addr1_val(ipaddr))
-#define ip4_addr2_16_val(ipaddr) ((u16_t)ip4_addr2_val(ipaddr))
-#define ip4_addr3_16_val(ipaddr) ((u16_t)ip4_addr3_val(ipaddr))
-#define ip4_addr4_16_val(ipaddr) ((u16_t)ip4_addr4_val(ipaddr))
-#define IP4ADDR_STRLEN_MAX 16
-#define ip_ntoa(ipaddr) ipaddr_ntoa(ipaddr)
-u32_t ipaddr_addr(const char *cp);
-int ip4addr_aton(const char *cp, ip4_addr_t *addr);
-char *ip4addr_ntoa(const ip4_addr_t *addr);
-char *ip4addr_ntoa_r(const ip4_addr_t *addr, char *buf, int buflen);
-#define LWIP_HDR_IP6_ADDR_H 
-enum lwip_ip_addr_type {
-  IPADDR_TYPE_V4 = 0U,
-  IPADDR_TYPE_V6 = 6U,
-  IPADDR_TYPE_ANY = 46U
-};
-#define IP_ADDR_PCB_VERSION_MATCH(addr,pcb) 1
-#define IP_ADDR_PCB_VERSION_MATCH_EXACT(pcb,ipaddr) 1
-#define ip_addr_set_any_val(is_ipv6,ipaddr) ip_addr_set_any(is_ipv6, &(ipaddr))
-#define ip_addr_set_loopback_val(is_ipv6,ipaddr) ip_addr_set_loopback(is_ipv6, &(ipaddr))
-typedef ip4_addr_t ip_addr_t;
-#define IPADDR4_INIT(u32val) { u32val }
-#define IPADDR4_INIT_BYTES(a,b,c,d) IPADDR4_INIT(PP_HTONL(LWIP_MAKEU32(a,b,c,d)))
-#define IP_IS_V4_VAL(ipaddr) 1
-#define IP_IS_V6_VAL(ipaddr) 0
-#define IP_IS_V4(ipaddr) 1
-#define IP_IS_V6(ipaddr) 0
-#define IP_IS_ANY_TYPE_VAL(ipaddr) 0
-#define IP_SET_TYPE_VAL(ipaddr,iptype) 
-#define IP_SET_TYPE(ipaddr,iptype) 
-#define IP_GET_TYPE(ipaddr) IPADDR_TYPE_V4
-#define IP_ADDR_RAW_SIZE(ipaddr) sizeof(ip4_addr_t)
-#define ip_2_ip4(ipaddr) (ipaddr)
-#define IP_ADDR4(ipaddr,a,b,c,d) IP4_ADDR(ipaddr,a,b,c,d)
-#define ip_addr_copy(dest,src) ip4_addr_copy(dest, src)
-#define ip_addr_copy_from_ip4(dest,src) ip4_addr_copy(dest, src)
-#define ip_addr_set_ip4_u32(ipaddr,val) ip4_addr_set_u32(ip_2_ip4(ipaddr), val)
-#define ip_addr_set_ip4_u32_val(ipaddr,val) ip_addr_set_ip4_u32(&(ipaddr), val)
-#define ip_addr_get_ip4_u32(ipaddr) ip4_addr_get_u32(ip_2_ip4(ipaddr))
-#define ip_addr_set(dest,src) ip4_addr_set(dest, src)
-#define ip_addr_set_ipaddr(dest,src) ip4_addr_set(dest, src)
-#define ip_addr_set_zero(ipaddr) ip4_addr_set_zero(ipaddr)
-#define ip_addr_set_zero_ip4(ipaddr) ip4_addr_set_zero(ipaddr)
-#define ip_addr_set_any(is_ipv6,ipaddr) ip4_addr_set_any(ipaddr)
-#define ip_addr_set_loopback(is_ipv6,ipaddr) ip4_addr_set_loopback(ipaddr)
-#define ip_addr_set_hton(dest,src) ip4_addr_set_hton(dest, src)
-#define ip_addr_get_network(target,host,mask) ip4_addr_get_network(target, host, mask)
-#define ip_addr_netcmp(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
-#define ip_addr_net_eq(addr1,addr2,mask) ip4_addr_net_eq(addr1, addr2, mask)
-#define ip_addr_cmp(addr1,addr2) ip4_addr_eq(addr1, addr2)
-#define ip_addr_eq(addr1,addr2) ip4_addr_eq(addr1, addr2)
-#define ip_addr_isany(ipaddr) ip4_addr_isany(ipaddr)
-#define ip_addr_isany_val(ipaddr) ip4_addr_isany_val(ipaddr)
-#define ip_addr_isloopback(ipaddr) ip4_addr_isloopback(ipaddr)
-#define ip_addr_islinklocal(ipaddr) ip4_addr_islinklocal(ipaddr)
-#define ip_addr_isbroadcast(addr,netif) ip4_addr_isbroadcast(addr, netif)
-#define ip_addr_ismulticast(ipaddr) ip4_addr_ismulticast(ipaddr)
-#define ip_addr_debug_print(debug,ipaddr) ip4_addr_debug_print(debug, ipaddr)
-#define ip_addr_debug_print_val(debug,ipaddr) ip4_addr_debug_print_val(debug, ipaddr)
-#define ipaddr_ntoa(ipaddr) ip4addr_ntoa(ipaddr)
-#define ipaddr_ntoa_r(ipaddr,buf,buflen) ip4addr_ntoa_r(ipaddr, buf, buflen)
-#define ipaddr_aton(cp,addr) ip4addr_aton(cp, addr)
-#define IPADDR_STRLEN_MAX IP4ADDR_STRLEN_MAX
-#define IP46_ADDR_ANY(type) (IP4_ADDR_ANY)
-extern const ip_addr_t ip_addr_any;
-extern const ip_addr_t ip_addr_broadcast;
-#define IP_ADDR_ANY IP4_ADDR_ANY
-#define IP4_ADDR_ANY (&ip_addr_any)
-#define IP4_ADDR_ANY4 (ip_2_ip4(&ip_addr_any))
-#define IP_ADDR_BROADCAST (&ip_addr_broadcast)
-#define IP4_ADDR_BROADCAST (ip_2_ip4(&ip_addr_broadcast))
-#define IP_ANY_TYPE IP_ADDR_ANY
-#define LWIP_HDR_PBUF_H 
-#define LWIP_SUPPORT_CUSTOM_PBUF ((IP_FRAG && !LWIP_NETIF_TX_SINGLE_PBUF) || (LWIP_IPV6 && LWIP_IPV6_FRAG))
-#define PBUF_NEEDS_COPY(p) ((p)->type_internal & PBUF_TYPE_FLAG_DATA_VOLATILE)
-#define PBUF_TRANSPORT_HLEN 20
-#define PBUF_IP_HLEN 20
-typedef enum {
-  PBUF_TRANSPORT = 0 + (14 + 0) + 20 + 20,
-  PBUF_IP = 0 + (14 + 0) + 20,
-  PBUF_LINK = 0 + (14 + 0),
-  PBUF_RAW_TX = 0,
-  PBUF_RAW = 0
-} pbuf_layer;
-#define PBUF_TYPE_FLAG_STRUCT_DATA_CONTIGUOUS 0x80
-#define PBUF_TYPE_FLAG_DATA_VOLATILE 0x40
-#define PBUF_TYPE_ALLOC_SRC_MASK 0x0F
-#define PBUF_ALLOC_FLAG_RX 0x0100
-#define PBUF_ALLOC_FLAG_DATA_CONTIGUOUS 0x0200
-#define PBUF_TYPE_ALLOC_SRC_MASK_STD_HEAP 0x00
-#define PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF 0x01
-#define PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF_POOL 0x02
-#define PBUF_TYPE_ALLOC_SRC_MASK_APP_MIN 0x03
-#define PBUF_TYPE_ALLOC_SRC_MASK_APP_MAX PBUF_TYPE_ALLOC_SRC_MASK
-typedef enum {
-  PBUF_RAM = (0x0200 | 0x80 | 0x00),
-  PBUF_ROM = 0x01,
-  PBUF_REF = (0x40 | 0x01),
-  PBUF_POOL = (0x0100 | 0x80 | 0x02)
-} pbuf_type;
-#define PBUF_FLAG_PUSH 0x01U
-#define PBUF_FLAG_IS_CUSTOM 0x02U
-#define PBUF_FLAG_MCASTLOOP 0x04U
-#define PBUF_FLAG_LLBCAST 0x08U
-#define PBUF_FLAG_LLMCAST 0x10U
-#define PBUF_FLAG_TCP_FIN 0x20U
-struct pbuf {
-  struct pbuf *next;
-  void *payload;
-  u16_t tot_len;
-  u16_t len;
-  u8_t type_internal;
-  u8_t flags;
-  u8_t ref;
-  u8_t if_idx;
- 
-};
-struct pbuf_rom {
-  struct pbuf *next;
-  const void *payload;
-};
-#define PBUF_POOL_FREE_OOSEQ 1
-extern volatile u8_t pbuf_free_ooseq_pending;
-void pbuf_free_ooseq(void);
-#define PBUF_CHECK_FREE_OOSEQ() do { if(pbuf_free_ooseq_pending) { pbuf_free_ooseq(); }}while(0)
-#define pbuf_init() 
-struct pbuf *pbuf_alloc(pbuf_layer l, u16_t length, pbuf_type type);
-struct pbuf *pbuf_alloc_reference(void *payload, u16_t length, pbuf_type type);
-void pbuf_realloc(struct pbuf *p, u16_t size);
-#define pbuf_get_allocsrc(p) ((p)->type_internal & PBUF_TYPE_ALLOC_SRC_MASK)
-#define pbuf_match_allocsrc(p,type) (pbuf_get_allocsrc(p) == ((type) & PBUF_TYPE_ALLOC_SRC_MASK))
-#define pbuf_match_type(p,type) pbuf_match_allocsrc(p, type)
-u8_t pbuf_header(struct pbuf *p, s16_t header_size);
-u8_t pbuf_header_force(struct pbuf *p, s16_t header_size);
-u8_t pbuf_add_header(struct pbuf *p, size_t header_size_increment);
-u8_t pbuf_add_header_force(struct pbuf *p, size_t header_size_increment);
-u8_t pbuf_remove_header(struct pbuf *p, size_t header_size);
-struct pbuf *pbuf_free_header(struct pbuf *q, u16_t size);
-void pbuf_ref(struct pbuf *p);
-u8_t pbuf_free(struct pbuf *p);
-u16_t pbuf_clen(const struct pbuf *p);
-void pbuf_cat(struct pbuf *head, struct pbuf *tail);
-void pbuf_chain(struct pbuf *head, struct pbuf *tail);
-struct pbuf *pbuf_dechain(struct pbuf *p);
-err_t pbuf_copy(struct pbuf *p_to, const struct pbuf *p_from);
-err_t pbuf_copy_partial_pbuf(struct pbuf *p_to, const struct pbuf *p_from, u16_t copy_len, u16_t offset);
-u16_t pbuf_copy_partial(const struct pbuf *p, void *dataptr, u16_t len, u16_t offset);
-void *pbuf_get_contiguous(const struct pbuf *p, void *buffer, size_t bufsize, u16_t len, u16_t offset);
-err_t pbuf_take(struct pbuf *buf, const void *dataptr, u16_t len);
-err_t pbuf_take_at(struct pbuf *buf, const void *dataptr, u16_t len, u16_t offset);
-struct pbuf *pbuf_skip(struct pbuf* in, u16_t in_offset, u16_t* out_offset);
-struct pbuf *pbuf_coalesce(struct pbuf *p, pbuf_layer layer);
-struct pbuf *pbuf_clone(pbuf_layer l, pbuf_type type, struct pbuf *p);
-u8_t pbuf_get_at(const struct pbuf* p, u16_t offset);
-int pbuf_try_get_at(const struct pbuf* p, u16_t offset);
-void pbuf_put_at(struct pbuf* p, u16_t offset, u8_t data);
-u16_t pbuf_memcmp(const struct pbuf* p, u16_t offset, const void* s2, u16_t n);
-u16_t pbuf_memfind(const struct pbuf* p, const void* mem, u16_t mem_len, u16_t start_offset);
-u16_t pbuf_strstr(const struct pbuf* p, const char* substr);
-#define LWIP_HDR_STATS_H 
-#define LWIP_HDR_MEM_H 
-typedef u16_t mem_size_t;
-#define MEM_SIZE_F U16_F
-void mem_init(void);
-void *mem_trim(void *mem, mem_size_t size);
-void *mem_malloc(mem_size_t size);
-void *mem_calloc(mem_size_t count, mem_size_t size);
-void mem_free(void *mem);
-#define LWIP_HDR_MEMP_H 
-#define LWIP_MEMPOOL(name,num,size,desc) 
-#define LWIP_MALLOC_MEMPOOL(num,size) LWIP_MEMPOOL(POOL_ ##size, num, (size + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper))), "MALLOC_"#size)
-#define LWIP_MALLOC_MEMPOOL_START 
-#define LWIP_MALLOC_MEMPOOL_END 
-#define LWIP_PBUF_MEMPOOL(name,num,payload,desc) LWIP_MEMPOOL(name, num, (LWIP_MEM_ALIGN_SIZE(sizeof(struct pbuf)) + LWIP_MEM_ALIGN_SIZE(payload)), desc)
-
-
-
-
-
-
-
-
-
-#undef LWIP_MEMPOOL
-#undef LWIP_MALLOC_MEMPOOL
-#undef LWIP_MALLOC_MEMPOOL_START
-#undef LWIP_MALLOC_MEMPOOL_END
-#undef LWIP_PBUF_MEMPOOL
-typedef enum {
-#define LWIP_MEMPOOL(name,num,size,desc) MEMP_ ##name,
-#define LWIP_MALLOC_MEMPOOL(num,size) LWIP_MEMPOOL(POOL_ ##size, num, (size + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper))), "MALLOC_"#size)
-#define LWIP_MALLOC_MEMPOOL_START 
-#define LWIP_MALLOC_MEMPOOL_END 
-#define LWIP_PBUF_MEMPOOL(name,num,payload,desc) LWIP_MEMPOOL(name, num, (LWIP_MEM_ALIGN_SIZE(sizeof(struct pbuf)) + LWIP_MEM_ALIGN_SIZE(payload)), desc)
-MEMP_RAW_PCB,
-MEMP_UDP_PCB,
-MEMP_TCP_PCB,
-MEMP_TCP_PCB_LISTEN,
-MEMP_TCP_SEG,
-MEMP_REASSDATA,
-MEMP_SYS_TIMEOUT,
-MEMP_PBUF,
-MEMP_PBUF_POOL,
-#undef LWIP_MEMPOOL
-#undef LWIP_MALLOC_MEMPOOL
-#undef LWIP_MALLOC_MEMPOOL_START
-#undef LWIP_MALLOC_MEMPOOL_END
-#undef LWIP_PBUF_MEMPOOL
-  MEMP_MAX
-} memp_t;
-#define LWIP_HDR_MEMP_PRIV_H 
-#define LWIP_HDR_MEM_PRIV_H 
-#define MEMP_SIZE 0
-#define MEMP_ALIGN_SIZE(x) (LWIP_MEM_ALIGN_SIZE(x))
-struct memp {
-  struct memp *next;
-};
-struct memp_desc {
-  const char *desc;
-  struct stats_mem *stats;
-  u16_t size;
-  u16_t num;
-  u8_t *base;
-  struct memp **tab;
-};
-#define DECLARE_LWIP_MEMPOOL_DESC(desc) (desc),
-#define LWIP_MEMPOOL_DECLARE_STATS_INSTANCE(name) static struct stats_mem name;
-#define LWIP_MEMPOOL_DECLARE_STATS_REFERENCE(name) &name,
-void memp_init_pool(const struct memp_desc *desc);
-void *memp_malloc_pool(const struct memp_desc *desc);
-void memp_free_pool(const struct memp_desc* desc, void *mem);
-extern const struct memp_desc* const memp_pools[MEMP_MAX];
-#define LWIP_MEMPOOL_PROTOTYPE(name) extern const struct memp_desc memp_ ## name
-#define LWIP_MEMPOOL_DECLARE(name,num,size,desc) LWIP_DECLARE_MEMORY_ALIGNED(memp_memory_ ## name ## _base, ((num) * (MEMP_SIZE + MEMP_ALIGN_SIZE(size)))); LWIP_MEMPOOL_DECLARE_STATS_INSTANCE(memp_stats_ ## name) static struct memp *memp_tab_ ## name; const struct memp_desc memp_ ## name = { DECLARE_LWIP_MEMPOOL_DESC(desc) LWIP_MEMPOOL_DECLARE_STATS_REFERENCE(memp_stats_ ## name) LWIP_MEM_ALIGN_SIZE(size), (num), memp_memory_ ## name ## _base, &memp_tab_ ## name };
-#define LWIP_MEMPOOL_INIT(name) memp_init_pool(&memp_ ## name)
-#define LWIP_MEMPOOL_ALLOC(name) memp_malloc_pool(&memp_ ## name)
-#define LWIP_MEMPOOL_FREE(name,x) memp_free_pool(&memp_ ## name, (x))
-void memp_init(void);
-void *memp_malloc(memp_t type);
-void memp_free(memp_t type, void *mem);
-#define LWIP_STATS_LARGE 0
-#define STAT_COUNTER u16_t
-#define STAT_COUNTER_F U16_F
-struct stats_proto {
-  u16_t xmit;
-  u16_t recv;
-  u16_t fw;
-  u16_t drop;
-  u16_t chkerr;
-  u16_t lenerr;
-  u16_t memerr;
-  u16_t rterr;
-  u16_t proterr;
-  u16_t opterr;
-  u16_t err;
-  u16_t cachehit;
-};
-struct stats_igmp {
-  u16_t xmit;
-  u16_t recv;
-  u16_t drop;
-  u16_t chkerr;
-  u16_t lenerr;
-  u16_t memerr;
-  u16_t proterr;
-  u16_t rx_v1;
-  u16_t rx_group;
-  u16_t rx_general;
-  u16_t rx_report;
-  u16_t tx_join;
-  u16_t tx_leave;
-  u16_t tx_report;
-};
-struct stats_mem {
-  const char *name;
-  u16_t err;
-  mem_size_t avail;
-  mem_size_t used;
-  mem_size_t max;
-  u16_t illegal;
-};
-struct stats_syselem {
-  u16_t used;
-  u16_t max;
-  u16_t err;
-};
-struct stats_sys {
-  struct stats_syselem sem;
-  struct stats_syselem mutex;
-  struct stats_syselem mbox;
-};
-struct stats_mib2 {
-  u32_t ipinhdrerrors;
-  u32_t ipinaddrerrors;
-  u32_t ipinunknownprotos;
-  u32_t ipindiscards;
-  u32_t ipindelivers;
-  u32_t ipoutrequests;
-  u32_t ipoutdiscards;
-  u32_t ipoutnoroutes;
-  u32_t ipreasmoks;
-  u32_t ipreasmfails;
-  u32_t ipfragoks;
-  u32_t ipfragfails;
-  u32_t ipfragcreates;
-  u32_t ipreasmreqds;
-  u32_t ipforwdatagrams;
-  u32_t ipinreceives;
-  u32_t ip6reasmoks;
-  u32_t tcpactiveopens;
-  u32_t tcppassiveopens;
-  u32_t tcpattemptfails;
-  u32_t tcpestabresets;
-  u32_t tcpoutsegs;
-  u32_t tcpretranssegs;
-  u32_t tcpinsegs;
-  u32_t tcpinerrs;
-  u32_t tcpoutrsts;
-  u32_t udpindatagrams;
-  u32_t udpnoports;
-  u32_t udpinerrors;
-  u32_t udpoutdatagrams;
-  u32_t icmpinmsgs;
-  u32_t icmpinerrors;
-  u32_t icmpindestunreachs;
-  u32_t icmpintimeexcds;
-  u32_t icmpinparmprobs;
-  u32_t icmpinsrcquenchs;
-  u32_t icmpinredirects;
-  u32_t icmpinechos;
-  u32_t icmpinechoreps;
-  u32_t icmpintimestamps;
-  u32_t icmpintimestampreps;
-  u32_t icmpinaddrmasks;
-  u32_t icmpinaddrmaskreps;
-  u32_t icmpoutmsgs;
-  u32_t icmpouterrors;
-  u32_t icmpoutdestunreachs;
-  u32_t icmpouttimeexcds;
-  u32_t icmpoutechos;
-  u32_t icmpoutechoreps;
-};
-struct stats_mib2_netif_ctrs {
-  u32_t ifinoctets;
-  u32_t ifinucastpkts;
-  u32_t ifinnucastpkts;
-  u32_t ifindiscards;
-  u32_t ifinerrors;
-  u32_t ifinunknownprotos;
-  u32_t ifoutoctets;
-  u32_t ifoutucastpkts;
-  u32_t ifoutnucastpkts;
-  u32_t ifoutdiscards;
-  u32_t ifouterrors;
-};
-struct stats_ {
-  struct stats_proto link;
-  struct stats_proto etharp;
-  struct stats_proto ip_frag;
-  struct stats_proto ip;
-  struct stats_proto icmp;
-  struct stats_proto udp;
-  struct stats_proto tcp;
-  struct stats_mem mem;
-  struct stats_mem *memp[MEMP_MAX];
-  struct stats_sys sys;
-};
-extern struct stats_ lwip_stats;
-void stats_init(void);
-#define STATS_INC(x) ++lwip_stats.x
-#define STATS_DEC(x) --lwip_stats.x
-#define STATS_INC_USED(x,y,type) do { lwip_stats.x.used = (type)(lwip_stats.x.used + y); if (lwip_stats.x.max < lwip_stats.x.used) { lwip_stats.x.max = lwip_stats.x.used; } } while(0)
-#define STATS_GET(x) lwip_stats.x
-#define TCP_STATS_INC(x) STATS_INC(x)
-#define TCP_STATS_DISPLAY() stats_display_proto(&lwip_stats.tcp, "TCP")
-#define UDP_STATS_INC(x) STATS_INC(x)
-#define UDP_STATS_DISPLAY() stats_display_proto(&lwip_stats.udp, "UDP")
-#define ICMP_STATS_INC(x) STATS_INC(x)
-#define ICMP_STATS_DISPLAY() stats_display_proto(&lwip_stats.icmp, "ICMP")
-#define IGMP_STATS_INC(x) 
-#define IGMP_STATS_DISPLAY() 
-#define IP_STATS_INC(x) STATS_INC(x)
-#define IP_STATS_DISPLAY() stats_display_proto(&lwip_stats.ip, "IP")
-#define IPFRAG_STATS_INC(x) STATS_INC(x)
-#define IPFRAG_STATS_DISPLAY() stats_display_proto(&lwip_stats.ip_frag, "IP_FRAG")
-#define ETHARP_STATS_INC(x) STATS_INC(x)
-#define ETHARP_STATS_DISPLAY() stats_display_proto(&lwip_stats.etharp, "ETHARP")
-#define LINK_STATS_INC(x) STATS_INC(x)
-#define LINK_STATS_DISPLAY() stats_display_proto(&lwip_stats.link, "LINK")
-#define MEM_STATS_AVAIL(x,y) lwip_stats.mem.x = y
-#define MEM_STATS_INC(x) STATS_INC(mem.x)
-#define MEM_STATS_INC_USED(x,y) STATS_INC_USED(mem, y, mem_size_t)
-#define MEM_STATS_DEC_USED(x,y) lwip_stats.mem.x = (mem_size_t)((lwip_stats.mem.x) - (y))
-#define MEM_STATS_DISPLAY() stats_display_mem(&lwip_stats.mem, "HEAP")
-#define MEMP_STATS_DEC(x,i) STATS_DEC(memp[i]->x)
-#define MEMP_STATS_DISPLAY(i) stats_display_memp(lwip_stats.memp[i], i)
-#define MEMP_STATS_GET(x,i) STATS_GET(memp[i]->x)
-#define SYS_STATS_INC(x) STATS_INC(sys.x)
-#define SYS_STATS_DEC(x) STATS_DEC(sys.x)
-#define SYS_STATS_INC_USED(x) STATS_INC_USED(sys.x, 1, STAT_COUNTER)
-#define SYS_STATS_DISPLAY() stats_display_sys(&lwip_stats.sys)
-#define IP6_STATS_INC(x) 
-#define IP6_STATS_DISPLAY() 
-#define ICMP6_STATS_INC(x) 
-#define ICMP6_STATS_DISPLAY() 
-#define IP6_FRAG_STATS_INC(x) 
-#define IP6_FRAG_STATS_DISPLAY() 
-#define MLD6_STATS_INC(x) 
-#define MLD6_STATS_DISPLAY() 
-#define ND6_STATS_INC(x) 
-#define ND6_STATS_DISPLAY() 
-#define MIB2_STATS_INC(x) 
-void stats_display(void);
-void stats_display_proto(struct stats_proto *proto, const char *name);
-void stats_display_igmp(struct stats_igmp *igmp, const char *name);
-void stats_display_mem(struct stats_mem *mem, const char *name);
-void stats_display_memp(struct stats_mem *mem, int index);
-void stats_display_sys(struct stats_sys *sys);
-#define NETIF_MAX_HWADDR_LEN 6U
-#define NETIF_NAMESIZE 6
-#define NETIF_FLAG_UP 0x01U
-#define NETIF_FLAG_BROADCAST 0x02U
-#define NETIF_FLAG_LINK_UP 0x04U
-#define NETIF_FLAG_ETHARP 0x08U
-#define NETIF_FLAG_ETHERNET 0x10U
-#define NETIF_FLAG_IGMP 0x20U
-#define NETIF_FLAG_MLD6 0x40U
-enum lwip_internal_netif_client_data_index
-{
-   LWIP_NETIF_CLIENT_DATA_INDEX_DHCP,
-   LWIP_NETIF_CLIENT_DATA_INDEX_MAX
-};
-struct netif;
-enum netif_mac_filter_action {
-  NETIF_DEL_MAC_FILTER = 0,
-  NETIF_ADD_MAC_FILTER = 1
-};
-typedef err_t (*netif_init_fn)(struct netif *netif);
-typedef err_t (*netif_input_fn)(struct pbuf *p, struct netif *inp);
-typedef err_t (*netif_output_fn)(struct netif *netif, struct pbuf *p,
-       const ip4_addr_t *ipaddr);
-typedef err_t (*netif_linkoutput_fn)(struct netif *netif, struct pbuf *p);
-typedef void (*netif_status_callback_fn)(struct netif *netif);
-#define netif_set_client_data(netif,id,data) netif_get_client_data(netif, id) = (data)
-#define netif_get_client_data(netif,id) (netif)->client_data[(id)]
-typedef u8_t netif_addr_idx_t;
-#define NETIF_ADDR_IDX_MAX 0x7F
-#define LWIP_NETIF_USE_HINTS 0
-struct netif {
-  struct netif *next;
-  ip_addr_t ip_addr;
-  ip_addr_t netmask;
-  ip_addr_t gw;
-  netif_input_fn input;
-  netif_output_fn output;
-  netif_linkoutput_fn linkoutput;
-  netif_status_callback_fn status_callback;
-  netif_status_callback_fn link_callback;
-  void *state;
-  void* client_data[LWIP_NETIF_CLIENT_DATA_INDEX_MAX + 0];
-  const char* hostname;
-  u16_t mtu;
-  u8_t hwaddr[6U];
-  u8_t hwaddr_len;
-  u8_t flags;
-  char name[2];
-  u8_t num;
-};
-#define NETIF_CHECKSUM_ENABLED(netif,chksumflag) 0
-#define NETIF_SET_CHECKSUM_CTRL(netif,chksumflags) 
-#define IF__NETIF_CHECKSUM_ENABLED(netif,chksumflag) 
-extern struct netif *netif_list;
-#define NETIF_FOREACH(netif) for ((netif) = netif_list; (netif) != NULL; (netif) = (netif)->next)
-extern struct netif *netif_default;
-void netif_init(void);
-struct netif *netif_add_noaddr(struct netif *netif, void *state, netif_init_fn init, netif_input_fn input);
-struct netif *netif_add(struct netif *netif,
-                            const ip4_addr_t *ipaddr, const ip4_addr_t *netmask, const ip4_addr_t *gw,
-                            void *state, netif_init_fn init, netif_input_fn input);
-void netif_set_addr(struct netif *netif, const ip4_addr_t *ipaddr, const ip4_addr_t *netmask,
-                    const ip4_addr_t *gw);
-void netif_remove(struct netif * netif);
-struct netif *netif_find(const char *name);
-void netif_set_default(struct netif *netif);
-void netif_set_ipaddr(struct netif *netif, const ip4_addr_t *ipaddr);
-void netif_set_netmask(struct netif *netif, const ip4_addr_t *netmask);
-void netif_set_gw(struct netif *netif, const ip4_addr_t *gw);
-#define netif_ip4_addr(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->ip_addr)))
-#define netif_ip4_netmask(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->netmask)))
-#define netif_ip4_gw(netif) ((const ip4_addr_t*)ip_2_ip4(&((netif)->gw)))
-#define netif_ip_addr4(netif) ((const ip_addr_t*)&((netif)->ip_addr))
-#define netif_ip_netmask4(netif) ((const ip_addr_t*)&((netif)->netmask))
-#define netif_ip_gw4(netif) ((const ip_addr_t*)&((netif)->gw))
-#define netif_set_flags(netif,set_flags) do { (netif)->flags = (u8_t)((netif)->flags | (set_flags)); } while(0)
-#define netif_clear_flags(netif,clr_flags) do { (netif)->flags = (u8_t)((netif)->flags & (u8_t)(~(clr_flags) & 0xff)); } while(0)
-#define netif_is_flag_set(netif,flag) (((netif)->flags & (flag)) != 0)
-void netif_set_up(struct netif *netif);
-void netif_set_down(struct netif *netif);
-#define netif_is_up(netif) (((netif)->flags & NETIF_FLAG_UP) ? (u8_t)1 : (u8_t)0)
-void netif_set_status_callback(struct netif *netif, netif_status_callback_fn status_callback);
-void netif_set_link_up(struct netif *netif);
-void netif_set_link_down(struct netif *netif);
-#define netif_is_link_up(netif) (((netif)->flags & NETIF_FLAG_LINK_UP) ? (u8_t)1 : (u8_t)0)
-void netif_set_link_callback(struct netif *netif, netif_status_callback_fn link_callback);
-#define netif_set_hostname(netif,name) do { if((netif) != NULL) { (netif)->hostname = name; }}while(0)
-#define netif_get_hostname(netif) (((netif) != NULL) ? ((netif)->hostname) : NULL)
-err_t netif_input(struct pbuf *p, struct netif *inp);
-#define NETIF_SET_HINTS(netif,netifhint) 
-#define NETIF_RESET_HINTS(netif) 
-u8_t netif_name_to_index(const char *name);
-char * netif_index_to_name(u8_t idx, char *name);
-struct netif* netif_get_by_index(u8_t idx);
-#define netif_get_index(netif) ((u8_t)((netif)->num + 1))
-#define NETIF_NO_INDEX (0)
-typedef u16_t netif_nsc_reason_t;
-#define LWIP_NSC_NONE 0x0000
-#define LWIP_NSC_NETIF_ADDED 0x0001
-#define LWIP_NSC_NETIF_REMOVED 0x0002
-#define LWIP_NSC_LINK_CHANGED 0x0004
-#define LWIP_NSC_STATUS_CHANGED 0x0008
-#define LWIP_NSC_IPV4_ADDRESS_CHANGED 0x0010
-#define LWIP_NSC_IPV4_GATEWAY_CHANGED 0x0020
-#define LWIP_NSC_IPV4_NETMASK_CHANGED 0x0040
-#define LWIP_NSC_IPV4_SETTINGS_CHANGED 0x0080
-#define LWIP_NSC_IPV6_SET 0x0100
-#define LWIP_NSC_IPV6_ADDR_STATE_CHANGED 0x0200
-#define LWIP_NSC_IPV4_ADDR_VALID 0x0400
-typedef union
-{
-  struct link_changed_s
-  {
-    u8_t state;
-  } link_changed;
-  struct status_changed_s
-  {
-    u8_t state;
-  } status_changed;
-  struct ipv4_changed_s
-  {
-    const ip_addr_t* old_address;
-    const ip_addr_t* old_netmask;
-    const ip_addr_t* old_gw;
-  } ipv4_changed;
-  struct ipv6_set_s
-  {
-    s8_t addr_index;
-    const ip_addr_t* old_address;
-  } ipv6_set;
-  struct ipv6_addr_state_changed_s
-  {
-    s8_t addr_index;
-    u8_t old_state;
-    const ip_addr_t* address;
-  } ipv6_addr_state_changed;
-} netif_ext_callback_args_t;
-typedef void (*netif_ext_callback_fn)(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
-#define NETIF_DECLARE_EXT_CALLBACK(name) 
-#define netif_add_ext_callback(callback,fn) 
-#define netif_remove_ext_callback(callback) 
-#define netif_invoke_ext_callback(netif,reason,args) 
 #define LWIP_HDR_DHCP_H 
 #define LWIP_HDR_UDP_H 
-#define LWIP_HDR_IP_H 
-#define LWIP_HDR_IP4_H 
-#define LWIP_HDR_PROT_IP4_H 
-
-struct ip4_addr_packed {
-  u32_t addr;
-} __attribute__ ((__packed__));
-
-typedef struct ip4_addr_packed ip4_addr_p_t;
-#define IP_HLEN 20
-#define IP_HLEN_MAX 60
-
-struct ip_hdr {
-  u8_t _v_hl;
-  u8_t _tos;
-  u16_t _len;
-  u16_t _id;
-  u16_t _offset;
-#define IP_RF 0x8000U
-#define IP_DF 0x4000U
-#define IP_MF 0x2000U
-#define IP_OFFMASK 0x1fffU
-  u8_t _ttl;
-  u8_t _proto;
-  u16_t _chksum;
-  ip4_addr_p_t src;
-  ip4_addr_p_t dest;
-} __attribute__ ((__packed__));
-
-#define IPH_V(hdr) ((hdr)->_v_hl >> 4)
-#define IPH_HL(hdr) ((hdr)->_v_hl & 0x0f)
-#define IPH_HL_BYTES(hdr) ((u8_t)(IPH_HL(hdr) * 4))
-#define IPH_TOS(hdr) ((hdr)->_tos)
-#define IPH_LEN(hdr) ((hdr)->_len)
-#define IPH_ID(hdr) ((hdr)->_id)
-#define IPH_OFFSET(hdr) ((hdr)->_offset)
-#define IPH_OFFSET_BYTES(hdr) ((u16_t)((lwip_ntohs(IPH_OFFSET(hdr)) & IP_OFFMASK) * 8U))
-#define IPH_TTL(hdr) ((hdr)->_ttl)
-#define IPH_PROTO(hdr) ((hdr)->_proto)
-#define IPH_CHKSUM(hdr) ((hdr)->_chksum)
-#define IPH_VHL_SET(hdr,v,hl) (hdr)->_v_hl = (u8_t)((((v) << 4) | (hl)))
-#define IPH_TOS_SET(hdr,tos) (hdr)->_tos = (tos)
-#define IPH_LEN_SET(hdr,len) (hdr)->_len = (len)
-#define IPH_ID_SET(hdr,id) (hdr)->_id = (id)
-#define IPH_OFFSET_SET(hdr,off) (hdr)->_offset = (off)
-#define IPH_TTL_SET(hdr,ttl) (hdr)->_ttl = (u8_t)(ttl)
-#define IPH_PROTO_SET(hdr,proto) (hdr)->_proto = (u8_t)(proto)
-#define IPH_CHKSUM_SET(hdr,chksum) (hdr)->_chksum = (chksum)
-#define LWIP_IPV4_SRC_ROUTING 0
-#define IP_OPTIONS_SEND (LWIP_IPV4 && LWIP_IGMP)
-#define ip_init() 
-struct netif *ip4_route(const ip4_addr_t *dest);
-#define ip4_route_src(src,dest) ip4_route(dest)
-err_t ip4_input(struct pbuf *p, struct netif *inp);
-err_t ip4_output(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
-       u8_t ttl, u8_t tos, u8_t proto);
-err_t ip4_output_if(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
-       u8_t ttl, u8_t tos, u8_t proto, struct netif *netif);
-err_t ip4_output_if_src(struct pbuf *p, const ip4_addr_t *src, const ip4_addr_t *dest,
-       u8_t ttl, u8_t tos, u8_t proto, struct netif *netif);
-#define ip4_netif_get_local_ip(netif) (((netif) != NULL) ? netif_ip_addr4(netif) : NULL)
-#define ip4_debug_print(p) 
-#define LWIP_HDR_IP6_H 
-#define LWIP_HDR_PROT_IP_H 
-#define IP_PROTO_ICMP 1
-#define IP_PROTO_IGMP 2
-#define IP_PROTO_UDP 17
-#define IP_PROTO_UDPLITE 136
-#define IP_PROTO_TCP 6
-#define IP_HDR_GET_VERSION(ptr) ((*(u8_t*)(ptr)) >> 4)
-#define LWIP_IP_HDRINCL NULL
-#define LWIP_IP_CHECK_PBUF_REF_COUNT_FOR_TX(p) LWIP_ASSERT("p->ref == 1", (p)->ref == 1)
-#define IP_PCB_NETIFHINT 
-#define IP_PCB ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl IP_PCB_NETIFHINT
-struct ip_pcb {
-  ip_addr_t local_ip; ip_addr_t remote_ip; u8_t netif_idx; u8_t so_options; u8_t tos; u8_t ttl ;
-};
-#define pcb_tci_init(pcb) 
-#define SOF_REUSEADDR 0x04U
-#define SOF_KEEPALIVE 0x08U
-#define SOF_BROADCAST 0x20U
-#define SOF_INHERITED (SOF_REUSEADDR|SOF_KEEPALIVE)
-struct ip_globals
-{
-  struct netif *current_netif;
-  struct netif *current_input_netif;
-  const struct ip_hdr *current_ip4_header;
-  u16_t current_ip_header_tot_len;
-  ip_addr_t current_iphdr_src;
-  ip_addr_t current_iphdr_dest;
-};
-extern struct ip_globals ip_data;
-#define ip_current_netif() (ip_data.current_netif)
-#define ip_current_input_netif() (ip_data.current_input_netif)
-#define ip_current_header_tot_len() (ip_data.current_ip_header_tot_len)
-#define ip_current_src_addr() (&ip_data.current_iphdr_src)
-#define ip_current_dest_addr() (&ip_data.current_iphdr_dest)
-#define ip4_current_header() ip_data.current_ip4_header
-#define ip_current_is_v6() 0
-#define ip_current_header_proto() IPH_PROTO(ip4_current_header())
-#define ip_next_header_ptr() ((const void*)((const u8_t*)ip4_current_header() + ip_current_header_tot_len()))
-#define ip4_current_src_addr() (&ip_data.current_iphdr_src)
-#define ip4_current_dest_addr() (&ip_data.current_iphdr_dest)
-#define ip_current_src_addr() (&ip_data.current_iphdr_src)
-#define ip_current_dest_addr() (&ip_data.current_iphdr_dest)
-#define ip_get_option(pcb,opt) ((pcb)->so_options & (opt))
-#define ip_set_option(pcb,opt) ((pcb)->so_options = (u8_t)((pcb)->so_options | (opt)))
-#define ip_reset_option(pcb,opt) ((pcb)->so_options = (u8_t)((pcb)->so_options & ~(opt)))
-#define ip_output(p,src,dest,ttl,tos,proto) ip4_output(p, src, dest, ttl, tos, proto)
-#define ip_output_if(p,src,dest,ttl,tos,proto,netif) ip4_output_if(p, src, dest, ttl, tos, proto, netif)
-#define ip_output_if_src(p,src,dest,ttl,tos,proto,netif) ip4_output_if_src(p, src, dest, ttl, tos, proto, netif)
-#define ip_output_hinted(p,src,dest,ttl,tos,proto,netif_hint) ip4_output_hinted(p, src, dest, ttl, tos, proto, netif_hint)
-#define ip_output_if_hdrincl(p,src,dest,netif) ip4_output_if(p, src, LWIP_IP_HDRINCL, 0, 0, 0, netif)
-#define ip_route(src,dest) ip4_route_src(src, dest)
-#define ip_netif_get_local_ip(netif,dest) ip4_netif_get_local_ip(netif)
-#define ip_debug_print(is_ipv6,p) ip4_debug_print(p)
-#define ip_input ip4_input
-#define ip_route_get_local_ip(src,dest,netif,ipaddr) do { (netif) = ip_route(src, dest); (ipaddr) = ip_netif_get_local_ip(netif, dest); }while(0)
 #define LWIP_HDR_PROT_UDP_H 
 #define UDP_HLEN 8
 
@@ -33987,6 +34285,4754 @@ static inline uint uart_get_reset_num(uart_inst_t *uart) {
 static inline uint uart_get_dreq(uart_inst_t *uart, _Bool is_tx) {
     return uart_get_dreq_num(uart, is_tx);
 }
+#define _HARDWARE_DMA_H 
+#define _HARDWARE_STRUCTS_DMA_H 
+#define _HARDWARE_REGS_DMA_H 
+#define DMA_CH0_READ_ADDR_OFFSET _u(0x00000000)
+#define DMA_CH0_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH0_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH0_READ_ADDR_MSB _u(31)
+#define DMA_CH0_READ_ADDR_LSB _u(0)
+#define DMA_CH0_READ_ADDR_ACCESS "RW"
+#define DMA_CH0_WRITE_ADDR_OFFSET _u(0x00000004)
+#define DMA_CH0_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH0_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH0_WRITE_ADDR_MSB _u(31)
+#define DMA_CH0_WRITE_ADDR_LSB _u(0)
+#define DMA_CH0_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH0_TRANS_COUNT_OFFSET _u(0x00000008)
+#define DMA_CH0_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH0_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH0_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH0_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH0_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH0_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH0_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH0_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH0_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH0_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH0_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH0_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH0_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH0_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH0_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_OFFSET _u(0x0000000c)
+#define DMA_CH0_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH0_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH0_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH0_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH0_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH0_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH0_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH0_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH0_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH0_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH0_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH0_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH0_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH0_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH0_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH0_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH0_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH0_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH0_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH0_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH0_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH0_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH0_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH0_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH0_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH0_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH0_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH0_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH0_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH0_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH0_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH0_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH0_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH0_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH0_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH0_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH0_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH0_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH0_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH0_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH0_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH0_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH0_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH0_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH0_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH0_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH0_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH0_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH0_AL1_CTRL_OFFSET _u(0x00000010)
+#define DMA_CH0_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH0_AL1_CTRL_RESET "-"
+#define DMA_CH0_AL1_CTRL_MSB _u(31)
+#define DMA_CH0_AL1_CTRL_LSB _u(0)
+#define DMA_CH0_AL1_CTRL_ACCESS "RW"
+#define DMA_CH0_AL1_READ_ADDR_OFFSET _u(0x00000014)
+#define DMA_CH0_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH0_AL1_READ_ADDR_RESET "-"
+#define DMA_CH0_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH0_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH0_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH0_AL1_WRITE_ADDR_OFFSET _u(0x00000018)
+#define DMA_CH0_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH0_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH0_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH0_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH0_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH0_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000001c)
+#define DMA_CH0_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH0_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH0_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH0_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH0_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH0_AL2_CTRL_OFFSET _u(0x00000020)
+#define DMA_CH0_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH0_AL2_CTRL_RESET "-"
+#define DMA_CH0_AL2_CTRL_MSB _u(31)
+#define DMA_CH0_AL2_CTRL_LSB _u(0)
+#define DMA_CH0_AL2_CTRL_ACCESS "RW"
+#define DMA_CH0_AL2_TRANS_COUNT_OFFSET _u(0x00000024)
+#define DMA_CH0_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH0_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH0_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH0_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH0_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH0_AL2_READ_ADDR_OFFSET _u(0x00000028)
+#define DMA_CH0_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH0_AL2_READ_ADDR_RESET "-"
+#define DMA_CH0_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH0_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH0_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH0_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000002c)
+#define DMA_CH0_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH0_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH0_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH0_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH0_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH0_AL3_CTRL_OFFSET _u(0x00000030)
+#define DMA_CH0_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH0_AL3_CTRL_RESET "-"
+#define DMA_CH0_AL3_CTRL_MSB _u(31)
+#define DMA_CH0_AL3_CTRL_LSB _u(0)
+#define DMA_CH0_AL3_CTRL_ACCESS "RW"
+#define DMA_CH0_AL3_WRITE_ADDR_OFFSET _u(0x00000034)
+#define DMA_CH0_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH0_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH0_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH0_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH0_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH0_AL3_TRANS_COUNT_OFFSET _u(0x00000038)
+#define DMA_CH0_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH0_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH0_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH0_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH0_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH0_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000003c)
+#define DMA_CH0_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH0_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH0_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH0_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH0_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH1_READ_ADDR_OFFSET _u(0x00000040)
+#define DMA_CH1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH1_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH1_READ_ADDR_MSB _u(31)
+#define DMA_CH1_READ_ADDR_LSB _u(0)
+#define DMA_CH1_READ_ADDR_ACCESS "RW"
+#define DMA_CH1_WRITE_ADDR_OFFSET _u(0x00000044)
+#define DMA_CH1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH1_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH1_TRANS_COUNT_OFFSET _u(0x00000048)
+#define DMA_CH1_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH1_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH1_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH1_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH1_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH1_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH1_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH1_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH1_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH1_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH1_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH1_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH1_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH1_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH1_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_OFFSET _u(0x0000004c)
+#define DMA_CH1_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH1_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH1_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH1_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH1_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH1_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH1_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH1_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH1_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH1_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH1_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH1_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH1_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH1_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH1_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH1_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH1_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH1_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH1_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH1_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH1_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH1_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH1_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH1_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH1_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH1_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH1_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH1_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH1_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH1_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH1_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH1_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH1_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH1_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH1_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH1_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH1_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH1_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH1_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH1_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH1_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH1_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH1_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH1_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH1_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH1_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH1_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH1_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH1_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH1_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH1_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH1_AL1_CTRL_OFFSET _u(0x00000050)
+#define DMA_CH1_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH1_AL1_CTRL_RESET "-"
+#define DMA_CH1_AL1_CTRL_MSB _u(31)
+#define DMA_CH1_AL1_CTRL_LSB _u(0)
+#define DMA_CH1_AL1_CTRL_ACCESS "RW"
+#define DMA_CH1_AL1_READ_ADDR_OFFSET _u(0x00000054)
+#define DMA_CH1_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH1_AL1_READ_ADDR_RESET "-"
+#define DMA_CH1_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH1_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH1_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH1_AL1_WRITE_ADDR_OFFSET _u(0x00000058)
+#define DMA_CH1_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH1_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH1_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH1_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH1_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH1_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000005c)
+#define DMA_CH1_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH1_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH1_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH1_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH1_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH1_AL2_CTRL_OFFSET _u(0x00000060)
+#define DMA_CH1_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH1_AL2_CTRL_RESET "-"
+#define DMA_CH1_AL2_CTRL_MSB _u(31)
+#define DMA_CH1_AL2_CTRL_LSB _u(0)
+#define DMA_CH1_AL2_CTRL_ACCESS "RW"
+#define DMA_CH1_AL2_TRANS_COUNT_OFFSET _u(0x00000064)
+#define DMA_CH1_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH1_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH1_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH1_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH1_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH1_AL2_READ_ADDR_OFFSET _u(0x00000068)
+#define DMA_CH1_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH1_AL2_READ_ADDR_RESET "-"
+#define DMA_CH1_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH1_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH1_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH1_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000006c)
+#define DMA_CH1_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH1_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH1_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH1_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH1_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH1_AL3_CTRL_OFFSET _u(0x00000070)
+#define DMA_CH1_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH1_AL3_CTRL_RESET "-"
+#define DMA_CH1_AL3_CTRL_MSB _u(31)
+#define DMA_CH1_AL3_CTRL_LSB _u(0)
+#define DMA_CH1_AL3_CTRL_ACCESS "RW"
+#define DMA_CH1_AL3_WRITE_ADDR_OFFSET _u(0x00000074)
+#define DMA_CH1_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH1_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH1_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH1_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH1_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH1_AL3_TRANS_COUNT_OFFSET _u(0x00000078)
+#define DMA_CH1_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH1_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH1_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH1_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH1_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH1_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000007c)
+#define DMA_CH1_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH1_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH1_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH1_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH1_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH2_READ_ADDR_OFFSET _u(0x00000080)
+#define DMA_CH2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH2_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH2_READ_ADDR_MSB _u(31)
+#define DMA_CH2_READ_ADDR_LSB _u(0)
+#define DMA_CH2_READ_ADDR_ACCESS "RW"
+#define DMA_CH2_WRITE_ADDR_OFFSET _u(0x00000084)
+#define DMA_CH2_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH2_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH2_WRITE_ADDR_MSB _u(31)
+#define DMA_CH2_WRITE_ADDR_LSB _u(0)
+#define DMA_CH2_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH2_TRANS_COUNT_OFFSET _u(0x00000088)
+#define DMA_CH2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH2_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH2_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH2_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH2_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH2_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH2_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH2_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH2_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH2_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH2_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH2_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH2_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH2_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH2_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_OFFSET _u(0x0000008c)
+#define DMA_CH2_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH2_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH2_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH2_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH2_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH2_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH2_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH2_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH2_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH2_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH2_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH2_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH2_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH2_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH2_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH2_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH2_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH2_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH2_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH2_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH2_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH2_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH2_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH2_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH2_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH2_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH2_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH2_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH2_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH2_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH2_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH2_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH2_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH2_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH2_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH2_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH2_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH2_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH2_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH2_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH2_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH2_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH2_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH2_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH2_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH2_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH2_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH2_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH2_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH2_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH2_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH2_AL1_CTRL_OFFSET _u(0x00000090)
+#define DMA_CH2_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH2_AL1_CTRL_RESET "-"
+#define DMA_CH2_AL1_CTRL_MSB _u(31)
+#define DMA_CH2_AL1_CTRL_LSB _u(0)
+#define DMA_CH2_AL1_CTRL_ACCESS "RW"
+#define DMA_CH2_AL1_READ_ADDR_OFFSET _u(0x00000094)
+#define DMA_CH2_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH2_AL1_READ_ADDR_RESET "-"
+#define DMA_CH2_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH2_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH2_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH2_AL1_WRITE_ADDR_OFFSET _u(0x00000098)
+#define DMA_CH2_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH2_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH2_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH2_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH2_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH2_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000009c)
+#define DMA_CH2_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH2_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH2_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH2_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH2_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH2_AL2_CTRL_OFFSET _u(0x000000a0)
+#define DMA_CH2_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH2_AL2_CTRL_RESET "-"
+#define DMA_CH2_AL2_CTRL_MSB _u(31)
+#define DMA_CH2_AL2_CTRL_LSB _u(0)
+#define DMA_CH2_AL2_CTRL_ACCESS "RW"
+#define DMA_CH2_AL2_TRANS_COUNT_OFFSET _u(0x000000a4)
+#define DMA_CH2_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH2_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH2_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH2_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH2_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH2_AL2_READ_ADDR_OFFSET _u(0x000000a8)
+#define DMA_CH2_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH2_AL2_READ_ADDR_RESET "-"
+#define DMA_CH2_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH2_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH2_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH2_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000000ac)
+#define DMA_CH2_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH2_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH2_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH2_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH2_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH2_AL3_CTRL_OFFSET _u(0x000000b0)
+#define DMA_CH2_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH2_AL3_CTRL_RESET "-"
+#define DMA_CH2_AL3_CTRL_MSB _u(31)
+#define DMA_CH2_AL3_CTRL_LSB _u(0)
+#define DMA_CH2_AL3_CTRL_ACCESS "RW"
+#define DMA_CH2_AL3_WRITE_ADDR_OFFSET _u(0x000000b4)
+#define DMA_CH2_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH2_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH2_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH2_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH2_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH2_AL3_TRANS_COUNT_OFFSET _u(0x000000b8)
+#define DMA_CH2_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH2_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH2_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH2_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH2_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH2_AL3_READ_ADDR_TRIG_OFFSET _u(0x000000bc)
+#define DMA_CH2_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH2_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH2_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH2_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH2_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH3_READ_ADDR_OFFSET _u(0x000000c0)
+#define DMA_CH3_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH3_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH3_READ_ADDR_MSB _u(31)
+#define DMA_CH3_READ_ADDR_LSB _u(0)
+#define DMA_CH3_READ_ADDR_ACCESS "RW"
+#define DMA_CH3_WRITE_ADDR_OFFSET _u(0x000000c4)
+#define DMA_CH3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH3_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH3_TRANS_COUNT_OFFSET _u(0x000000c8)
+#define DMA_CH3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH3_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH3_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH3_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH3_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH3_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH3_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH3_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH3_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH3_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH3_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH3_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH3_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH3_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH3_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_OFFSET _u(0x000000cc)
+#define DMA_CH3_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH3_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH3_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH3_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH3_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH3_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH3_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH3_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH3_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH3_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH3_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH3_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH3_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH3_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH3_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH3_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH3_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH3_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH3_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH3_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH3_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH3_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH3_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH3_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH3_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH3_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH3_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH3_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH3_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH3_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH3_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH3_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH3_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH3_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH3_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH3_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH3_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH3_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH3_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH3_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH3_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH3_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH3_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH3_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH3_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH3_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH3_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH3_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH3_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH3_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH3_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH3_AL1_CTRL_OFFSET _u(0x000000d0)
+#define DMA_CH3_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH3_AL1_CTRL_RESET "-"
+#define DMA_CH3_AL1_CTRL_MSB _u(31)
+#define DMA_CH3_AL1_CTRL_LSB _u(0)
+#define DMA_CH3_AL1_CTRL_ACCESS "RW"
+#define DMA_CH3_AL1_READ_ADDR_OFFSET _u(0x000000d4)
+#define DMA_CH3_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH3_AL1_READ_ADDR_RESET "-"
+#define DMA_CH3_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH3_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH3_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH3_AL1_WRITE_ADDR_OFFSET _u(0x000000d8)
+#define DMA_CH3_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH3_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH3_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH3_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH3_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH3_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x000000dc)
+#define DMA_CH3_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH3_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH3_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH3_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH3_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH3_AL2_CTRL_OFFSET _u(0x000000e0)
+#define DMA_CH3_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH3_AL2_CTRL_RESET "-"
+#define DMA_CH3_AL2_CTRL_MSB _u(31)
+#define DMA_CH3_AL2_CTRL_LSB _u(0)
+#define DMA_CH3_AL2_CTRL_ACCESS "RW"
+#define DMA_CH3_AL2_TRANS_COUNT_OFFSET _u(0x000000e4)
+#define DMA_CH3_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH3_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH3_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH3_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH3_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH3_AL2_READ_ADDR_OFFSET _u(0x000000e8)
+#define DMA_CH3_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH3_AL2_READ_ADDR_RESET "-"
+#define DMA_CH3_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH3_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH3_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH3_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000000ec)
+#define DMA_CH3_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH3_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH3_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH3_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH3_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH3_AL3_CTRL_OFFSET _u(0x000000f0)
+#define DMA_CH3_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH3_AL3_CTRL_RESET "-"
+#define DMA_CH3_AL3_CTRL_MSB _u(31)
+#define DMA_CH3_AL3_CTRL_LSB _u(0)
+#define DMA_CH3_AL3_CTRL_ACCESS "RW"
+#define DMA_CH3_AL3_WRITE_ADDR_OFFSET _u(0x000000f4)
+#define DMA_CH3_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH3_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH3_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH3_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH3_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH3_AL3_TRANS_COUNT_OFFSET _u(0x000000f8)
+#define DMA_CH3_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH3_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH3_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH3_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH3_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH3_AL3_READ_ADDR_TRIG_OFFSET _u(0x000000fc)
+#define DMA_CH3_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH3_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH3_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH3_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH3_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH4_READ_ADDR_OFFSET _u(0x00000100)
+#define DMA_CH4_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH4_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH4_READ_ADDR_MSB _u(31)
+#define DMA_CH4_READ_ADDR_LSB _u(0)
+#define DMA_CH4_READ_ADDR_ACCESS "RW"
+#define DMA_CH4_WRITE_ADDR_OFFSET _u(0x00000104)
+#define DMA_CH4_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH4_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH4_WRITE_ADDR_MSB _u(31)
+#define DMA_CH4_WRITE_ADDR_LSB _u(0)
+#define DMA_CH4_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH4_TRANS_COUNT_OFFSET _u(0x00000108)
+#define DMA_CH4_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH4_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH4_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH4_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH4_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH4_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH4_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH4_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH4_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH4_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH4_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH4_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH4_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH4_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH4_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_OFFSET _u(0x0000010c)
+#define DMA_CH4_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH4_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH4_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH4_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH4_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH4_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH4_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH4_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH4_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH4_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH4_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH4_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH4_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH4_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH4_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH4_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH4_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH4_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH4_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH4_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH4_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH4_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH4_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH4_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH4_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH4_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH4_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH4_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH4_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH4_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH4_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH4_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH4_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH4_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH4_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH4_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH4_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH4_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH4_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH4_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH4_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH4_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH4_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH4_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH4_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH4_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH4_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH4_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH4_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH4_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH4_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH4_AL1_CTRL_OFFSET _u(0x00000110)
+#define DMA_CH4_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH4_AL1_CTRL_RESET "-"
+#define DMA_CH4_AL1_CTRL_MSB _u(31)
+#define DMA_CH4_AL1_CTRL_LSB _u(0)
+#define DMA_CH4_AL1_CTRL_ACCESS "RW"
+#define DMA_CH4_AL1_READ_ADDR_OFFSET _u(0x00000114)
+#define DMA_CH4_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH4_AL1_READ_ADDR_RESET "-"
+#define DMA_CH4_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH4_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH4_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH4_AL1_WRITE_ADDR_OFFSET _u(0x00000118)
+#define DMA_CH4_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH4_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH4_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH4_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH4_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH4_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000011c)
+#define DMA_CH4_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH4_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH4_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH4_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH4_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH4_AL2_CTRL_OFFSET _u(0x00000120)
+#define DMA_CH4_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH4_AL2_CTRL_RESET "-"
+#define DMA_CH4_AL2_CTRL_MSB _u(31)
+#define DMA_CH4_AL2_CTRL_LSB _u(0)
+#define DMA_CH4_AL2_CTRL_ACCESS "RW"
+#define DMA_CH4_AL2_TRANS_COUNT_OFFSET _u(0x00000124)
+#define DMA_CH4_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH4_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH4_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH4_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH4_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH4_AL2_READ_ADDR_OFFSET _u(0x00000128)
+#define DMA_CH4_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH4_AL2_READ_ADDR_RESET "-"
+#define DMA_CH4_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH4_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH4_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH4_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000012c)
+#define DMA_CH4_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH4_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH4_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH4_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH4_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH4_AL3_CTRL_OFFSET _u(0x00000130)
+#define DMA_CH4_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH4_AL3_CTRL_RESET "-"
+#define DMA_CH4_AL3_CTRL_MSB _u(31)
+#define DMA_CH4_AL3_CTRL_LSB _u(0)
+#define DMA_CH4_AL3_CTRL_ACCESS "RW"
+#define DMA_CH4_AL3_WRITE_ADDR_OFFSET _u(0x00000134)
+#define DMA_CH4_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH4_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH4_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH4_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH4_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH4_AL3_TRANS_COUNT_OFFSET _u(0x00000138)
+#define DMA_CH4_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH4_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH4_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH4_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH4_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH4_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000013c)
+#define DMA_CH4_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH4_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH4_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH4_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH4_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH5_READ_ADDR_OFFSET _u(0x00000140)
+#define DMA_CH5_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH5_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH5_READ_ADDR_MSB _u(31)
+#define DMA_CH5_READ_ADDR_LSB _u(0)
+#define DMA_CH5_READ_ADDR_ACCESS "RW"
+#define DMA_CH5_WRITE_ADDR_OFFSET _u(0x00000144)
+#define DMA_CH5_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH5_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH5_WRITE_ADDR_MSB _u(31)
+#define DMA_CH5_WRITE_ADDR_LSB _u(0)
+#define DMA_CH5_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH5_TRANS_COUNT_OFFSET _u(0x00000148)
+#define DMA_CH5_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH5_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH5_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH5_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH5_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH5_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH5_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH5_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH5_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH5_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH5_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH5_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH5_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH5_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH5_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_OFFSET _u(0x0000014c)
+#define DMA_CH5_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH5_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH5_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH5_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH5_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH5_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH5_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH5_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH5_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH5_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH5_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH5_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH5_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH5_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH5_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH5_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH5_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH5_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH5_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH5_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH5_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH5_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH5_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH5_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH5_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH5_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH5_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH5_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH5_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH5_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH5_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH5_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH5_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH5_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH5_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH5_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH5_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH5_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH5_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH5_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH5_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH5_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH5_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH5_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH5_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH5_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH5_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH5_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH5_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH5_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH5_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH5_AL1_CTRL_OFFSET _u(0x00000150)
+#define DMA_CH5_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH5_AL1_CTRL_RESET "-"
+#define DMA_CH5_AL1_CTRL_MSB _u(31)
+#define DMA_CH5_AL1_CTRL_LSB _u(0)
+#define DMA_CH5_AL1_CTRL_ACCESS "RW"
+#define DMA_CH5_AL1_READ_ADDR_OFFSET _u(0x00000154)
+#define DMA_CH5_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH5_AL1_READ_ADDR_RESET "-"
+#define DMA_CH5_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH5_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH5_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH5_AL1_WRITE_ADDR_OFFSET _u(0x00000158)
+#define DMA_CH5_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH5_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH5_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH5_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH5_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH5_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000015c)
+#define DMA_CH5_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH5_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH5_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH5_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH5_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH5_AL2_CTRL_OFFSET _u(0x00000160)
+#define DMA_CH5_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH5_AL2_CTRL_RESET "-"
+#define DMA_CH5_AL2_CTRL_MSB _u(31)
+#define DMA_CH5_AL2_CTRL_LSB _u(0)
+#define DMA_CH5_AL2_CTRL_ACCESS "RW"
+#define DMA_CH5_AL2_TRANS_COUNT_OFFSET _u(0x00000164)
+#define DMA_CH5_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH5_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH5_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH5_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH5_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH5_AL2_READ_ADDR_OFFSET _u(0x00000168)
+#define DMA_CH5_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH5_AL2_READ_ADDR_RESET "-"
+#define DMA_CH5_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH5_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH5_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH5_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000016c)
+#define DMA_CH5_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH5_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH5_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH5_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH5_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH5_AL3_CTRL_OFFSET _u(0x00000170)
+#define DMA_CH5_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH5_AL3_CTRL_RESET "-"
+#define DMA_CH5_AL3_CTRL_MSB _u(31)
+#define DMA_CH5_AL3_CTRL_LSB _u(0)
+#define DMA_CH5_AL3_CTRL_ACCESS "RW"
+#define DMA_CH5_AL3_WRITE_ADDR_OFFSET _u(0x00000174)
+#define DMA_CH5_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH5_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH5_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH5_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH5_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH5_AL3_TRANS_COUNT_OFFSET _u(0x00000178)
+#define DMA_CH5_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH5_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH5_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH5_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH5_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH5_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000017c)
+#define DMA_CH5_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH5_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH5_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH5_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH5_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH6_READ_ADDR_OFFSET _u(0x00000180)
+#define DMA_CH6_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH6_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH6_READ_ADDR_MSB _u(31)
+#define DMA_CH6_READ_ADDR_LSB _u(0)
+#define DMA_CH6_READ_ADDR_ACCESS "RW"
+#define DMA_CH6_WRITE_ADDR_OFFSET _u(0x00000184)
+#define DMA_CH6_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH6_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH6_WRITE_ADDR_MSB _u(31)
+#define DMA_CH6_WRITE_ADDR_LSB _u(0)
+#define DMA_CH6_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH6_TRANS_COUNT_OFFSET _u(0x00000188)
+#define DMA_CH6_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH6_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH6_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH6_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH6_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH6_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH6_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH6_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH6_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH6_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH6_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH6_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH6_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH6_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH6_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_OFFSET _u(0x0000018c)
+#define DMA_CH6_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH6_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH6_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH6_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH6_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH6_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH6_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH6_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH6_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH6_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH6_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH6_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH6_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH6_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH6_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH6_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH6_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH6_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH6_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH6_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH6_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH6_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH6_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH6_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH6_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH6_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH6_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH6_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH6_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH6_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH6_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH6_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH6_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH6_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH6_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH6_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH6_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH6_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH6_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH6_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH6_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH6_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH6_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH6_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH6_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH6_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH6_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH6_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH6_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH6_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH6_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH6_AL1_CTRL_OFFSET _u(0x00000190)
+#define DMA_CH6_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH6_AL1_CTRL_RESET "-"
+#define DMA_CH6_AL1_CTRL_MSB _u(31)
+#define DMA_CH6_AL1_CTRL_LSB _u(0)
+#define DMA_CH6_AL1_CTRL_ACCESS "RW"
+#define DMA_CH6_AL1_READ_ADDR_OFFSET _u(0x00000194)
+#define DMA_CH6_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH6_AL1_READ_ADDR_RESET "-"
+#define DMA_CH6_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH6_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH6_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH6_AL1_WRITE_ADDR_OFFSET _u(0x00000198)
+#define DMA_CH6_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH6_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH6_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH6_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH6_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH6_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000019c)
+#define DMA_CH6_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH6_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH6_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH6_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH6_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH6_AL2_CTRL_OFFSET _u(0x000001a0)
+#define DMA_CH6_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH6_AL2_CTRL_RESET "-"
+#define DMA_CH6_AL2_CTRL_MSB _u(31)
+#define DMA_CH6_AL2_CTRL_LSB _u(0)
+#define DMA_CH6_AL2_CTRL_ACCESS "RW"
+#define DMA_CH6_AL2_TRANS_COUNT_OFFSET _u(0x000001a4)
+#define DMA_CH6_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH6_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH6_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH6_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH6_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH6_AL2_READ_ADDR_OFFSET _u(0x000001a8)
+#define DMA_CH6_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH6_AL2_READ_ADDR_RESET "-"
+#define DMA_CH6_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH6_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH6_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH6_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000001ac)
+#define DMA_CH6_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH6_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH6_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH6_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH6_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH6_AL3_CTRL_OFFSET _u(0x000001b0)
+#define DMA_CH6_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH6_AL3_CTRL_RESET "-"
+#define DMA_CH6_AL3_CTRL_MSB _u(31)
+#define DMA_CH6_AL3_CTRL_LSB _u(0)
+#define DMA_CH6_AL3_CTRL_ACCESS "RW"
+#define DMA_CH6_AL3_WRITE_ADDR_OFFSET _u(0x000001b4)
+#define DMA_CH6_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH6_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH6_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH6_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH6_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH6_AL3_TRANS_COUNT_OFFSET _u(0x000001b8)
+#define DMA_CH6_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH6_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH6_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH6_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH6_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH6_AL3_READ_ADDR_TRIG_OFFSET _u(0x000001bc)
+#define DMA_CH6_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH6_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH6_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH6_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH6_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH7_READ_ADDR_OFFSET _u(0x000001c0)
+#define DMA_CH7_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH7_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH7_READ_ADDR_MSB _u(31)
+#define DMA_CH7_READ_ADDR_LSB _u(0)
+#define DMA_CH7_READ_ADDR_ACCESS "RW"
+#define DMA_CH7_WRITE_ADDR_OFFSET _u(0x000001c4)
+#define DMA_CH7_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH7_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH7_WRITE_ADDR_MSB _u(31)
+#define DMA_CH7_WRITE_ADDR_LSB _u(0)
+#define DMA_CH7_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH7_TRANS_COUNT_OFFSET _u(0x000001c8)
+#define DMA_CH7_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH7_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH7_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH7_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH7_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH7_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH7_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH7_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH7_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH7_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH7_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH7_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH7_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH7_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH7_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_OFFSET _u(0x000001cc)
+#define DMA_CH7_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH7_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH7_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH7_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH7_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH7_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH7_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH7_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH7_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH7_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH7_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH7_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH7_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH7_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH7_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH7_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH7_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH7_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH7_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH7_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH7_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH7_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH7_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH7_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH7_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH7_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH7_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH7_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH7_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH7_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH7_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH7_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH7_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH7_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH7_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH7_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH7_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH7_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH7_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH7_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH7_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH7_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH7_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH7_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH7_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH7_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH7_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH7_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH7_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH7_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH7_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH7_AL1_CTRL_OFFSET _u(0x000001d0)
+#define DMA_CH7_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH7_AL1_CTRL_RESET "-"
+#define DMA_CH7_AL1_CTRL_MSB _u(31)
+#define DMA_CH7_AL1_CTRL_LSB _u(0)
+#define DMA_CH7_AL1_CTRL_ACCESS "RW"
+#define DMA_CH7_AL1_READ_ADDR_OFFSET _u(0x000001d4)
+#define DMA_CH7_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH7_AL1_READ_ADDR_RESET "-"
+#define DMA_CH7_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH7_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH7_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH7_AL1_WRITE_ADDR_OFFSET _u(0x000001d8)
+#define DMA_CH7_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH7_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH7_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH7_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH7_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH7_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x000001dc)
+#define DMA_CH7_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH7_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH7_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH7_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH7_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH7_AL2_CTRL_OFFSET _u(0x000001e0)
+#define DMA_CH7_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH7_AL2_CTRL_RESET "-"
+#define DMA_CH7_AL2_CTRL_MSB _u(31)
+#define DMA_CH7_AL2_CTRL_LSB _u(0)
+#define DMA_CH7_AL2_CTRL_ACCESS "RW"
+#define DMA_CH7_AL2_TRANS_COUNT_OFFSET _u(0x000001e4)
+#define DMA_CH7_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH7_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH7_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH7_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH7_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH7_AL2_READ_ADDR_OFFSET _u(0x000001e8)
+#define DMA_CH7_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH7_AL2_READ_ADDR_RESET "-"
+#define DMA_CH7_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH7_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH7_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH7_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000001ec)
+#define DMA_CH7_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH7_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH7_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH7_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH7_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH7_AL3_CTRL_OFFSET _u(0x000001f0)
+#define DMA_CH7_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH7_AL3_CTRL_RESET "-"
+#define DMA_CH7_AL3_CTRL_MSB _u(31)
+#define DMA_CH7_AL3_CTRL_LSB _u(0)
+#define DMA_CH7_AL3_CTRL_ACCESS "RW"
+#define DMA_CH7_AL3_WRITE_ADDR_OFFSET _u(0x000001f4)
+#define DMA_CH7_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH7_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH7_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH7_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH7_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH7_AL3_TRANS_COUNT_OFFSET _u(0x000001f8)
+#define DMA_CH7_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH7_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH7_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH7_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH7_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH7_AL3_READ_ADDR_TRIG_OFFSET _u(0x000001fc)
+#define DMA_CH7_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH7_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH7_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH7_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH7_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH8_READ_ADDR_OFFSET _u(0x00000200)
+#define DMA_CH8_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH8_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH8_READ_ADDR_MSB _u(31)
+#define DMA_CH8_READ_ADDR_LSB _u(0)
+#define DMA_CH8_READ_ADDR_ACCESS "RW"
+#define DMA_CH8_WRITE_ADDR_OFFSET _u(0x00000204)
+#define DMA_CH8_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH8_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH8_WRITE_ADDR_MSB _u(31)
+#define DMA_CH8_WRITE_ADDR_LSB _u(0)
+#define DMA_CH8_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH8_TRANS_COUNT_OFFSET _u(0x00000208)
+#define DMA_CH8_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH8_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH8_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH8_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH8_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH8_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH8_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH8_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH8_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH8_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH8_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH8_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH8_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH8_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH8_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_OFFSET _u(0x0000020c)
+#define DMA_CH8_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH8_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH8_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH8_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH8_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH8_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH8_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH8_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH8_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH8_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH8_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH8_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH8_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH8_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH8_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH8_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH8_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH8_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH8_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH8_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH8_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH8_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH8_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH8_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH8_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH8_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH8_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH8_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH8_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH8_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH8_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH8_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH8_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH8_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH8_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH8_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH8_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH8_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH8_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH8_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH8_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH8_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH8_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH8_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH8_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH8_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH8_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH8_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH8_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH8_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH8_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH8_AL1_CTRL_OFFSET _u(0x00000210)
+#define DMA_CH8_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH8_AL1_CTRL_RESET "-"
+#define DMA_CH8_AL1_CTRL_MSB _u(31)
+#define DMA_CH8_AL1_CTRL_LSB _u(0)
+#define DMA_CH8_AL1_CTRL_ACCESS "RW"
+#define DMA_CH8_AL1_READ_ADDR_OFFSET _u(0x00000214)
+#define DMA_CH8_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH8_AL1_READ_ADDR_RESET "-"
+#define DMA_CH8_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH8_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH8_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH8_AL1_WRITE_ADDR_OFFSET _u(0x00000218)
+#define DMA_CH8_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH8_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH8_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH8_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH8_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH8_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000021c)
+#define DMA_CH8_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH8_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH8_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH8_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH8_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH8_AL2_CTRL_OFFSET _u(0x00000220)
+#define DMA_CH8_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH8_AL2_CTRL_RESET "-"
+#define DMA_CH8_AL2_CTRL_MSB _u(31)
+#define DMA_CH8_AL2_CTRL_LSB _u(0)
+#define DMA_CH8_AL2_CTRL_ACCESS "RW"
+#define DMA_CH8_AL2_TRANS_COUNT_OFFSET _u(0x00000224)
+#define DMA_CH8_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH8_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH8_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH8_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH8_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH8_AL2_READ_ADDR_OFFSET _u(0x00000228)
+#define DMA_CH8_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH8_AL2_READ_ADDR_RESET "-"
+#define DMA_CH8_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH8_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH8_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH8_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000022c)
+#define DMA_CH8_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH8_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH8_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH8_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH8_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH8_AL3_CTRL_OFFSET _u(0x00000230)
+#define DMA_CH8_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH8_AL3_CTRL_RESET "-"
+#define DMA_CH8_AL3_CTRL_MSB _u(31)
+#define DMA_CH8_AL3_CTRL_LSB _u(0)
+#define DMA_CH8_AL3_CTRL_ACCESS "RW"
+#define DMA_CH8_AL3_WRITE_ADDR_OFFSET _u(0x00000234)
+#define DMA_CH8_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH8_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH8_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH8_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH8_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH8_AL3_TRANS_COUNT_OFFSET _u(0x00000238)
+#define DMA_CH8_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH8_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH8_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH8_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH8_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH8_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000023c)
+#define DMA_CH8_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH8_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH8_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH8_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH8_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH9_READ_ADDR_OFFSET _u(0x00000240)
+#define DMA_CH9_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH9_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH9_READ_ADDR_MSB _u(31)
+#define DMA_CH9_READ_ADDR_LSB _u(0)
+#define DMA_CH9_READ_ADDR_ACCESS "RW"
+#define DMA_CH9_WRITE_ADDR_OFFSET _u(0x00000244)
+#define DMA_CH9_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH9_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH9_WRITE_ADDR_MSB _u(31)
+#define DMA_CH9_WRITE_ADDR_LSB _u(0)
+#define DMA_CH9_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH9_TRANS_COUNT_OFFSET _u(0x00000248)
+#define DMA_CH9_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH9_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH9_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH9_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH9_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH9_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH9_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH9_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH9_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH9_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH9_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH9_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH9_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH9_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH9_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_OFFSET _u(0x0000024c)
+#define DMA_CH9_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH9_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH9_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH9_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH9_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH9_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH9_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH9_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH9_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH9_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH9_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH9_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH9_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH9_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH9_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH9_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH9_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH9_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH9_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH9_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH9_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH9_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH9_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH9_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH9_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH9_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH9_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH9_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH9_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH9_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH9_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH9_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH9_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH9_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH9_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH9_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH9_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH9_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH9_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH9_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH9_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH9_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH9_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH9_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH9_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH9_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH9_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH9_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH9_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH9_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH9_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH9_AL1_CTRL_OFFSET _u(0x00000250)
+#define DMA_CH9_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH9_AL1_CTRL_RESET "-"
+#define DMA_CH9_AL1_CTRL_MSB _u(31)
+#define DMA_CH9_AL1_CTRL_LSB _u(0)
+#define DMA_CH9_AL1_CTRL_ACCESS "RW"
+#define DMA_CH9_AL1_READ_ADDR_OFFSET _u(0x00000254)
+#define DMA_CH9_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH9_AL1_READ_ADDR_RESET "-"
+#define DMA_CH9_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH9_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH9_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH9_AL1_WRITE_ADDR_OFFSET _u(0x00000258)
+#define DMA_CH9_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH9_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH9_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH9_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH9_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH9_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000025c)
+#define DMA_CH9_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH9_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH9_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH9_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH9_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH9_AL2_CTRL_OFFSET _u(0x00000260)
+#define DMA_CH9_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH9_AL2_CTRL_RESET "-"
+#define DMA_CH9_AL2_CTRL_MSB _u(31)
+#define DMA_CH9_AL2_CTRL_LSB _u(0)
+#define DMA_CH9_AL2_CTRL_ACCESS "RW"
+#define DMA_CH9_AL2_TRANS_COUNT_OFFSET _u(0x00000264)
+#define DMA_CH9_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH9_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH9_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH9_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH9_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH9_AL2_READ_ADDR_OFFSET _u(0x00000268)
+#define DMA_CH9_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH9_AL2_READ_ADDR_RESET "-"
+#define DMA_CH9_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH9_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH9_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH9_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000026c)
+#define DMA_CH9_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH9_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH9_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH9_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH9_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH9_AL3_CTRL_OFFSET _u(0x00000270)
+#define DMA_CH9_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH9_AL3_CTRL_RESET "-"
+#define DMA_CH9_AL3_CTRL_MSB _u(31)
+#define DMA_CH9_AL3_CTRL_LSB _u(0)
+#define DMA_CH9_AL3_CTRL_ACCESS "RW"
+#define DMA_CH9_AL3_WRITE_ADDR_OFFSET _u(0x00000274)
+#define DMA_CH9_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH9_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH9_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH9_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH9_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH9_AL3_TRANS_COUNT_OFFSET _u(0x00000278)
+#define DMA_CH9_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH9_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH9_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH9_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH9_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH9_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000027c)
+#define DMA_CH9_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH9_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH9_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH9_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH9_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH10_READ_ADDR_OFFSET _u(0x00000280)
+#define DMA_CH10_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH10_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH10_READ_ADDR_MSB _u(31)
+#define DMA_CH10_READ_ADDR_LSB _u(0)
+#define DMA_CH10_READ_ADDR_ACCESS "RW"
+#define DMA_CH10_WRITE_ADDR_OFFSET _u(0x00000284)
+#define DMA_CH10_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH10_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH10_WRITE_ADDR_MSB _u(31)
+#define DMA_CH10_WRITE_ADDR_LSB _u(0)
+#define DMA_CH10_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH10_TRANS_COUNT_OFFSET _u(0x00000288)
+#define DMA_CH10_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH10_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH10_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH10_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH10_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH10_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH10_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH10_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH10_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH10_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH10_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH10_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH10_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH10_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH10_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_OFFSET _u(0x0000028c)
+#define DMA_CH10_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH10_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH10_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH10_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH10_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH10_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH10_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH10_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH10_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH10_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH10_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH10_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH10_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH10_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH10_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH10_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH10_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH10_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH10_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH10_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH10_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH10_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH10_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH10_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH10_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH10_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH10_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH10_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH10_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH10_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH10_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH10_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH10_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH10_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH10_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH10_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH10_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH10_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH10_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH10_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH10_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH10_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH10_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH10_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH10_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH10_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH10_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH10_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH10_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH10_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH10_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH10_AL1_CTRL_OFFSET _u(0x00000290)
+#define DMA_CH10_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH10_AL1_CTRL_RESET "-"
+#define DMA_CH10_AL1_CTRL_MSB _u(31)
+#define DMA_CH10_AL1_CTRL_LSB _u(0)
+#define DMA_CH10_AL1_CTRL_ACCESS "RW"
+#define DMA_CH10_AL1_READ_ADDR_OFFSET _u(0x00000294)
+#define DMA_CH10_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH10_AL1_READ_ADDR_RESET "-"
+#define DMA_CH10_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH10_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH10_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH10_AL1_WRITE_ADDR_OFFSET _u(0x00000298)
+#define DMA_CH10_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH10_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH10_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH10_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH10_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH10_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000029c)
+#define DMA_CH10_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH10_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH10_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH10_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH10_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH10_AL2_CTRL_OFFSET _u(0x000002a0)
+#define DMA_CH10_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH10_AL2_CTRL_RESET "-"
+#define DMA_CH10_AL2_CTRL_MSB _u(31)
+#define DMA_CH10_AL2_CTRL_LSB _u(0)
+#define DMA_CH10_AL2_CTRL_ACCESS "RW"
+#define DMA_CH10_AL2_TRANS_COUNT_OFFSET _u(0x000002a4)
+#define DMA_CH10_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH10_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH10_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH10_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH10_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH10_AL2_READ_ADDR_OFFSET _u(0x000002a8)
+#define DMA_CH10_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH10_AL2_READ_ADDR_RESET "-"
+#define DMA_CH10_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH10_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH10_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH10_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000002ac)
+#define DMA_CH10_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH10_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH10_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH10_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH10_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH10_AL3_CTRL_OFFSET _u(0x000002b0)
+#define DMA_CH10_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH10_AL3_CTRL_RESET "-"
+#define DMA_CH10_AL3_CTRL_MSB _u(31)
+#define DMA_CH10_AL3_CTRL_LSB _u(0)
+#define DMA_CH10_AL3_CTRL_ACCESS "RW"
+#define DMA_CH10_AL3_WRITE_ADDR_OFFSET _u(0x000002b4)
+#define DMA_CH10_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH10_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH10_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH10_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH10_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH10_AL3_TRANS_COUNT_OFFSET _u(0x000002b8)
+#define DMA_CH10_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH10_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH10_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH10_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH10_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH10_AL3_READ_ADDR_TRIG_OFFSET _u(0x000002bc)
+#define DMA_CH10_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH10_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH10_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH10_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH10_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH11_READ_ADDR_OFFSET _u(0x000002c0)
+#define DMA_CH11_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH11_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH11_READ_ADDR_MSB _u(31)
+#define DMA_CH11_READ_ADDR_LSB _u(0)
+#define DMA_CH11_READ_ADDR_ACCESS "RW"
+#define DMA_CH11_WRITE_ADDR_OFFSET _u(0x000002c4)
+#define DMA_CH11_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH11_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH11_WRITE_ADDR_MSB _u(31)
+#define DMA_CH11_WRITE_ADDR_LSB _u(0)
+#define DMA_CH11_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH11_TRANS_COUNT_OFFSET _u(0x000002c8)
+#define DMA_CH11_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH11_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH11_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH11_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH11_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH11_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH11_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH11_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH11_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH11_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH11_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH11_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH11_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH11_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH11_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_OFFSET _u(0x000002cc)
+#define DMA_CH11_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH11_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH11_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH11_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH11_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH11_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH11_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH11_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH11_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH11_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH11_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH11_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH11_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH11_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH11_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH11_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH11_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH11_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH11_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH11_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH11_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH11_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH11_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH11_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH11_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH11_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH11_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH11_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH11_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH11_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH11_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH11_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH11_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH11_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH11_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH11_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH11_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH11_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH11_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH11_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH11_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH11_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH11_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH11_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH11_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH11_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH11_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH11_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH11_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH11_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH11_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH11_AL1_CTRL_OFFSET _u(0x000002d0)
+#define DMA_CH11_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH11_AL1_CTRL_RESET "-"
+#define DMA_CH11_AL1_CTRL_MSB _u(31)
+#define DMA_CH11_AL1_CTRL_LSB _u(0)
+#define DMA_CH11_AL1_CTRL_ACCESS "RW"
+#define DMA_CH11_AL1_READ_ADDR_OFFSET _u(0x000002d4)
+#define DMA_CH11_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH11_AL1_READ_ADDR_RESET "-"
+#define DMA_CH11_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH11_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH11_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH11_AL1_WRITE_ADDR_OFFSET _u(0x000002d8)
+#define DMA_CH11_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH11_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH11_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH11_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH11_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH11_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x000002dc)
+#define DMA_CH11_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH11_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH11_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH11_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH11_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH11_AL2_CTRL_OFFSET _u(0x000002e0)
+#define DMA_CH11_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH11_AL2_CTRL_RESET "-"
+#define DMA_CH11_AL2_CTRL_MSB _u(31)
+#define DMA_CH11_AL2_CTRL_LSB _u(0)
+#define DMA_CH11_AL2_CTRL_ACCESS "RW"
+#define DMA_CH11_AL2_TRANS_COUNT_OFFSET _u(0x000002e4)
+#define DMA_CH11_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH11_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH11_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH11_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH11_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH11_AL2_READ_ADDR_OFFSET _u(0x000002e8)
+#define DMA_CH11_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH11_AL2_READ_ADDR_RESET "-"
+#define DMA_CH11_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH11_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH11_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH11_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000002ec)
+#define DMA_CH11_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH11_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH11_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH11_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH11_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH11_AL3_CTRL_OFFSET _u(0x000002f0)
+#define DMA_CH11_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH11_AL3_CTRL_RESET "-"
+#define DMA_CH11_AL3_CTRL_MSB _u(31)
+#define DMA_CH11_AL3_CTRL_LSB _u(0)
+#define DMA_CH11_AL3_CTRL_ACCESS "RW"
+#define DMA_CH11_AL3_WRITE_ADDR_OFFSET _u(0x000002f4)
+#define DMA_CH11_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH11_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH11_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH11_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH11_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH11_AL3_TRANS_COUNT_OFFSET _u(0x000002f8)
+#define DMA_CH11_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH11_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH11_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH11_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH11_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH11_AL3_READ_ADDR_TRIG_OFFSET _u(0x000002fc)
+#define DMA_CH11_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH11_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH11_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH11_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH11_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH12_READ_ADDR_OFFSET _u(0x00000300)
+#define DMA_CH12_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH12_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH12_READ_ADDR_MSB _u(31)
+#define DMA_CH12_READ_ADDR_LSB _u(0)
+#define DMA_CH12_READ_ADDR_ACCESS "RW"
+#define DMA_CH12_WRITE_ADDR_OFFSET _u(0x00000304)
+#define DMA_CH12_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH12_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH12_WRITE_ADDR_MSB _u(31)
+#define DMA_CH12_WRITE_ADDR_LSB _u(0)
+#define DMA_CH12_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH12_TRANS_COUNT_OFFSET _u(0x00000308)
+#define DMA_CH12_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH12_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH12_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH12_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH12_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH12_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH12_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH12_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH12_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH12_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH12_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH12_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH12_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH12_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH12_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_OFFSET _u(0x0000030c)
+#define DMA_CH12_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH12_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH12_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH12_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH12_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH12_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH12_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH12_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH12_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH12_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH12_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH12_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH12_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH12_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH12_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH12_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH12_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH12_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH12_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH12_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH12_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH12_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH12_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH12_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH12_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH12_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH12_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH12_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH12_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH12_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH12_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH12_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH12_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH12_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH12_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH12_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH12_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH12_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH12_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH12_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH12_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH12_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH12_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH12_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH12_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH12_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH12_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH12_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH12_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH12_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH12_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH12_AL1_CTRL_OFFSET _u(0x00000310)
+#define DMA_CH12_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH12_AL1_CTRL_RESET "-"
+#define DMA_CH12_AL1_CTRL_MSB _u(31)
+#define DMA_CH12_AL1_CTRL_LSB _u(0)
+#define DMA_CH12_AL1_CTRL_ACCESS "RW"
+#define DMA_CH12_AL1_READ_ADDR_OFFSET _u(0x00000314)
+#define DMA_CH12_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH12_AL1_READ_ADDR_RESET "-"
+#define DMA_CH12_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH12_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH12_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH12_AL1_WRITE_ADDR_OFFSET _u(0x00000318)
+#define DMA_CH12_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH12_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH12_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH12_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH12_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH12_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000031c)
+#define DMA_CH12_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH12_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH12_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH12_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH12_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH12_AL2_CTRL_OFFSET _u(0x00000320)
+#define DMA_CH12_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH12_AL2_CTRL_RESET "-"
+#define DMA_CH12_AL2_CTRL_MSB _u(31)
+#define DMA_CH12_AL2_CTRL_LSB _u(0)
+#define DMA_CH12_AL2_CTRL_ACCESS "RW"
+#define DMA_CH12_AL2_TRANS_COUNT_OFFSET _u(0x00000324)
+#define DMA_CH12_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH12_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH12_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH12_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH12_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH12_AL2_READ_ADDR_OFFSET _u(0x00000328)
+#define DMA_CH12_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH12_AL2_READ_ADDR_RESET "-"
+#define DMA_CH12_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH12_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH12_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH12_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000032c)
+#define DMA_CH12_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH12_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH12_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH12_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH12_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH12_AL3_CTRL_OFFSET _u(0x00000330)
+#define DMA_CH12_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH12_AL3_CTRL_RESET "-"
+#define DMA_CH12_AL3_CTRL_MSB _u(31)
+#define DMA_CH12_AL3_CTRL_LSB _u(0)
+#define DMA_CH12_AL3_CTRL_ACCESS "RW"
+#define DMA_CH12_AL3_WRITE_ADDR_OFFSET _u(0x00000334)
+#define DMA_CH12_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH12_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH12_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH12_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH12_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH12_AL3_TRANS_COUNT_OFFSET _u(0x00000338)
+#define DMA_CH12_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH12_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH12_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH12_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH12_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH12_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000033c)
+#define DMA_CH12_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH12_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH12_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH12_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH12_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH13_READ_ADDR_OFFSET _u(0x00000340)
+#define DMA_CH13_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH13_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH13_READ_ADDR_MSB _u(31)
+#define DMA_CH13_READ_ADDR_LSB _u(0)
+#define DMA_CH13_READ_ADDR_ACCESS "RW"
+#define DMA_CH13_WRITE_ADDR_OFFSET _u(0x00000344)
+#define DMA_CH13_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH13_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH13_WRITE_ADDR_MSB _u(31)
+#define DMA_CH13_WRITE_ADDR_LSB _u(0)
+#define DMA_CH13_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH13_TRANS_COUNT_OFFSET _u(0x00000348)
+#define DMA_CH13_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH13_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH13_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH13_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH13_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH13_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH13_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH13_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH13_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH13_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH13_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH13_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH13_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH13_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH13_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_OFFSET _u(0x0000034c)
+#define DMA_CH13_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH13_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH13_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH13_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH13_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH13_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH13_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH13_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH13_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH13_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH13_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH13_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH13_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH13_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH13_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH13_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH13_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH13_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH13_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH13_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH13_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH13_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH13_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH13_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH13_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH13_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH13_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH13_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH13_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH13_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH13_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH13_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH13_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH13_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH13_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH13_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH13_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH13_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH13_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH13_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH13_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH13_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH13_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH13_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH13_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH13_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH13_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH13_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH13_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH13_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH13_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH13_AL1_CTRL_OFFSET _u(0x00000350)
+#define DMA_CH13_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH13_AL1_CTRL_RESET "-"
+#define DMA_CH13_AL1_CTRL_MSB _u(31)
+#define DMA_CH13_AL1_CTRL_LSB _u(0)
+#define DMA_CH13_AL1_CTRL_ACCESS "RW"
+#define DMA_CH13_AL1_READ_ADDR_OFFSET _u(0x00000354)
+#define DMA_CH13_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH13_AL1_READ_ADDR_RESET "-"
+#define DMA_CH13_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH13_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH13_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH13_AL1_WRITE_ADDR_OFFSET _u(0x00000358)
+#define DMA_CH13_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH13_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH13_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH13_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH13_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH13_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000035c)
+#define DMA_CH13_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH13_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH13_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH13_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH13_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH13_AL2_CTRL_OFFSET _u(0x00000360)
+#define DMA_CH13_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH13_AL2_CTRL_RESET "-"
+#define DMA_CH13_AL2_CTRL_MSB _u(31)
+#define DMA_CH13_AL2_CTRL_LSB _u(0)
+#define DMA_CH13_AL2_CTRL_ACCESS "RW"
+#define DMA_CH13_AL2_TRANS_COUNT_OFFSET _u(0x00000364)
+#define DMA_CH13_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH13_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH13_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH13_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH13_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH13_AL2_READ_ADDR_OFFSET _u(0x00000368)
+#define DMA_CH13_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH13_AL2_READ_ADDR_RESET "-"
+#define DMA_CH13_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH13_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH13_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH13_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x0000036c)
+#define DMA_CH13_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH13_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH13_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH13_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH13_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH13_AL3_CTRL_OFFSET _u(0x00000370)
+#define DMA_CH13_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH13_AL3_CTRL_RESET "-"
+#define DMA_CH13_AL3_CTRL_MSB _u(31)
+#define DMA_CH13_AL3_CTRL_LSB _u(0)
+#define DMA_CH13_AL3_CTRL_ACCESS "RW"
+#define DMA_CH13_AL3_WRITE_ADDR_OFFSET _u(0x00000374)
+#define DMA_CH13_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH13_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH13_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH13_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH13_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH13_AL3_TRANS_COUNT_OFFSET _u(0x00000378)
+#define DMA_CH13_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH13_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH13_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH13_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH13_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH13_AL3_READ_ADDR_TRIG_OFFSET _u(0x0000037c)
+#define DMA_CH13_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH13_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH13_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH13_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH13_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH14_READ_ADDR_OFFSET _u(0x00000380)
+#define DMA_CH14_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH14_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH14_READ_ADDR_MSB _u(31)
+#define DMA_CH14_READ_ADDR_LSB _u(0)
+#define DMA_CH14_READ_ADDR_ACCESS "RW"
+#define DMA_CH14_WRITE_ADDR_OFFSET _u(0x00000384)
+#define DMA_CH14_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH14_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH14_WRITE_ADDR_MSB _u(31)
+#define DMA_CH14_WRITE_ADDR_LSB _u(0)
+#define DMA_CH14_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH14_TRANS_COUNT_OFFSET _u(0x00000388)
+#define DMA_CH14_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH14_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH14_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH14_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH14_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH14_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH14_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH14_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH14_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH14_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH14_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH14_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH14_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH14_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH14_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_OFFSET _u(0x0000038c)
+#define DMA_CH14_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH14_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH14_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH14_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH14_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH14_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH14_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH14_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH14_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH14_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH14_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH14_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH14_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH14_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH14_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH14_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH14_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH14_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH14_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH14_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH14_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH14_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH14_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH14_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH14_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH14_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH14_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH14_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH14_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH14_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH14_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH14_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH14_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH14_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH14_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH14_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH14_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH14_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH14_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH14_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH14_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH14_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH14_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH14_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH14_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH14_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH14_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH14_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH14_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH14_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH14_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH14_AL1_CTRL_OFFSET _u(0x00000390)
+#define DMA_CH14_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH14_AL1_CTRL_RESET "-"
+#define DMA_CH14_AL1_CTRL_MSB _u(31)
+#define DMA_CH14_AL1_CTRL_LSB _u(0)
+#define DMA_CH14_AL1_CTRL_ACCESS "RW"
+#define DMA_CH14_AL1_READ_ADDR_OFFSET _u(0x00000394)
+#define DMA_CH14_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH14_AL1_READ_ADDR_RESET "-"
+#define DMA_CH14_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH14_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH14_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH14_AL1_WRITE_ADDR_OFFSET _u(0x00000398)
+#define DMA_CH14_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH14_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH14_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH14_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH14_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH14_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x0000039c)
+#define DMA_CH14_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH14_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH14_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH14_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH14_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH14_AL2_CTRL_OFFSET _u(0x000003a0)
+#define DMA_CH14_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH14_AL2_CTRL_RESET "-"
+#define DMA_CH14_AL2_CTRL_MSB _u(31)
+#define DMA_CH14_AL2_CTRL_LSB _u(0)
+#define DMA_CH14_AL2_CTRL_ACCESS "RW"
+#define DMA_CH14_AL2_TRANS_COUNT_OFFSET _u(0x000003a4)
+#define DMA_CH14_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH14_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH14_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH14_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH14_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH14_AL2_READ_ADDR_OFFSET _u(0x000003a8)
+#define DMA_CH14_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH14_AL2_READ_ADDR_RESET "-"
+#define DMA_CH14_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH14_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH14_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH14_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000003ac)
+#define DMA_CH14_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH14_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH14_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH14_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH14_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH14_AL3_CTRL_OFFSET _u(0x000003b0)
+#define DMA_CH14_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH14_AL3_CTRL_RESET "-"
+#define DMA_CH14_AL3_CTRL_MSB _u(31)
+#define DMA_CH14_AL3_CTRL_LSB _u(0)
+#define DMA_CH14_AL3_CTRL_ACCESS "RW"
+#define DMA_CH14_AL3_WRITE_ADDR_OFFSET _u(0x000003b4)
+#define DMA_CH14_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH14_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH14_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH14_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH14_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH14_AL3_TRANS_COUNT_OFFSET _u(0x000003b8)
+#define DMA_CH14_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH14_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH14_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH14_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH14_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH14_AL3_READ_ADDR_TRIG_OFFSET _u(0x000003bc)
+#define DMA_CH14_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH14_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH14_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH14_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH14_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH15_READ_ADDR_OFFSET _u(0x000003c0)
+#define DMA_CH15_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH15_READ_ADDR_RESET _u(0x00000000)
+#define DMA_CH15_READ_ADDR_MSB _u(31)
+#define DMA_CH15_READ_ADDR_LSB _u(0)
+#define DMA_CH15_READ_ADDR_ACCESS "RW"
+#define DMA_CH15_WRITE_ADDR_OFFSET _u(0x000003c4)
+#define DMA_CH15_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH15_WRITE_ADDR_RESET _u(0x00000000)
+#define DMA_CH15_WRITE_ADDR_MSB _u(31)
+#define DMA_CH15_WRITE_ADDR_LSB _u(0)
+#define DMA_CH15_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH15_TRANS_COUNT_OFFSET _u(0x000003c8)
+#define DMA_CH15_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH15_TRANS_COUNT_RESET _u(0x00000000)
+#define DMA_CH15_TRANS_COUNT_MODE_RESET _u(0x0)
+#define DMA_CH15_TRANS_COUNT_MODE_BITS _u(0xf0000000)
+#define DMA_CH15_TRANS_COUNT_MODE_MSB _u(31)
+#define DMA_CH15_TRANS_COUNT_MODE_LSB _u(28)
+#define DMA_CH15_TRANS_COUNT_MODE_ACCESS "RW"
+#define DMA_CH15_TRANS_COUNT_MODE_VALUE_NORMAL _u(0x0)
+#define DMA_CH15_TRANS_COUNT_MODE_VALUE_TRIGGER_SELF _u(0x1)
+#define DMA_CH15_TRANS_COUNT_MODE_VALUE_ENDLESS _u(0xf)
+#define DMA_CH15_TRANS_COUNT_COUNT_RESET _u(0x0000000)
+#define DMA_CH15_TRANS_COUNT_COUNT_BITS _u(0x0fffffff)
+#define DMA_CH15_TRANS_COUNT_COUNT_MSB _u(27)
+#define DMA_CH15_TRANS_COUNT_COUNT_LSB _u(0)
+#define DMA_CH15_TRANS_COUNT_COUNT_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_OFFSET _u(0x000003cc)
+#define DMA_CH15_CTRL_TRIG_BITS _u(0xe7ffffff)
+#define DMA_CH15_CTRL_TRIG_RESET _u(0x00000000)
+#define DMA_CH15_CTRL_TRIG_AHB_ERROR_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_AHB_ERROR_BITS _u(0x80000000)
+#define DMA_CH15_CTRL_TRIG_AHB_ERROR_MSB _u(31)
+#define DMA_CH15_CTRL_TRIG_AHB_ERROR_LSB _u(31)
+#define DMA_CH15_CTRL_TRIG_AHB_ERROR_ACCESS "RO"
+#define DMA_CH15_CTRL_TRIG_READ_ERROR_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_READ_ERROR_BITS _u(0x40000000)
+#define DMA_CH15_CTRL_TRIG_READ_ERROR_MSB _u(30)
+#define DMA_CH15_CTRL_TRIG_READ_ERROR_LSB _u(30)
+#define DMA_CH15_CTRL_TRIG_READ_ERROR_ACCESS "WC"
+#define DMA_CH15_CTRL_TRIG_WRITE_ERROR_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_WRITE_ERROR_BITS _u(0x20000000)
+#define DMA_CH15_CTRL_TRIG_WRITE_ERROR_MSB _u(29)
+#define DMA_CH15_CTRL_TRIG_WRITE_ERROR_LSB _u(29)
+#define DMA_CH15_CTRL_TRIG_WRITE_ERROR_ACCESS "WC"
+#define DMA_CH15_CTRL_TRIG_BUSY_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_BUSY_BITS _u(0x04000000)
+#define DMA_CH15_CTRL_TRIG_BUSY_MSB _u(26)
+#define DMA_CH15_CTRL_TRIG_BUSY_LSB _u(26)
+#define DMA_CH15_CTRL_TRIG_BUSY_ACCESS "RO"
+#define DMA_CH15_CTRL_TRIG_SNIFF_EN_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_SNIFF_EN_BITS _u(0x02000000)
+#define DMA_CH15_CTRL_TRIG_SNIFF_EN_MSB _u(25)
+#define DMA_CH15_CTRL_TRIG_SNIFF_EN_LSB _u(25)
+#define DMA_CH15_CTRL_TRIG_SNIFF_EN_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_BSWAP_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_BSWAP_BITS _u(0x01000000)
+#define DMA_CH15_CTRL_TRIG_BSWAP_MSB _u(24)
+#define DMA_CH15_CTRL_TRIG_BSWAP_LSB _u(24)
+#define DMA_CH15_CTRL_TRIG_BSWAP_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_IRQ_QUIET_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_IRQ_QUIET_BITS _u(0x00800000)
+#define DMA_CH15_CTRL_TRIG_IRQ_QUIET_MSB _u(23)
+#define DMA_CH15_CTRL_TRIG_IRQ_QUIET_LSB _u(23)
+#define DMA_CH15_CTRL_TRIG_IRQ_QUIET_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_RESET _u(0x00)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_BITS _u(0x007e0000)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_MSB _u(22)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_LSB _u(17)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_VALUE_TIMER0 _u(0x3b)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_VALUE_TIMER1 _u(0x3c)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_VALUE_TIMER2 _u(0x3d)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_VALUE_TIMER3 _u(0x3e)
+#define DMA_CH15_CTRL_TRIG_TREQ_SEL_VALUE_PERMANENT _u(0x3f)
+#define DMA_CH15_CTRL_TRIG_CHAIN_TO_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_CHAIN_TO_BITS _u(0x0001e000)
+#define DMA_CH15_CTRL_TRIG_CHAIN_TO_MSB _u(16)
+#define DMA_CH15_CTRL_TRIG_CHAIN_TO_LSB _u(13)
+#define DMA_CH15_CTRL_TRIG_CHAIN_TO_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_RING_SEL_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_RING_SEL_BITS _u(0x00001000)
+#define DMA_CH15_CTRL_TRIG_RING_SEL_MSB _u(12)
+#define DMA_CH15_CTRL_TRIG_RING_SEL_LSB _u(12)
+#define DMA_CH15_CTRL_TRIG_RING_SEL_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_RING_SIZE_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_RING_SIZE_BITS _u(0x00000f00)
+#define DMA_CH15_CTRL_TRIG_RING_SIZE_MSB _u(11)
+#define DMA_CH15_CTRL_TRIG_RING_SIZE_LSB _u(8)
+#define DMA_CH15_CTRL_TRIG_RING_SIZE_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_RING_SIZE_VALUE_RING_NONE _u(0x0)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_REV_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_REV_BITS _u(0x00000080)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_REV_MSB _u(7)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_REV_LSB _u(7)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_REV_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_BITS _u(0x00000040)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_MSB _u(6)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_LSB _u(6)
+#define DMA_CH15_CTRL_TRIG_INCR_WRITE_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_INCR_READ_REV_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_REV_BITS _u(0x00000020)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_REV_MSB _u(5)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_REV_LSB _u(5)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_REV_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_INCR_READ_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_BITS _u(0x00000010)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_MSB _u(4)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_LSB _u(4)
+#define DMA_CH15_CTRL_TRIG_INCR_READ_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_BITS _u(0x0000000c)
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_MSB _u(3)
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_LSB _u(2)
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_BYTE _u(0x0)
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_HALFWORD _u(0x1)
+#define DMA_CH15_CTRL_TRIG_DATA_SIZE_VALUE_SIZE_WORD _u(0x2)
+#define DMA_CH15_CTRL_TRIG_HIGH_PRIORITY_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_HIGH_PRIORITY_BITS _u(0x00000002)
+#define DMA_CH15_CTRL_TRIG_HIGH_PRIORITY_MSB _u(1)
+#define DMA_CH15_CTRL_TRIG_HIGH_PRIORITY_LSB _u(1)
+#define DMA_CH15_CTRL_TRIG_HIGH_PRIORITY_ACCESS "RW"
+#define DMA_CH15_CTRL_TRIG_EN_RESET _u(0x0)
+#define DMA_CH15_CTRL_TRIG_EN_BITS _u(0x00000001)
+#define DMA_CH15_CTRL_TRIG_EN_MSB _u(0)
+#define DMA_CH15_CTRL_TRIG_EN_LSB _u(0)
+#define DMA_CH15_CTRL_TRIG_EN_ACCESS "RW"
+#define DMA_CH15_AL1_CTRL_OFFSET _u(0x000003d0)
+#define DMA_CH15_AL1_CTRL_BITS _u(0xffffffff)
+#define DMA_CH15_AL1_CTRL_RESET "-"
+#define DMA_CH15_AL1_CTRL_MSB _u(31)
+#define DMA_CH15_AL1_CTRL_LSB _u(0)
+#define DMA_CH15_AL1_CTRL_ACCESS "RW"
+#define DMA_CH15_AL1_READ_ADDR_OFFSET _u(0x000003d4)
+#define DMA_CH15_AL1_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH15_AL1_READ_ADDR_RESET "-"
+#define DMA_CH15_AL1_READ_ADDR_MSB _u(31)
+#define DMA_CH15_AL1_READ_ADDR_LSB _u(0)
+#define DMA_CH15_AL1_READ_ADDR_ACCESS "RW"
+#define DMA_CH15_AL1_WRITE_ADDR_OFFSET _u(0x000003d8)
+#define DMA_CH15_AL1_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH15_AL1_WRITE_ADDR_RESET "-"
+#define DMA_CH15_AL1_WRITE_ADDR_MSB _u(31)
+#define DMA_CH15_AL1_WRITE_ADDR_LSB _u(0)
+#define DMA_CH15_AL1_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH15_AL1_TRANS_COUNT_TRIG_OFFSET _u(0x000003dc)
+#define DMA_CH15_AL1_TRANS_COUNT_TRIG_BITS _u(0xffffffff)
+#define DMA_CH15_AL1_TRANS_COUNT_TRIG_RESET "-"
+#define DMA_CH15_AL1_TRANS_COUNT_TRIG_MSB _u(31)
+#define DMA_CH15_AL1_TRANS_COUNT_TRIG_LSB _u(0)
+#define DMA_CH15_AL1_TRANS_COUNT_TRIG_ACCESS "RW"
+#define DMA_CH15_AL2_CTRL_OFFSET _u(0x000003e0)
+#define DMA_CH15_AL2_CTRL_BITS _u(0xffffffff)
+#define DMA_CH15_AL2_CTRL_RESET "-"
+#define DMA_CH15_AL2_CTRL_MSB _u(31)
+#define DMA_CH15_AL2_CTRL_LSB _u(0)
+#define DMA_CH15_AL2_CTRL_ACCESS "RW"
+#define DMA_CH15_AL2_TRANS_COUNT_OFFSET _u(0x000003e4)
+#define DMA_CH15_AL2_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH15_AL2_TRANS_COUNT_RESET "-"
+#define DMA_CH15_AL2_TRANS_COUNT_MSB _u(31)
+#define DMA_CH15_AL2_TRANS_COUNT_LSB _u(0)
+#define DMA_CH15_AL2_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH15_AL2_READ_ADDR_OFFSET _u(0x000003e8)
+#define DMA_CH15_AL2_READ_ADDR_BITS _u(0xffffffff)
+#define DMA_CH15_AL2_READ_ADDR_RESET "-"
+#define DMA_CH15_AL2_READ_ADDR_MSB _u(31)
+#define DMA_CH15_AL2_READ_ADDR_LSB _u(0)
+#define DMA_CH15_AL2_READ_ADDR_ACCESS "RW"
+#define DMA_CH15_AL2_WRITE_ADDR_TRIG_OFFSET _u(0x000003ec)
+#define DMA_CH15_AL2_WRITE_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH15_AL2_WRITE_ADDR_TRIG_RESET "-"
+#define DMA_CH15_AL2_WRITE_ADDR_TRIG_MSB _u(31)
+#define DMA_CH15_AL2_WRITE_ADDR_TRIG_LSB _u(0)
+#define DMA_CH15_AL2_WRITE_ADDR_TRIG_ACCESS "RW"
+#define DMA_CH15_AL3_CTRL_OFFSET _u(0x000003f0)
+#define DMA_CH15_AL3_CTRL_BITS _u(0xffffffff)
+#define DMA_CH15_AL3_CTRL_RESET "-"
+#define DMA_CH15_AL3_CTRL_MSB _u(31)
+#define DMA_CH15_AL3_CTRL_LSB _u(0)
+#define DMA_CH15_AL3_CTRL_ACCESS "RW"
+#define DMA_CH15_AL3_WRITE_ADDR_OFFSET _u(0x000003f4)
+#define DMA_CH15_AL3_WRITE_ADDR_BITS _u(0xffffffff)
+#define DMA_CH15_AL3_WRITE_ADDR_RESET "-"
+#define DMA_CH15_AL3_WRITE_ADDR_MSB _u(31)
+#define DMA_CH15_AL3_WRITE_ADDR_LSB _u(0)
+#define DMA_CH15_AL3_WRITE_ADDR_ACCESS "RW"
+#define DMA_CH15_AL3_TRANS_COUNT_OFFSET _u(0x000003f8)
+#define DMA_CH15_AL3_TRANS_COUNT_BITS _u(0xffffffff)
+#define DMA_CH15_AL3_TRANS_COUNT_RESET "-"
+#define DMA_CH15_AL3_TRANS_COUNT_MSB _u(31)
+#define DMA_CH15_AL3_TRANS_COUNT_LSB _u(0)
+#define DMA_CH15_AL3_TRANS_COUNT_ACCESS "RW"
+#define DMA_CH15_AL3_READ_ADDR_TRIG_OFFSET _u(0x000003fc)
+#define DMA_CH15_AL3_READ_ADDR_TRIG_BITS _u(0xffffffff)
+#define DMA_CH15_AL3_READ_ADDR_TRIG_RESET "-"
+#define DMA_CH15_AL3_READ_ADDR_TRIG_MSB _u(31)
+#define DMA_CH15_AL3_READ_ADDR_TRIG_LSB _u(0)
+#define DMA_CH15_AL3_READ_ADDR_TRIG_ACCESS "RW"
+#define DMA_INTR_OFFSET _u(0x00000400)
+#define DMA_INTR_BITS _u(0x0000ffff)
+#define DMA_INTR_RESET _u(0x00000000)
+#define DMA_INTR_MSB _u(15)
+#define DMA_INTR_LSB _u(0)
+#define DMA_INTR_ACCESS "WC"
+#define DMA_INTE0_OFFSET _u(0x00000404)
+#define DMA_INTE0_BITS _u(0x0000ffff)
+#define DMA_INTE0_RESET _u(0x00000000)
+#define DMA_INTE0_MSB _u(15)
+#define DMA_INTE0_LSB _u(0)
+#define DMA_INTE0_ACCESS "RW"
+#define DMA_INTF0_OFFSET _u(0x00000408)
+#define DMA_INTF0_BITS _u(0x0000ffff)
+#define DMA_INTF0_RESET _u(0x00000000)
+#define DMA_INTF0_MSB _u(15)
+#define DMA_INTF0_LSB _u(0)
+#define DMA_INTF0_ACCESS "RW"
+#define DMA_INTS0_OFFSET _u(0x0000040c)
+#define DMA_INTS0_BITS _u(0x0000ffff)
+#define DMA_INTS0_RESET _u(0x00000000)
+#define DMA_INTS0_MSB _u(15)
+#define DMA_INTS0_LSB _u(0)
+#define DMA_INTS0_ACCESS "WC"
+#define DMA_INTE1_OFFSET _u(0x00000414)
+#define DMA_INTE1_BITS _u(0x0000ffff)
+#define DMA_INTE1_RESET _u(0x00000000)
+#define DMA_INTE1_MSB _u(15)
+#define DMA_INTE1_LSB _u(0)
+#define DMA_INTE1_ACCESS "RW"
+#define DMA_INTF1_OFFSET _u(0x00000418)
+#define DMA_INTF1_BITS _u(0x0000ffff)
+#define DMA_INTF1_RESET _u(0x00000000)
+#define DMA_INTF1_MSB _u(15)
+#define DMA_INTF1_LSB _u(0)
+#define DMA_INTF1_ACCESS "RW"
+#define DMA_INTS1_OFFSET _u(0x0000041c)
+#define DMA_INTS1_BITS _u(0x0000ffff)
+#define DMA_INTS1_RESET _u(0x00000000)
+#define DMA_INTS1_MSB _u(15)
+#define DMA_INTS1_LSB _u(0)
+#define DMA_INTS1_ACCESS "WC"
+#define DMA_INTE2_OFFSET _u(0x00000424)
+#define DMA_INTE2_BITS _u(0x0000ffff)
+#define DMA_INTE2_RESET _u(0x00000000)
+#define DMA_INTE2_MSB _u(15)
+#define DMA_INTE2_LSB _u(0)
+#define DMA_INTE2_ACCESS "RW"
+#define DMA_INTF2_OFFSET _u(0x00000428)
+#define DMA_INTF2_BITS _u(0x0000ffff)
+#define DMA_INTF2_RESET _u(0x00000000)
+#define DMA_INTF2_MSB _u(15)
+#define DMA_INTF2_LSB _u(0)
+#define DMA_INTF2_ACCESS "RW"
+#define DMA_INTS2_OFFSET _u(0x0000042c)
+#define DMA_INTS2_BITS _u(0x0000ffff)
+#define DMA_INTS2_RESET _u(0x00000000)
+#define DMA_INTS2_MSB _u(15)
+#define DMA_INTS2_LSB _u(0)
+#define DMA_INTS2_ACCESS "WC"
+#define DMA_INTE3_OFFSET _u(0x00000434)
+#define DMA_INTE3_BITS _u(0x0000ffff)
+#define DMA_INTE3_RESET _u(0x00000000)
+#define DMA_INTE3_MSB _u(15)
+#define DMA_INTE3_LSB _u(0)
+#define DMA_INTE3_ACCESS "RW"
+#define DMA_INTF3_OFFSET _u(0x00000438)
+#define DMA_INTF3_BITS _u(0x0000ffff)
+#define DMA_INTF3_RESET _u(0x00000000)
+#define DMA_INTF3_MSB _u(15)
+#define DMA_INTF3_LSB _u(0)
+#define DMA_INTF3_ACCESS "RW"
+#define DMA_INTS3_OFFSET _u(0x0000043c)
+#define DMA_INTS3_BITS _u(0x0000ffff)
+#define DMA_INTS3_RESET _u(0x00000000)
+#define DMA_INTS3_MSB _u(15)
+#define DMA_INTS3_LSB _u(0)
+#define DMA_INTS3_ACCESS "WC"
+#define DMA_TIMER0_OFFSET _u(0x00000440)
+#define DMA_TIMER0_BITS _u(0xffffffff)
+#define DMA_TIMER0_RESET _u(0x00000000)
+#define DMA_TIMER0_X_RESET _u(0x0000)
+#define DMA_TIMER0_X_BITS _u(0xffff0000)
+#define DMA_TIMER0_X_MSB _u(31)
+#define DMA_TIMER0_X_LSB _u(16)
+#define DMA_TIMER0_X_ACCESS "RW"
+#define DMA_TIMER0_Y_RESET _u(0x0000)
+#define DMA_TIMER0_Y_BITS _u(0x0000ffff)
+#define DMA_TIMER0_Y_MSB _u(15)
+#define DMA_TIMER0_Y_LSB _u(0)
+#define DMA_TIMER0_Y_ACCESS "RW"
+#define DMA_TIMER1_OFFSET _u(0x00000444)
+#define DMA_TIMER1_BITS _u(0xffffffff)
+#define DMA_TIMER1_RESET _u(0x00000000)
+#define DMA_TIMER1_X_RESET _u(0x0000)
+#define DMA_TIMER1_X_BITS _u(0xffff0000)
+#define DMA_TIMER1_X_MSB _u(31)
+#define DMA_TIMER1_X_LSB _u(16)
+#define DMA_TIMER1_X_ACCESS "RW"
+#define DMA_TIMER1_Y_RESET _u(0x0000)
+#define DMA_TIMER1_Y_BITS _u(0x0000ffff)
+#define DMA_TIMER1_Y_MSB _u(15)
+#define DMA_TIMER1_Y_LSB _u(0)
+#define DMA_TIMER1_Y_ACCESS "RW"
+#define DMA_TIMER2_OFFSET _u(0x00000448)
+#define DMA_TIMER2_BITS _u(0xffffffff)
+#define DMA_TIMER2_RESET _u(0x00000000)
+#define DMA_TIMER2_X_RESET _u(0x0000)
+#define DMA_TIMER2_X_BITS _u(0xffff0000)
+#define DMA_TIMER2_X_MSB _u(31)
+#define DMA_TIMER2_X_LSB _u(16)
+#define DMA_TIMER2_X_ACCESS "RW"
+#define DMA_TIMER2_Y_RESET _u(0x0000)
+#define DMA_TIMER2_Y_BITS _u(0x0000ffff)
+#define DMA_TIMER2_Y_MSB _u(15)
+#define DMA_TIMER2_Y_LSB _u(0)
+#define DMA_TIMER2_Y_ACCESS "RW"
+#define DMA_TIMER3_OFFSET _u(0x0000044c)
+#define DMA_TIMER3_BITS _u(0xffffffff)
+#define DMA_TIMER3_RESET _u(0x00000000)
+#define DMA_TIMER3_X_RESET _u(0x0000)
+#define DMA_TIMER3_X_BITS _u(0xffff0000)
+#define DMA_TIMER3_X_MSB _u(31)
+#define DMA_TIMER3_X_LSB _u(16)
+#define DMA_TIMER3_X_ACCESS "RW"
+#define DMA_TIMER3_Y_RESET _u(0x0000)
+#define DMA_TIMER3_Y_BITS _u(0x0000ffff)
+#define DMA_TIMER3_Y_MSB _u(15)
+#define DMA_TIMER3_Y_LSB _u(0)
+#define DMA_TIMER3_Y_ACCESS "RW"
+#define DMA_MULTI_CHAN_TRIGGER_OFFSET _u(0x00000450)
+#define DMA_MULTI_CHAN_TRIGGER_BITS _u(0x0000ffff)
+#define DMA_MULTI_CHAN_TRIGGER_RESET _u(0x00000000)
+#define DMA_MULTI_CHAN_TRIGGER_MSB _u(15)
+#define DMA_MULTI_CHAN_TRIGGER_LSB _u(0)
+#define DMA_MULTI_CHAN_TRIGGER_ACCESS "SC"
+#define DMA_SNIFF_CTRL_OFFSET _u(0x00000454)
+#define DMA_SNIFF_CTRL_BITS _u(0x00000fff)
+#define DMA_SNIFF_CTRL_RESET _u(0x00000000)
+#define DMA_SNIFF_CTRL_OUT_INV_RESET _u(0x0)
+#define DMA_SNIFF_CTRL_OUT_INV_BITS _u(0x00000800)
+#define DMA_SNIFF_CTRL_OUT_INV_MSB _u(11)
+#define DMA_SNIFF_CTRL_OUT_INV_LSB _u(11)
+#define DMA_SNIFF_CTRL_OUT_INV_ACCESS "RW"
+#define DMA_SNIFF_CTRL_OUT_REV_RESET _u(0x0)
+#define DMA_SNIFF_CTRL_OUT_REV_BITS _u(0x00000400)
+#define DMA_SNIFF_CTRL_OUT_REV_MSB _u(10)
+#define DMA_SNIFF_CTRL_OUT_REV_LSB _u(10)
+#define DMA_SNIFF_CTRL_OUT_REV_ACCESS "RW"
+#define DMA_SNIFF_CTRL_BSWAP_RESET _u(0x0)
+#define DMA_SNIFF_CTRL_BSWAP_BITS _u(0x00000200)
+#define DMA_SNIFF_CTRL_BSWAP_MSB _u(9)
+#define DMA_SNIFF_CTRL_BSWAP_LSB _u(9)
+#define DMA_SNIFF_CTRL_BSWAP_ACCESS "RW"
+#define DMA_SNIFF_CTRL_CALC_RESET _u(0x0)
+#define DMA_SNIFF_CTRL_CALC_BITS _u(0x000001e0)
+#define DMA_SNIFF_CTRL_CALC_MSB _u(8)
+#define DMA_SNIFF_CTRL_CALC_LSB _u(5)
+#define DMA_SNIFF_CTRL_CALC_ACCESS "RW"
+#define DMA_SNIFF_CTRL_CALC_VALUE_CRC32 _u(0x0)
+#define DMA_SNIFF_CTRL_CALC_VALUE_CRC32R _u(0x1)
+#define DMA_SNIFF_CTRL_CALC_VALUE_CRC16 _u(0x2)
+#define DMA_SNIFF_CTRL_CALC_VALUE_CRC16R _u(0x3)
+#define DMA_SNIFF_CTRL_CALC_VALUE_EVEN _u(0xe)
+#define DMA_SNIFF_CTRL_CALC_VALUE_SUM _u(0xf)
+#define DMA_SNIFF_CTRL_DMACH_RESET _u(0x0)
+#define DMA_SNIFF_CTRL_DMACH_BITS _u(0x0000001e)
+#define DMA_SNIFF_CTRL_DMACH_MSB _u(4)
+#define DMA_SNIFF_CTRL_DMACH_LSB _u(1)
+#define DMA_SNIFF_CTRL_DMACH_ACCESS "RW"
+#define DMA_SNIFF_CTRL_EN_RESET _u(0x0)
+#define DMA_SNIFF_CTRL_EN_BITS _u(0x00000001)
+#define DMA_SNIFF_CTRL_EN_MSB _u(0)
+#define DMA_SNIFF_CTRL_EN_LSB _u(0)
+#define DMA_SNIFF_CTRL_EN_ACCESS "RW"
+#define DMA_SNIFF_DATA_OFFSET _u(0x00000458)
+#define DMA_SNIFF_DATA_BITS _u(0xffffffff)
+#define DMA_SNIFF_DATA_RESET _u(0x00000000)
+#define DMA_SNIFF_DATA_MSB _u(31)
+#define DMA_SNIFF_DATA_LSB _u(0)
+#define DMA_SNIFF_DATA_ACCESS "RW"
+#define DMA_FIFO_LEVELS_OFFSET _u(0x00000460)
+#define DMA_FIFO_LEVELS_BITS _u(0x00ffffff)
+#define DMA_FIFO_LEVELS_RESET _u(0x00000000)
+#define DMA_FIFO_LEVELS_RAF_LVL_RESET _u(0x00)
+#define DMA_FIFO_LEVELS_RAF_LVL_BITS _u(0x00ff0000)
+#define DMA_FIFO_LEVELS_RAF_LVL_MSB _u(23)
+#define DMA_FIFO_LEVELS_RAF_LVL_LSB _u(16)
+#define DMA_FIFO_LEVELS_RAF_LVL_ACCESS "RO"
+#define DMA_FIFO_LEVELS_WAF_LVL_RESET _u(0x00)
+#define DMA_FIFO_LEVELS_WAF_LVL_BITS _u(0x0000ff00)
+#define DMA_FIFO_LEVELS_WAF_LVL_MSB _u(15)
+#define DMA_FIFO_LEVELS_WAF_LVL_LSB _u(8)
+#define DMA_FIFO_LEVELS_WAF_LVL_ACCESS "RO"
+#define DMA_FIFO_LEVELS_TDF_LVL_RESET _u(0x00)
+#define DMA_FIFO_LEVELS_TDF_LVL_BITS _u(0x000000ff)
+#define DMA_FIFO_LEVELS_TDF_LVL_MSB _u(7)
+#define DMA_FIFO_LEVELS_TDF_LVL_LSB _u(0)
+#define DMA_FIFO_LEVELS_TDF_LVL_ACCESS "RO"
+#define DMA_CHAN_ABORT_OFFSET _u(0x00000464)
+#define DMA_CHAN_ABORT_BITS _u(0x0000ffff)
+#define DMA_CHAN_ABORT_RESET _u(0x00000000)
+#define DMA_CHAN_ABORT_MSB _u(15)
+#define DMA_CHAN_ABORT_LSB _u(0)
+#define DMA_CHAN_ABORT_ACCESS "SC"
+#define DMA_N_CHANNELS_OFFSET _u(0x00000468)
+#define DMA_N_CHANNELS_BITS _u(0x0000001f)
+#define DMA_N_CHANNELS_RESET "-"
+#define DMA_N_CHANNELS_MSB _u(4)
+#define DMA_N_CHANNELS_LSB _u(0)
+#define DMA_N_CHANNELS_ACCESS "RO"
+#define DMA_SECCFG_CH0_OFFSET _u(0x00000480)
+#define DMA_SECCFG_CH0_BITS _u(0x00000007)
+#define DMA_SECCFG_CH0_RESET _u(0x00000003)
+#define DMA_SECCFG_CH0_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH0_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH0_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH0_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH0_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH0_S_RESET _u(0x1)
+#define DMA_SECCFG_CH0_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH0_S_MSB _u(1)
+#define DMA_SECCFG_CH0_S_LSB _u(1)
+#define DMA_SECCFG_CH0_S_ACCESS "RW"
+#define DMA_SECCFG_CH0_P_RESET _u(0x1)
+#define DMA_SECCFG_CH0_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH0_P_MSB _u(0)
+#define DMA_SECCFG_CH0_P_LSB _u(0)
+#define DMA_SECCFG_CH0_P_ACCESS "RW"
+#define DMA_SECCFG_CH1_OFFSET _u(0x00000484)
+#define DMA_SECCFG_CH1_BITS _u(0x00000007)
+#define DMA_SECCFG_CH1_RESET _u(0x00000003)
+#define DMA_SECCFG_CH1_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH1_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH1_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH1_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH1_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH1_S_RESET _u(0x1)
+#define DMA_SECCFG_CH1_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH1_S_MSB _u(1)
+#define DMA_SECCFG_CH1_S_LSB _u(1)
+#define DMA_SECCFG_CH1_S_ACCESS "RW"
+#define DMA_SECCFG_CH1_P_RESET _u(0x1)
+#define DMA_SECCFG_CH1_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH1_P_MSB _u(0)
+#define DMA_SECCFG_CH1_P_LSB _u(0)
+#define DMA_SECCFG_CH1_P_ACCESS "RW"
+#define DMA_SECCFG_CH2_OFFSET _u(0x00000488)
+#define DMA_SECCFG_CH2_BITS _u(0x00000007)
+#define DMA_SECCFG_CH2_RESET _u(0x00000003)
+#define DMA_SECCFG_CH2_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH2_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH2_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH2_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH2_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH2_S_RESET _u(0x1)
+#define DMA_SECCFG_CH2_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH2_S_MSB _u(1)
+#define DMA_SECCFG_CH2_S_LSB _u(1)
+#define DMA_SECCFG_CH2_S_ACCESS "RW"
+#define DMA_SECCFG_CH2_P_RESET _u(0x1)
+#define DMA_SECCFG_CH2_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH2_P_MSB _u(0)
+#define DMA_SECCFG_CH2_P_LSB _u(0)
+#define DMA_SECCFG_CH2_P_ACCESS "RW"
+#define DMA_SECCFG_CH3_OFFSET _u(0x0000048c)
+#define DMA_SECCFG_CH3_BITS _u(0x00000007)
+#define DMA_SECCFG_CH3_RESET _u(0x00000003)
+#define DMA_SECCFG_CH3_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH3_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH3_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH3_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH3_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH3_S_RESET _u(0x1)
+#define DMA_SECCFG_CH3_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH3_S_MSB _u(1)
+#define DMA_SECCFG_CH3_S_LSB _u(1)
+#define DMA_SECCFG_CH3_S_ACCESS "RW"
+#define DMA_SECCFG_CH3_P_RESET _u(0x1)
+#define DMA_SECCFG_CH3_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH3_P_MSB _u(0)
+#define DMA_SECCFG_CH3_P_LSB _u(0)
+#define DMA_SECCFG_CH3_P_ACCESS "RW"
+#define DMA_SECCFG_CH4_OFFSET _u(0x00000490)
+#define DMA_SECCFG_CH4_BITS _u(0x00000007)
+#define DMA_SECCFG_CH4_RESET _u(0x00000003)
+#define DMA_SECCFG_CH4_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH4_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH4_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH4_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH4_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH4_S_RESET _u(0x1)
+#define DMA_SECCFG_CH4_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH4_S_MSB _u(1)
+#define DMA_SECCFG_CH4_S_LSB _u(1)
+#define DMA_SECCFG_CH4_S_ACCESS "RW"
+#define DMA_SECCFG_CH4_P_RESET _u(0x1)
+#define DMA_SECCFG_CH4_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH4_P_MSB _u(0)
+#define DMA_SECCFG_CH4_P_LSB _u(0)
+#define DMA_SECCFG_CH4_P_ACCESS "RW"
+#define DMA_SECCFG_CH5_OFFSET _u(0x00000494)
+#define DMA_SECCFG_CH5_BITS _u(0x00000007)
+#define DMA_SECCFG_CH5_RESET _u(0x00000003)
+#define DMA_SECCFG_CH5_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH5_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH5_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH5_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH5_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH5_S_RESET _u(0x1)
+#define DMA_SECCFG_CH5_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH5_S_MSB _u(1)
+#define DMA_SECCFG_CH5_S_LSB _u(1)
+#define DMA_SECCFG_CH5_S_ACCESS "RW"
+#define DMA_SECCFG_CH5_P_RESET _u(0x1)
+#define DMA_SECCFG_CH5_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH5_P_MSB _u(0)
+#define DMA_SECCFG_CH5_P_LSB _u(0)
+#define DMA_SECCFG_CH5_P_ACCESS "RW"
+#define DMA_SECCFG_CH6_OFFSET _u(0x00000498)
+#define DMA_SECCFG_CH6_BITS _u(0x00000007)
+#define DMA_SECCFG_CH6_RESET _u(0x00000003)
+#define DMA_SECCFG_CH6_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH6_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH6_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH6_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH6_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH6_S_RESET _u(0x1)
+#define DMA_SECCFG_CH6_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH6_S_MSB _u(1)
+#define DMA_SECCFG_CH6_S_LSB _u(1)
+#define DMA_SECCFG_CH6_S_ACCESS "RW"
+#define DMA_SECCFG_CH6_P_RESET _u(0x1)
+#define DMA_SECCFG_CH6_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH6_P_MSB _u(0)
+#define DMA_SECCFG_CH6_P_LSB _u(0)
+#define DMA_SECCFG_CH6_P_ACCESS "RW"
+#define DMA_SECCFG_CH7_OFFSET _u(0x0000049c)
+#define DMA_SECCFG_CH7_BITS _u(0x00000007)
+#define DMA_SECCFG_CH7_RESET _u(0x00000003)
+#define DMA_SECCFG_CH7_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH7_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH7_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH7_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH7_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH7_S_RESET _u(0x1)
+#define DMA_SECCFG_CH7_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH7_S_MSB _u(1)
+#define DMA_SECCFG_CH7_S_LSB _u(1)
+#define DMA_SECCFG_CH7_S_ACCESS "RW"
+#define DMA_SECCFG_CH7_P_RESET _u(0x1)
+#define DMA_SECCFG_CH7_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH7_P_MSB _u(0)
+#define DMA_SECCFG_CH7_P_LSB _u(0)
+#define DMA_SECCFG_CH7_P_ACCESS "RW"
+#define DMA_SECCFG_CH8_OFFSET _u(0x000004a0)
+#define DMA_SECCFG_CH8_BITS _u(0x00000007)
+#define DMA_SECCFG_CH8_RESET _u(0x00000003)
+#define DMA_SECCFG_CH8_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH8_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH8_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH8_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH8_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH8_S_RESET _u(0x1)
+#define DMA_SECCFG_CH8_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH8_S_MSB _u(1)
+#define DMA_SECCFG_CH8_S_LSB _u(1)
+#define DMA_SECCFG_CH8_S_ACCESS "RW"
+#define DMA_SECCFG_CH8_P_RESET _u(0x1)
+#define DMA_SECCFG_CH8_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH8_P_MSB _u(0)
+#define DMA_SECCFG_CH8_P_LSB _u(0)
+#define DMA_SECCFG_CH8_P_ACCESS "RW"
+#define DMA_SECCFG_CH9_OFFSET _u(0x000004a4)
+#define DMA_SECCFG_CH9_BITS _u(0x00000007)
+#define DMA_SECCFG_CH9_RESET _u(0x00000003)
+#define DMA_SECCFG_CH9_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH9_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH9_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH9_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH9_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH9_S_RESET _u(0x1)
+#define DMA_SECCFG_CH9_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH9_S_MSB _u(1)
+#define DMA_SECCFG_CH9_S_LSB _u(1)
+#define DMA_SECCFG_CH9_S_ACCESS "RW"
+#define DMA_SECCFG_CH9_P_RESET _u(0x1)
+#define DMA_SECCFG_CH9_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH9_P_MSB _u(0)
+#define DMA_SECCFG_CH9_P_LSB _u(0)
+#define DMA_SECCFG_CH9_P_ACCESS "RW"
+#define DMA_SECCFG_CH10_OFFSET _u(0x000004a8)
+#define DMA_SECCFG_CH10_BITS _u(0x00000007)
+#define DMA_SECCFG_CH10_RESET _u(0x00000003)
+#define DMA_SECCFG_CH10_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH10_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH10_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH10_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH10_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH10_S_RESET _u(0x1)
+#define DMA_SECCFG_CH10_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH10_S_MSB _u(1)
+#define DMA_SECCFG_CH10_S_LSB _u(1)
+#define DMA_SECCFG_CH10_S_ACCESS "RW"
+#define DMA_SECCFG_CH10_P_RESET _u(0x1)
+#define DMA_SECCFG_CH10_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH10_P_MSB _u(0)
+#define DMA_SECCFG_CH10_P_LSB _u(0)
+#define DMA_SECCFG_CH10_P_ACCESS "RW"
+#define DMA_SECCFG_CH11_OFFSET _u(0x000004ac)
+#define DMA_SECCFG_CH11_BITS _u(0x00000007)
+#define DMA_SECCFG_CH11_RESET _u(0x00000003)
+#define DMA_SECCFG_CH11_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH11_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH11_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH11_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH11_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH11_S_RESET _u(0x1)
+#define DMA_SECCFG_CH11_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH11_S_MSB _u(1)
+#define DMA_SECCFG_CH11_S_LSB _u(1)
+#define DMA_SECCFG_CH11_S_ACCESS "RW"
+#define DMA_SECCFG_CH11_P_RESET _u(0x1)
+#define DMA_SECCFG_CH11_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH11_P_MSB _u(0)
+#define DMA_SECCFG_CH11_P_LSB _u(0)
+#define DMA_SECCFG_CH11_P_ACCESS "RW"
+#define DMA_SECCFG_CH12_OFFSET _u(0x000004b0)
+#define DMA_SECCFG_CH12_BITS _u(0x00000007)
+#define DMA_SECCFG_CH12_RESET _u(0x00000003)
+#define DMA_SECCFG_CH12_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH12_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH12_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH12_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH12_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH12_S_RESET _u(0x1)
+#define DMA_SECCFG_CH12_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH12_S_MSB _u(1)
+#define DMA_SECCFG_CH12_S_LSB _u(1)
+#define DMA_SECCFG_CH12_S_ACCESS "RW"
+#define DMA_SECCFG_CH12_P_RESET _u(0x1)
+#define DMA_SECCFG_CH12_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH12_P_MSB _u(0)
+#define DMA_SECCFG_CH12_P_LSB _u(0)
+#define DMA_SECCFG_CH12_P_ACCESS "RW"
+#define DMA_SECCFG_CH13_OFFSET _u(0x000004b4)
+#define DMA_SECCFG_CH13_BITS _u(0x00000007)
+#define DMA_SECCFG_CH13_RESET _u(0x00000003)
+#define DMA_SECCFG_CH13_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH13_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH13_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH13_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH13_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH13_S_RESET _u(0x1)
+#define DMA_SECCFG_CH13_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH13_S_MSB _u(1)
+#define DMA_SECCFG_CH13_S_LSB _u(1)
+#define DMA_SECCFG_CH13_S_ACCESS "RW"
+#define DMA_SECCFG_CH13_P_RESET _u(0x1)
+#define DMA_SECCFG_CH13_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH13_P_MSB _u(0)
+#define DMA_SECCFG_CH13_P_LSB _u(0)
+#define DMA_SECCFG_CH13_P_ACCESS "RW"
+#define DMA_SECCFG_CH14_OFFSET _u(0x000004b8)
+#define DMA_SECCFG_CH14_BITS _u(0x00000007)
+#define DMA_SECCFG_CH14_RESET _u(0x00000003)
+#define DMA_SECCFG_CH14_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH14_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH14_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH14_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH14_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH14_S_RESET _u(0x1)
+#define DMA_SECCFG_CH14_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH14_S_MSB _u(1)
+#define DMA_SECCFG_CH14_S_LSB _u(1)
+#define DMA_SECCFG_CH14_S_ACCESS "RW"
+#define DMA_SECCFG_CH14_P_RESET _u(0x1)
+#define DMA_SECCFG_CH14_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH14_P_MSB _u(0)
+#define DMA_SECCFG_CH14_P_LSB _u(0)
+#define DMA_SECCFG_CH14_P_ACCESS "RW"
+#define DMA_SECCFG_CH15_OFFSET _u(0x000004bc)
+#define DMA_SECCFG_CH15_BITS _u(0x00000007)
+#define DMA_SECCFG_CH15_RESET _u(0x00000003)
+#define DMA_SECCFG_CH15_LOCK_RESET _u(0x0)
+#define DMA_SECCFG_CH15_LOCK_BITS _u(0x00000004)
+#define DMA_SECCFG_CH15_LOCK_MSB _u(2)
+#define DMA_SECCFG_CH15_LOCK_LSB _u(2)
+#define DMA_SECCFG_CH15_LOCK_ACCESS "RW"
+#define DMA_SECCFG_CH15_S_RESET _u(0x1)
+#define DMA_SECCFG_CH15_S_BITS _u(0x00000002)
+#define DMA_SECCFG_CH15_S_MSB _u(1)
+#define DMA_SECCFG_CH15_S_LSB _u(1)
+#define DMA_SECCFG_CH15_S_ACCESS "RW"
+#define DMA_SECCFG_CH15_P_RESET _u(0x1)
+#define DMA_SECCFG_CH15_P_BITS _u(0x00000001)
+#define DMA_SECCFG_CH15_P_MSB _u(0)
+#define DMA_SECCFG_CH15_P_LSB _u(0)
+#define DMA_SECCFG_CH15_P_ACCESS "RW"
+#define DMA_SECCFG_IRQ0_OFFSET _u(0x000004c0)
+#define DMA_SECCFG_IRQ0_BITS _u(0x00000003)
+#define DMA_SECCFG_IRQ0_RESET _u(0x00000003)
+#define DMA_SECCFG_IRQ0_S_RESET _u(0x1)
+#define DMA_SECCFG_IRQ0_S_BITS _u(0x00000002)
+#define DMA_SECCFG_IRQ0_S_MSB _u(1)
+#define DMA_SECCFG_IRQ0_S_LSB _u(1)
+#define DMA_SECCFG_IRQ0_S_ACCESS "RW"
+#define DMA_SECCFG_IRQ0_P_RESET _u(0x1)
+#define DMA_SECCFG_IRQ0_P_BITS _u(0x00000001)
+#define DMA_SECCFG_IRQ0_P_MSB _u(0)
+#define DMA_SECCFG_IRQ0_P_LSB _u(0)
+#define DMA_SECCFG_IRQ0_P_ACCESS "RW"
+#define DMA_SECCFG_IRQ1_OFFSET _u(0x000004c4)
+#define DMA_SECCFG_IRQ1_BITS _u(0x00000003)
+#define DMA_SECCFG_IRQ1_RESET _u(0x00000003)
+#define DMA_SECCFG_IRQ1_S_RESET _u(0x1)
+#define DMA_SECCFG_IRQ1_S_BITS _u(0x00000002)
+#define DMA_SECCFG_IRQ1_S_MSB _u(1)
+#define DMA_SECCFG_IRQ1_S_LSB _u(1)
+#define DMA_SECCFG_IRQ1_S_ACCESS "RW"
+#define DMA_SECCFG_IRQ1_P_RESET _u(0x1)
+#define DMA_SECCFG_IRQ1_P_BITS _u(0x00000001)
+#define DMA_SECCFG_IRQ1_P_MSB _u(0)
+#define DMA_SECCFG_IRQ1_P_LSB _u(0)
+#define DMA_SECCFG_IRQ1_P_ACCESS "RW"
+#define DMA_SECCFG_IRQ2_OFFSET _u(0x000004c8)
+#define DMA_SECCFG_IRQ2_BITS _u(0x00000003)
+#define DMA_SECCFG_IRQ2_RESET _u(0x00000003)
+#define DMA_SECCFG_IRQ2_S_RESET _u(0x1)
+#define DMA_SECCFG_IRQ2_S_BITS _u(0x00000002)
+#define DMA_SECCFG_IRQ2_S_MSB _u(1)
+#define DMA_SECCFG_IRQ2_S_LSB _u(1)
+#define DMA_SECCFG_IRQ2_S_ACCESS "RW"
+#define DMA_SECCFG_IRQ2_P_RESET _u(0x1)
+#define DMA_SECCFG_IRQ2_P_BITS _u(0x00000001)
+#define DMA_SECCFG_IRQ2_P_MSB _u(0)
+#define DMA_SECCFG_IRQ2_P_LSB _u(0)
+#define DMA_SECCFG_IRQ2_P_ACCESS "RW"
+#define DMA_SECCFG_IRQ3_OFFSET _u(0x000004cc)
+#define DMA_SECCFG_IRQ3_BITS _u(0x00000003)
+#define DMA_SECCFG_IRQ3_RESET _u(0x00000003)
+#define DMA_SECCFG_IRQ3_S_RESET _u(0x1)
+#define DMA_SECCFG_IRQ3_S_BITS _u(0x00000002)
+#define DMA_SECCFG_IRQ3_S_MSB _u(1)
+#define DMA_SECCFG_IRQ3_S_LSB _u(1)
+#define DMA_SECCFG_IRQ3_S_ACCESS "RW"
+#define DMA_SECCFG_IRQ3_P_RESET _u(0x1)
+#define DMA_SECCFG_IRQ3_P_BITS _u(0x00000001)
+#define DMA_SECCFG_IRQ3_P_MSB _u(0)
+#define DMA_SECCFG_IRQ3_P_LSB _u(0)
+#define DMA_SECCFG_IRQ3_P_ACCESS "RW"
+#define DMA_SECCFG_MISC_OFFSET _u(0x000004d0)
+#define DMA_SECCFG_MISC_BITS _u(0x000003ff)
+#define DMA_SECCFG_MISC_RESET _u(0x000003ff)
+#define DMA_SECCFG_MISC_TIMER3_S_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER3_S_BITS _u(0x00000200)
+#define DMA_SECCFG_MISC_TIMER3_S_MSB _u(9)
+#define DMA_SECCFG_MISC_TIMER3_S_LSB _u(9)
+#define DMA_SECCFG_MISC_TIMER3_S_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER3_P_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER3_P_BITS _u(0x00000100)
+#define DMA_SECCFG_MISC_TIMER3_P_MSB _u(8)
+#define DMA_SECCFG_MISC_TIMER3_P_LSB _u(8)
+#define DMA_SECCFG_MISC_TIMER3_P_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER2_S_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER2_S_BITS _u(0x00000080)
+#define DMA_SECCFG_MISC_TIMER2_S_MSB _u(7)
+#define DMA_SECCFG_MISC_TIMER2_S_LSB _u(7)
+#define DMA_SECCFG_MISC_TIMER2_S_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER2_P_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER2_P_BITS _u(0x00000040)
+#define DMA_SECCFG_MISC_TIMER2_P_MSB _u(6)
+#define DMA_SECCFG_MISC_TIMER2_P_LSB _u(6)
+#define DMA_SECCFG_MISC_TIMER2_P_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER1_S_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER1_S_BITS _u(0x00000020)
+#define DMA_SECCFG_MISC_TIMER1_S_MSB _u(5)
+#define DMA_SECCFG_MISC_TIMER1_S_LSB _u(5)
+#define DMA_SECCFG_MISC_TIMER1_S_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER1_P_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER1_P_BITS _u(0x00000010)
+#define DMA_SECCFG_MISC_TIMER1_P_MSB _u(4)
+#define DMA_SECCFG_MISC_TIMER1_P_LSB _u(4)
+#define DMA_SECCFG_MISC_TIMER1_P_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER0_S_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER0_S_BITS _u(0x00000008)
+#define DMA_SECCFG_MISC_TIMER0_S_MSB _u(3)
+#define DMA_SECCFG_MISC_TIMER0_S_LSB _u(3)
+#define DMA_SECCFG_MISC_TIMER0_S_ACCESS "RW"
+#define DMA_SECCFG_MISC_TIMER0_P_RESET _u(0x1)
+#define DMA_SECCFG_MISC_TIMER0_P_BITS _u(0x00000004)
+#define DMA_SECCFG_MISC_TIMER0_P_MSB _u(2)
+#define DMA_SECCFG_MISC_TIMER0_P_LSB _u(2)
+#define DMA_SECCFG_MISC_TIMER0_P_ACCESS "RW"
+#define DMA_SECCFG_MISC_SNIFF_S_RESET _u(0x1)
+#define DMA_SECCFG_MISC_SNIFF_S_BITS _u(0x00000002)
+#define DMA_SECCFG_MISC_SNIFF_S_MSB _u(1)
+#define DMA_SECCFG_MISC_SNIFF_S_LSB _u(1)
+#define DMA_SECCFG_MISC_SNIFF_S_ACCESS "RW"
+#define DMA_SECCFG_MISC_SNIFF_P_RESET _u(0x1)
+#define DMA_SECCFG_MISC_SNIFF_P_BITS _u(0x00000001)
+#define DMA_SECCFG_MISC_SNIFF_P_MSB _u(0)
+#define DMA_SECCFG_MISC_SNIFF_P_LSB _u(0)
+#define DMA_SECCFG_MISC_SNIFF_P_ACCESS "RW"
+#define DMA_MPU_CTRL_OFFSET _u(0x00000500)
+#define DMA_MPU_CTRL_BITS _u(0x0000000e)
+#define DMA_MPU_CTRL_RESET _u(0x00000000)
+#define DMA_MPU_CTRL_NS_HIDE_ADDR_RESET _u(0x0)
+#define DMA_MPU_CTRL_NS_HIDE_ADDR_BITS _u(0x00000008)
+#define DMA_MPU_CTRL_NS_HIDE_ADDR_MSB _u(3)
+#define DMA_MPU_CTRL_NS_HIDE_ADDR_LSB _u(3)
+#define DMA_MPU_CTRL_NS_HIDE_ADDR_ACCESS "RW"
+#define DMA_MPU_CTRL_S_RESET _u(0x0)
+#define DMA_MPU_CTRL_S_BITS _u(0x00000004)
+#define DMA_MPU_CTRL_S_MSB _u(2)
+#define DMA_MPU_CTRL_S_LSB _u(2)
+#define DMA_MPU_CTRL_S_ACCESS "RW"
+#define DMA_MPU_CTRL_P_RESET _u(0x0)
+#define DMA_MPU_CTRL_P_BITS _u(0x00000002)
+#define DMA_MPU_CTRL_P_MSB _u(1)
+#define DMA_MPU_CTRL_P_LSB _u(1)
+#define DMA_MPU_CTRL_P_ACCESS "RW"
+#define DMA_MPU_BAR0_OFFSET _u(0x00000504)
+#define DMA_MPU_BAR0_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR0_RESET _u(0x00000000)
+#define DMA_MPU_BAR0_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR0_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR0_ADDR_MSB _u(31)
+#define DMA_MPU_BAR0_ADDR_LSB _u(5)
+#define DMA_MPU_BAR0_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR0_OFFSET _u(0x00000508)
+#define DMA_MPU_LAR0_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR0_RESET _u(0x00000000)
+#define DMA_MPU_LAR0_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR0_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR0_ADDR_MSB _u(31)
+#define DMA_MPU_LAR0_ADDR_LSB _u(5)
+#define DMA_MPU_LAR0_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR0_S_RESET _u(0x0)
+#define DMA_MPU_LAR0_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR0_S_MSB _u(2)
+#define DMA_MPU_LAR0_S_LSB _u(2)
+#define DMA_MPU_LAR0_S_ACCESS "RW"
+#define DMA_MPU_LAR0_P_RESET _u(0x0)
+#define DMA_MPU_LAR0_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR0_P_MSB _u(1)
+#define DMA_MPU_LAR0_P_LSB _u(1)
+#define DMA_MPU_LAR0_P_ACCESS "RW"
+#define DMA_MPU_LAR0_EN_RESET _u(0x0)
+#define DMA_MPU_LAR0_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR0_EN_MSB _u(0)
+#define DMA_MPU_LAR0_EN_LSB _u(0)
+#define DMA_MPU_LAR0_EN_ACCESS "RW"
+#define DMA_MPU_BAR1_OFFSET _u(0x0000050c)
+#define DMA_MPU_BAR1_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR1_RESET _u(0x00000000)
+#define DMA_MPU_BAR1_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR1_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR1_ADDR_MSB _u(31)
+#define DMA_MPU_BAR1_ADDR_LSB _u(5)
+#define DMA_MPU_BAR1_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR1_OFFSET _u(0x00000510)
+#define DMA_MPU_LAR1_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR1_RESET _u(0x00000000)
+#define DMA_MPU_LAR1_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR1_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR1_ADDR_MSB _u(31)
+#define DMA_MPU_LAR1_ADDR_LSB _u(5)
+#define DMA_MPU_LAR1_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR1_S_RESET _u(0x0)
+#define DMA_MPU_LAR1_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR1_S_MSB _u(2)
+#define DMA_MPU_LAR1_S_LSB _u(2)
+#define DMA_MPU_LAR1_S_ACCESS "RW"
+#define DMA_MPU_LAR1_P_RESET _u(0x0)
+#define DMA_MPU_LAR1_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR1_P_MSB _u(1)
+#define DMA_MPU_LAR1_P_LSB _u(1)
+#define DMA_MPU_LAR1_P_ACCESS "RW"
+#define DMA_MPU_LAR1_EN_RESET _u(0x0)
+#define DMA_MPU_LAR1_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR1_EN_MSB _u(0)
+#define DMA_MPU_LAR1_EN_LSB _u(0)
+#define DMA_MPU_LAR1_EN_ACCESS "RW"
+#define DMA_MPU_BAR2_OFFSET _u(0x00000514)
+#define DMA_MPU_BAR2_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR2_RESET _u(0x00000000)
+#define DMA_MPU_BAR2_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR2_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR2_ADDR_MSB _u(31)
+#define DMA_MPU_BAR2_ADDR_LSB _u(5)
+#define DMA_MPU_BAR2_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR2_OFFSET _u(0x00000518)
+#define DMA_MPU_LAR2_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR2_RESET _u(0x00000000)
+#define DMA_MPU_LAR2_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR2_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR2_ADDR_MSB _u(31)
+#define DMA_MPU_LAR2_ADDR_LSB _u(5)
+#define DMA_MPU_LAR2_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR2_S_RESET _u(0x0)
+#define DMA_MPU_LAR2_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR2_S_MSB _u(2)
+#define DMA_MPU_LAR2_S_LSB _u(2)
+#define DMA_MPU_LAR2_S_ACCESS "RW"
+#define DMA_MPU_LAR2_P_RESET _u(0x0)
+#define DMA_MPU_LAR2_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR2_P_MSB _u(1)
+#define DMA_MPU_LAR2_P_LSB _u(1)
+#define DMA_MPU_LAR2_P_ACCESS "RW"
+#define DMA_MPU_LAR2_EN_RESET _u(0x0)
+#define DMA_MPU_LAR2_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR2_EN_MSB _u(0)
+#define DMA_MPU_LAR2_EN_LSB _u(0)
+#define DMA_MPU_LAR2_EN_ACCESS "RW"
+#define DMA_MPU_BAR3_OFFSET _u(0x0000051c)
+#define DMA_MPU_BAR3_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR3_RESET _u(0x00000000)
+#define DMA_MPU_BAR3_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR3_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR3_ADDR_MSB _u(31)
+#define DMA_MPU_BAR3_ADDR_LSB _u(5)
+#define DMA_MPU_BAR3_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR3_OFFSET _u(0x00000520)
+#define DMA_MPU_LAR3_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR3_RESET _u(0x00000000)
+#define DMA_MPU_LAR3_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR3_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR3_ADDR_MSB _u(31)
+#define DMA_MPU_LAR3_ADDR_LSB _u(5)
+#define DMA_MPU_LAR3_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR3_S_RESET _u(0x0)
+#define DMA_MPU_LAR3_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR3_S_MSB _u(2)
+#define DMA_MPU_LAR3_S_LSB _u(2)
+#define DMA_MPU_LAR3_S_ACCESS "RW"
+#define DMA_MPU_LAR3_P_RESET _u(0x0)
+#define DMA_MPU_LAR3_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR3_P_MSB _u(1)
+#define DMA_MPU_LAR3_P_LSB _u(1)
+#define DMA_MPU_LAR3_P_ACCESS "RW"
+#define DMA_MPU_LAR3_EN_RESET _u(0x0)
+#define DMA_MPU_LAR3_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR3_EN_MSB _u(0)
+#define DMA_MPU_LAR3_EN_LSB _u(0)
+#define DMA_MPU_LAR3_EN_ACCESS "RW"
+#define DMA_MPU_BAR4_OFFSET _u(0x00000524)
+#define DMA_MPU_BAR4_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR4_RESET _u(0x00000000)
+#define DMA_MPU_BAR4_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR4_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR4_ADDR_MSB _u(31)
+#define DMA_MPU_BAR4_ADDR_LSB _u(5)
+#define DMA_MPU_BAR4_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR4_OFFSET _u(0x00000528)
+#define DMA_MPU_LAR4_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR4_RESET _u(0x00000000)
+#define DMA_MPU_LAR4_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR4_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR4_ADDR_MSB _u(31)
+#define DMA_MPU_LAR4_ADDR_LSB _u(5)
+#define DMA_MPU_LAR4_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR4_S_RESET _u(0x0)
+#define DMA_MPU_LAR4_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR4_S_MSB _u(2)
+#define DMA_MPU_LAR4_S_LSB _u(2)
+#define DMA_MPU_LAR4_S_ACCESS "RW"
+#define DMA_MPU_LAR4_P_RESET _u(0x0)
+#define DMA_MPU_LAR4_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR4_P_MSB _u(1)
+#define DMA_MPU_LAR4_P_LSB _u(1)
+#define DMA_MPU_LAR4_P_ACCESS "RW"
+#define DMA_MPU_LAR4_EN_RESET _u(0x0)
+#define DMA_MPU_LAR4_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR4_EN_MSB _u(0)
+#define DMA_MPU_LAR4_EN_LSB _u(0)
+#define DMA_MPU_LAR4_EN_ACCESS "RW"
+#define DMA_MPU_BAR5_OFFSET _u(0x0000052c)
+#define DMA_MPU_BAR5_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR5_RESET _u(0x00000000)
+#define DMA_MPU_BAR5_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR5_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR5_ADDR_MSB _u(31)
+#define DMA_MPU_BAR5_ADDR_LSB _u(5)
+#define DMA_MPU_BAR5_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR5_OFFSET _u(0x00000530)
+#define DMA_MPU_LAR5_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR5_RESET _u(0x00000000)
+#define DMA_MPU_LAR5_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR5_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR5_ADDR_MSB _u(31)
+#define DMA_MPU_LAR5_ADDR_LSB _u(5)
+#define DMA_MPU_LAR5_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR5_S_RESET _u(0x0)
+#define DMA_MPU_LAR5_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR5_S_MSB _u(2)
+#define DMA_MPU_LAR5_S_LSB _u(2)
+#define DMA_MPU_LAR5_S_ACCESS "RW"
+#define DMA_MPU_LAR5_P_RESET _u(0x0)
+#define DMA_MPU_LAR5_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR5_P_MSB _u(1)
+#define DMA_MPU_LAR5_P_LSB _u(1)
+#define DMA_MPU_LAR5_P_ACCESS "RW"
+#define DMA_MPU_LAR5_EN_RESET _u(0x0)
+#define DMA_MPU_LAR5_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR5_EN_MSB _u(0)
+#define DMA_MPU_LAR5_EN_LSB _u(0)
+#define DMA_MPU_LAR5_EN_ACCESS "RW"
+#define DMA_MPU_BAR6_OFFSET _u(0x00000534)
+#define DMA_MPU_BAR6_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR6_RESET _u(0x00000000)
+#define DMA_MPU_BAR6_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR6_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR6_ADDR_MSB _u(31)
+#define DMA_MPU_BAR6_ADDR_LSB _u(5)
+#define DMA_MPU_BAR6_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR6_OFFSET _u(0x00000538)
+#define DMA_MPU_LAR6_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR6_RESET _u(0x00000000)
+#define DMA_MPU_LAR6_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR6_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR6_ADDR_MSB _u(31)
+#define DMA_MPU_LAR6_ADDR_LSB _u(5)
+#define DMA_MPU_LAR6_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR6_S_RESET _u(0x0)
+#define DMA_MPU_LAR6_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR6_S_MSB _u(2)
+#define DMA_MPU_LAR6_S_LSB _u(2)
+#define DMA_MPU_LAR6_S_ACCESS "RW"
+#define DMA_MPU_LAR6_P_RESET _u(0x0)
+#define DMA_MPU_LAR6_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR6_P_MSB _u(1)
+#define DMA_MPU_LAR6_P_LSB _u(1)
+#define DMA_MPU_LAR6_P_ACCESS "RW"
+#define DMA_MPU_LAR6_EN_RESET _u(0x0)
+#define DMA_MPU_LAR6_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR6_EN_MSB _u(0)
+#define DMA_MPU_LAR6_EN_LSB _u(0)
+#define DMA_MPU_LAR6_EN_ACCESS "RW"
+#define DMA_MPU_BAR7_OFFSET _u(0x0000053c)
+#define DMA_MPU_BAR7_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR7_RESET _u(0x00000000)
+#define DMA_MPU_BAR7_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_BAR7_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_BAR7_ADDR_MSB _u(31)
+#define DMA_MPU_BAR7_ADDR_LSB _u(5)
+#define DMA_MPU_BAR7_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR7_OFFSET _u(0x00000540)
+#define DMA_MPU_LAR7_BITS _u(0xffffffe7)
+#define DMA_MPU_LAR7_RESET _u(0x00000000)
+#define DMA_MPU_LAR7_ADDR_RESET _u(0x0000000)
+#define DMA_MPU_LAR7_ADDR_BITS _u(0xffffffe0)
+#define DMA_MPU_LAR7_ADDR_MSB _u(31)
+#define DMA_MPU_LAR7_ADDR_LSB _u(5)
+#define DMA_MPU_LAR7_ADDR_ACCESS "RW"
+#define DMA_MPU_LAR7_S_RESET _u(0x0)
+#define DMA_MPU_LAR7_S_BITS _u(0x00000004)
+#define DMA_MPU_LAR7_S_MSB _u(2)
+#define DMA_MPU_LAR7_S_LSB _u(2)
+#define DMA_MPU_LAR7_S_ACCESS "RW"
+#define DMA_MPU_LAR7_P_RESET _u(0x0)
+#define DMA_MPU_LAR7_P_BITS _u(0x00000002)
+#define DMA_MPU_LAR7_P_MSB _u(1)
+#define DMA_MPU_LAR7_P_LSB _u(1)
+#define DMA_MPU_LAR7_P_ACCESS "RW"
+#define DMA_MPU_LAR7_EN_RESET _u(0x0)
+#define DMA_MPU_LAR7_EN_BITS _u(0x00000001)
+#define DMA_MPU_LAR7_EN_MSB _u(0)
+#define DMA_MPU_LAR7_EN_LSB _u(0)
+#define DMA_MPU_LAR7_EN_ACCESS "RW"
+#define DMA_CH0_DBG_CTDREQ_OFFSET _u(0x00000800)
+#define DMA_CH0_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH0_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH0_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH0_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH0_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH0_DBG_TCR_OFFSET _u(0x00000804)
+#define DMA_CH0_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH0_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH0_DBG_TCR_MSB _u(31)
+#define DMA_CH0_DBG_TCR_LSB _u(0)
+#define DMA_CH0_DBG_TCR_ACCESS "RO"
+#define DMA_CH1_DBG_CTDREQ_OFFSET _u(0x00000840)
+#define DMA_CH1_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH1_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH1_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH1_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH1_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH1_DBG_TCR_OFFSET _u(0x00000844)
+#define DMA_CH1_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH1_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH1_DBG_TCR_MSB _u(31)
+#define DMA_CH1_DBG_TCR_LSB _u(0)
+#define DMA_CH1_DBG_TCR_ACCESS "RO"
+#define DMA_CH2_DBG_CTDREQ_OFFSET _u(0x00000880)
+#define DMA_CH2_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH2_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH2_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH2_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH2_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH2_DBG_TCR_OFFSET _u(0x00000884)
+#define DMA_CH2_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH2_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH2_DBG_TCR_MSB _u(31)
+#define DMA_CH2_DBG_TCR_LSB _u(0)
+#define DMA_CH2_DBG_TCR_ACCESS "RO"
+#define DMA_CH3_DBG_CTDREQ_OFFSET _u(0x000008c0)
+#define DMA_CH3_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH3_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH3_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH3_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH3_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH3_DBG_TCR_OFFSET _u(0x000008c4)
+#define DMA_CH3_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH3_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH3_DBG_TCR_MSB _u(31)
+#define DMA_CH3_DBG_TCR_LSB _u(0)
+#define DMA_CH3_DBG_TCR_ACCESS "RO"
+#define DMA_CH4_DBG_CTDREQ_OFFSET _u(0x00000900)
+#define DMA_CH4_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH4_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH4_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH4_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH4_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH4_DBG_TCR_OFFSET _u(0x00000904)
+#define DMA_CH4_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH4_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH4_DBG_TCR_MSB _u(31)
+#define DMA_CH4_DBG_TCR_LSB _u(0)
+#define DMA_CH4_DBG_TCR_ACCESS "RO"
+#define DMA_CH5_DBG_CTDREQ_OFFSET _u(0x00000940)
+#define DMA_CH5_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH5_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH5_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH5_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH5_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH5_DBG_TCR_OFFSET _u(0x00000944)
+#define DMA_CH5_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH5_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH5_DBG_TCR_MSB _u(31)
+#define DMA_CH5_DBG_TCR_LSB _u(0)
+#define DMA_CH5_DBG_TCR_ACCESS "RO"
+#define DMA_CH6_DBG_CTDREQ_OFFSET _u(0x00000980)
+#define DMA_CH6_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH6_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH6_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH6_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH6_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH6_DBG_TCR_OFFSET _u(0x00000984)
+#define DMA_CH6_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH6_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH6_DBG_TCR_MSB _u(31)
+#define DMA_CH6_DBG_TCR_LSB _u(0)
+#define DMA_CH6_DBG_TCR_ACCESS "RO"
+#define DMA_CH7_DBG_CTDREQ_OFFSET _u(0x000009c0)
+#define DMA_CH7_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH7_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH7_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH7_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH7_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH7_DBG_TCR_OFFSET _u(0x000009c4)
+#define DMA_CH7_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH7_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH7_DBG_TCR_MSB _u(31)
+#define DMA_CH7_DBG_TCR_LSB _u(0)
+#define DMA_CH7_DBG_TCR_ACCESS "RO"
+#define DMA_CH8_DBG_CTDREQ_OFFSET _u(0x00000a00)
+#define DMA_CH8_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH8_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH8_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH8_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH8_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH8_DBG_TCR_OFFSET _u(0x00000a04)
+#define DMA_CH8_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH8_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH8_DBG_TCR_MSB _u(31)
+#define DMA_CH8_DBG_TCR_LSB _u(0)
+#define DMA_CH8_DBG_TCR_ACCESS "RO"
+#define DMA_CH9_DBG_CTDREQ_OFFSET _u(0x00000a40)
+#define DMA_CH9_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH9_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH9_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH9_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH9_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH9_DBG_TCR_OFFSET _u(0x00000a44)
+#define DMA_CH9_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH9_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH9_DBG_TCR_MSB _u(31)
+#define DMA_CH9_DBG_TCR_LSB _u(0)
+#define DMA_CH9_DBG_TCR_ACCESS "RO"
+#define DMA_CH10_DBG_CTDREQ_OFFSET _u(0x00000a80)
+#define DMA_CH10_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH10_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH10_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH10_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH10_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH10_DBG_TCR_OFFSET _u(0x00000a84)
+#define DMA_CH10_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH10_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH10_DBG_TCR_MSB _u(31)
+#define DMA_CH10_DBG_TCR_LSB _u(0)
+#define DMA_CH10_DBG_TCR_ACCESS "RO"
+#define DMA_CH11_DBG_CTDREQ_OFFSET _u(0x00000ac0)
+#define DMA_CH11_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH11_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH11_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH11_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH11_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH11_DBG_TCR_OFFSET _u(0x00000ac4)
+#define DMA_CH11_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH11_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH11_DBG_TCR_MSB _u(31)
+#define DMA_CH11_DBG_TCR_LSB _u(0)
+#define DMA_CH11_DBG_TCR_ACCESS "RO"
+#define DMA_CH12_DBG_CTDREQ_OFFSET _u(0x00000b00)
+#define DMA_CH12_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH12_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH12_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH12_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH12_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH12_DBG_TCR_OFFSET _u(0x00000b04)
+#define DMA_CH12_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH12_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH12_DBG_TCR_MSB _u(31)
+#define DMA_CH12_DBG_TCR_LSB _u(0)
+#define DMA_CH12_DBG_TCR_ACCESS "RO"
+#define DMA_CH13_DBG_CTDREQ_OFFSET _u(0x00000b40)
+#define DMA_CH13_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH13_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH13_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH13_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH13_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH13_DBG_TCR_OFFSET _u(0x00000b44)
+#define DMA_CH13_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH13_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH13_DBG_TCR_MSB _u(31)
+#define DMA_CH13_DBG_TCR_LSB _u(0)
+#define DMA_CH13_DBG_TCR_ACCESS "RO"
+#define DMA_CH14_DBG_CTDREQ_OFFSET _u(0x00000b80)
+#define DMA_CH14_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH14_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH14_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH14_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH14_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH14_DBG_TCR_OFFSET _u(0x00000b84)
+#define DMA_CH14_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH14_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH14_DBG_TCR_MSB _u(31)
+#define DMA_CH14_DBG_TCR_LSB _u(0)
+#define DMA_CH14_DBG_TCR_ACCESS "RO"
+#define DMA_CH15_DBG_CTDREQ_OFFSET _u(0x00000bc0)
+#define DMA_CH15_DBG_CTDREQ_BITS _u(0x0000003f)
+#define DMA_CH15_DBG_CTDREQ_RESET _u(0x00000000)
+#define DMA_CH15_DBG_CTDREQ_MSB _u(5)
+#define DMA_CH15_DBG_CTDREQ_LSB _u(0)
+#define DMA_CH15_DBG_CTDREQ_ACCESS "WC"
+#define DMA_CH15_DBG_TCR_OFFSET _u(0x00000bc4)
+#define DMA_CH15_DBG_TCR_BITS _u(0xffffffff)
+#define DMA_CH15_DBG_TCR_RESET _u(0x00000000)
+#define DMA_CH15_DBG_TCR_MSB _u(31)
+#define DMA_CH15_DBG_TCR_LSB _u(0)
+#define DMA_CH15_DBG_TCR_ACCESS "RO"
+#define _HARDWARE_STRUCTS_DMA_DEBUG_H 
+typedef struct {
+   
+    io_rw_32 dbg_ctdreq;
+   
+    io_ro_32 dbg_tcr;
+    uint32_t _pad0[14];
+} dma_debug_channel_hw_t;
+typedef struct {
+    dma_debug_channel_hw_t ch[16];
+} dma_debug_hw_t;
+#define dma_debug_hw ((dma_debug_hw_t *)(DMA_BASE + DMA_CH0_DBG_CTDREQ_OFFSET))
+typedef struct {
+   
+    io_rw_32 read_addr;
+   
+    io_rw_32 write_addr;
+   
+    io_rw_32 transfer_count;
+   
+    io_rw_32 ctrl_trig;
+   
+    io_rw_32 al1_ctrl;
+   
+    io_rw_32 al1_read_addr;
+   
+    io_rw_32 al1_write_addr;
+   
+    io_rw_32 al1_transfer_count_trig;
+   
+    io_rw_32 al2_ctrl;
+   
+    io_rw_32 al2_transfer_count;
+   
+    io_rw_32 al2_read_addr;
+   
+    io_rw_32 al2_write_addr_trig;
+   
+    io_rw_32 al3_ctrl;
+   
+    io_rw_32 al3_write_addr;
+   
+    io_rw_32 al3_transfer_count;
+   
+    io_rw_32 al3_read_addr_trig;
+} dma_channel_hw_t;
+typedef struct {
+   
+    io_rw_32 bar;
+   
+    io_rw_32 lar;
+} dma_mpu_region_hw_t;
+typedef struct {
+   
+    io_rw_32 intr;
+   
+    io_rw_32 inte;
+   
+    io_rw_32 intf;
+   
+    io_rw_32 ints;
+} dma_irq_ctrl_hw_t;
+typedef struct {
+    dma_channel_hw_t ch[16];
+    union {
+        struct {
+           
+            io_rw_32 intr;
+           
+            io_rw_32 inte0;
+           
+            io_rw_32 intf0;
+           
+            io_rw_32 ints0;
+            uint32_t __pad0;
+           
+            io_rw_32 inte1;
+           
+            io_rw_32 intf1;
+           
+            io_rw_32 ints1;
+            uint32_t __pad1;
+           
+            io_rw_32 inte2;
+           
+            io_rw_32 intf2;
+           
+            io_rw_32 ints2;
+            uint32_t __pad2;
+           
+            io_rw_32 inte3;
+           
+            io_rw_32 intf3;
+           
+            io_rw_32 ints3;
+        };
+        dma_irq_ctrl_hw_t irq_ctrl[4];
+    };
+   
+    io_rw_32 timer[4];
+   
+    io_wo_32 multi_channel_trigger;
+   
+    io_rw_32 sniff_ctrl;
+   
+    io_rw_32 sniff_data;
+    uint32_t _pad0;
+   
+    io_ro_32 fifo_levels;
+   
+    io_wo_32 abort;
+   
+    io_ro_32 n_channels;
+    uint32_t _pad1[5];
+   
+    io_rw_32 seccfg_ch[16];
+   
+    io_rw_32 seccfg_irq[4];
+   
+    io_rw_32 seccfg_misc;
+    uint32_t _pad2[11];
+   
+    io_rw_32 mpu_ctrl;
+    dma_mpu_region_hw_t mpu_region[8];
+} dma_hw_t;
+#define dma_hw ((dma_hw_t *)DMA_BASE)
+_Static_assert(sizeof (dma_hw_t) == 0x0544, "");
+#define PARAM_ASSERTIONS_ENABLED_HARDWARE_DMA 0
+#define DMA_IRQ_NUM(irq_index) (DMA_IRQ_0 + (irq_index))
+static inline void check_dma_channel_param(__attribute__((__unused__)) uint channel) {
+}
+static inline void check_dma_timer_param(__attribute__((__unused__)) uint timer_num) {
+    ({if (((0 || 0) && !0)) ((timer_num < 4u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 68, __func__, "timer_num < 4u"));});
+}
+inline static dma_channel_hw_t *dma_channel_hw_addr(uint channel) {
+    check_dma_channel_param(channel);
+    return &((dma_hw_t *)0x50000000u)->ch[channel];
+}
+void dma_channel_claim(uint channel);
+void dma_claim_mask(uint32_t channel_mask);
+void dma_channel_unclaim(uint channel);
+void dma_unclaim_mask(uint32_t channel_mask);
+int dma_claim_unused_channel(_Bool required);
+_Bool dma_channel_is_claimed(uint channel);
+typedef enum dma_channel_transfer_size {
+    DMA_SIZE_8 = 0,
+    DMA_SIZE_16 = 1,
+    DMA_SIZE_32 = 2
+} dma_channel_transfer_size_t;
+typedef enum dma_address_update_type {
+    DMA_ADDRESS_UPDATE_NONE = 0,
+    DMA_ADDRESS_UPDATE_INCREMENT = 1,
+    DMA_ADDRESS_UPDATE_INCREMENT_BY_TWO = 2,
+    DMA_ADDRESS_UPDATE_DECREMENT = 3,
+} dma_address_update_type_t;
+typedef struct {
+    uint32_t ctrl;
+} dma_channel_config_t;
+typedef dma_channel_config_t dma_channel_config;
+#define DMA_ADDRESS_UPDATE_TYPE_TO_DMA_CH_CTRL_READ_BITS(u) ((((u)&1) << DMA_CH0_CTRL_TRIG_INCR_READ_LSB) | (((u)&2) << (DMA_CH0_CTRL_TRIG_INCR_READ_REV_LSB - 1)))
+#define DMA_ADDRESS_UPDATE_TYPE_TO_DMA_CH_CTRL_WRITE_BITS(u) ((((u)&1) << DMA_CH0_CTRL_TRIG_INCR_WRITE_LSB) | (((u)&2) << (DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_LSB - 1)))
+#define DMA_CH_CTRL_ALL_ADDRESS_UPDATE_READ_BITS (DMA_CH0_CTRL_TRIG_INCR_READ_BITS | DMA_CH0_CTRL_TRIG_INCR_READ_REV_BITS)
+#define DMA_CH_CTRL_ALL_ADDRESS_UPDATE_WRITE_BITS (DMA_CH0_CTRL_TRIG_INCR_WRITE_BITS | DMA_CH0_CTRL_TRIG_INCR_WRITE_REV_BITS)
+static inline void channel_config_set_read_address_update_type(dma_channel_config_t *c, dma_address_update_type_t update_type) {
+    c->ctrl = (c->ctrl & ~(0x00000010u | 0x00000020u)) |
+        ((((update_type)&1) << 4u) | (((update_type)&2) << (5u - 1)));
+}
+static inline void channel_config_set_write_address_update_type(dma_channel_config_t *c, dma_address_update_type_t update_type) {
+    c->ctrl = (c->ctrl & ~(0x00000040u | 0x00000080u)) |
+        ((((update_type)&1) << 6u) | (((update_type)&2) << (7u - 1)));
+}
+static inline void channel_config_set_read_increment(dma_channel_config_t *c, _Bool incr) {
+    channel_config_set_read_address_update_type(c, incr ? DMA_ADDRESS_UPDATE_INCREMENT : DMA_ADDRESS_UPDATE_NONE);
+}
+static inline void channel_config_set_write_increment(dma_channel_config_t *c, _Bool incr) {
+    channel_config_set_write_address_update_type(c, incr ? DMA_ADDRESS_UPDATE_INCREMENT : DMA_ADDRESS_UPDATE_NONE);
+}
+static inline void channel_config_set_dreq(dma_channel_config_t *c, uint dreq) {
+    ((dreq <= DREQ_FORCE) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 283, __func__, "dreq <= DREQ_FORCE"));
+    c->ctrl = (c->ctrl & ~0x007e0000u) | (dreq << 17u);
+}
+static inline void channel_config_set_chain_to(dma_channel_config_t *c, uint chain_to) {
+    ((chain_to <= 16u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 297, __func__, "chain_to <= NUM_DMA_CHANNELS"));
+    c->ctrl = (c->ctrl & ~0x0001e000u) | (chain_to << 13u);
+}
+static inline void channel_config_set_transfer_data_size(dma_channel_config_t *c, dma_channel_transfer_size_t size) {
+    ((size == DMA_SIZE_8 || size == DMA_SIZE_16 || size == DMA_SIZE_32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 311, __func__, "size == DMA_SIZE_8 || size == DMA_SIZE_16 || size == DMA_SIZE_32"));
+    c->ctrl = (c->ctrl & ~0x0000000cu) | (((uint)size) << 2u);
+}
+static inline void channel_config_set_ring(dma_channel_config_t *c, _Bool write, uint size_bits) {
+    ((size_bits < 32) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 331, __func__, "size_bits < 32"));
+    c->ctrl = (c->ctrl & ~(0x00000f00u | 0x00001000u)) |
+              (size_bits << 8u) |
+              (write ? 0x00001000u : 0);
+}
+static inline void channel_config_set_bswap(dma_channel_config_t *c, _Bool bswap) {
+    c->ctrl = bswap ? (c->ctrl | 0x01000000u) : (c->ctrl & ~0x01000000u);
+}
+static inline void channel_config_set_irq_quiet(dma_channel_config_t *c, _Bool irq_quiet) {
+    c->ctrl = irq_quiet ? (c->ctrl | 0x00800000u) : (c->ctrl & ~0x00800000u);
+}
+static inline void channel_config_set_high_priority(dma_channel_config_t *c, _Bool high_priority) {
+    c->ctrl = high_priority ? (c->ctrl | 0x00000002u) : (c->ctrl & ~0x00000002u);
+}
+static inline void channel_config_set_enable(dma_channel_config_t *c, _Bool enable) {
+    c->ctrl = enable ? (c->ctrl | 0x00000001u) : (c->ctrl & ~0x00000001u);
+}
+static inline void channel_config_set_sniff_enable(dma_channel_config_t *c, _Bool sniff_enable) {
+    c->ctrl = sniff_enable ? (c->ctrl | 0x02000000u) : (c->ctrl &
+                                                                             ~0x02000000u);
+}
+static inline dma_channel_config_t dma_channel_get_default_config(uint channel) {
+    dma_channel_config_t c = {0};
+    channel_config_set_read_increment(&c, 1);
+    channel_config_set_write_increment(&c, 0);
+    channel_config_set_dreq(&c, DREQ_FORCE);
+    channel_config_set_chain_to(&c, channel);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
+    channel_config_set_ring(&c, 0, 0);
+    channel_config_set_bswap(&c, 0);
+    channel_config_set_irq_quiet(&c, 0);
+    channel_config_set_enable(&c, 1);
+    channel_config_set_sniff_enable(&c, 0);
+    channel_config_set_high_priority( &c, 0);
+    return c;
+}
+static inline dma_channel_config_t dma_get_channel_config(uint channel) {
+    dma_channel_config_t c;
+    c.ctrl = dma_channel_hw_addr(channel)->ctrl_trig;
+    return c;
+}
+static inline uint32_t channel_config_get_ctrl_value(const dma_channel_config_t *config) {
+    return config->ctrl;
+}
+static inline void dma_channel_set_config(uint channel, const dma_channel_config_t *config, _Bool trigger) {
+    if (!trigger) {
+        dma_channel_hw_addr(channel)->al1_ctrl = channel_config_get_ctrl_value(config);
+    } else {
+        dma_channel_hw_addr(channel)->ctrl_trig = channel_config_get_ctrl_value(config);
+    }
+}
+static inline void dma_channel_set_read_addr(uint channel, const volatile void *read_addr, _Bool trigger) {
+    if (!trigger) {
+        dma_channel_hw_addr(channel)->read_addr = (uintptr_t) read_addr;
+    } else {
+        dma_channel_hw_addr(channel)->al3_read_addr_trig = (uintptr_t) read_addr;
+    }
+}
+static inline void dma_channel_set_write_addr(uint channel, volatile void *write_addr, _Bool trigger) {
+    if (!trigger) {
+        dma_channel_hw_addr(channel)->write_addr = (uintptr_t) write_addr;
+    } else {
+        dma_channel_hw_addr(channel)->al2_write_addr_trig = (uintptr_t) write_addr;
+    }
+}
+static inline uint32_t dma_encode_transfer_count(uint transfer_count) {
+    ({if (((0 || 0) && !0)) ((!(transfer_count & 0xf0000000u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 533, __func__, "!(transfer_count & 0xf0000000u)"));});
+    return transfer_count & 0x0fffffffu;
+}
+static inline uint32_t dma_encode_transfer_count_with_self_trigger(uint transfer_count) {
+    return dma_encode_transfer_count(transfer_count) | (0x1u << 28u);
+}
+static inline uint32_t dma_encode_endless_transfer_count(void) {
+    _Static_assert(0xfu == 0xf);
+    _Static_assert(28u == 28);
+    return 0xffffffffu;
+}
+static inline void dma_channel_set_transfer_count(uint channel, uint32_t encoded_transfer_count, _Bool trigger) {
+    if (!trigger) {
+        dma_channel_hw_addr(channel)->transfer_count = encoded_transfer_count;
+    } else {
+        dma_channel_hw_addr(channel)->al1_transfer_count_trig = encoded_transfer_count;
+    }
+}
+static inline void dma_channel_set_trans_count(uint channel, uint32_t trans_count, _Bool trigger) {
+    dma_channel_set_transfer_count(channel, trans_count, trigger);
+}
+static inline void dma_channel_configure(uint channel, const dma_channel_config_t *config, volatile void *write_addr,
+                                         const volatile void *read_addr,
+                                         uint32_t encoded_transfer_count, _Bool trigger) {
+    dma_channel_set_read_addr(channel, read_addr, 0);
+    dma_channel_set_write_addr(channel, write_addr, 0);
+    dma_channel_set_transfer_count(channel, encoded_transfer_count, 0);
+    dma_channel_set_config(channel, config, trigger);
+}
+inline static void __attribute__((always_inline)) dma_channel_transfer_from_buffer_now(uint channel,
+                                                                                       const volatile void *read_addr,
+                                                                                       uint32_t encoded_transfer_count) {
+    dma_channel_hw_t *hw = dma_channel_hw_addr(channel);
+    hw->read_addr = (uintptr_t) read_addr;
+    hw->al1_transfer_count_trig = encoded_transfer_count;
+}
+inline static void dma_channel_transfer_to_buffer_now(uint channel, volatile void *write_addr, uint32_t encoded_transfer_count) {
+    dma_channel_hw_t *hw = dma_channel_hw_addr(channel);
+    hw->write_addr = (uintptr_t) write_addr;
+    hw->al1_transfer_count_trig = encoded_transfer_count;
+}
+static inline void dma_start_channel_mask(uint32_t chan_mask) {
+    ({if (((0 || 0) && !0)) ((chan_mask && chan_mask < (1u << 16u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 705, __func__, "chan_mask && chan_mask < (1u << 16u)"));});
+    ((dma_hw_t *)0x50000000u)->multi_channel_trigger = chan_mask;
+}
+static inline void dma_channel_start(uint channel) {
+    dma_start_channel_mask(1u << channel);
+}
+static inline void dma_channel_abort(uint channel) {
+    check_dma_channel_param(channel);
+    ((dma_hw_t *)0x50000000u)->abort = 1u << channel;
+    while (((dma_hw_t *)0x50000000u)->ch[channel].ctrl_trig & 0x04000000u) tight_loop_contents();
+}
+static inline void dma_channel_set_irq0_enabled(uint channel, _Bool enabled) {
+    check_dma_channel_param(channel);
+    _Static_assert(__builtin_offsetof (dma_hw_t, inte0) == (0x00000404u), "hw offset mismatch");
+    if (enabled)
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->inte0, 1u << channel);
+    else
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->inte0, 1u << channel);
+}
+static inline void dma_set_irq0_channel_mask_enabled(uint32_t channel_mask, _Bool enabled) {
+    if (enabled) {
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->inte0, channel_mask);
+    } else {
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->inte0, channel_mask);
+    }
+}
+static inline void dma_channel_set_irq1_enabled(uint channel, _Bool enabled) {
+    check_dma_channel_param(channel);
+    _Static_assert(__builtin_offsetof (dma_hw_t, inte1) == (0x00000414u), "hw offset mismatch");
+    if (enabled)
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->inte1, 1u << channel);
+    else
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->inte1, 1u << channel);
+}
+static inline void dma_set_irq1_channel_mask_enabled(uint32_t channel_mask, _Bool enabled) {
+    if (enabled) {
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->inte1, channel_mask);
+    } else {
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->inte1, channel_mask);
+    }
+}
+static inline void dma_irqn_set_channel_enabled(uint irq_index, uint channel, _Bool enabled) {
+    ({if (((0 || 0) && !0)) ((!(irq_index >= 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 832, __func__, "!(irq_index >= 4u)"));});
+    if (enabled)
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->irq_ctrl[irq_index].inte, 1u << channel);
+    else
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->irq_ctrl[irq_index].inte, 1u << channel);
+}
+static inline void dma_irqn_set_channel_mask_enabled(uint irq_index, uint32_t channel_mask, _Bool enabled) {
+    ({if (((0 || 0) && !0)) ((!(irq_index >= 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 848, __func__, "!(irq_index >= 4u)"));});
+    if (enabled) {
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->irq_ctrl[irq_index].inte, channel_mask);
+    } else {
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->irq_ctrl[irq_index].inte, channel_mask);
+    }
+}
+static inline _Bool dma_channel_get_irq0_status(uint channel) {
+    check_dma_channel_param(channel);
+    return ((dma_hw_t *)0x50000000u)->ints0 & (1u << channel);
+}
+static inline _Bool dma_channel_get_irq1_status(uint channel) {
+    check_dma_channel_param(channel);
+    return ((dma_hw_t *)0x50000000u)->ints1 & (1u << channel);
+}
+static inline _Bool dma_irqn_get_channel_status(uint irq_index, uint channel) {
+    ({if (((0 || 0) && !0)) ((!(irq_index >= 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 886, __func__, "!(irq_index >= 4u)"));});
+    check_dma_channel_param(channel);
+    return ((dma_hw_t *)0x50000000u)->irq_ctrl[irq_index].ints & (1u << channel);
+}
+static inline void dma_channel_acknowledge_irq0(uint channel) {
+    check_dma_channel_param(channel);
+    ((dma_hw_t *)0x50000000u)->ints0 = 1u << channel;
+}
+static inline void dma_channel_acknowledge_irq1(uint channel) {
+    check_dma_channel_param(channel);
+    ((dma_hw_t *)0x50000000u)->ints1 = 1u << channel;
+}
+static inline void dma_irqn_acknowledge_channel(uint irq_index, uint channel) {
+    ({if (((0 || 0) && !0)) ((!(irq_index >= 4u)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 918, __func__, "!(irq_index >= 4u)"));});
+    check_dma_channel_param(channel);
+    ((dma_hw_t *)0x50000000u)->irq_ctrl[irq_index].ints = 1u << channel;
+}
+inline static _Bool dma_channel_is_busy(uint channel) {
+    check_dma_channel_param(channel);
+    return ((dma_hw_t *)0x50000000u)->ch[channel].al1_ctrl & 0x04000000u;
+}
+inline static void dma_channel_wait_for_finish_blocking(uint channel) {
+    while (dma_channel_is_busy(channel)) tight_loop_contents();
+    __compiler_memory_barrier();
+}
+inline static void dma_sniffer_enable(uint channel, uint mode, _Bool force_channel_enable) {
+    check_dma_channel_param(channel);
+    _Static_assert(__builtin_offsetof (dma_hw_t, sniff_ctrl) == (0x00000454u), "hw offset mismatch");
+    if (force_channel_enable) {
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->ch[channel].al1_ctrl, 0x02000000u);
+    }
+    hw_write_masked(&((dma_hw_t *)0x50000000u)->sniff_ctrl,
+        (((channel << 1u) & 0x0000001eu) |
+         ((mode << 5u) & 0x000001e0u) |
+         0x00000001u),
+        (0x0000001eu |
+         0x000001e0u |
+         0x00000001u));
+}
+inline static void dma_sniffer_set_byte_swap_enabled(_Bool swap) {
+    if (swap)
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->sniff_ctrl, 0x00000200u);
+    else
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->sniff_ctrl, 0x00000200u);
+}
+inline static void dma_sniffer_set_output_invert_enabled(_Bool invert) {
+    if (invert)
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->sniff_ctrl, 0x00000800u);
+    else
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->sniff_ctrl, 0x00000800u);
+}
+inline static void dma_sniffer_set_output_reverse_enabled(_Bool reverse) {
+    if (reverse)
+        hw_set_bits(&((dma_hw_t *)0x50000000u)->sniff_ctrl, 0x00000400u);
+    else
+        hw_clear_bits(&((dma_hw_t *)0x50000000u)->sniff_ctrl, 0x00000400u);
+}
+inline static void dma_sniffer_disable(void) {
+    ((dma_hw_t *)0x50000000u)->sniff_ctrl = 0;
+}
+inline static void dma_sniffer_set_data_accumulator(uint32_t seed_value) {
+    ((dma_hw_t *)0x50000000u)->sniff_data = seed_value;
+}
+inline static uint32_t dma_sniffer_get_data_accumulator(void) {
+    return ((dma_hw_t *)0x50000000u)->sniff_data;
+}
+void dma_timer_claim(uint timer);
+void dma_timer_unclaim(uint timer);
+int dma_claim_unused_timer(_Bool required);
+_Bool dma_timer_is_claimed(uint timer);
+static inline void dma_timer_set_fraction(uint timer, uint16_t numerator, uint16_t denominator) {
+    check_dma_timer_param(timer);
+    ({if (((0 || 0) && !0)) ((!(numerator > denominator)) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 1107, __func__, "!(numerator > denominator)"));});
+    ((dma_hw_t *)0x50000000u)->timer[timer] = (((uint32_t)numerator) << 16u) | (((uint32_t)denominator) << 0u);
+}
+static inline uint dma_get_timer_dreq(uint timer_num) {
+    _Static_assert(DREQ_DMA_TIMER1 == DREQ_DMA_TIMER0 + 1, "");
+    _Static_assert(DREQ_DMA_TIMER2 == DREQ_DMA_TIMER0 + 2, "");
+    _Static_assert(DREQ_DMA_TIMER3 == DREQ_DMA_TIMER0 + 3, "");
+    check_dma_timer_param(timer_num);
+    return DREQ_DMA_TIMER0 + timer_num;
+}
+static inline int dma_get_irq_num(uint irq_index) {
+    ({if (((0 || 0) && !0)) ((irq_index < 4u) ? (void)0 : __assert_func ("/Users/gonzalo/.pico-sdk/sdk/2.2.0/src/rp2_common/hardware_dma/include/hardware/dma.h", 1131, __func__, "irq_index < 4u"));});
+    return (DMA_IRQ_0 + (irq_index));
+}
+void dma_channel_cleanup(uint channel);
+void print_dma_ctrl(dma_channel_hw_t *channel);
 #define _HARDWARE_PIO_H 
 #define _HARDWARE_STRUCTS_PIO_H 
 #define _HARDWARE_REGS_PIO_H 

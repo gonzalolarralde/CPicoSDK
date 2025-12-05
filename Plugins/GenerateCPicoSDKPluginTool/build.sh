@@ -20,6 +20,15 @@ echo "Writing source h file in $SRC_DIR/CPicoSDK.source.h"
 # // TODO: Only include libraries enabled by Traits here.
 {
     echo "#define __ARM_ARCH_8M_MAIN__ 1"
+    
+    if echo "$IMPORTED_LIBS" | grep "pico_lwip_http"; then
+        echo "#include <lwip/apps/http_client.h>"
+        echo "#include <lwip/altcp.h>"
+        echo "#include <lwip/altcp_tls.h>"
+        echo "#include <lwip/netif.h>"
+        echo "#include <lwip/ip4_addr.h>"
+    fi
+    
     for lib in ${IMPORTED_LIBS//,/ }; do
         LIB_BASE="$( find "${PICO_SDK_PATH}/src/" -type d -name "$lib" | grep -v "/host/" | head -1 || echo "not-found" )/include"
 
