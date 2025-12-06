@@ -60,5 +60,13 @@ target_include_directories("${PROJECT_NAME}" PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
+target_compile_options("${PROJECT_NAME}" PRIVATE
+    -ffunction-sections
+    -fdata-sections
+)
+
+target_link_options("${PROJECT_NAME}" PRIVATE
+    -Wl,--gc-sections
+)
 
 pico_add_extra_outputs("${PROJECT_NAME}")
