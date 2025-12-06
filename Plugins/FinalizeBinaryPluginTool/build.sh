@@ -23,7 +23,7 @@ cmake \
   -S "$SRC_DIR" \
   -B "$BUILD_DIR" \
   -G Ninja \
-  -DCMAKE_BUILD_TYPE=RelWithDebug \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DPICO_SDK_PATH="${PICO_SDK_PATH:-}" \
   -DPICOTOOL_EXECUTABLE="${PICOTOOL_EXECUTABLE}" \
   -DBOARD_TYPE="${BOARD}" \

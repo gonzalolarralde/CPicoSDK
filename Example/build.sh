@@ -11,6 +11,7 @@ cat env.json.tmpl | sed "s#<HOME>#$( dirname ~/. )#g" > env.json
 ~/.swiftly/bin/swiftly run swift build -v \
     --build-system native \
     --configuration release \
+    -debug-info-format=dwarf \
     --toolset toolset.json \
     --triple armv7em-none-none-eabi
 
