@@ -7,7 +7,7 @@ rm -rf .build
 rm -rf Sources/_CPicoSDK
 cp -rf Sources/_CPicoSDKTemplate Sources/_CPicoSDK
 
-swift package generate-cpicosdk
+swift package generate-cpicosdk --allow-writing-to-package-directory
 
 # TODO: Figure out how to build with `host` pico-platform.
 # swift build \

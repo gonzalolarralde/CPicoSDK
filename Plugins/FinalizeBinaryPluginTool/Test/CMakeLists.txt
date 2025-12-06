@@ -60,6 +60,5 @@ target_include_directories("${PROJECT_NAME}" PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
-include(lib_to_bundle.cmake)
 
 pico_add_extra_outputs("${PROJECT_NAME}")

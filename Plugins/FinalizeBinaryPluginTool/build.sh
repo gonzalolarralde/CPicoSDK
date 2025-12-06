@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-cp -r "$2" "$1"
+rsync -r -u "$2" "$1"
 
 SRC_DIR="$1/Test"
 BUILD_DIR="${SRC_DIR}/build"
@@ -11,14 +11,12 @@ mkdir -p "$OUTPUT_DIR"
 
 export PATH="$CMAKE_PATH:$NINJA_PATH:$PATH"
 
-rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR"
+if [[ "$5" == "clean" ]]; then
+    rm -rf "$BUILD_DIR"
+    mkdir -p "$BUILD_DIR"
+fi
 
 echo "Writing source h file in $SRC_DIR/lib_to_bundle.cmake"
-
-cat <<- "EOF" > "$SRC_DIR/lib_to_bundle.cmake"
-
-EOF
 
 # TODO: CMake path shouldn't depend on homebrew
 cmake \
@@ -37,4 +35,4 @@ cmake \
 
 cmake --build "$BUILD_DIR"
 
-cp "$BUILD_DIR/$4."* "$( dirname "$3" )/"
+cp -f "$BUILD_DIR/$4."* "$( dirname "$3" )/"

@@ -3,7 +3,10 @@ set -euxo pipefail
 
 PICOTOOL_VERSION=2.2.0-a4
 cat env.json.tmpl | sed "s#<HOME>#$( dirname ~/. )#g" > env.json
-rm -rf .build
+
+# Uncomment this and remove --incremental to start from a clean state.
+# Might help fix weird issues. Ideally not necessary.
+# rm -rf .build
 
 ~/.swiftly/bin/swiftly run swift build -v \
     --build-system native \
@@ -11,7 +14,9 @@ rm -rf .build
     --toolset toolset.json \
     --triple armv7em-none-none-eabi
 
-~/.swiftly/bin/swiftly run swift package finalize-pi-binary "$1"
+~/.swiftly/bin/swiftly run swift package finalize-pi-binary "$1" \
+    --incremental \
+    --allow-writing-to-package-directory
 
 # Only flash if second arg is exactly "--flash"
 if [[ "${2:-}" == "--flash" ]]; then

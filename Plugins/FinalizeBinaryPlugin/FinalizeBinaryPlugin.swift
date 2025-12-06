@@ -8,6 +8,12 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             fatalError("A product name is expected. It should be a static library in the Product section of the package.")
         }
         
+        let clean = if arguments.count >= 2, arguments[1] == "--incremental" {
+            "dont-clean"
+        } else {
+            "clean"
+        }
+        
         guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
             fatalError("Couldn't find CPicoSDK.")
         }
@@ -42,7 +48,8 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             // TODO: Remove this assumption about the triple used to compile.
             context.package.directoryURL.relativePath
                 .appending("/.build/armv7em-none-none-eabi/release/lib\(libProduct.name).a"),
-            libProduct.name
+            libProduct.name,
+            clean
         ]
 
         // TODO: Rewrite build.sh as swift code
