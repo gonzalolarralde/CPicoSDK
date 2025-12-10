@@ -1,0 +1,11 @@
+name: Build CPicoSDK compound headers
+on: [push]
+jobs:
+  greet-on-self-hosted:
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run hello script
+        run: bash ./build.sh
+
