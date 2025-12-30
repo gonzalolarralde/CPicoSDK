@@ -1,6 +1,29 @@
 import Foundation
 import PackagePlugin
 
+enum BuildType {
+    case debug
+    case release
+    case releaseWithDebugInfo
+
+    var swiftBuildType: String {
+        switch self {
+        case .debug: "debug"
+        case .release, .releaseWithDebugInfo: "release"
+        }
+    }
+
+    var cmakeBuildType: String {
+        switch self {
+        case .debug: "Debug"
+        case .release: "Release"
+        case .releaseWithDebugInfo: "RelWithDebInfo"
+        }
+    }
+}
+
+let buildType = BuildType.releaseWithDebugInfo // .debug
+
 @main
 struct GenerateCPicoSDKPlugin: CommandPlugin {
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
@@ -42,12 +65,16 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             fatalError("No env.json file found. Please duplicate from env.json.template and save it on the package root.")
         }
 
+        process.environment?.merging([
+            "BUILD_TYPE": buildType.cmakeBuildType
+        ], uniquingKeysWith: { _, new in new })
+
         process.arguments = [
             context.pluginWorkDirectoryURL.relativePath,
             picoSDKURL.relativePath.appending("/Plugins/FinalizeBinaryPluginTool/Test"),
             // TODO: Remove this assumption about the triple used to compile.
             context.package.directoryURL.relativePath
-                .appending("/.build/armv7em-none-none-eabi/release/lib\(libProduct.name).a"),
+                .appending("/.build/armv7em-none-none-eabi/\(buildType.swiftBuildType)/lib\(libProduct.name).a"),
             libProduct.name,
             clean
         ]
