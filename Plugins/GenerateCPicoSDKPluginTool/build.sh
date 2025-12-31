@@ -21,6 +21,9 @@ echo "Writing source h file in $SRC_DIR/CPicoSDK.source.h"
 {
     echo "#define __ARM_ARCH_8M_MAIN__ 1"
     
+    echo "#include <pico/async_context.h>"
+    echo "#include <pico/async_context_poll.h>"
+
     if echo "$IMPORTED_LIBS" | grep "pico_lwip_http" > /dev/null 2> /dev/null; then
         echo "#include <lwip/apps/http_client.h>"
         echo "#include <lwip/altcp.h>"
@@ -39,7 +42,7 @@ echo "Writing source h file in $SRC_DIR/CPicoSDK.source.h"
             while IFS= read -r hdr; do
                 fname=${hdr##$LIB_BASE/}     # strip directory → file name only
                 echo "#include <$fname>"
-            done < <(find "$LIB_BASE" -type f -name '*.h')
+            done < <(find "$LIB_BASE" -type f -name '*.h' | grep -v "freertos")
         else
             echo "// No headers found -- \$ find \"$LIB_BASE\" -type f -name '*.h')"
         fi
@@ -64,7 +67,7 @@ cmake --build "$BUILD_DIR"
 echo "Writing modulemap to $1/output/module.modulemap"
 
 cat <<- "EOF" > "$OUTPUT_DIR/module.modulemap"
-module CPicoSDK {
+module CPicoSDK [system] {
     umbrella header "includes/CPicoSDK.h"
     export *
 }

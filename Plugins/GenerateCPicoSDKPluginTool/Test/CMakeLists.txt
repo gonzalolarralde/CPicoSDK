@@ -42,6 +42,7 @@ pico_enable_stdio_usb(Test 0)
 
 string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
 target_link_libraries(Test ${IMPORTED_LIBS_LIST})
+target_link_libraries(Test pico_async_context_poll)
 
 # Add the standard include files to the build
 target_include_directories(Test PRIVATE

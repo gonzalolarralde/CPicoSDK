@@ -1,6 +1,4 @@
-module CPicoSDK {
+module CPicoSDK [system] {
     umbrella header "include/CPicoSDK.h"
     export *
-    link "pico_stdlib"
-    link "pico_usb"
 }
