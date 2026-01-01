@@ -1,80 +1,83 @@
 import Foundation
 import PackagePlugin
 
-enum BuildType {
-    case debug
-    case release
-    case releaseWithDebugInfo
-
-    var swiftBuildType: String {
-        switch self {
-        case .debug: "debug"
-        case .release, .releaseWithDebugInfo: "release"
-        }
-    }
-
-    var cmakeBuildType: String {
-        switch self {
-        case .debug: "Debug"
-        case .release: "Release"
-        case .releaseWithDebugInfo: "RelWithDebInfo"
-        }
-    }
-}
-
-let buildType = BuildType.releaseWithDebugInfo // .debug
+let relevantEnvVars: Set<String> = [
+    "HOME",
+    "SWIFTPM_TRIPLE",
+    "PICO_SDK_PATH",
+    "PICO_TOOLCHAIN_PATH",
+    "PICOTOOL_PATH",
+    "CMAKE_PATH",
+    "NINJA_PATH",
+    "SWIFTLY_PATH",
+    "SDK_PATH",
+    "LD_PATH",
+    "TOOLSET_PATH",
+    "SDK_VERSION",
+    "TOOLCHAIN_VERSION",
+    "BUILD_TYPE",
+    "SWIFT_BUILD_TYPE",
+    "BOARD",
+    "IMPORTED_LIBS"
+]
 
 @main
-struct GenerateCPicoSDKPlugin: CommandPlugin {
+struct FinalizeBinaryPlugin: CommandPlugin {
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
-        guard let productName = arguments.first else {
-            fatalError("A product name is expected. It should be a static library in the Product section of the package.")
+        guard arguments.count >= 2 else {
+            fatalError("Expected at least two arguments: product name and home directory path.\nA product name is expected. It should be a static library in the Product section of the package.")
         }
-        
-        let clean = if arguments.count >= 2, arguments[1] == "--incremental" {
+
+        let productName = arguments[0]
+
+        let clean = if arguments.count >= 3, arguments[2] == "--incremental" {
             "dont-clean"
         } else {
             "clean"
         }
         
         guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
-            fatalError("Couldn't find CPicoSDK.")
+            fatalError("Couldn't find CPicoSDK in the dependencies.")
         }
         
-        // TODO: Support multiple products
-        guard let libProduct = context.package.products(ofType: LibraryProduct.self).first(where: { $0.name == productName }) else {
-            fatalError("Couldn't find a viable Product, name couldn't be matched")
+        let matchingProducts = context.package.products(ofType: LibraryProduct.self)
+        guard let libProduct = matchingProducts.first(where: { $0.name == productName }) else {
+            fatalError("Couldn't find a viable static library Product, name couldn't be matched. Given: \(productName); Found: [\(matchingProducts.map(\.name).joined(separator: ","))]")
         }
         
         guard libProduct.kind == .static else {
             fatalError("Only static libraries are supported.")
         }
         
+        // TODO: Figure out how to expand this.
         guard libProduct.sourceModules.count == 1 else {
             fatalError("Only libraries with one target are supported.")
         }
 
+        // TODO: Rewrite all this as swift code.
         let process = Process()
         process.executableURL = picoSDKURL.appending(path: "/Plugins/FinalizeBinaryPluginTool/build.sh", directoryHint: .notDirectory)
-        
-        if let envs = FileManager().envs(from: context.package.directoryURL.appending(path: "env.json").relativePath) {
-            process.environment = envs
-        } else if let envs = FileManager().envs(from: picoSDKURL.appending(path: "env.json").relativePath) {
-            process.environment = envs
-        } else {
-            fatalError("No env.json file found. Please duplicate from env.json.template and save it on the package root.")
+
+        let envVars = Dictionary(
+            uniqueKeysWithValues: ProcessInfo.processInfo.environment
+                .filter({ relevantEnvVars.contains($0.key) })
+        )
+
+        guard Set(envVars.keys) == relevantEnvVars else {
+            let missingKeys = relevantEnvVars.subtracting(Set(envVars.keys))
+            fatalError("Cannot continue. Missing env variables: [\(missingKeys.joined(separator: ", "))]")
         }
 
-        process.environment?.merging([
-            "BUILD_TYPE": buildType.cmakeBuildType
-        ], uniquingKeysWith: { _, new in new })
+        process.environment = envVars
+
+        let swiftBuildType = envVars["SWIFT_BUILD_TYPE"]!
+        let platformTriple = envVars["SWIFTPM_TRIPLE"]!
 
         process.arguments = [
             context.pluginWorkDirectoryURL.relativePath,
             picoSDKURL.relativePath.appending("/Plugins/FinalizeBinaryPluginTool/Test"),
-            // TODO: Remove this assumption about the triple used to compile.
             context.package.directoryURL.relativePath
-                .appending("/.build/armv7em-none-none-eabi/\(buildType.swiftBuildType)/lib\(libProduct.name).a"),
+                .appending("/.build/\(platformTriple)/\(swiftBuildType)/lib\(libProduct.name).a"),
             libProduct.name,
             clean
         ]
@@ -100,15 +103,4 @@ extension Process {
     }
 }
 
-extension FileManager {
-    func envs(from file: String) -> [String: String]? {
-        if FileManager().fileExists(atPath: file),
-           let envsContent = FileManager().contents(atPath: file),
-           let envs = try? JSONDecoder().decode([String: String].self, from: envsContent)
-        {
-            return envs
-        } else {
-            return nil
-        }
-    }
-}
+

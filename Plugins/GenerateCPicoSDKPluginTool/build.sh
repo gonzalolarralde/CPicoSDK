@@ -17,7 +17,7 @@ mkdir -p "$BUILD_DIR"
 
 echo "Writing source h file in $SRC_DIR/CPicoSDK.source.h"
 
-# // TODO: Only include libraries enabled by Traits here.
+# // TODO: Figure out how to provide library selection at the dependecy level.
 {
     echo "#define __ARM_ARCH_8M_MAIN__ 1"
     
@@ -56,7 +56,7 @@ cmake \
   -G Ninja \
   -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
   -DPICO_SDK_PATH="${PICO_SDK_PATH:-}" \
-  -DPICOTOOL_EXECUTABLE="${PICOTOOL_EXECUTABLE}" \
+  -DPICOTOOL_PATH="${PICOTOOL_PATH}" \
   -DBOARD_TYPE="${BOARD}" \
   -DTOOLCHAIN_VERSION="${TOOLCHAIN_VERSION}" \
   -DSDK_VERSION="${SDK_VERSION}" \

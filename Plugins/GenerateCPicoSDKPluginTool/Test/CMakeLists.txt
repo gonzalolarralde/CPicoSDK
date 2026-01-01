@@ -1,7 +1,7 @@
 # Tell CMake where your external picotool binary is
 add_executable(picotool IMPORTED GLOBAL)
 set_target_properties(picotool PROPERTIES
-    IMPORTED_LOCATION "${PICOTOOL_EXECUTABLE}"
+    IMPORTED_LOCATION "${PICOTOOL_PATH}"
 )
 
 # Generated Cmake Pico project file
