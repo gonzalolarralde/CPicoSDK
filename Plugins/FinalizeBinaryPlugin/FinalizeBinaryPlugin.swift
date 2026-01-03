@@ -5,6 +5,7 @@ let relevantEnvVars: Set<String> = [
     "HOME",
     "PACKAGE_PATH",
     "PLUGIN_OUTPUT_PATH",
+    "SWIFTPM_PRODUCT",
     "PICO_SDK_BUNDLE_PATH",
     "SWIFT_VERSION",
     "SDK_VERSION",

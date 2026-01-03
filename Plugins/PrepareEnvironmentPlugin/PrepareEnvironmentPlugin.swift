@@ -5,6 +5,7 @@ let relevantEnvVars: Set<String> = [
     "HOME",
     "PACKAGE_PATH",
     "PLUGIN_OUTPUT_PATH",
+    "SWIFTPM_PRODUCT",
     "PICO_SDK_BUNDLE_PATH",
     "SWIFT_VERSION",
     "SDK_VERSION",
@@ -57,15 +58,13 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
     required init() {}
 
-    func log(message: String) {
-        if verbose {
-            self.output += "cat << EOF\n\(message)\nEOF" + "\n"
-        }
-    }
-
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
             fatalError("Couldn't find CPicoSDK.")
+        }
+
+        guard let dumpPrepScriptPath = self.resolveDumpPrepScriptPath(from: arguments) else {
+            fatalError("No --dump-prep-script argument provided.")
         }
 
         let generateVSCodeSettings = !arguments.contains("--disable-vscode-settings")
@@ -78,7 +77,7 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
         // Start preparing output
 
-        self.log(message: "Preparing environment for CPicoSDK...")
+        print("[CPicoSDK] Preparing environment for CPicoSDK...")
         self.output += "set -euxo pipefail\n\n"
 
         // Finding and merging env vars.
@@ -90,7 +89,7 @@ class PrepareEnvironmentPlugin: CommandPlugin {
             fatalError("Couldn't find default env values in CPicoSDK package directory. Make sure it's present and it's a valid JSON (\(picoSDKURL))")
         }
 
-        let consolidatedEnvVars = self.generateEnvVars(given: givenEnvVars, packageEnvs: cPicoSDKPackageEnvs, packageURL: packageURL, workingDir: context.pluginWorkDirectoryURL)
+        let consolidatedEnvVars = self.generateEnvVars(given: givenEnvVars, packageEnvs: cPicoSDKPackageEnvs, context: context)
         self.generateBashFunctions()
 
         // Generate helper files if needed
@@ -100,33 +99,32 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
         
         if generateToolset {
-            self.generateToolset(envVars: consolidatedEnvVars)
+            try self.generateToolset(envVars: consolidatedEnvVars)
         }
 
         if syncSwiftVersion {
-            self.syncSwiftVersion(packageURL: packageURL.relativePath, envVars: consolidatedEnvVars)
+            try self.syncSwiftVersion(packageURL: packageURL.relativePath, envVars: consolidatedEnvVars)
         }
 
         if generateSourceKitLSPSettings {
-            self.generateSourceKitLSPSettings(packageURL: packageURL.relativePath, envVars: consolidatedEnvVars)
+            try self.generateSourceKitLSPSettings(packageURL: packageURL.relativePath, envVars: consolidatedEnvVars)
         }
 
         if generateVSCodeSettings {
-            self.generateVSCodeSettings()
+            try self.generateVSCodeSettings(context: context, envVars: consolidatedEnvVars)
         }
 
-        // Print output once generated
+        // Write output once generated
 
-        print(self.output)
+        let fileManager = FileManager()
+        try fileManager.ensureDirectoryExists(at: dumpPrepScriptPath, isDirectory: false)
+        fileManager.createFile(atPath: dumpPrepScriptPath, contents: self.output.data(using: .utf8))
     }
     
     func installDependencies(context: PackagePlugin.PluginContext, envVars: [String: String]) async throws {
         let tool = try context.tool(named: "pico-bootstrap")
         let process = Process()
         process.executableURL = tool.url
-        let (stdOut, stdErr) = (Pipe(), Pipe())
-        process.standardOutput = stdOut
-        process.standardError = stdErr
         
         process.arguments = [
             "install",
@@ -140,12 +138,24 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         ]
 
         do {
-            let res = try await process.asyncRun()
-            self.log(message: "[CPicoSDK] Dependency installation: \(String(data: stdOut.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")")
-            self.log(message: "\(String(data: stdErr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")")
+            let status = try await process.asyncRun()
+            if status != 0 {
+                fatalError("[CPicoSDK] Dependency installation failed: exit code \(status)")
+            }
         } catch {
-            print("[CPicoSDK] Dependency installation failed: \(String(data: stdErr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")")
-            fatalError("Failed to run pico-bootstrap tool to install dependencies: \(error)")
+            fatalError("[CPicoSDK] Dependency installation failed: \(error)")
         }
+    }
+
+    private func resolveDumpPrepScriptPath(from arguments: [String]) -> String? {
+        if let index = arguments.firstIndex(of: "--dump-prep-script") {
+            let nextIndex = arguments.index(after: index)
+            if nextIndex >= arguments.endIndex {
+                fatalError("Missing path for --dump-prep-script.")
+            }
+            return arguments[nextIndex]
+        }
+
+        return nil
     }
 }

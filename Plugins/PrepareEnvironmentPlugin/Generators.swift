@@ -1,9 +1,10 @@
 import Foundation
+import PackagePlugin
 
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnvs: [String: String], packageURL: URL, workingDir: URL) -> [String: String] {
+    func generateEnvVars(given givenEnvVars: [String: String], packageEnvs: [String: String], context: PackagePlugin.PluginContext) -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in relevantEnvVars.contains(key) }
@@ -21,19 +22,44 @@ extension PrepareEnvironmentPlugin {
         }
 
         if newEnvVars["TOOLSET_PATH"] == nil {
-            newEnvVars["TOOLSET_PATH"] = packageURL.relativePath.appending("/toolset.json")
+            newEnvVars["TOOLSET_PATH"] = context.package.directoryURL.relativePath.appending("/toolset.json")
         }
 
         if newEnvVars["PACKAGE_PATH"] == nil {
-            newEnvVars["PACKAGE_PATH"] = packageURL.relativePath
+            newEnvVars["PACKAGE_PATH"] = context.package.directoryURL.relativePath
         }
 
         if newEnvVars["PLUGIN_OUTPUT_PATH"] == nil {
-            newEnvVars["PLUGIN_OUTPUT_PATH"] = workingDir.relativePath
+            newEnvVars["PLUGIN_OUTPUT_PATH"] = context.pluginWorkDirectoryURL.relativePath
         }
+        
+        let libraryProducts = context.package
+            .products(ofType: LibraryProduct.self)
+            .filter { $0.kind == .static }
+            .filter { product in
+                product.targets.contains(where: { target in
+                    target.dependencies.contains(where: { dependency in
+                        if case let .product(product) = dependency, product.name == "CPicoSDK" {
+                            return true
+                        } else {
+                            return false
+                        }
+                    })
+                })
+            }
+        
+        guard let libraryProduct = libraryProducts.first else {
+            fatalError("At least one static library product that depends on CPicoSDK is needed.")
+        }
+        
+        if libraryProducts.count > 1 {
+            print("[CPicoSDK] Warning: More than one static library product depends on CPicoSDK. Multiple targets are not yet supported. Using the first one found: \(libraryProduct.name). All targets: [\(libraryProducts.map(\.name).joined(separator: ", "))]")
+        }
+        
+        newEnvVars["SWIFTPM_PRODUCT"] = libraryProduct.name
 
         for (envVar, value) in givenEnvVars {
-            self.log(message: "[CPicoSDK] Using provided env var \(envVar): \(value)")
+            print("[CPicoSDK] Using provided env var \(envVar): \(value)")
         }
 
         let missingEnvVars = relevantEnvVars.filter { !newEnvVars.keys.contains($0) }
@@ -44,7 +70,7 @@ extension PrepareEnvironmentPlugin {
         newEnvVars = self.resolve(envVars: newEnvVars)
 
         for envVar in relevantEnvVars.filter({ !givenEnvVars.keys.contains($0) }) {
-            self.log(message: "[CPicoSDK] Using default env var \(envVar): \(newEnvVars[envVar]!)")
+            print("[CPicoSDK] Using default env var \(envVar): \(newEnvVars[envVar]!)")
             output += "export \(envVar)=\"\(newEnvVars[envVar]!)\"\n"
         }
 
@@ -85,13 +111,13 @@ extension PrepareEnvironmentPlugin {
     func generateBashFunctions() {
         self.output += """
         function finalize_rp2xxx_binary {
-            "$SWIFTLY_PATH" run swift package finalize-rp2xxx-binary "$1" \\
+            "$SWIFTLY_PATH" run swift package finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
                 --incremental \\
                 --allow-writing-to-package-directory
         }
 
         function flash_if_needed {
-            if [[ "${2:-}" == "--flash" ]]; then
+            if [[ "${1:-}" == "--flash" ]]; then
                 while true; do
                     if "$PICOTOOL_PATH" info >/dev/null 2>&1; then
                         echo "Device found!"
@@ -102,7 +128,7 @@ extension PrepareEnvironmentPlugin {
                     sleep 2
                 done
 
-                "$PICOTOOL_PATH" load ".build/$SWIFTPM_TRIPLE/$SWIFT_BUILD_TYPE/$1.uf2"
+                "$PICOTOOL_PATH" load ".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/${SWIFTPM_PRODUCT}.uf2"
                 "$PICOTOOL_PATH" reboot
             fi
         }
@@ -111,7 +137,7 @@ extension PrepareEnvironmentPlugin {
 
     // MARK: - toolset.json
     
-    func generateToolset(envVars: [String: String]) {
+    func generateToolset(envVars: [String: String]) throws {
         let toolsetPath = envVars["TOOLSET_PATH"]!
 
         let toolsetJSON = """
@@ -138,44 +164,147 @@ extension PrepareEnvironmentPlugin {
         }
         """.data(using: .utf8)
 
-        let fileManager = FileManager()
-        try! fileManager.ensureDirectoryExists(at: toolsetPath, isDirectory: false)
-        if fileManager.fileExists(atPath: toolsetPath),
-            let content = fileManager.contents(atPath: toolsetPath),
-            toolsetJSON == content
-        {
-            self.log(message: "[CPicoSDK] Not generating new toolset.json as existing one is up-to-date.")
+        if try self.overwriteOrCreateIfNeeded(path: toolsetPath, matchingContent: toolsetJSON) {
+            print("[CPicoSDK] Generated/Updated toolset.json at \(toolsetPath). Disable this generation with --disable-toolset.")
         } else {
-            fileManager.createFile(atPath: toolsetPath, contents: toolsetJSON)
+            print("[CPicoSDK] Not generating new toolset.json as existing one is up-to-date.")
         }
     }
 
     // MARK: - .swift-version
     
-    func syncSwiftVersion(packageURL: String, envVars: [String: String]) {
+    func syncSwiftVersion(packageURL: String, envVars: [String: String]) throws {
         let swiftVersionFilePath = packageURL.appending("/.swift-version")
-        let fileManager = FileManager()
         let swiftVersion = envVars["SWIFT_VERSION"]!
-        try! fileManager.ensureDirectoryExists(at: swiftVersionFilePath, isDirectory: false)
-        if fileManager.fileExists(atPath: swiftVersionFilePath),
-            let existingContent = fileManager.contents(atPath: swiftVersionFilePath),
-            let existingVersion: String = String(data: existingContent, encoding: .utf8),
-            existingVersion.trimmingCharacters(in: .whitespacesAndNewlines) == swiftVersion
-        {
-            self.log(message: "[CPicoSDK] Not updating .swift-version as existing one is up-to-date.")
+
+        if try self.overwriteOrCreateIfNeeded(path: swiftVersionFilePath, matchingContent: swiftVersion.data(using: .utf8)!) {
+            print("[CPicoSDK] Generated/Updated .swift-version to \(swiftVersion). Disable this generation with --disable-swift-version.")
         } else {
-            fileManager.createFile(atPath: swiftVersionFilePath, contents: swiftVersion.data(using: .utf8))
+            print("[CPicoSDK] Not updating .swift-version as existing one is up-to-date.")
         }
     }
 
     // MARK: - .vscode
 
-    func generateVSCodeSettings() {
+    func generateVSCodeSettings(context: PackagePlugin.PluginContext, envVars: [String: String]) throws {
+        let vscodeTasksFilePath = ".vscode/tasks.json"
+        let vscodeTasksSettings = """
+        {
+            "version": "2.0.0",
+            "tasks": [
+                {
+                    "label": "Compile Project [CPicoSDK]",
+                    "type": "process",
+                    "command": "${workspaceFolder}/build.sh",
+                    "args": [],
+                    "options": {
+                        "cwd": "${workspaceFolder}",
+                    },
+                    "group": "build",
+                    "presentation": {
+                        "reveal": "always",
+                        "panel": "dedicated"
+                    },
+                    "problemMatcher": "$swiftc",
+                },
+                {
+                    "label": "Compile and Flash Project [CPicoSDK]",
+                    "type": "process",
+                    "command": "${workspaceFolder}/build.sh",
+                    "args": ["--flash"],
+                    "options": {
+                        "cwd": "${workspaceFolder}",
+                    },
+                    "group": "build",
+                    "presentation": {
+                        "reveal": "always",
+                        "panel": "dedicated"
+                    },
+                    "problemMatcher": "$swiftc",
+                },
+            ]
+        }
+        """.data(using: .utf8)
+
+        if try self.overwriteOrCreateIfNeeded(path: vscodeTasksFilePath, matchingContent: vscodeTasksSettings) {
+            print("[CPicoSDK] Generated/Updated .vscode/tasks.json. Disable this generation with --disable-vscode-settings.")
+        } else {
+            print("[CPicoSDK] Not updating .vscode/tasks.json as existing one is up-to-date.")
+        }
+
+        let extensionsFilePath = ".vscode/extensions.json"
+        let extensionsSettings = """
+        {
+            "recommendations": [
+                "marus25.cortex-debug",
+                "ms-vscode.vscode-serial-monitor",
+                "raspberry-pi.raspberry-pi-pico"
+            ]
+        }
+        """.data(using: .utf8)
+
+        if try self.overwriteOrCreateIfNeeded(path: extensionsFilePath, matchingContent: extensionsSettings) {
+            print("[CPicoSDK] Generated/Updated .vscode/extensions.json. Disable this generation with --disable-vscode-settings.")
+        } else {
+            print("[CPicoSDK] Not updating .vscode/extensions.json as existing one is up-to-date.")
+        }
+
+        let launchFilePath = ".vscode/launch.json"
+        let launchSettings = """
+        {
+            "version": "0.2.0",
+            "configurations": [
+                {
+                    // Same settings as pico-vscode.
+                    "preLaunchTask": "Compile Project [CPicoSDK]",
+                    "name": "SwiftPM: \(envVars["SWIFTPM_PRODUCT"]!) - Debug (Cortex-Debug) [CPicoSDK]",
+                    "cwd": "\(envVars["OPENOCD_PATH"]!)/scripts",
+                    "executable": "${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf",
+                    "request": "launch",
+                    "type": "cortex-debug",
+                    "servertype": "openocd",
+                    "serverpath": "\(envVars["OPENOCD_PATH"]!)/openocd.exe",
+                    "gdbPath": "\(envVars["GDB_PATH"]!)",
+                    "device": "RP2350",
+                    "configFiles": [
+                        "interface/cmsis-dap.cfg",
+                        "target/rp2350.cfg"
+                    ],
+                    "svdFile": "\(envVars["SDK_PATH"]!)/src/rp2350/hardware_regs/RP2350.svd",
+                    "runToEntryPoint": "main",
+                    // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
+                    // also works fine for flash binaries
+                    "overrideLaunchCommands": [
+                    "monitor reset init",
+                    "load \\"${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf\\""
+                    ],
+                    "openOCDLaunchCommands": [
+                    "adapter speed 5000"
+                    ]
+                },
+                {
+                    "name": "SwiftPM: \(envVars["SWIFTPM_PRODUCT"]!) - Flash (picotool) [CPicoSDK]",
+                    "request": "launch",
+                    "type": "lldb",
+                    "program": "/usr/bin/true", // Dummy program to satisfy cppdbg requirements
+                    "cwd": "${workspaceFolder}",
+                    "preLaunchTask": "Compile and Flash Project [CPicoSDK]",
+                    "stopOnEntry": false
+                },
+            ]
+        }
+        """.data(using: .utf8)
+
+        if try self.overwriteOrCreateIfNeeded(path: launchFilePath, matchingContent: launchSettings) {
+            print("[CPicoSDK] Generated/Updated .vscode/launch.json. Disable this generation with --disable-vscode-settings.")
+        } else {
+            print("[CPicoSDK] Not updating .vscode/launch.json as existing one is up-to-date.")
+        }
     }
 
     // MARK: - .sourcekit-lsp/config.json
     
-    func generateSourceKitLSPSettings(packageURL: String, envVars: [String: String]) {
+    func generateSourceKitLSPSettings(packageURL: String, envVars: [String: String]) throws {
         let sourceKitLSPFilePath = packageURL.appending("/.sourcekit-lsp/config.json")
 
         let sourceKitLSPSettings = """
@@ -191,15 +320,24 @@ extension PrepareEnvironmentPlugin {
         }
         """.data(using: .utf8)
 
-        let fileManager = FileManager()
-        try! fileManager.ensureDirectoryExists(at: sourceKitLSPFilePath, isDirectory: false)
-        if fileManager.fileExists(atPath: sourceKitLSPFilePath),
-            let content = fileManager.contents(atPath: sourceKitLSPFilePath),
-            content == sourceKitLSPSettings
-        {
-            self.log(message: "[CPicoSDK] Not updating .sourcekit-lsp/config.json as existing one is up-to-date.")
+        if try self.overwriteOrCreateIfNeeded(path: sourceKitLSPFilePath, matchingContent: sourceKitLSPSettings) {
+            print("[CPicoSDK] Generated/Updated .sourcekit-lsp/config.json. Disable this generation with --disable-sourcekit-lsp-settings.")
         } else {
-            fileManager.createFile(atPath: sourceKitLSPFilePath, contents: sourceKitLSPSettings)
+            print("[CPicoSDK] Not updating .sourcekit-lsp/config.json as existing one is up-to-date.")
+        }
+    }
+
+    func overwriteOrCreateIfNeeded(path: String, matchingContent: Data?) throws -> Bool {
+        let fileManager = FileManager()
+        try fileManager.ensureDirectoryExists(at: path, isDirectory: false)
+        if fileManager.fileExists(atPath: path),
+            let content = fileManager.contents(atPath: path),
+            content == matchingContent
+        {
+            return false
+        } else {
+            fileManager.createFile(atPath: path, contents: matchingContent)
+            return true
         }
     }
 }

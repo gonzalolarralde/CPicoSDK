@@ -1,34 +1,25 @@
 #!/usr/bin/env /bin/bash
 
+set -euo pipefail
+
 ### Uncomment next line to debug issues or better understand what the scripts are doing.
 # set -x
 
-export BUILD_SCRIPT_VERSION=1 # Helps the preparation script to wran against future changes.
-export VERBOSE_ENV_SETUP=1 # Print steps and debug info.
+export BUILD_SCRIPT_VERSION=1 # Helps the preparation script to warn in case of future changes.
+export PREPARATION_SCRIPT_PATH="$(dirname "$0")/.env_prep"
 export SWIFTLY_PATH="$HOME/.swiftly/bin/swiftly"
 
 export BUILD_TYPE="RelWithDebInfo" # Options: Debug, Release, RelWithDebInfo, MinSizeRel
 
-PREPARATION_CODE="$( "$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \
-    "$*" \
+"$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \
+    "$@" \
+    --dump-prep-script "$PREPARATION_SCRIPT_PATH" \
     --allow-writing-to-package-directory \
-    --allow-network-connections all )"
+    --allow-network-connections all                  # Used to download PicoSDK, toolchain and other dependencies.
 
-if [ $? -ne 0 ]; then
-    echo "Error when setting up environment preparation."
-    echo "$PREPARATION_CODE"
-    exit 5
-fi
-
-set -euo pipefail
-
-# To have more control over the preparation code you can opt to dump it to a file, inspect it, and source it instead.
-# It's not expected to change run to run, only when the lib is upgraded. Can be manually managed if preferred.
-
-# echo "$PREPARATION_CODE" > prep_code.sh
-# source prep_code.sh
-
-eval "$PREPARATION_CODE"
+# The preparation script is dumped to PREPARATION_SCRIPT_PATH so it can be inspected.
+# Users can opt to place the output in a different location and source it here once inspected if preferred.
+source "$PREPARATION_SCRIPT_PATH"
 
 "$SWIFTLY_PATH" run swift build -v \
     --build-system native \
@@ -36,6 +27,6 @@ eval "$PREPARATION_CODE"
     --toolset $TOOLSET_PATH \
     --triple $SWIFTPM_TRIPLE
 
-finalize_rp2xxx_binary "$1"
+finalize_rp2xxx_binary "$@"
 
-flash_if_needed "$1" "${2:-}"
+flash_if_needed "$@"
