@@ -4,7 +4,7 @@ import PackagePlugin
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnvs: [String: String], context: PackagePlugin.PluginContext) -> [String: String] {
+    func generateEnvVars(given givenEnvVars: [String: String], packageEnvs: [String: String], context: PackagePlugin.PluginContext, libraryProductName: String?) -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in relevantEnvVars.contains(key) }
@@ -14,7 +14,7 @@ extension PrepareEnvironmentPlugin {
         newEnvVars.merge(packageEnvs, uniquingKeysWith: { old, _ in old })
 
         guard let buildType = BuildType(rawValue: newEnvVars["BUILD_TYPE"] ?? "") else {
-            fatalError("Couldn't find a valid BUILD_TYPE. Supported types are: 'Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel', got \(newEnvVars["BUILD_TYPE"] ?? "null")")
+            fatalError("[CPicoSDK] Couldn't find a valid BUILD_TYPE. Supported types are: 'Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel', got \(newEnvVars["BUILD_TYPE"] ?? "null")")
         }
 
         if newEnvVars["SWIFT_BUILD_TYPE"] == nil {
@@ -33,30 +33,7 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["PLUGIN_OUTPUT_PATH"] = context.pluginWorkDirectoryURL.relativePath
         }
         
-        let libraryProducts = context.package
-            .products(ofType: LibraryProduct.self)
-            .filter { $0.kind == .static }
-            .filter { product in
-                product.targets.contains(where: { target in
-                    target.dependencies.contains(where: { dependency in
-                        if case let .product(product) = dependency, product.name == "CPicoSDK" {
-                            return true
-                        } else {
-                            return false
-                        }
-                    })
-                })
-            }
-        
-        guard let libraryProduct = libraryProducts.first else {
-            fatalError("At least one static library product that depends on CPicoSDK is needed.")
-        }
-        
-        if libraryProducts.count > 1 {
-            print("[CPicoSDK] Warning: More than one static library product depends on CPicoSDK. Multiple targets are not yet supported. Using the first one found: \(libraryProduct.name). All targets: [\(libraryProducts.map(\.name).joined(separator: ", "))]")
-        }
-        
-        newEnvVars["SWIFTPM_PRODUCT"] = libraryProduct.name
+        newEnvVars["SWIFTPM_PRODUCT"] = libraryProductName ?? ""
 
         for (envVar, value) in givenEnvVars {
             print("[CPicoSDK] Using provided env var \(envVar): \(value)")
@@ -64,7 +41,7 @@ extension PrepareEnvironmentPlugin {
 
         let missingEnvVars = relevantEnvVars.filter { !newEnvVars.keys.contains($0) }
         if missingEnvVars.count > 0 {
-            fatalError("Cannot continue. Missing env variables: [\(missingEnvVars.joined(separator: ", "))]")
+            fatalError("[CPicoSDK] Cannot continue. Missing env variables: [\(missingEnvVars.joined(separator: ", "))]")
         }
 
         newEnvVars = self.resolve(envVars: newEnvVars)
@@ -75,35 +52,6 @@ extension PrepareEnvironmentPlugin {
         }
 
         return newEnvVars
-    }
-
-    func resolve(envVars: [String: String]) -> [String: String] {
-        var resolvedEnvVars = envVars
-
-        var iterations = 10
-        let regex = /\$\{(.*?)\}/
-
-        var varsToResolve = resolvedEnvVars.filter { $0.value.contains("$") }
-        repeat {
-            for (key, value) in varsToResolve {
-                resolvedEnvVars[key] = value.replacing(regex) { match in
-                    if let replacement = resolvedEnvVars[String(match.1)] {
-                        replacement
-                    } else {
-                        String(match.0)
-                    }
-                }
-            }
-            varsToResolve = resolvedEnvVars.filter { $0.value.contains("$") }
-            iterations -= 1
-        } while iterations > 0 && varsToResolve.count > 0
-
-        if varsToResolve.count > 0 {
-            let unresolvedVars = varsToResolve.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
-            fatalError("Couldn't resolve all env variables. The only var replacement format accepted is ${VAR}. Remaining: [\(unresolvedVars)]")
-        }
-
-        return resolvedEnvVars
     }
     
     // MARK: - Bash Functions
@@ -327,6 +275,16 @@ extension PrepareEnvironmentPlugin {
         }
     }
 
+    // MARK: - Preparation Script
+
+    func generatePreparationScript(dumpPrepScriptPath: String) throws {
+        if try self.overwriteOrCreateIfNeeded(path: dumpPrepScriptPath, matchingContent: self.output.data(using: .utf8)) {
+            print("[CPicoSDK] Generated/Updated preparation script at \(dumpPrepScriptPath).")
+        } else {
+            print("[CPicoSDK] Not updating preparation script as existing one is up-to-date.")
+        }
+    }
+
     func overwriteOrCreateIfNeeded(path: String, matchingContent: Data?) throws -> Bool {
         let fileManager = FileManager()
         try fileManager.ensureDirectoryExists(at: path, isDirectory: false)
@@ -336,7 +294,9 @@ extension PrepareEnvironmentPlugin {
         {
             return false
         } else {
-            fileManager.createFile(atPath: path, contents: matchingContent)
+            guard fileManager.createFile(atPath: path, contents: matchingContent) else {
+                fatalError("[CPicoSDK] Couldn't write file at path \(path).")
+            }
             return true
         }
     }

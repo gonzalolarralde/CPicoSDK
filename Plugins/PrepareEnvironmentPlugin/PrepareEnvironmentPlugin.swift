@@ -59,12 +59,17 @@ class PrepareEnvironmentPlugin: CommandPlugin {
     required init() {}
 
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
-        guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
-            fatalError("Couldn't find CPicoSDK.")
+        let cPicoSDKEnvVarsPath: String
+        if let packageEnvVarsPath = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL {
+            cPicoSDKEnvVarsPath = packageEnvVarsPath.appending(path: "env.json").relativePath
+        } else if let argumentEnvVarsPath = self.findArgumentWithValue(from: arguments, argument: "--cpicosdk-envs-path") {
+            cPicoSDKEnvVarsPath = argumentEnvVarsPath
+        } else {
+            fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
 
-        guard let dumpPrepScriptPath = self.resolveDumpPrepScriptPath(from: arguments) else {
-            fatalError("No --dump-prep-script argument provided.")
+        guard let dumpPrepScriptPath = self.findArgumentWithValue(from: arguments, argument: "--dump-prep-script") else {
+            fatalError("[CPicoSDK] No --dump-prep-script argument provided.")
         }
 
         let generateVSCodeSettings = !arguments.contains("--disable-vscode-settings")
@@ -72,28 +77,41 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         let generateToolset = !arguments.contains("--disable-toolset")
         let syncSwiftVersion = !arguments.contains("--disable-swift-version")
         let installDependencies = !arguments.contains("--disable-install-dependencies")
+        let forceProductName = !arguments.contains("--dont-force-product-name")
 
         self.verbose = ProcessInfo.processInfo.environment["VERBOSE_ENV_SETUP"] == "1"
 
         // Start preparing output
-
         print("[CPicoSDK] Preparing environment for CPicoSDK...")
-        self.output += "set -euxo pipefail\n\n"
+        self.output += "set -euo pipefail\n\n"
+
+        // Find the product to build if needed.
+        let libraryProduct = self.resolveProductToBuild(context: context)
+
+        if libraryProduct == nil, forceProductName {
+            fatalError("[CPicoSDK] At least one static library product that depends on CPicoSDK is needed.")
+        } else {
+            print("[CPicoSDK] Resolved product to build: \(libraryProduct?.name ?? "none")")
+        }
 
         // Finding and merging env vars.
-
         let packageURL = context.package.directoryURL
         let givenEnvVars = ProcessInfo.processInfo.environment
 
-        guard let cPicoSDKPackageEnvs = FileManager().envs(from: picoSDKURL.appending(path: "env.json.tmpl").relativePath) else {
-            fatalError("Couldn't find default env values in CPicoSDK package directory. Make sure it's present and it's a valid JSON (\(picoSDKURL))")
+        guard let cPicoSDKPackageEnvs = FileManager().envs(from: cPicoSDKEnvVarsPath) else {
+            fatalError("[CPicoSDK] Couldn't find CPicoSDK default env values. Make sure this package depends on CPicoSDK or provide the path using --cpicosdk-envs-path. [path=\(cPicoSDKEnvVarsPath)]")
         }
 
-        let consolidatedEnvVars = self.generateEnvVars(given: givenEnvVars, packageEnvs: cPicoSDKPackageEnvs, context: context)
+        let consolidatedEnvVars = self.generateEnvVars(
+            given: givenEnvVars, 
+            packageEnvs: cPicoSDKPackageEnvs, 
+            context: context, 
+            libraryProductName: libraryProduct?.name
+        )
+
         self.generateBashFunctions()
 
         // Generate helper files if needed
-
         if installDependencies {
             try await self.installDependencies(context: context, envVars: consolidatedEnvVars)
         }
@@ -115,10 +133,7 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
 
         // Write output once generated
-
-        let fileManager = FileManager()
-        try fileManager.ensureDirectoryExists(at: dumpPrepScriptPath, isDirectory: false)
-        fileManager.createFile(atPath: dumpPrepScriptPath, contents: self.output.data(using: .utf8))
+        try self.generatePreparationScript(dumpPrepScriptPath: dumpPrepScriptPath)
     }
     
     func installDependencies(context: PackagePlugin.PluginContext, envVars: [String: String]) async throws {
@@ -147,11 +162,11 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
     }
 
-    private func resolveDumpPrepScriptPath(from arguments: [String]) -> String? {
-        if let index = arguments.firstIndex(of: "--dump-prep-script") {
+    private func findArgumentWithValue(from arguments: [String], argument: String) -> String? {
+        if let index = arguments.firstIndex(of: argument) {
             let nextIndex = arguments.index(after: index)
             if nextIndex >= arguments.endIndex {
-                fatalError("Missing path for --dump-prep-script.")
+                return nil
             }
             return arguments[nextIndex]
         }

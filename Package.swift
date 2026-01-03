@@ -22,6 +22,9 @@ let package = Package(
         .trait(name: "BootStage2_IS25LP080"),
         .trait(name: "BootStage2_AT25SF128A"),
     ],
+    dependencies: [
+        .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.3"),
+    ],
     targets: [
         .target(
             name: "_CPicoSDK",

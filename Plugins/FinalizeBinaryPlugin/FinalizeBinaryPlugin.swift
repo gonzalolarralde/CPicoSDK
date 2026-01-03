@@ -34,13 +34,13 @@ let relevantEnvVars: Set<String> = [
 @main
 struct FinalizeBinaryPlugin: CommandPlugin {
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
-        guard arguments.count >= 2 else {
-            fatalError("Expected at least two arguments: product name and home directory path.\nA product name is expected. It should be a static library in the Product section of the package.")
+        guard arguments.count >= 1 else {
+            fatalError("Expected at one argument: A product name is expected. It should be a static library in the Product section of the package.")
         }
 
         let productName = arguments[0]
 
-        let clean = if arguments.count >= 3, arguments[2] == "--incremental" {
+        let clean = if arguments.count >= 2, arguments[1] == "--incremental" {
             "dont-clean"
         } else {
             "clean"

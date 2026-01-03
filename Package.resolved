@@ -1,0 +1,24 @@
+{
+  "originHash" : "63653bfb12e70274b74607af5538929699c67b738aceefecd78366db5c9dd6bc",
+  "pins" : [
+    {
+      "identity" : "picosdkdownloader",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sympatito/PicoSDKDownloader",
+      "state" : {
+        "revision" : "8ec1fe1337f45a65d925f6537066338517c72055",
+        "version" : "0.0.3"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser",
+      "state" : {
+        "revision" : "c5d11a805e765f52ba34ec7284bd4fcd6ba68615",
+        "version" : "1.7.0"
+      }
+    }
+  ],
+  "version" : 3
+}

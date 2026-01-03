@@ -6,17 +6,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         let process = Process()
         process.executableURL = context.package.directoryURL.appending(path: "/Plugins/GenerateCPicoSDKPluginTool/build.sh", directoryHint: .notDirectory)
-        
-        let envsPath = context.package.directoryURL.appending(path: "env.json").relativePath
-
-        if FileManager().fileExists(atPath: envsPath),
-           let envsContent = FileManager().contents(atPath: envsPath),
-           let envs = try? JSONDecoder().decode([String: String].self, from: envsContent)
-        {
-            process.environment = envs
-        } else {
-            fatalError("No env.json file found. Please duplicate from env.json.template and save it on the package root.")
-        }
+        process.environment = ProcessInfo.processInfo.environment
 
         process.arguments = [
             context.pluginWorkDirectoryURL.relativePath,
