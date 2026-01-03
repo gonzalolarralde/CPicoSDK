@@ -45,8 +45,12 @@ let package = Package(
                 intent: .custom(verb: "prepare-rp2xxx-environment", description: "Ensure environment for CPicoSDK is in place"),
                 permissions: [
                     .writeToPackageDirectory(reason: "Returns bash code that prepares the environment for building with CPicoSDK."),
+                    .allowNetworkConnections(scope: .all(), reason: "Downloads Pico SDK, ARM toolchain and other dependencies.")
                 ]
-            )
+            ),
+            dependencies: [
+                .product(name: "pico-bootstrap", package: "PicoSDKDownloader"),
+            ]
         ),
         .plugin(
             name: "FinalizeBinaryPlugin",

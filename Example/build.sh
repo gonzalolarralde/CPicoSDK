@@ -11,7 +11,8 @@ export BUILD_TYPE="RelWithDebInfo" # Options: Debug, Release, RelWithDebInfo, Mi
 
 PREPARATION_CODE="$( "$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \
     "$*" \
-    --allow-writing-to-package-directory )"
+    --allow-writing-to-package-directory \
+    --allow-network-connections all )"
 
 if [ $? -ne 0 ]; then
     echo "Error when setting up environment preparation."

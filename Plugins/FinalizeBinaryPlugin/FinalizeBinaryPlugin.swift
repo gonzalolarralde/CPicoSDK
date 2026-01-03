@@ -3,22 +3,31 @@ import PackagePlugin
 
 let relevantEnvVars: Set<String> = [
     "HOME",
-    "SWIFTPM_TRIPLE",
+    "PACKAGE_PATH",
+    "PLUGIN_OUTPUT_PATH",
+    "PICO_SDK_BUNDLE_PATH",
+    "SWIFT_VERSION",
+    "SDK_VERSION",
+    "TOOLCHAIN_VERSION",
+    "CMAKE_VERSION",
+    "NINJA_VERSION",
+    "PICOTOOL_VERSION",
+    "OPENOCD_VERSION",
     "PICO_SDK_PATH",
     "PICO_TOOLCHAIN_PATH",
     "PICOTOOL_PATH",
     "CMAKE_PATH",
     "NINJA_PATH",
     "SWIFTLY_PATH",
+    "TOOLSET_PATH",
     "SDK_PATH",
     "LD_PATH",
-    "TOOLSET_PATH",
-    "SDK_VERSION",
-    "TOOLCHAIN_VERSION",
+    "GDB_PATH",
+    "IMPORTED_LIBS",
+    "SWIFTPM_TRIPLE",
     "BUILD_TYPE",
     "SWIFT_BUILD_TYPE",
     "BOARD",
-    "IMPORTED_LIBS"
 ]
 
 @main
@@ -102,5 +111,3 @@ extension Process {
         }
     }
 }
-
-
