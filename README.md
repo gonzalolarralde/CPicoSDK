@@ -8,6 +8,8 @@ This project is licensed under the MIT License.
 
 ---
 
+<img width="1092" height="888" alt="Screenshot 2026-01-03 at 10 38 38 PM" src="https://github.com/user-attachments/assets/a32ef610-16fc-4141-b718-558960bc492f" />
+
 ## For Users
 
 ### How to Start
