@@ -13,7 +13,7 @@ let package = Package(
             path: "../",
 
             // url: "https://github.com/gonzalolarralde/CPicoSDK",
-            // branch: "main",
+            // from: "2.2.0",
 
             traits: [
                 .init(name: "Platform_RP2350"),
