@@ -28,28 +28,9 @@ let relevantEnvVars: Set<String> = [
     "SWIFTPM_TRIPLE",
     "BUILD_TYPE",
     "SWIFT_BUILD_TYPE",
+    "EXTRA_CONFIG_PARAMS",
     "BOARD",
 ]
-
-enum BuildType: String {
-    static let defaultBuildType = BuildType.releaseWithDebugInfo // .debug
-
-    case debug = "Debug"
-    case release = "Release"
-    case releaseWithDebugInfo = "RelWithDebInfo"
-    case minimumSizeRelease = "MinSizeRel"
-
-    var swiftBuildType: String {
-        switch self {
-        case .debug: "debug"
-        case .release, .releaseWithDebugInfo, .minimumSizeRelease: "release"
-        }
-    }
-
-    var cmakeBuildType: String {
-        self.rawValue
-    }
-}
 
 @main
 class PrepareEnvironmentPlugin: CommandPlugin {

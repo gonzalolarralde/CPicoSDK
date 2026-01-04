@@ -21,6 +21,10 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["SWIFT_BUILD_TYPE"] = buildType.swiftBuildType
         }
 
+        if newEnvVars["EXTRA_CONFIG_PARAMS"] == nil {
+            newEnvVars["EXTRA_CONFIG_PARAMS"] = buildType.extraConfigParams
+        }
+
         if newEnvVars["TOOLSET_PATH"] == nil {
             newEnvVars["TOOLSET_PATH"] = context.package.directoryURL.relativePath.appending("/toolset.json")
         }
@@ -186,7 +190,8 @@ extension PrepareEnvironmentPlugin {
             "recommendations": [
                 "marus25.cortex-debug",
                 "ms-vscode.vscode-serial-monitor",
-                "raspberry-pi.raspberry-pi-pico"
+                "raspberry-pi.raspberry-pi-pico",
+                "swiftlang.swift-vscode"
             ]
         }
         """.data(using: .utf8)
