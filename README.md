@@ -21,10 +21,13 @@ The easiest way to get started is with the **Example** project located in the `E
    cd Example/
    ```
 
-2. **Update Package.swift** to reference the GitHub dependency instead of the local one:
-   ```swift
-   .package(url: "https://github.com/gonzalolarralde/CPicoSDK", branch: "main"),
+2. **Install swiftly** and other dependencies if using linux:
+   **Linux:** First, install required system dependencies:
+   ```bash
+   sudo apt install build-essential libhidapi-hidraw0 libhidapi-libusb0
    ```
+
+   **Linux and macOS:** Install Swiftly from [swift.org](https://www.swift.org/install/) and ensure all dependencies mentioned at the end of the build script are installed.
 
 3. **Run the build script** for the first time:
    ```bash
@@ -88,10 +91,7 @@ This project is built with the intention of **streamlining the developer experie
 ### Platform Support
 
 #### macOS
-Install Swiftly and you're ready to go: 
-```bash
-curl -L https://swift-server.github.io/swiftly/swiftly-install.sh | bash
-```
+Install Swiftly and you're ready to go! Get it from [swift.org](https://www.swift.org/install/macos/) 
 
 #### Windows
 There is no Windows support at the moment. This is mostly due to lack of ways to test the platform. If interested please consider contributing support or opening/+1 an issue requesting it to track and quantify interest.
@@ -122,7 +122,7 @@ let package = Package(
         .library(name: "MyPicoProject", type: .static, targets: ["MyPicoProject"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalolarralde/CPicoSDK", branch: "main"),
+        .package(url: "https://github.com/gonzalolarralde/CPicoSDK", .upToNextMinor(from: "2.2.0")),
     ],
     targets: [
         .target(
@@ -138,18 +138,20 @@ let package = Package(
 ```swift
 import CPicoSDK
 
-@_cdecl("main")
-func main() -> Int32 {
-    stdio_init_all()
-    
-    gpio_init(25)
-    gpio_set_dir(25, true)
-    
-    while true {
-        gpio_put(25, true)
-        sleep_ms(250)
-        gpio_put(25, false)
-        sleep_ms(250)
+@main
+struct App {
+    static func main() {
+        stdio_init_all()
+        
+        gpio_init(25)
+        gpio_set_dir(25, true)
+        
+        while true {
+            gpio_put(25, true)
+            sleep_ms(250)
+            gpio_put(25, false)
+            sleep_ms(250)
+        }
     }
 }
 ```

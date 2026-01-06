@@ -9,12 +9,8 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            // Helpful for local development while making changes to the SDK layer.
-            path: "../",
-
-            // url: "https://github.com/gonzalolarralde/CPicoSDK",
-            // from: "2.2.0",
-
+            url: "https://github.com/gonzalolarralde/CPicoSDK",
+            .upToNextMinor(from: "2.2.0"),
             traits: [
                 .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),
