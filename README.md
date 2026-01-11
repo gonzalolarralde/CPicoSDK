@@ -265,7 +265,7 @@ Swift cannot directly consume hundreds of individual C header files efficiently 
 4. Wrap it in a modulemap: 
    ```modulemap
    module CPicoSDK [system] {
-       umbrella header "includes/CPicoSDK.h"
+       umbrella header "include/CPicoSDK.h"
        export *
    }
    ```

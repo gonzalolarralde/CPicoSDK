@@ -1,4 +1,4 @@
 module _CPicoSDK_pico2 [system] {
-    umbrella header "includes/CPicoSDK_pico2.h"
+    umbrella header "include/CPicoSDK_pico2.h"
     export *
 }

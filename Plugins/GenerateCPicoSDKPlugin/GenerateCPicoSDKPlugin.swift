@@ -157,7 +157,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         print("Writing modulemap to \(pluginWorkingDir.appending(path: "output/module.modulemap").path)")
         let modulemapContent = """
         module _CPicoSDK_\(variantName) [system] {
-            umbrella header "includes/CPicoSDK_\(variantName).h"
+            umbrella header "include/CPicoSDK_\(variantName).h"
             export *
         }
         """

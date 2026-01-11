@@ -14,6 +14,8 @@ let package = Package(
             traits: [
                 .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),
+                .init(name: "Variant_RP2350A"),
+                .init(name: "Radio_None"),
             ]
         ),
     ],
