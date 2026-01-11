@@ -24,28 +24,28 @@ set(PICO_BOARD "${BOARD_TYPE}" CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(Test C CXX ASM)
+project(CMakeHarness C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(Test Test.c )
+add_executable(CMakeHarness main.c)
 
-pico_set_program_name(Test "Test")
-pico_set_program_version(Test "0.1")
+pico_set_program_name(CMakeHarness "CMakeHarness")
+pico_set_program_version(CMakeHarness "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(Test 1)
-pico_enable_stdio_usb(Test 0)
+pico_enable_stdio_uart(CMakeHarness 1)
+pico_enable_stdio_usb(CMakeHarness 0)
 
 string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
-target_link_libraries(Test ${IMPORTED_LIBS_LIST})
-target_link_libraries(Test pico_async_context_poll)
+target_link_libraries(CMakeHarness ${IMPORTED_LIBS_LIST})
+target_link_libraries(CMakeHarness pico_async_context_poll)
 
 # Add the standard include files to the build
-target_include_directories(Test PRIVATE
+target_include_directories(CMakeHarness PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
@@ -53,10 +53,10 @@ target_include_directories(Test PRIVATE
 include(flatten_target_header.cmake)
 
 flatten_target_header(
-    Test
-    ${CMAKE_SOURCE_DIR}/CPicoSDK.source.h
-    ${CMAKE_BINARY_DIR}/CPicoSDK.h
+    CMakeHarness
+    ${CMAKE_SOURCE_DIR}/CPicoSDK_${VARIANT_NAME}.source.h
+    ${CMAKE_BINARY_DIR}/CPicoSDK_${VARIANT_NAME}.h
 )
 
-add_dependencies(Test Test_flatten_header)
+add_dependencies(CMakeHarness CMakeHarness_flatten_header)
 # ----

@@ -1,13 +1,15 @@
 {
 	"hardware_options": {
-		"FlashSPICLKDIV": [2, 4],
+		"FlashSPICLKDIV": ["2", "4"],
 		"BootStage2": ["W25Q080", "GENERIC_03H", "W25X10CL", "IS25LP080", "AT25SF128A"],
 		"Platform": ["rp2040", "rp2350", "rp2350-arm-s", "rp2350-riscv", "host"],
-		"XOSCStartupDelayMultiplier": [1, 6, 64],
+		"Variant": ["rp2350", "rp2350a", "rp2350b"],
+		"Radio": ["None", "CYW43439"],
+		"XOSCStartupDelayMultiplier": ["1", "6", "64"],
 		"PlatformREV": ["rp2040_B0", "rp2040_B1", "rp2040_B2", "rp2350_A1", "rp2350_A2"],
 		"FlashSize": ["16MB", "8MB", "4MB", "2MB", "1MB"],
-	    "Configuration": ["Release", "RelWithDebug", "Debug"],
-	    "STDIO" : ["UART", "USB", "RTT"]
+	    "Configuration": ["Release", "RelWithDebInfo", "Debug", "MinSizeRel"],
+	    "StdIO" : ["None", "UART", "USB", "RTT"]
 	},
 	"selectable_pico_libs": [
 		"pico_stdlib",

@@ -18,14 +18,18 @@ let package = Package(
         .trait(name: "Platform_RP2350_riscv"),
         .trait(name: "Platform_Host"),
 
+        .trait(name: "Variant_RP2350A"),
+        .trait(name: "Variant_RP2350B"),
+
+        .trait(name: "Radio_None"),
+        .trait(name: "Radio_CYW43439"),
+
         .trait(name: "BootStage2_W25Q080"),
         .trait(name: "BootStage2_GENERIC_03H"),
         .trait(name: "BootStage2_W25X10CL"),
         .trait(name: "BootStage2_IS25LP080"),
         .trait(name: "BootStage2_AT25SF128A"),
 
-        .trait(name: "RM2", description: "Enables WiFi + BT support through the RadioModule2 (CYW43439) module"),
-        .trait(name: "RP2350B", description: "Builds for the RP2350B package, which includes more pins at a larger physical size"),
         .trait(name: "StdIO_UART", description: "Enables stdio operations through UART pins"),
         .trait(name: "StdIO_USB", description: "Enables stdio operations through USB"),
         .trait(name: "StdIO_RTT", description: "Enables stdio operations through the RTT debugging protocol"),
