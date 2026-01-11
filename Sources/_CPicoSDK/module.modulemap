@@ -1,4 +1,0 @@
-module CPicoSDK [system] {
-    umbrella header "includes/CPicoSDK.h"
-    export *
-}

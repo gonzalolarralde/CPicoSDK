@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-set -euxo pipefail
+set -euo pipefail
 
 echo "Preparing CPicoSDK build environment..."
 echo "This build script is only needed to generate the CPicoSDK compound header file."
@@ -9,9 +9,9 @@ echo
 echo "You don't need to run this script if you are using CPicoSDK as a Swift Package dependency."
 
 # Cleaning up existing build artifacts.
-#rm -rf .build
-#rm -rf Sources/_CPicoSDK
-#cp -rf Sources/_CPicoSDKTemplate Sources/_CPicoSDK
+rm -rf .build
+rm -rf Package.swift Package.resolved Sources/_CPicoSDK*
+cp Package.swift.template Package.swift
 
 export PREPARATION_SCRIPT_PATH="$(dirname "$0")/.env_prep"
 
@@ -48,11 +48,4 @@ env
 source "$PREPARATION_SCRIPT_PATH"
 
 swift package generate-cpicosdk --allow-writing-to-package-directory
-
-# TODO: Figure out how to build with `host` pico-platform.
-# swift build \
-#     --build-system native \
-#     --configuration release \
-#     --toolset toolset.json \
-#     --triple armv7em-none-none-eabi
-
+echo "CPicoSDK build environment generated."
