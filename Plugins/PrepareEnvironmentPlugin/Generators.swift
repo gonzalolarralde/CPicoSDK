@@ -4,19 +4,24 @@ import PackagePlugin
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnvs: [String: String], context: PackagePlugin.PluginContext, libraryProductName: String?) -> [String: String] {
+    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?) -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
-                .filter { key, value in relevantEnvVars.contains(key) }
+                .filter { key, value in Env.relevantEnvVars.contains(key) }
         )
 
+        // Starts with user-given
         var newEnvVars: [String: String] = givenEnvVars
-        newEnvVars.merge(packageEnvs, uniquingKeysWith: { old, _ in old })
+        
+        // Then merges in global vars from env.json
+        newEnvVars.merge(packageEnv.vars, uniquingKeysWith: { old, _ in old })
 
+        // Some basic checks
         guard let buildType = BuildType(rawValue: newEnvVars["BUILD_TYPE"] ?? "") else {
             fatalError("[CPicoSDK] Couldn't find a valid BUILD_TYPE. Supported types are: 'Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel', got \(newEnvVars["BUILD_TYPE"] ?? "null")")
         }
 
+        // Some dynamically generated vars are provided
         if newEnvVars["SWIFT_BUILD_TYPE"] == nil {
             newEnvVars["SWIFT_BUILD_TYPE"] = buildType.swiftBuildType
         }
@@ -37,24 +42,61 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["PLUGIN_OUTPUT_PATH"] = context.pluginWorkDirectoryURL.relativePath
         }
         
-        newEnvVars["SWIFTPM_PRODUCT"] = libraryProductName ?? ""
+        if newEnvVars["SWIFTPM_PRODUCT"] == nil {
+            newEnvVars["SWIFTPM_PRODUCT"] = libraryProductName ?? ""
+        }
+        
+        if newEnvVars["RELEVANT_ENV_VARS"] == nil {
+            newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
+        }
 
+        // Show some information about given vars first
         for (envVar, value) in givenEnvVars {
             print("[CPicoSDK] Using provided env var \(envVar): \(value)")
         }
 
-        let missingEnvVars = relevantEnvVars.filter { !newEnvVars.keys.contains($0) }
-        if missingEnvVars.count > 0 {
-            fatalError("[CPicoSDK] Cannot continue. Missing env variables: [\(missingEnvVars.joined(separator: ", "))]")
-        }
-
         newEnvVars = self.resolve(envVars: newEnvVars)
 
-        for envVar in relevantEnvVars.filter({ !givenEnvVars.keys.contains($0) }) {
-            print("[CPicoSDK] Using default env var \(envVar): \(newEnvVars[envVar]!)")
-            output += "export \(envVar)=\"\(newEnvVars[envVar]!)\"\n"
+        for (envVar, value) in newEnvVars.filter({ !givenEnvVars.keys.contains($0.key) }) {
+            print("[CPicoSDK] Using default env var \(envVar): \(value)")
+            output += "export \(envVar)=\"\(value)\"\n"
         }
 
+        var combinationsWithErrors = false
+        
+        for (name, combination) in packageEnv.combinations {
+            print("[CPicoSDK] Specializing env vars for combination: \(name)")
+            
+            var combinedVars = newEnvVars
+            let combinationSpecializedVars = combination.vars
+                .filter { !givenEnvVars.keys.contains($0.key) } // Don't override given vars, only globals.
+            
+            // Make sure overrides are resolved against globals + given.
+            let resolvedCombinationSpecializedVars = self.resolve(
+                envVars: newEnvVars.merging(
+                    combinationSpecializedVars,
+                    uniquingKeysWith: { _, new in new }
+                )
+            )
+            
+            // Print and dump vars after resolving
+            for envVar in combinationSpecializedVars.keys {
+                print(
+                    "[CPicoSDK] \(newEnvVars.keys.contains(envVar) ? "Overriding" : "Using") specialized env var CPICOSDK_\(name)_\(envVar): \(resolvedCombinationSpecializedVars[envVar]!)"
+                )
+                output += "export CPICOSDK_\(name)_\(envVar)=\"\(resolvedCombinationSpecializedVars[envVar]!)\"\n"
+            }
+            
+            // Make sure all relevant env vars are complete for this combination.
+            let missingEnvVars = Env.relevantEnvVars.filter { !resolvedCombinationSpecializedVars.keys.contains($0) }
+            if missingEnvVars.count > 0 {
+                print("[CPicoSDK] ERROR: Missing env variables: [\(missingEnvVars.joined(separator: ", "))] - (Combination: \(name))")
+                combinationsWithErrors = true
+            }
+        }
+        
+        guard !combinationsWithErrors else { fatalError("[CPicoSDK] Some of the mandatory env variables are missing. Please check logs.")}
+        
         return newEnvVars
     }
     

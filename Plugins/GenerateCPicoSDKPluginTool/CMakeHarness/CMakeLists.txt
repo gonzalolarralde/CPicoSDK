@@ -54,8 +54,8 @@ include(flatten_target_header.cmake)
 
 flatten_target_header(
     CMakeHarness
-    ${CMAKE_SOURCE_DIR}/CPicoSDK_${VARIANT_NAME}.source.h
-    ${CMAKE_BINARY_DIR}/CPicoSDK_${VARIANT_NAME}.h
+    ${CMAKE_SOURCE_DIR}/CPicoSDK_${COMBINATION}.source.h
+    ${CMAKE_BINARY_DIR}/CPicoSDK_${COMBINATION}.h
 )
 
 add_dependencies(CMakeHarness CMakeHarness_flatten_header)

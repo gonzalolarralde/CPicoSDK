@@ -17,19 +17,25 @@
 #endif
 
 #if Variant_RP2350A && Radio_None
-    @used @_silgen_name("_cpicosdk_combination")
-    public let _cpicosdk_combination: StaticString = "pico2"
+    @used @_silgen_name("_cpicosdk_combination_pico2")
+    public let combination: StaticString = "pico2"
 
     @_exported import _CPicoSDK_pico2
 #elseif Variant_RP2350A && Radio_CYW43439
-    @used @_silgen_name("_cpicosdk_combination")
-    public let _cpicosdk_combination: StaticString = "pico2_w"
+    @used @_silgen_name("_cpicosdk_combination_pico2_w")
+    public let combination: StaticString = "pico2_w"
+
+    @_exported import _CPicoSDK_pico2_w
 #elseif Variant_RP2350B && Radio_None
-    @used @_silgen_name("_cpicosdk_combination")
-    public let _cpicosdk_combination: StaticString = "pimoroni_pico_plus2_rp2350"
+    @used @_silgen_name("_cpicosdk_combination_pimoroni_pico_plus2_rp2350")
+    public let combination: StaticString = "pimoroni_pico_plus2_rp2350"
+
+    @_exported import _CPicoSDK_pimoroni_pico_plus2_rp2350
 #elseif Variant_RP2350B && Radio_CYW43439
-    @used @_silgen_name("_cpicosdk_combination")
-    public let _cpicosdk_combination: StaticString = "pimoroni_pico_plus2_w_rp2350"
+    @used @_silgen_name("_cpicosdk_combination_pimoroni_pico_plus2_w_rp2350")
+    public let combination: StaticString = "pimoroni_pico_plus2_w_rp2350"
+
+    @_exported import _CPicoSDK_pimoroni_pico_plus2_w_rp2350
 #else
     // TODO: This is very restrained, until we can add proper board capability support this will help us move through.
     #error("Invalid Variant + Radio combination.")

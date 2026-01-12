@@ -10,6 +10,38 @@ struct Env: Codable, Hashable {
         let traits: [String]
     }
 
+    static let relevantEnvVars: Set<String> = [
+        "HOME",
+        "PACKAGE_PATH",
+        "PLUGIN_OUTPUT_PATH",
+        "SWIFTPM_PRODUCT",
+        "PICO_SDK_BUNDLE_PATH",
+        "SWIFT_VERSION",
+        "SDK_VERSION",
+        "TOOLCHAIN_VERSION",
+        "CMAKE_VERSION",
+        "NINJA_VERSION",
+        "PICOTOOL_VERSION",
+        "OPENOCD_VERSION",
+        "PICO_SDK_PATH",
+        "PICO_TOOLCHAIN_PATH",
+        "PICOTOOL_PATH",
+        "CMAKE_PATH",
+        "NINJA_PATH",
+        "SWIFTLY_PATH",
+        "TOOLSET_PATH",
+        "SDK_PATH",
+        "LD_PATH",
+        "GDB_PATH",
+        "IMPORTED_LIBS",
+        "IMPORTED_LIBS_MORE",
+        "SWIFTPM_TRIPLE",
+        "BUILD_TYPE",
+        "SWIFT_BUILD_TYPE",
+        "EXTRA_CONFIG_PARAMS",
+        "BOARD",
+    ]
+    
     let vars: [String: String]
     let combinations: [String: Combination]
 

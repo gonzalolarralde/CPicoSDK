@@ -1,37 +1,6 @@
 import Foundation
 import PackagePlugin
 
-let relevantEnvVars: Set<String> = [
-    "HOME",
-    "PACKAGE_PATH",
-    "PLUGIN_OUTPUT_PATH",
-    "SWIFTPM_PRODUCT",
-    "PICO_SDK_BUNDLE_PATH",
-    "SWIFT_VERSION",
-    "SDK_VERSION",
-    "TOOLCHAIN_VERSION",
-    "CMAKE_VERSION",
-    "NINJA_VERSION",
-    "PICOTOOL_VERSION",
-    "OPENOCD_VERSION",
-    "PICO_SDK_PATH",
-    "PICO_TOOLCHAIN_PATH",
-    "PICOTOOL_PATH",
-    "CMAKE_PATH",
-    "NINJA_PATH",
-    "SWIFTLY_PATH",
-    "TOOLSET_PATH",
-    "SDK_PATH",
-    "LD_PATH",
-    "GDB_PATH",
-    "IMPORTED_LIBS",
-    "SWIFTPM_TRIPLE",
-    "BUILD_TYPE",
-    "SWIFT_BUILD_TYPE",
-    "EXTRA_CONFIG_PARAMS",
-    "BOARD",
-]
-
 @main
 class PrepareEnvironmentPlugin: CommandPlugin {
     var verbose = false
@@ -79,14 +48,14 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         let packageURL = context.package.directoryURL
         let givenEnvVars = ProcessInfo.processInfo.environment
 
-        guard let cPicoSDKPackageEnvs = try? Env(from: cPicoSDKEnvVarsPath).vars else {
+        guard let cPicoSDKPackageEnv = try? Env(from: cPicoSDKEnvVarsPath) else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK default env values. Make sure this package depends on CPicoSDK or provide the path using --cpicosdk-envs-path. [path=\(cPicoSDKEnvVarsPath)]")
         }
 
         let consolidatedEnvVars = self.generateEnvVars(
             given: givenEnvVars, 
-            packageEnvs: cPicoSDKPackageEnvs, 
-            context: context, 
+            packageEnv: cPicoSDKPackageEnv,
+            context: context,
             libraryProductName: libraryProduct?.name
         )
 

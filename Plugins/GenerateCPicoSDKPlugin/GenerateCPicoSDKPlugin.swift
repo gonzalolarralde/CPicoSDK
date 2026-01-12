@@ -27,12 +27,10 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
 
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         try await generateCPicoSDK(
-            variantName: "pico2",
+            combination: "pico2",
             pluginWorkingDir: context.pluginWorkDirectoryURL,
             cmakeProject: context.package.directoryURL.appending(path: "Plugins/GenerateCPicoSDKPluginTool/CMakeHarness"),
-            packageDir: context.package.directoryURL,
-            importedLibs: (ProcessInfo.processInfo.environment["IMPORTED_LIBS"] ?? "").split(separator: ",").map(String.init),
-            board: ProcessInfo.processInfo.environment["BOARD"].expected
+            packageDir: context.package.directoryURL
         )
     }
 
@@ -50,8 +48,8 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         return true
     }
 
-    func findLibraryBasePath(packageDir: URL, libraryName: String) throws -> URL {
-        guard let picoSDKSrc = ProcessInfo.processInfo.environment["PICO_SDK_PATH"].flatMap(URL.init(fileURLWithPath:)) else {
+    func findLibraryBasePath(packageDir: URL, libraryName: String, combination: String) throws -> URL {
+        guard let picoSDKSrc = Env.value("PICO_SDK_PATH", combination: combination).flatMap(URL.init(fileURLWithPath:)) else {
             throw Error.picoSDKNotFound
         }
 
@@ -66,7 +64,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         return picoSDKSrc.appending(path: firstLibDir).appending(path: "include")
     }
 
-    func generateCPicoSDK(variantName: String, pluginWorkingDir: URL, cmakeProject: URL, packageDir: URL, importedLibs: [String], board: String) async throws {
+    func generateCPicoSDK(combination: String, pluginWorkingDir: URL, cmakeProject: URL, packageDir: URL) async throws {
         let workingCmakeDir = pluginWorkingDir.appending(path: cmakeProject.lastPathComponent)
         if fileManager.fileExists(atPath: workingCmakeDir.path) {
             try fileManager.removeItem(at: workingCmakeDir)
@@ -76,9 +74,21 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         let srcDir = pluginWorkingDir.appending(path: "CMakeHarness")
         let buildDir = srcDir.appending(path: "build")
         let outputDir = pluginWorkingDir.appending(path: "output")
-        let cmakeBin = try URL(fileURLWithPath: ProcessInfo.processInfo.environment["CMAKE_PATH"].expected).appending(component: "cmake")
-        let sourceHURL = srcDir.appending(path: "CPicoSDK_\(variantName).source.h")
+        let cmakeBin = try URL(fileURLWithPath: Env.value("CMAKE_PATH", combination: combination).expected).appending(
+            component: "cmake"
+        )
+        let sourceHURL = srcDir.appending(path: "CPicoSDK_\(combination).source.h")
 
+        var importedLibs = Set(
+            try Env.value("IMPORTED_LIBS", combination: combination).expected.split(separator: ",")
+                .map(String.init)
+        )
+        try importedLibs.formUnion(
+            Env.value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
+                .compactMap(\.nonEmpty)
+                .map(String.init)
+        )
+        
         print("Creating output directory at \(outputDir.path)")
         try fileManager.createDirectory(at: outputDir, withIntermediateDirectories: true)
         if fileManager.fileExists(atPath: buildDir.path) {
@@ -87,6 +97,50 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         try fileManager.createDirectory(at: buildDir, withIntermediateDirectories: true)
         print("Writing source h file in \(sourceHURL.path)")
 
+        let sourceHContent = try generateSourceHeaderContent(
+            importedLibs: importedLibs,
+            packageDir: packageDir,
+            combination: combination
+        )
+
+        try sourceHContent.write(to: sourceHURL, atomically: true, encoding: .utf8)
+        print(sourceHContent)
+
+        try await runCMakeBuildProcess(
+            cmakeBin: cmakeBin,
+            srcDir: srcDir,
+            buildDir: buildDir,
+            importedLibs: importedLibs,
+            combination: combination
+        )
+
+        print("Writing modulemap to \(pluginWorkingDir.appending(path: "output/module.modulemap").path)")
+        let modulemapContent = """
+        module _CPicoSDK_\(combination) [system] {
+            umbrella header "include/CPicoSDK_\(combination).h"
+            export *
+        }
+        """
+        let modulemapURL = outputDir.appending(path: "module.modulemap")
+        try modulemapContent.write(to: modulemapURL, atomically: true, encoding: .utf8)
+
+        let includeDir = outputDir.appending(path: "include")
+        try fileManager.createDirectory(at: includeDir, withIntermediateDirectories: true)
+        
+        let picoSDKHeaderURL = includeDir.appending(path: "CPicoSDK_\(combination).h")
+        var picoSDKHeaderContent = "#pragma GCC system_header\n"
+        let builtHeaderURL = buildDir.appending(path: "CPicoSDK_\(combination).h")
+        picoSDKHeaderContent += try String(contentsOf: builtHeaderURL, encoding: .utf8)
+        try picoSDKHeaderContent.write(to: picoSDKHeaderURL, atomically: true, encoding: .utf8)
+
+        let destinationDir = packageDir.appending(path: "Sources/_CPicoSDK_\(combination)")
+        if fileManager.fileExists(atPath: destinationDir.path) {
+            try fileManager.removeItem(at: destinationDir)
+        }
+        try fileManager.copyItem(at: outputDir, to: destinationDir)
+    }
+
+    func generateSourceHeaderContent(importedLibs: Set<String>, packageDir: URL, combination: String) throws -> String {
         let lwipInclude = !importedLibs.contains("pico_lwip_http") ? "" : """
         #include <lwip/apps/http_client.h>
         #include <lwip/altcp.h>
@@ -98,7 +152,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         let libIncludes = try importedLibs.compactMap { lib -> String in
             var includes = "\n// MARK: - \(lib) headers\n"
             
-            if let libBase = try? findLibraryBasePath(packageDir: packageDir, libraryName: lib) {
+            if let libBase = try? findLibraryBasePath(packageDir: packageDir, libraryName: lib, combination: combination) {
                 let headerFiles = try fileManager.subpathsOfDirectory(atPath: libBase.path).filter { headerFileEligible(fileName: $0) }
                 if !headerFiles.isEmpty {
                     for header in headerFiles {
@@ -113,7 +167,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             return includes
         }.joined(separator: "\n")
 
-        let sourceHContent = """
+        return """
         #define __ARM_ARCH_8M_MAIN__ 1
 
         #include <pico/async_context.h>
@@ -122,10 +176,9 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         \(lwipInclude)
         \(libIncludes)
         """
+    }
 
-        try sourceHContent.write(to: sourceHURL, atomically: true, encoding: .utf8)
-        print(sourceHContent)
-
+    func runCMakeBuildProcess(cmakeBin: URL, srcDir: URL, buildDir: URL, importedLibs: Set<String>, combination: String) async throws {
         print("Configuring CMake project in \(buildDir.path)")
 
         let cmakeConfigProcess = Process()
@@ -135,14 +188,14 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             "-S", srcDir.path,
             "-B", buildDir.path,
             "-G", "Ninja",
-            "-DCMAKE_BUILD_TYPE=\(ProcessInfo.processInfo.environment["BUILD_TYPE"].expected)",
-            "-DPICO_SDK_PATH=\(ProcessInfo.processInfo.environment["PICO_SDK_PATH"].expected)",
-            "-DPICOTOOL_PATH=\(ProcessInfo.processInfo.environment["PICOTOOL_PATH"].expected)",
-            "-DBOARD_TYPE=\(board)",
-            "-DTOOLCHAIN_VERSION=\(ProcessInfo.processInfo.environment["TOOLCHAIN_VERSION"].expected)",
-            "-DSDK_VERSION=\(ProcessInfo.processInfo.environment["SDK_VERSION"].expected)",
+            "-DCMAKE_BUILD_TYPE=\(Env.value("BUILD_TYPE", combination: combination).expected)",
+            "-DPICO_SDK_PATH=\(Env.value("PICO_SDK_PATH", combination: combination).expected)",
+            "-DPICOTOOL_PATH=\(Env.value("PICOTOOL_PATH", combination: combination).expected)",
+            "-DBOARD_TYPE=\(Env.value("BOARD", combination: combination).expected)",
+            "-DTOOLCHAIN_VERSION=\(Env.value("TOOLCHAIN_VERSION", combination: combination).expected)",
+            "-DSDK_VERSION=\(Env.value("SDK_VERSION", combination: combination).expected)",
             "-DIMPORTED_LIBS=\(importedLibs.joined(separator: ","))",
-            "-DVARIANT_NAME=\(variantName)",
+            "-DCOMBINATION=\(combination)",
         ]
 
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
@@ -153,63 +206,5 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         cmakeBuildProcess.executableURL = cmakeBin
         cmakeBuildProcess.arguments = ["--build", buildDir.path]
         guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
-
-        print("Writing modulemap to \(pluginWorkingDir.appending(path: "output/module.modulemap").path)")
-        let modulemapContent = """
-        module _CPicoSDK_\(variantName) [system] {
-            umbrella header "include/CPicoSDK_\(variantName).h"
-            export *
-        }
-        """
-        let modulemapURL = outputDir.appending(path: "module.modulemap")
-        try modulemapContent.write(to: modulemapURL, atomically: true, encoding: .utf8)
-
-        let includeDir = outputDir.appending(path: "include")
-        try fileManager.createDirectory(at: includeDir, withIntermediateDirectories: true)
-        
-        let picoSDKHeaderURL = includeDir.appending(path: "CPicoSDK_\(variantName).h")
-        var picoSDKHeaderContent = "#pragma GCC system_header\n"
-        let builtHeaderURL = buildDir.appending(path: "CPicoSDK_\(variantName).h")
-        picoSDKHeaderContent += try String(contentsOf: builtHeaderURL)
-        try picoSDKHeaderContent.write(to: picoSDKHeaderURL, atomically: true, encoding: .utf8)
-
-        let destinationDir = packageDir.appending(path: "Sources/_CPicoSDK_\(variantName)")
-        if fileManager.fileExists(atPath: destinationDir.path) {
-            try fileManager.removeItem(at: destinationDir)
-        }
-        try fileManager.copyItem(at: outputDir, to: destinationDir)
-    }
-}
-
-extension Process {
-    // TODO: Move to shared package
-    func asyncRun() async throws -> Int32 {
-        try await withUnsafeThrowingContinuation { continuation in
-            self.terminationHandler = { process in
-                continuation.resume(returning: process.terminationStatus)
-            }
-            do {
-                try self.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-}
-
-enum OptionalError: Error {
-    case valueNotFound
-}
-
-extension Optional {
-    var expected: Wrapped {
-        get throws {
-            switch self {
-            case .some(let value):
-                return value
-            case .none:
-                throw OptionalError.valueNotFound
-            }
-        }
     }
 }
