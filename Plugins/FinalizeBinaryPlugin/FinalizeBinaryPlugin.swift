@@ -1,114 +1,181 @@
 import Foundation
 import PackagePlugin
 
-let relevantEnvVars: Set<String> = [
-    "HOME",
-    "PACKAGE_PATH",
-    "PLUGIN_OUTPUT_PATH",
-    "SWIFTPM_PRODUCT",
-    "PICO_SDK_BUNDLE_PATH",
-    "SWIFT_VERSION",
-    "SDK_VERSION",
-    "TOOLCHAIN_VERSION",
-    "CMAKE_VERSION",
-    "NINJA_VERSION",
-    "PICOTOOL_VERSION",
-    "OPENOCD_VERSION",
-    "PICO_SDK_PATH",
-    "PICO_TOOLCHAIN_PATH",
-    "PICOTOOL_PATH",
-    "CMAKE_PATH",
-    "NINJA_PATH",
-    "SWIFTLY_PATH",
-    "TOOLSET_PATH",
-    "SDK_PATH",
-    "LD_PATH",
-    "GDB_PATH",
-    "IMPORTED_LIBS",
-    "SWIFTPM_TRIPLE",
-    "BUILD_TYPE",
-    "SWIFT_BUILD_TYPE",
-    "BOARD",
-]
-
 @main
 struct FinalizeBinaryPlugin: CommandPlugin {
+    enum Error: Swift.Error {
+        case nmFailed
+        case rsyncFailed
+        case cmakeConfigurationFailed
+        case cmakeBuildFailed
+        case noCombinationFound
+        case multipleCombinationsFound(Set<String>)
+
+        var localizedDescription: String {
+            switch self {
+            case .nmFailed:
+                return "nm process failed"
+            case .rsyncFailed:
+                return "rsync process failed"
+            case .cmakeConfigurationFailed:
+                return "CMake configuration process failed"
+            case .cmakeBuildFailed:
+                return "CMake build process failed"
+            case .noCombinationFound:
+                return "No combination found in the build artifact"
+            case .multipleCombinationsFound(let combinations):
+                return "Multiple combinations found in the build artifact: \(combinations)"
+            }
+        }
+    }
+
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         guard arguments.count >= 1 else {
-            fatalError("Expected at one argument: A product name is expected. It should be a static library in the Product section of the package.")
+            fatalError("[CPicoSDK] Expected at one argument: A product name is expected. It should be a static library in the Product section of the package.")
         }
 
         let productName = arguments[0]
 
-        let clean = if arguments.count >= 2, arguments[1] == "--incremental" {
-            "dont-clean"
-        } else {
-            "clean"
-        }
-        
+        let clean = arguments.count >= 2 && arguments[1] == "--incremental"
         guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
-            fatalError("Couldn't find CPicoSDK in the dependencies.")
+            fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
         
         let matchingProducts = context.package.products(ofType: LibraryProduct.self)
         guard let libProduct = matchingProducts.first(where: { $0.name == productName }) else {
-            fatalError("Couldn't find a viable static library Product, name couldn't be matched. Given: \(productName); Found: [\(matchingProducts.map(\.name).joined(separator: ","))]")
+            fatalError("[CPicoSDK] Couldn't find a viable static library Product, name couldn't be matched. Given: \(productName); Found: [\(matchingProducts.map(\.name).joined(separator: ","))]")
         }
         
         guard libProduct.kind == .static else {
-            fatalError("Only static libraries are supported.")
+            fatalError("[CPicoSDK] Only static libraries are supported.")
         }
         
         // TODO: Figure out how to expand this.
         guard libProduct.sourceModules.count == 1 else {
-            fatalError("Only libraries with one target are supported.")
+            fatalError("[CPicoSDK] Only libraries with one target are supported.")
         }
 
-        // TODO: Rewrite all this as swift code.
-        let process = Process()
-        process.executableURL = picoSDKURL.appending(path: "/Plugins/FinalizeBinaryPluginTool/build.sh", directoryHint: .notDirectory)
+        let swiftBuildType = try Env.value("SWIFT_BUILD_TYPE").expected
+        let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
+        let buildArtifact = context.package.directoryURL
+            .appending(path: "/.build/\(platformTriple)/\(swiftBuildType)/lib\(libProduct.name).a")
 
-        let envVars = Dictionary(
-            uniqueKeysWithValues: ProcessInfo.processInfo.environment
-                .filter({ relevantEnvVars.contains($0.key) })
+        let combination = try await getCombination(from: buildArtifact)
+
+        print("[CPicoSDK] Finalizing build for \(libProduct.name), combination: \(combination)...")
+
+        try await self.runBuild(
+            combination: combination,
+            workingDir: context.pluginWorkDirectoryURL,
+            cmakeHarness: picoSDKURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"),
+            buildArtifact: buildArtifact,
+            productName: libProduct.name,
+            clean: clean
         )
+    }
 
-        guard Set(envVars.keys) == relevantEnvVars else {
-            let missingKeys = relevantEnvVars.subtracting(Set(envVars.keys))
-            fatalError("Cannot continue. Missing env variables: [\(missingKeys.joined(separator: ", "))]")
+    func getCombination(from buildArtifact: URL) async throws -> String {
+        let nmProcess = Process()
+        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
+        nmProcess.arguments = [buildArtifact.path]
+
+        let standardOutput = Pipe()
+        nmProcess.standardOutput = standardOutput
+
+        guard try await nmProcess.asyncRun() == 0 else { throw Error.nmFailed }
+
+        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
+        guard let outputString = String(data: outputData, encoding: .utf8) else {
+            throw Error.nmFailed
         }
 
-        process.environment = envVars
+        let combinationRegex = /_cpicosdk_combination_([a-zA-Z0-9_]+)/
+        let combinations = Set(outputString.matches(of: combinationRegex).map { String($0.output.1) })
 
-        let swiftBuildType = envVars["SWIFT_BUILD_TYPE"]!
-        let platformTriple = envVars["SWIFTPM_TRIPLE"]!
+        guard combinations.count == 1, let combination = combinations.first else {
+            throw combinations.isEmpty ? Error.noCombinationFound : Error.multipleCombinationsFound(combinations)
+        }
 
-        process.arguments = [
-            context.pluginWorkDirectoryURL.relativePath,
-            picoSDKURL.relativePath.appending("/Plugins/FinalizeBinaryPluginTool/Test"),
-            context.package.directoryURL.relativePath
-                .appending("/.build/\(platformTriple)/\(swiftBuildType)/lib\(libProduct.name).a"),
-            libProduct.name,
-            clean
+        return combination
+    }
+
+    func runBuild(combination: String, workingDir: URL, cmakeHarness: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
+        let fileManager = FileManager.default
+        let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
+        let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
+        let ninjaPath = try Env.value("NINJA_PATH", combination: combination).expected
+
+        print("[CPicoSDK] Copying CMake harness to working directory")
+
+        let rsyncProcess = Process()
+        rsyncProcess.executableURL = URL(filePath: try Env.value("RSYNC_PATH").expected, directoryHint: .notDirectory)
+        rsyncProcess.arguments = ["-r", "-u", "\(cmakeHarness.path)", "\(workingDir.path)"]
+        guard try await rsyncProcess.asyncRun() == 0 else { throw Error.rsyncFailed }
+
+        let srcDir = workingDir.appending(path: "CMakeHarness")
+        let buildDir = srcDir.appending(path: "build")
+        let outputDir = workingDir.appending(path: "output")
+
+        try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
+        print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
+        let importedLibs = try Env.importedLibs(combination: combination)
+
+        print("[CPicoSDK] Imported libraries: \(importedLibs)")
+
+        if clean {
+            try fileManager.removeItem(at: buildDir)
+            try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
+        }
+
+        var env = try Env.combinedVars(for: combination)
+        env["PATH"] = "\(cmakePath):\(ninjaPath):\(ProcessInfo.processInfo.environment["PATH"]!)"
+
+        print("[CPicoSDK] Running CMake configuration and build...")
+
+        let cmakeConfigProcess = Process()
+        cmakeConfigProcess.executableURL = cmakeBin
+        cmakeConfigProcess.environment = env
+        cmakeConfigProcess.arguments = [
+            "-S", "\(srcDir.path)",
+            "-B", "\(buildDir.path)",
+            "-G", "Ninja",
+            "-DCMAKE_BUILD_TYPE=\(try Env.value("BUILD_TYPE", combination: combination).expected)",
+            "-DPICO_SDK_PATH=\(try Env.value("PICO_SDK_PATH", combination: combination).expected)",
+            "-DPICOTOOL_PATH=\(try Env.value("PICOTOOL_PATH", combination: combination).expected)",
+            "-DBOARD_TYPE=\(try Env.value("BOARD", combination: combination).expected)",
+            "-DPROJECT_NAME=\(productName)",
+            "-DTOOLCHAIN_VERSION=\(try Env.value("TOOLCHAIN_VERSION", combination: combination).expected)",
+            "-DSDK_VERSION=\(try Env.value("SDK_VERSION", combination: combination).expected)",
+            "-DIMPORTED_LIBS=\(importedLibs.joined(separator: ","))",
+            "-DIMPORTED_LOCATION=\(buildArtifact.path)"
         ]
 
-        // TODO: Rewrite build.sh as swift code
-        guard try await process.asyncRun() == 0 else { fatalError("Command failed to run!") }
-    }
-}
+        guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
 
-extension Process {
-    // TODO: Move to shared package
-    func asyncRun() async throws -> Int32 {
-        try await withUnsafeThrowingContinuation { continuation in
-            self.terminationHandler = { process in
-                continuation.resume(returning: process.terminationStatus)
-            }
-            do {
-                try self.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        let cmakeBuildProcess = Process()
+        cmakeBuildProcess.executableURL = cmakeBin
+        cmakeBuildProcess.environment = env
+        cmakeBuildProcess.arguments = ["--build", buildDir.path]
+        guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeBuildFailed }
+
+        try fileManager.ensureDirectoryExists(at: outputDir.path, isDirectory: true)
+
+        print("[CPicoSDK] Output directory prepared at \(outputDir.path)")
+
+        try fileManager.removeItem(at: outputDir.appending(path: "\(productName).elf"))
+        try fileManager.removeItem(at: outputDir.appending(path: "\(productName).uf2"))
+    
+        try fileManager.copyItem(
+            at: buildDir.appending(path: "\(productName).elf"),
+            to: outputDir.appending(path: "\(productName).elf")
+        )
+        try fileManager.copyItem(
+            at: buildDir.appending(path: "\(productName).uf2"),
+            to: outputDir.appending(path: "\(productName).uf2")
+        )
+
+        print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
+
+        print("[CPicoSDK] 🎉 Finalization completed successfully! 🎉")
     }
 }

@@ -280,7 +280,7 @@ This approach:
 
 ### The `shims.c` File: Runtime Compatibility
 
-Located at `Plugins/FinalizeBinaryPluginTool/Test/shims.c`, this file provides **POSIX compatibility shims** for functions that the Swift runtime expects but aren't provided by the bare-metal ARM toolchain.
+Located at `Plugins/FinalizeBinaryPluginTool/CMakeHarness/shims.c`, this file provides **POSIX compatibility shims** for functions that the Swift runtime expects but aren't provided by the bare-metal ARM toolchain.
 
 For example:
 ```c
@@ -400,16 +400,14 @@ CPicoSDK/
 │   │   ├── Extensions.swift
 │   │   └── BuildType.swift
 │   ├── GenerateCPicoSDKPlugin/
-│   │   └── GenerateCPicoSDKPlugin.swift
+│   │   └── GenerateCPicoSDKPlugin.swift  # Header generation logic
 │   ├── GenerateCPicoSDKPluginTool/
-│   │   ├── build.sh                      # Header generation logic
-│   │   └── Test/
+│   │   └── CMakeHarness/
 │   │       └── CMakeLists.txt            # CMake project for preprocessing
 │   ├── FinalizeBinaryPlugin/
-│   │   └── FinalizeBinaryPlugin.swift
+│   │   └── FinalizeBinaryPlugin.swift    # Linking and UF2 generation
 │   └── FinalizeBinaryPluginTool/
-│       ├── build.sh                      # Linking and UF2 generation
-│       └── Test/
+│       └── CMakeHarness/
 │           ├── CMakeLists.txt            # CMake project for linking
 │           └── shims.c                   # POSIX compatibility layer
 └── Example/

@@ -67,7 +67,6 @@ extension PrepareEnvironmentPlugin {
         for (name, combination) in packageEnv.combinations {
             print("[CPicoSDK] Specializing env vars for combination: \(name)")
             
-            var combinedVars = newEnvVars
             let combinationSpecializedVars = combination.vars
                 .filter { !givenEnvVars.keys.contains($0.key) } // Don't override given vars, only globals.
             

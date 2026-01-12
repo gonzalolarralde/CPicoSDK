@@ -78,16 +78,6 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             component: "cmake"
         )
         let sourceHURL = srcDir.appending(path: "CPicoSDK_\(combination).source.h")
-
-        var importedLibs = Set(
-            try Env.value("IMPORTED_LIBS", combination: combination).expected.split(separator: ",")
-                .map(String.init)
-        )
-        try importedLibs.formUnion(
-            Env.value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
-                .compactMap(\.nonEmpty)
-                .map(String.init)
-        )
         
         print("Creating output directory at \(outputDir.path)")
         try fileManager.createDirectory(at: outputDir, withIntermediateDirectories: true)
@@ -96,6 +86,8 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         }
         try fileManager.createDirectory(at: buildDir, withIntermediateDirectories: true)
         print("Writing source h file in \(sourceHURL.path)")
+
+        let importedLibs: Set<String> = try Env.importedLibs(combination: combination)
 
         let sourceHContent = try generateSourceHeaderContent(
             importedLibs: importedLibs,

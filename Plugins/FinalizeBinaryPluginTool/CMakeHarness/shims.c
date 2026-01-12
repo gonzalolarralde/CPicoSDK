@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <malloc.h>   // for memalign
 
 int posix_memalign(void **memptr, size_t alignment, size_t size) {

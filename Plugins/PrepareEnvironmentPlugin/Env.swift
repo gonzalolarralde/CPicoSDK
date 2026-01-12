@@ -33,6 +33,8 @@ struct Env: Codable, Hashable {
         "SDK_PATH",
         "LD_PATH",
         "GDB_PATH",
+        "NM_PATH",
+        "RSYNC_PATH",
         "IMPORTED_LIBS",
         "IMPORTED_LIBS_MORE",
         "SWIFTPM_TRIPLE",
