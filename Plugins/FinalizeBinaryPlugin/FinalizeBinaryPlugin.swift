@@ -124,7 +124,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         print("[CPicoSDK] Imported libraries: \(importedLibs)")
 
         if clean {
-            try fileManager.removeItem(at: buildDir)
+            try? fileManager.removeItem(at: buildDir)
             try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
         }
 
@@ -163,14 +163,14 @@ struct FinalizeBinaryPlugin: CommandPlugin {
 
         print("[CPicoSDK] Output directory prepared at \(outputDir.path)")
 
-        try fileManager.removeItem(at: outputDir.appending(path: "\(productName).elf"))
+        try? fileManager.removeItem(at: outputDir.appending(path: "\(productName).elf"))
         try fileManager.copyItem(
             at: buildDir.appending(path: "\(productName).elf"),
             to: outputDir.appending(path: "\(productName).elf")
         )
         print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).elf").path) to \(outputDir.appending(path: "\(productName).elf").path)")
 
-        try fileManager.removeItem(at: outputDir.appending(path: "\(productName).uf2"))
+        try? fileManager.removeItem(at: outputDir.appending(path: "\(productName).uf2"))
         try fileManager.copyItem(
             at: buildDir.appending(path: "\(productName).uf2"),
             to: outputDir.appending(path: "\(productName).uf2")
