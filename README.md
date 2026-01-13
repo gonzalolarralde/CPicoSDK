@@ -75,9 +75,20 @@ This project is built with the intention of **streamlining the developer experie
 
 ### Current Status
 
-- ✅ **Fully supported**:  Pico 2 W (RP2350) with WiFi capabilities
-- 🚧 **In progress**: Support for additional boards and configurations is actively being developed
+- ✅ **Fully supported**: Pico 2 (RP2350A), Pico 2 W (RP2350A + CYW43439), Pimoroni Pico Plus 2 (RP2350B), Pimoroni Pico Plus 2 W (RP2350B + CYW43439)
+- 🚧 **In progress**: More RP2xxx boards and configuration combinations are actively being developed
 - 🔍 **Debugging**: Currently using `cortex-debug` in VSCode, following the proven pico-vscode approach.  LLDB support is being worked on but requires additional development time.
+
+### Board/Trait Matrix (Temporary)
+
+This matrix is temporary while we work on a more generic approach that ties traits to non-specific board configurations.
+
+| Board | Combination | Variant Trait | Radio Trait |
+| --- | --- | --- | --- |
+| Pico 2 | `pico2` | `Variant_RP2350A` | `Radio_None` |
+| Pico 2 W | `pico2_w` | `Variant_RP2350A` | `Radio_CYW43439` |
+| Pimoroni Pico Plus 2 | `pimoroni_pico_plus2_rp2350` | `Variant_RP2350B` | `Radio_None` |
+| Pimoroni Pico Plus 2 W | `pimoroni_pico_plus2_w_rp2350` | `Variant_RP2350B` | `Radio_CYW43439` |
 
 ### Features & Capabilities
 
@@ -122,7 +133,7 @@ let package = Package(
         .library(name: "MyPicoProject", type: .static, targets: ["MyPicoProject"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalolarralde/CPicoSDK", .upToNextMinor(from: "2.2.0")),
+        .package(url: "https://github.com/gonzalolarralde/CPicoSDK", .upToNextMinor(from: "2.2.1")),
     ],
     targets: [
         .target(
@@ -131,6 +142,21 @@ let package = Package(
         ),
     ]
 )
+```
+
+If you need to select a specific board configuration, add traits to the dependency:
+
+```swift
+.package(
+    url: "https://github.com/gonzalolarralde/CPicoSDK",
+    .upToNextMinor(from: "2.2.1"),
+    traits: [
+        .init(name: "Platform_RP2350"),
+        .init(name: "BootStage2_W25Q080"),
+        .init(name: "Variant_RP2350A"),
+        .init(name: "Radio_CYW43439"),
+    ]
+),
 ```
 
 2. **Write your Swift code**:
@@ -204,55 +230,74 @@ CPicoSDK uses a hybrid approach combining **SwiftPM plugins** for Swift-native t
 The `env.json` file is the **central configuration** that drives the entire build environment.  It specifies:
 
 - **Toolchain versions**: Swift snapshot, ARM GCC, CMake, Ninja
-- **SDK versions**:  Pico SDK, picotool, OpenOCD versions
+- **SDK versions**: Pico SDK, picotool, OpenOCD versions
 - **Paths**: Where to find tools and dependencies (with variable substitution support like `${PICO_SDK_PATH}`)
-- **Target configuration**: Board type, imported libraries, build type, SwiftPM triple
-- **Library selection**: Which Pico SDK libraries to include (pico_stdlib, hardware_*, pico_cyw43_arch, etc.)
+- **Base configuration**: Default board, build type, SwiftPM triple, and base library selection
+- **Combinations**: Per-board overrides and trait mappings (Variant/Radio) used to generate targets
 
 Example: 
 ```json
 {
-    "SWIFT_VERSION": "main-snapshot-2025-11-03",
-    "SDK_VERSION": "2. 2.0",
-    "TOOLCHAIN_VERSION": "14_2_Rel1",
-    "BOARD": "pico2_w",
-    "IMPORTED_LIBS": "pico_stdlib,hardware_gpio,pico_cyw43_arch_lwip_poll",
-    "SWIFTPM_TRIPLE": "armv7em-none-none-eabi",
-    "BUILD_TYPE": "RelWithDebInfo"
+    "vars": {
+        "SWIFT_VERSION": "main-snapshot-2025-11-03",
+        "SDK_VERSION": "2.2.0",
+        "TOOLCHAIN_VERSION": "14_2_Rel1",
+        "BOARD": "pico2",
+        "IMPORTED_LIBS": "pico_stdlib,hardware_gpio",
+        "SWIFTPM_TRIPLE": "armv7em-none-none-eabi",
+        "BUILD_TYPE": "RelWithDebInfo"
+    },
+    "combinations": {
+        "pico2": {
+            "vars": {
+                "BOARD": "pico2",
+                "IMPORTED_LIBS_MORE": ""
+            },
+            "traits": ["Variant_RP2350A", "Radio_None"]
+        },
+        "pico2_w": {
+            "vars": {
+                "BOARD": "pico2_w",
+                "IMPORTED_LIBS_MORE": "pico_cyw43_arch,pico_cyw43_arch_lwip_poll,pico_lwip,pico_lwip_arch,pico_lwip_http"
+            },
+            "traits": ["Variant_RP2350A", "Radio_CYW43439"]
+        }
+    }
 }
 ```
 
 This configuration is: 
-1. Read by the **PrepareEnvironmentPlugin** to set up the environment
+1. Read by the **PrepareEnvironmentPlugin** to set up the environment (base vars + combinations)
 2. Resolved (variables expanded) and exported as bash environment variables
-3. Used by **GenerateCPicoSDKPlugin** to determine which headers to include
+3. Used by **GenerateCPicoSDKPlugin** to generate per-combination headers and `Package.swift`
 4. Consumed by **FinalizeBinaryPlugin** during the linking stage
 
 ### The `build.sh` Script: Environment Preparation
 
-The root `build.sh` script is specifically for **CPicoSDK maintainers** to regenerate the compound header file.  Users consuming CPicoSDK as a dependency don't need to run it. 
+The root `build.sh` script is specifically for **CPicoSDK maintainers** to regenerate the generated headers and `Package.swift`. Users consuming CPicoSDK as a dependency don't need to run it. `Package.swift` is generated from `Package.swift.template`, so edit the template instead.
 
 The script:
-1. Locates the `swiftly` executable
-2. Sets the `PICO_SDK_BUNDLE_PATH` (defaults to `~/.pico-sdk`)
-3. Invokes the `PrepareEnvironmentPlugin` with flags to disable most side effects
-4. Sources the generated preparation script to export environment variables
-5. Calls the `GenerateCPicoSDKPlugin` to create the header compound
+1. Cleans generated build artifacts and copies `Package.swift.template` to `Package.swift`
+2. Locates the `swiftly` executable
+3. Sets the `PICO_SDK_BUNDLE_PATH` (defaults to `~/.pico-sdk`)
+4. Invokes the `PrepareEnvironmentPlugin` with flags to disable most side effects
+5. Sources the generated preparation script to export environment variables
+6. Calls the `GenerateCPicoSDKPlugin` to generate per-combination headers and targets
 
 This separation allows the header generation to be version-controlled while keeping the environment setup flexible. 
 
 ### The Header Compound: Bridging C and Swift
 
-Swift cannot directly consume hundreds of individual C header files efficiently in an embedded context. To solve this, CPicoSDK generates a **compound header file** (`CPicoSDK.h`) that:
+Swift cannot directly consume hundreds of individual C header files efficiently in an embedded context. To solve this, CPicoSDK generates a **compound header file** per combination (e.g. `CPicoSDK_pico2.h`) that:
 
 1. **Aggregates all relevant Pico SDK headers** into a single file based on `IMPORTED_LIBS`
 2. **Processes through the C preprocessor** with the correct target architecture flags
 3. **Resolves all macros, includes, and definitions** into one cohesive header
 4. **Wraps in a Swift module** via a modulemap
 
-**Generation process** (in `Plugins/GenerateCPicoSDKPluginTool/build.sh`):
+**Generation process** (in `Plugins/GenerateCPicoSDKPlugin/GenerateCPicoSDKPlugin.swift` + `Plugins/GenerateCPicoSDKPluginTool/CMakeHarness`):
 
-1. Create a source header (`CPicoSDK.source. h`) that includes all requested Pico SDK headers: 
+1. Create a source header that includes all requested Pico SDK headers: 
    ```c
    #define __ARM_ARCH_8M_MAIN__ 1
    #include <pico/stdlib.h>
@@ -261,16 +306,16 @@ Swift cannot directly consume hundreds of individual C header files efficiently 
    ```
 
 2. Use CMake to invoke the C preprocessor with the correct target flags
-3. Generate `CPicoSDK.h` with all macros expanded and definitions resolved
+3. Generate `CPicoSDK_<combination>.h` with all macros expanded and definitions resolved
 4. Wrap it in a modulemap: 
    ```modulemap
-   module CPicoSDK [system] {
-       umbrella header "include/CPicoSDK.h"
+   module _CPicoSDK_<combination> [system] {
+       umbrella header "include/CPicoSDK_<combination>.h"
        export *
    }
    ```
 
-5. Copy to `Sources/_CPicoSDK/` where SwiftPM can find it
+5. Copy to `Sources/_CPicoSDK_<combination>/` where SwiftPM can find it
 
 This approach: 
 - ✅ Provides fast compilation (single header vs. hundreds)
@@ -315,7 +360,7 @@ CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
 **Purpose**: Set up the complete build environment
 
 **What it does**:
-- Merges environment variables from `env.json` with user overrides
+- Merges base vars and combination overrides from `env.json` with user overrides
 - Resolves variable substitutions (e.g., `${HOME}`, `${PICO_SDK_PATH}`)
 - Downloads dependencies via PicoSDKDownloader
 - Generates `toolset.json` for the ARM cross-compiler
@@ -326,20 +371,22 @@ CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
 
 **Key files**:
 - `PrepareEnvironmentPlugin.swift`: Main plugin logic
+- `Env.swift`: Environment modeling and combination resolution
 - `Resolvers.swift`: Environment variable resolution
 - `Generators.swift`: Config file generation
 - `Extensions.swift`: Utilities (JSON parsing, async process execution)
 
 #### 2. **GenerateCPicoSDKPlugin** (`generate-cpicosdk`)
 
-**Purpose**: Generate the compound header file
+**Purpose**: Generate per-combination compound headers and `Package.swift`
 
 **What it does**: 
-- Reads the `IMPORTED_LIBS` environment variable
-- Creates `CPicoSDK.source.h` with the appropriate includes
+- Reads `IMPORTED_LIBS` plus combination overrides (e.g. `IMPORTED_LIBS_MORE`)
+- Creates a source header with the appropriate includes per combination
 - Invokes CMake to preprocess the header with target-specific flags
 - Wraps the result in a modulemap
-- Copies to `Sources/_CPicoSDK/`
+- Copies to `Sources/_CPicoSDK_<combination>/`
+- Generates `Package.swift` from `Package.swift.template` with combination targets
 
 **Why it exists**:  SwiftPM doesn't support prebuild commands for header generation, so this must be run manually during development.
 
@@ -349,7 +396,8 @@ CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
 
 **What it does**:
 - Takes the compiled Swift `.o` files from SwiftPM
-- Links them with Pico SDK libraries using CMake
+- Links them with Pico SDK libraries using the CMake harness
+- Runs as a native Swift plugin (no standalone shell build script)
 - Includes `shims.c` for runtime compatibility
 - Generates both ELF (for debugging) and UF2 (for flashing) binaries
 - Optionally flashes to a connected device
@@ -381,31 +429,39 @@ While the plugins are written in Swift for type safety and integration with Swif
 
 ```
 CPicoSDK/
-├── Package.swift                          # Main package manifest with traits
+├── Package.swift                          # Generated package manifest with traits
+├── Package.swift.template                 # Template used to generate Package.swift
 ├── env.json                               # Central configuration
 ├── generator_vars.json                    # Available hardware options and libraries
 ├── toolset.json                           # Generated by PrepareEnvironmentPlugin
-├── build.sh                               # Maintainer tool for header regeneration
+├── build.sh                               # Maintainer tool for header + manifest regeneration
 ├── Sources/
-│   ├── _CPicoSDK/                         # Generated compound header (git-tracked)
-│   │   ├── include/CPicoSDK.h            # The compound header
+│   ├── _CPicoSDK_pico2/                   # Generated compound header (git-tracked)
+│   │   ├── include/CPicoSDK_pico2.h       # The compound header
 │   │   └── module.modulemap              # Swift module wrapper
-│   ├── _CPicoSDKTemplate/                # Template for regeneration
+│   ├── _CPicoSDK_pico2_w/                 # Generated compound header (git-tracked)
+│   ├── _CPicoSDK_pimoroni_pico_plus2_rp2350/
+│   ├── _CPicoSDK_pimoroni_pico_plus2_w_rp2350/
 │   └── CPicoSDK/                         # Swift wrapper target
 ├── Plugins/
 │   ├── PrepareEnvironmentPlugin/
 │   │   ├── PrepareEnvironmentPlugin.swift
+│   │   ├── Env.swift
 │   │   ├── Generators.swift
 │   │   ├── Resolvers.swift
 │   │   ├── Extensions.swift
 │   │   └── BuildType.swift
 │   ├── GenerateCPicoSDKPlugin/
-│   │   └── GenerateCPicoSDKPlugin.swift  # Header generation logic
+│   │   ├── GenerateCPicoSDKPlugin.swift  # Header generation logic
+│   │   ├── Env.swift
+│   │   └── Extensions.swift
 │   ├── GenerateCPicoSDKPluginTool/
 │   │   └── CMakeHarness/
 │   │       └── CMakeLists.txt            # CMake project for preprocessing
 │   ├── FinalizeBinaryPlugin/
-│   │   └── FinalizeBinaryPlugin.swift    # Linking and UF2 generation
+│   │   ├── FinalizeBinaryPlugin.swift    # Linking and UF2 generation
+│   │   ├── Env.swift
+│   │   └── Extensions.swift
 │   └── FinalizeBinaryPluginTool/
 │       └── CMakeHarness/
 │           ├── CMakeLists.txt            # CMake project for linking
@@ -422,9 +478,9 @@ CPicoSDK/
 
 **For CPicoSDK maintainers:**
 
-1. Modify `env.json` or `IMPORTED_LIBS`
-2. Run `./build.sh` to regenerate the compound header
-3. Commit the updated `Sources/_CPicoSDK/include/CPicoSDK.h`
+1. Modify `env.json`, `generator_vars.json`, or `Package.swift.template`
+2. Run `./build.sh` to regenerate `Package.swift` and the compound headers
+3. Commit the updated `Package.swift` and `Sources/_CPicoSDK_*` outputs
 4. Tag a new version
 
 **For users consuming CPicoSDK:**
