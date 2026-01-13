@@ -26,12 +26,17 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
     let fileManager = FileManager.default
 
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
-        try await generateCPicoSDK(
-            combination: "pico2",
-            pluginWorkingDir: context.pluginWorkDirectoryURL,
-            cmakeProject: context.package.directoryURL.appending(path: "Plugins/GenerateCPicoSDKPluginTool/CMakeHarness"),
-            packageDir: context.package.directoryURL
-        )
+        let env = try Env(from: context.package.directoryURL.appending(path: "env.json").relativePath)
+        
+        for combination in env.combinations.keys.sorted() {
+            print("[CPicoSDK] Generating CPicoSDK for combination: \(combination)")
+            try await generateCPicoSDK(
+                combination: combination,
+                pluginWorkingDir: context.pluginWorkDirectoryURL,
+                cmakeProject: context.package.directoryURL.appending(path: "Plugins/GenerateCPicoSDKPluginTool/CMakeHarness"),
+                packageDir: context.package.directoryURL
+            )
+        }
     }
 
     func headerFileEligible(fileName: String) -> Bool {
@@ -66,10 +71,8 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
 
     func generateCPicoSDK(combination: String, pluginWorkingDir: URL, cmakeProject: URL, packageDir: URL) async throws {
         let workingCmakeDir = pluginWorkingDir.appending(path: cmakeProject.lastPathComponent)
-        if fileManager.fileExists(atPath: workingCmakeDir.path) {
-            try fileManager.removeItem(at: workingCmakeDir)
-        }
-        try fileManager.copyItem(at: cmakeProject, to: pluginWorkingDir.appending(path: cmakeProject.lastPathComponent))
+        try? fileManager.removeItem(at: workingCmakeDir)
+        try fileManager.copyItem(at: cmakeProject, to: workingCmakeDir)
 
         let srcDir = pluginWorkingDir.appending(path: "CMakeHarness")
         let buildDir = srcDir.appending(path: "build")
@@ -79,13 +82,14 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         )
         let sourceHURL = srcDir.appending(path: "CPicoSDK_\(combination).source.h")
         
-        print("Creating output directory at \(outputDir.path)")
+        print("[CPicoSDK] Creating output directory at \(outputDir.path)")
         try fileManager.createDirectory(at: outputDir, withIntermediateDirectories: true)
-        if fileManager.fileExists(atPath: buildDir.path) {
-            try fileManager.removeItem(at: buildDir)
-        }
+
+        print("[CPicoSDK] Cleaning build directory at \(buildDir.path)")
+        try? fileManager.removeItem(at: buildDir)
         try fileManager.createDirectory(at: buildDir, withIntermediateDirectories: true)
-        print("Writing source h file in \(sourceHURL.path)")
+
+        print("[CPicoSDK] Writing source h file in \(sourceHURL.path)")
 
         let importedLibs: Set<String> = try Env.importedLibs(combination: combination)
 
@@ -106,30 +110,32 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             combination: combination
         )
 
-        print("Writing modulemap to \(pluginWorkingDir.appending(path: "output/module.modulemap").path)")
+        let destinationDir = packageDir.appending(path: "Sources/_CPicoSDK_\(combination)")
+        try? fileManager.removeItem(at: destinationDir)
+        try fileManager.ensureDirectoryExists(at: destinationDir.path, isDirectory: true)
+
+        print("[CPicoSDK] Writing modulemap to \(pluginWorkingDir.appending(path: "output/module.modulemap").path)")
         let modulemapContent = """
         module _CPicoSDK_\(combination) [system] {
             umbrella header "include/CPicoSDK_\(combination).h"
             export *
         }
         """
-        let modulemapURL = outputDir.appending(path: "module.modulemap")
+        let modulemapURL = destinationDir.appending(path: "module.modulemap")
         try modulemapContent.write(to: modulemapURL, atomically: true, encoding: .utf8)
 
-        let includeDir = outputDir.appending(path: "include")
+        let includeDir = destinationDir.appending(path: "include")
         try fileManager.createDirectory(at: includeDir, withIntermediateDirectories: true)
         
-        let picoSDKHeaderURL = includeDir.appending(path: "CPicoSDK_\(combination).h")
+        let picoSDKHeaderURL = outputDir.appending(path: "include/CPicoSDK_\(combination).h")
         var picoSDKHeaderContent = "#pragma GCC system_header\n"
         let builtHeaderURL = buildDir.appending(path: "CPicoSDK_\(combination).h")
         picoSDKHeaderContent += try String(contentsOf: builtHeaderURL, encoding: .utf8)
-        try picoSDKHeaderContent.write(to: picoSDKHeaderURL, atomically: true, encoding: .utf8)
-
-        let destinationDir = packageDir.appending(path: "Sources/_CPicoSDK_\(combination)")
-        if fileManager.fileExists(atPath: destinationDir.path) {
-            try fileManager.removeItem(at: destinationDir)
-        }
-        try fileManager.copyItem(at: outputDir, to: destinationDir)
+        try picoSDKHeaderContent.write(
+            to: destinationDir.appending(path: "include/CPicoSDK_\(combination).h"),
+            atomically: true,
+            encoding: .utf8
+        )
     }
 
     func generateSourceHeaderContent(importedLibs: Set<String>, packageDir: URL, combination: String) throws -> String {
@@ -171,7 +177,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
     }
 
     func runCMakeBuildProcess(cmakeBin: URL, srcDir: URL, buildDir: URL, importedLibs: Set<String>, combination: String) async throws {
-        print("Configuring CMake project in \(buildDir.path)")
+        print("[CPicoSDK] Configuring CMake project in \(buildDir.path)")
 
         let cmakeConfigProcess = Process()
         cmakeConfigProcess.executableURL = cmakeBin
@@ -192,7 +198,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
 
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
 
-        print("Building CMake project in \(buildDir.path)")
+        print("[CPicoSDK] Building CMake project in \(buildDir.path)")
 
         let cmakeBuildProcess = Process()
         cmakeBuildProcess.executableURL = cmakeBin

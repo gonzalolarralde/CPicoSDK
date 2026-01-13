@@ -42,11 +42,13 @@ let package = Package(
     targets: [
         // GENERATOR MARK: TARGETS
         .target(name: "_CPicoSDK_pico2"),
+        .target(name: "_CPicoSDK_pico2_w"),
         .target(
             name: "CPicoSDK",
             dependencies: [
                 // GENERATOR MARK: TARGET DEPENDENCIES
-                "_CPicoSDK_pico2"
+                .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
+                .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ]
         ),
         .plugin(

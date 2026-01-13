@@ -1,0 +1,4 @@
+module _CPicoSDK_pimoroni_pico_plus2_w_rp2350 [system] {
+    umbrella header "include/CPicoSDK_pimoroni_pico_plus2_w_rp2350.h"
+    export *
+}

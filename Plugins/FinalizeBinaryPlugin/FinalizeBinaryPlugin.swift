@@ -57,8 +57,9 @@ struct FinalizeBinaryPlugin: CommandPlugin {
 
         let swiftBuildType = try Env.value("SWIFT_BUILD_TYPE").expected
         let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
-        let buildArtifact = context.package.directoryURL
-            .appending(path: "/.build/\(platformTriple)/\(swiftBuildType)/lib\(libProduct.name).a")
+        let outputDir = context.package.directoryURL.appending(path: "/.build/\(platformTriple)/\(swiftBuildType)")
+        let buildArtifact = outputDir
+            .appending(path: "lib\(libProduct.name).a")
 
         let combination = try await getCombination(from: buildArtifact)
 
@@ -68,6 +69,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             combination: combination,
             workingDir: context.pluginWorkDirectoryURL,
             cmakeHarness: picoSDKURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"),
+            outputDir: outputDir,
             buildArtifact: buildArtifact,
             productName: libProduct.name,
             clean: clean
@@ -99,7 +101,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         return combination
     }
 
-    func runBuild(combination: String, workingDir: URL, cmakeHarness: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
+    func runBuild(combination: String, workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
@@ -113,8 +115,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         guard try await rsyncProcess.asyncRun() == 0 else { throw Error.rsyncFailed }
 
         let srcDir = workingDir.appending(path: "CMakeHarness")
-        let buildDir = srcDir.appending(path: "build")
-        let outputDir = workingDir.appending(path: "output")
+        let buildDir = srcDir.appending(path: "build_\(combination)")
 
         try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
         print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
@@ -163,16 +164,18 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         print("[CPicoSDK] Output directory prepared at \(outputDir.path)")
 
         try fileManager.removeItem(at: outputDir.appending(path: "\(productName).elf"))
-        try fileManager.removeItem(at: outputDir.appending(path: "\(productName).uf2"))
-    
         try fileManager.copyItem(
             at: buildDir.appending(path: "\(productName).elf"),
             to: outputDir.appending(path: "\(productName).elf")
         )
+        print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).elf").path) to \(outputDir.appending(path: "\(productName).elf").path)")
+
+        try fileManager.removeItem(at: outputDir.appending(path: "\(productName).uf2"))
         try fileManager.copyItem(
             at: buildDir.appending(path: "\(productName).uf2"),
             to: outputDir.appending(path: "\(productName).uf2")
         )
+        print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).uf2").path) to \(outputDir.appending(path: "\(productName).uf2").path)")
 
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
 
