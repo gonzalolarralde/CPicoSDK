@@ -10,12 +10,26 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/gonzalolarralde/CPicoSDK",
-            .upToNextMinor(from: "2.2.0"),
+            .upToNextMinor(from: "2.2.1"),
             traits: [
                 .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),
+
+                // - Pico 2
+                // .init(name: "Variant_RP2350A"),
+                // .init(name: "Radio_None"),
+
+                // - Pico 2 W
                 .init(name: "Variant_RP2350A"),
-                .init(name: "Radio_None"),
+                .init(name: "Radio_CYW43439"),
+
+                // - Pimoroni Pico Plus 2
+                // .init(name: "Variant_RP2350B"),
+                // .init(name: "Radio_None"),
+
+                // - Pimoroni Pico Plus 2 W
+                // .init(name: "Variant_RP2350B"),
+                // .init(name: "Radio_CYW43439"),
             ]
         ),
     ],
