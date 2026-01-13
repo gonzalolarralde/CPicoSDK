@@ -41,12 +41,12 @@ let package = Package(
     ],
     targets: [
         // GENERATOR MARK: TARGETS
-        // .target(name: "_CPicoSDK_pico2"),
+
+        // Manually defined targets
         .target(
             name: "CPicoSDK",
             dependencies: [
                 // GENERATOR MARK: TARGET DEPENDENCIES
-                // "_CPicoSDK_pico2"
             ]
         ),
         .plugin(

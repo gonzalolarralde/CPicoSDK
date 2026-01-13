@@ -8,6 +8,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         case libraryNotFound(String)
         case cmakeConfigurationFailed
         case cmakeBuildFailed
+        case markerNotFound(String)
 
         var localizedDescription: String {
             switch self {
@@ -19,6 +20,8 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
                 return "CMake configuration failed."
             case .cmakeBuildFailed:
                 return "CMake build failed."
+            case .markerNotFound(let marker):
+                return "Marker not found: \(marker)"
             }
         }
     }
@@ -37,6 +40,12 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
                 packageDir: context.package.directoryURL
             )
         }
+
+        try generatePackageSwiftFile(
+            env: env,
+            template: context.package.directoryURL.appending(path: "Package.swift.template"),
+            destination: context.package.directoryURL.appending(path: "Package.swift")
+        )
     }
 
     func headerFileEligible(fileName: String) -> Bool {
@@ -127,7 +136,6 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         let includeDir = destinationDir.appending(path: "include")
         try fileManager.createDirectory(at: includeDir, withIntermediateDirectories: true)
         
-        let picoSDKHeaderURL = outputDir.appending(path: "include/CPicoSDK_\(combination).h")
         let builtHeaderURL = buildDir.appending(path: "CPicoSDK_\(combination).h")
         let picoSDKHeaderContent = self.fixPicoSDKHeader(content: try String(contentsOf: builtHeaderURL, encoding: .utf8))
 
@@ -215,5 +223,53 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
 
         return "#pragma GCC system_header\n" +
             content
+    }
+
+    func generatePackageSwiftFile(env: Env, template: URL, destination: URL) throws {
+        let templateContent = try String(contentsOf: template, encoding: .utf8)
+
+        let headerMarker = "// GENERATOR MARK: HEADER"
+        let traitsMarker = "// GENERATOR MARK: TRAITS"
+        let targetsMarker = "// GENERATOR MARK: TARGETS"
+        let targetDependenciesMarker = "// GENERATOR MARK: TARGET DEPENDENCIES"
+
+        var templateLines = templateContent.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        
+        guard let headerIndex = templateLines.firstIndex(where: { $0.contains(headerMarker) }) else {
+            throw Error.markerNotFound(headerMarker)
+        }
+
+        templateLines.insert(
+            "// THIS FILE IS GENERATED. DO NOT EDIT, OTHERWISE CHANGES WILL BE OVERWRITTEN. CHANGE Package.swift.template INSTEAD.",
+            at: headerIndex.advanced(by: 1)
+        )
+
+        guard let traitsIndex = templateLines.firstIndex(where: { $0.contains(traitsMarker) }) else {
+            throw Error.markerNotFound(traitsMarker)
+        }
+
+        // TODO: Generate traits based on generator_vars.json
+
+        guard let targetsIndex = templateLines.firstIndex(where: { $0.contains(targetsMarker) }) else {
+            throw Error.markerNotFound(targetsMarker)
+        }
+
+        let targets = env.combinations.keys
+            .map { "        .target(name: \"_CPicoSDK_\($0)\")," }
+        templateLines.insert(contentsOf: targets, at: targetsIndex.advanced(by: 1))
+
+        guard let targetDependenciesIndex = templateLines.firstIndex(where: { $0.contains(targetDependenciesMarker) }) else {
+            throw Error.markerNotFound(targetDependenciesMarker)
+        }
+
+        let targetDependencies = env.combinations.map { name, combination in
+            let traits = combination.traits.map { "\"\($0)\"" }.joined(separator: ", ")
+            return "                .target(name: \"_CPicoSDK_\(name)\", condition: .when(traits: [\(traits)])),"
+        }
+
+        templateLines.insert(contentsOf: targetDependencies, at: targetDependenciesIndex.advanced(by: 1))
+
+        let content = templateLines.joined(separator: "\n")
+        try content.write(to: destination, atomically: true, encoding: .utf8)
     }
 }

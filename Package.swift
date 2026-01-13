@@ -3,6 +3,7 @@
 import PackageDescription
 
 // GENERATOR MARK: HEADER
+// THIS FILE IS GENERATED. DO NOT EDIT, OTHERWISE CHANGES WILL BE OVERWRITTEN. CHANGE Package.swift.template INSTEAD.
 
 let package = Package(
     name: "CPicoSDK",
@@ -43,12 +44,18 @@ let package = Package(
         // GENERATOR MARK: TARGETS
         .target(name: "_CPicoSDK_pico2"),
         .target(name: "_CPicoSDK_pico2_w"),
+        .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350"),
+        .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350"),
+
+        // Manually defined targets
         .target(
             name: "CPicoSDK",
             dependencies: [
                 // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
-                .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
+                .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
+                .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_None"])),
+                .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ]
         ),
         .plugin(
