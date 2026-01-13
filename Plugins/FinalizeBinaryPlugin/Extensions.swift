@@ -45,13 +45,13 @@ extension Collection {
 }
 
 extension Env {
-    static func importedLibs(combination: String) throws -> Set<String> {
-        var importedLibs = Set(
+    static func importedLibs(combination: String) throws -> [String] {
+        var importedLibs =
             try Env.value("IMPORTED_LIBS", combination: combination).expected.split(separator: ",")
                 .map(String.init)
-        )
-        try importedLibs.formUnion(
-            Env.value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
+
+        try importedLibs.append(
+            contentsOf: Env.value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
                 .compactMap(\.nonEmpty)
                 .map(String.init)
         )

@@ -1,13 +1,13 @@
 {
-  "originHash" : "503466106af3c1d4bd986d2bac9ad2664b24a13bc9385fc496869d0a0311298e",
+  "originHash" : "f9b6617f20a597950fc068e70328bb43ef569a9768a23717f6f9591bba9db2c9",
   "pins" : [
     {
       "identity" : "picosdkdownloader",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sympatito/PicoSDKDownloader",
       "state" : {
-        "revision" : "8ec1fe1337f45a65d925f6537066338517c72055",
-        "version" : "0.0.3"
+        "revision" : "0716b9a392691b90fa9fd1531da5e2b9a51e9630",
+        "version" : "0.0.4"
       }
     },
     {

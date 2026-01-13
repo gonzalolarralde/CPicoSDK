@@ -91,7 +91,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
 
         print("[CPicoSDK] Writing source h file in \(sourceHURL.path)")
 
-        let importedLibs: Set<String> = try Env.importedLibs(combination: combination)
+        let importedLibs = try Env.importedLibs(combination: combination)
 
         let sourceHContent = try generateSourceHeaderContent(
             importedLibs: importedLibs,
@@ -128,9 +128,9 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         try fileManager.createDirectory(at: includeDir, withIntermediateDirectories: true)
         
         let picoSDKHeaderURL = outputDir.appending(path: "include/CPicoSDK_\(combination).h")
-        var picoSDKHeaderContent = "#pragma GCC system_header\n"
         let builtHeaderURL = buildDir.appending(path: "CPicoSDK_\(combination).h")
-        picoSDKHeaderContent += try String(contentsOf: builtHeaderURL, encoding: .utf8)
+        let picoSDKHeaderContent = self.fixPicoSDKHeader(content: try String(contentsOf: builtHeaderURL, encoding: .utf8))
+
         try picoSDKHeaderContent.write(
             to: destinationDir.appending(path: "include/CPicoSDK_\(combination).h"),
             atomically: true,
@@ -138,7 +138,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         )
     }
 
-    func generateSourceHeaderContent(importedLibs: Set<String>, packageDir: URL, combination: String) throws -> String {
+    func generateSourceHeaderContent(importedLibs: [String], packageDir: URL, combination: String) throws -> String {
         let lwipInclude = !importedLibs.contains("pico_lwip_http") ? "" : """
         #include <lwip/apps/http_client.h>
         #include <lwip/altcp.h>
@@ -176,7 +176,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         """
     }
 
-    func runCMakeBuildProcess(cmakeBin: URL, srcDir: URL, buildDir: URL, importedLibs: Set<String>, combination: String) async throws {
+    func runCMakeBuildProcess(cmakeBin: URL, srcDir: URL, buildDir: URL, importedLibs: [String], combination: String) async throws {
         print("[CPicoSDK] Configuring CMake project in \(buildDir.path)")
 
         let cmakeConfigProcess = Process()
@@ -204,5 +204,16 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         cmakeBuildProcess.executableURL = cmakeBin
         cmakeBuildProcess.arguments = ["--build", buildDir.path]
         guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
+    }
+
+    func fixPicoSDKHeader(content: String) -> String {
+        let unsignedRegex = /_u\(\s*((?:0x)?[0-9a-fA-F]+)\s*\)/
+
+        var content = content.replacing(unsignedRegex) { match in
+            "\(match.output.1)u"
+        }
+
+        return "#pragma GCC system_header\n" +
+            content
     }
 }

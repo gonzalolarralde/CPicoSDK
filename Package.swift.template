@@ -37,7 +37,7 @@ let package = Package(
         // GENERATOR MARK: TRAITS
     ],
     dependencies: [
-        .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.3"),
+        .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.4"),
     ],
     targets: [
         // GENERATOR MARK: TARGETS
