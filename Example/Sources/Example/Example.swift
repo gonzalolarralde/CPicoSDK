@@ -19,8 +19,6 @@ struct App {
             print("Hello, world!")
 
             tight_loop_contents()
-
-            pio_add_program(.init(bitPattern: Int(PIO0_BASE)), shift_combined.program)
         }
     }
 }
