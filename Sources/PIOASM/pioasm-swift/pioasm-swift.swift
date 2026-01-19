@@ -45,13 +45,17 @@ struct Main {
         } catch {
             throw Error.compilerOutputFailedToDecode(error)
         }
-    
-        let result = Self.generateSwiftOutput(visibility: "", compiledSource: compiledSource)
+
+        let result = Self.generateSwiftOutput(compiledSource: compiledSource)
 
         try result.write(to: output, atomically: true, encoding: .utf8)
     }
 
-    static func generateSwiftOutput(visibility: String, compiledSource: CompiledSource) -> String {
+    static func generateSwiftOutput(compiledSource: CompiledSource) -> String {
+        let globalVisibility = (compiledSource.programs.flatMap(\.langOpts)
+            .last(where: { $0.lang.lowercased() == "swift" && $0.name.lowercased() == "globalVisibility" })?
+            .value).map { "\($0) " } ?? ""
+
         var result = """
         import CPicoSDK
 
@@ -61,11 +65,15 @@ struct Main {
         
         for symbol in compiledSource.publicSymbols {
             result += """
-            \(visibility)let \(symbol.key) = \(symbol.value)
+            \(globalVisibility)let \(symbol.key) = \(symbol.value)
             """ + "\n"
         }
 
         for program in compiledSource.programs {
+            let visibility = (program.langOpts
+                .last(where: { $0.lang.lowercased() == "swift" && $0.name.lowercased() == "visibility" })?
+                .value).map { "\($0) " } ?? ""
+
             result += """
             \(visibility)enum \(program.name) {
                 \(visibility)static let wrap_target: UInt32 = \(program.wrapTarget)
@@ -192,7 +200,12 @@ struct Main {
                 }
                 #endif
             }
+
             """ + "\n"
+
+            for codeBlock in program.codeBlocks.filter({ $0.lang.lowercased() == "swift" }) {
+                result += codeBlock.contents + "\n"
+            }
         }
 
         return result

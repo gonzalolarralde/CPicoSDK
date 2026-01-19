@@ -27,6 +27,17 @@ struct CompiledSource: Codable {
         let frac: Int
     }
 
+    struct CodeBlock: Codable {
+        let lang: String
+        let contents: String
+    }
+
+    struct LangOpt: Codable {
+        let lang: String
+        let name: String
+        let value: String
+    }
+
     struct Program: Codable {
         let name: String
         let pioVersion: Int
@@ -48,6 +59,9 @@ struct CompiledSource: Codable {
         let clockDiv: ClockDiv?
 
         let instructions: [Instruction]
+
+        let codeBlocks: [CodeBlock]
+        let langOpts: [LangOpt]
     }
 
     let pioASMVersion: String
