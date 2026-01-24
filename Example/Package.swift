@@ -37,7 +37,7 @@ let package = Package(
         .target(
             name: "Example",
             dependencies: ["CPicoSDK"],
-            plugins: [.plugin(name: "PIOASMPlugin", package: "CPicoSDK")]
+            plugins: [.plugin(name: "PIOASM", package: "CPicoSDK")]
         ),
     ]
 )
