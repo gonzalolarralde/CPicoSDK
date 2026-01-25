@@ -79,7 +79,6 @@ struct Main {
                 \(visibility)static let wrap_target: UInt32 = \(program.wrapTarget)
                 \(visibility)static let wrap: UInt32 = \(program.wrap)
                 \(visibility)static let pio_version: UInt8 = \(program.pioVersion)
-
             """ + "\n"
 
             for symbol in program.publicSymbols {
@@ -101,9 +100,9 @@ struct Main {
             """ + "\n"
             
             for (idx, instruction) in program.instructions.enumerated() {
-                if idx == program.wrap {
+                if idx == program.wrapTarget {
                     result += """
-                                                // .wrap
+                                                // .wrap_target
                     """ + "\n"
                 }
 
@@ -117,9 +116,9 @@ struct Main {
                                 0x\(instruction.hex),     //     \(instruction.instruction.components(separatedBy: .newlines).joined(separator: ""))
                 """ + "\n"
 
-                if idx == program.wrapTarget {
+                if idx == program.wrap {
                     result += """
-                                                // .wrap_target
+                                                // .wrap
                     """ + "\n"
                 }
             }
@@ -133,18 +132,18 @@ struct Main {
                 }()
 
                 #if !PICO_NO_HARDWARE
-                \(visibility)static nonisolated(unsafe) let program_storage = pio_program(
-                    instructions: instructions.baseAddress!,
-                    length: \(program.instructions.count),
-                    origin: \(program.origin),
-                    pio_version: Self.pio_version,
-                    used_gpio_ranges: \(program.usedGPIORanges)
-                )
-
-                \(visibility)static var program: UnsafePointer<pio_program_t> {
-                    // This is safe only because program_storage has a static lifetime
-                    withUnsafePointer(to: program_storage) { $0 }
-                }
+                \(visibility)static nonisolated(unsafe) let program: UnsafePointer<pio_program_t> = {
+                    let program = pio_program(
+                        instructions: instructions.baseAddress!,
+                        length: \(program.instructions.count),
+                        origin: \(program.origin),
+                        pio_version: Self.pio_version,
+                        used_gpio_ranges: \(program.usedGPIORanges)
+                    )
+                    let pointer = UnsafeMutablePointer<pio_program_t>.allocate(capacity: 1)
+                    pointer.initialize(to: program)
+                    return UnsafePointer(pointer)
+                }()
 
                 \(visibility)static func get_default_config(offset: UInt32) -> pio_sm_config {
                     var c = pio_get_default_sm_config();

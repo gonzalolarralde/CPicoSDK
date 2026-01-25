@@ -16,12 +16,12 @@ let package = Package(
                 .init(name: "BootStage2_W25Q080"),
 
                 // - Pico 2
-                // .init(name: "Variant_RP2350A"),
-                // .init(name: "Radio_None"),
+                .init(name: "Variant_RP2350A"),
+                .init(name: "Radio_None"),
 
                 // - Pico 2 W
-                .init(name: "Variant_RP2350A"),
-                .init(name: "Radio_CYW43439"),
+                // .init(name: "Variant_RP2350A"),
+                // .init(name: "Radio_CYW43439"),
 
                 // - Pimoroni Pico Plus 2
                 // .init(name: "Variant_RP2350B"),
