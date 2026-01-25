@@ -9,8 +9,9 @@ let package = Package(
     name: "CPicoSDK",
     products: [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
-        .plugin(name: "PrepareEnvironmentPlugin", targets: ["PrepareEnvironmentPlugin"]),
-        .plugin(name: "FinalizeBinaryPlugin", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
+        .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
+        .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
     traits: [
         // TODO: The generator needs to define traits. This needs to be implemented.
@@ -47,7 +48,7 @@ let package = Package(
         .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350"),
         .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350"),
 
-        // Manually defined targets
+        // Mixed targets
         .target(
             name: "CPicoSDK",
             dependencies: [
@@ -58,6 +59,16 @@ let package = Package(
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ]
         ),
+        
+        // Manually defined targets
+        .plugin(
+            name: "PIOASMPlugin", 
+            capability: .buildTool,
+            dependencies: ["PIOASM", "pioasm-swift"]
+        ),
+        .binaryTarget(name: "PIOASM", path: "Sources/PIOASM/PIOASM.artifactbundle"),
+        .executableTarget(name: "pioasm-swift", path: "Sources/PIOASM/pioasm-swift"),
+        
         .plugin(
             name: "GenerateCPicoSDKPlugin",
             capability: .command(
