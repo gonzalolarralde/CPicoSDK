@@ -8,9 +8,9 @@ let package = Package(
     name: "CPicoSDK",
     products: [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
-        .plugin(name: "PIOASMPlugin", targets: ["PIOASMPlugin"]),
-        .plugin(name: "PrepareEnvironmentPlugin", targets: ["PrepareEnvironmentPlugin"]),
-        .plugin(name: "FinalizeBinaryPlugin", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
+        .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
+        .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
     traits: [
         // TODO: The generator needs to define traits. This needs to be implemented.
