@@ -31,6 +31,7 @@ let package = Package(
         .trait(name: "BootStage2_IS25LP080"),
         .trait(name: "BootStage2_AT25SF128A"),
 
+        .trait(name: "StdIO_Automatic", description: "Enables stdio through USB when using picotool and UART when using cortex-debug."),
         .trait(name: "StdIO_UART", description: "Enables stdio operations through UART pins"),
         .trait(name: "StdIO_USB", description: "Enables stdio operations through USB"),
         .trait(name: "StdIO_RTT", description: "Enables stdio operations through the RTT debugging protocol"),

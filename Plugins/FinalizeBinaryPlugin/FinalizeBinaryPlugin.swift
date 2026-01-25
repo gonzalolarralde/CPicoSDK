@@ -62,11 +62,13 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             .appending(path: "lib\(libProduct.name).a")
 
         let combination = try await getCombination(from: buildArtifact)
+        let stdioOptions = await getStdioOptions(from: buildArtifact, combination: combination)
 
         print("[CPicoSDK] Finalizing build for \(libProduct.name), combination: \(combination)...")
 
         try await self.runBuild(
             combination: combination,
+            stdioOptions: stdioOptions,
             workingDir: context.pluginWorkDirectoryURL,
             cmakeHarness: picoSDKURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"),
             outputDir: outputDir,
@@ -74,6 +76,68 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             productName: libProduct.name,
             clean: clean
         )
+    }
+
+    func getStaticTrait(from buildArtifact: URL, traitName: String) async throws -> Bool {
+        let nmProcess = Process()
+        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
+        nmProcess.arguments = [buildArtifact.path]
+
+        let standardOutput = Pipe()
+        nmProcess.standardOutput = standardOutput
+
+        guard try await nmProcess.asyncRun() == 0 else { throw Error.nmFailed }
+
+        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
+        guard let outputString = String(data: outputData, encoding: .utf8) else {
+            throw Error.nmFailed
+        }
+
+        let traitSymbol = "_cpicosdk_trait_\(traitName.lowercased())"
+        return outputString.contains(traitSymbol)
+    }
+
+    func getStdioOptions(from buildArtifact: URL, combination: String) async -> (uart: Bool, usb: Bool, rtt: Bool) {
+        do {
+            var (uart, usb, rtt) = (false, false, false)
+
+            if try await getStaticTrait(from: buildArtifact, traitName: "stdio_automatic") {
+                switch Env.value("AUTO_STDIO") {
+                    case .some("uart"):
+                        uart = true
+                        print("[CPicoSDK] StdIO automatically selected UART.")
+                    case .some("usb"):
+                        usb = true
+                        print("[CPicoSDK] StdIO automatically selected USB.")
+                    case .some("rtt"):
+                        rtt = true
+                        print("[CPicoSDK] StdIO automatically selected RTT.")
+                    case .some(let other):
+                        usb = true
+                        print("[CPicoSDK] StdIO automatical selection enabled, but unknown value provided by tool (\(other)). Defaulting to USB.")
+                    case .none:
+                        usb = true
+                        print("[CPicoSDK] StdIO automatical selection enabled, but no value provided by tool. Defaulting to USB.")
+                }
+            } else {
+                if try await getStaticTrait(from: buildArtifact, traitName: "stdio_uart") {
+                    uart = true
+                }
+                if try await getStaticTrait(from: buildArtifact, traitName: "stdio_usb") {
+                    usb = true
+                }
+                if try await getStaticTrait(from: buildArtifact, traitName: "stdio_rtt") {
+                    rtt = true
+                }
+
+                print("[CPicoSDK] StdIO manual selection: UART=\(uart), USB=\(usb), RTT=\(rtt).")
+            }
+
+            return (uart, usb, rtt)
+        } catch {
+            print("[CPicoSDK] StdIO Warning: Couldn't determine options from the build artifact. Defaulting to USB. Error: \(error)")
+            return (false, true, false)
+        }
     }
 
     func getCombination(from buildArtifact: URL) async throws -> String {
@@ -101,7 +165,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         return combination
     }
 
-    func runBuild(combination: String, workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
+    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
@@ -148,7 +212,10 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             "-DTOOLCHAIN_VERSION=\(try Env.value("TOOLCHAIN_VERSION", combination: combination).expected)",
             "-DSDK_VERSION=\(try Env.value("SDK_VERSION", combination: combination).expected)",
             "-DIMPORTED_LIBS=\(importedLibs.joined(separator: ","))",
-            "-DIMPORTED_LOCATION=\(buildArtifact.path)"
+            "-DIMPORTED_LOCATION=\(buildArtifact.path)",
+            "-DSTDIO_UART=\(stdioOptions.uart ? "1" : "0")",
+            "-DSTDIO_USB=\(stdioOptions.usb ? "1" : "0")",
+            "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",
         ]
 
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }

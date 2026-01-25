@@ -41,6 +41,17 @@
     #error("Invalid Variant + Radio combination.")
 #endif
 
+#if StdIO_Automatic && (StdIO_UART || StdIO_USB || StdIO_RTT)
+    #error("StdIO_Automatic mode is selected, StdIO_UART, StdIO_USB or StdIO_RTT can't be selected at the same time.")
+#endif
+
+#if StdIO_Automatic
+    // Automatic mode will enable USB when using picotool and UART when using cortex-debug.
+    // Depends on the environment where the binary is being built, vscode extensions may be required.
+    @used @_silgen_name("_cpicosdk_trait_stdio_automatic")
+    public let _cpicosdk_trait_stdio_automatic = 1
+#endif
+
 #if StdIO_UART
     @used @_silgen_name("_cpicosdk_trait_stdio_uart")
     public let _cpicosdk_trait_stdio_uart = 1

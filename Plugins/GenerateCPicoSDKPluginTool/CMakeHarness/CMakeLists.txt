@@ -36,9 +36,14 @@ add_executable(CMakeHarness main.c)
 pico_set_program_name(CMakeHarness "CMakeHarness")
 pico_set_program_version(CMakeHarness "0.1")
 
-# Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(CMakeHarness 1)
+pico_enable_stdio_uart(CMakeHarness 0)
 pico_enable_stdio_usb(CMakeHarness 0)
+pico_enable_stdio_rtt(CMakeHarness 0)
+
+target_compile_definitions("${PROJECT_NAME}" PRIVATE
+    PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
+    PICO_ENTER_USB_BOOT_ON_EXIT=1
+)
 
 string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
 target_link_libraries(CMakeHarness ${IMPORTED_LIBS_LIST})

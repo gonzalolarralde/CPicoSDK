@@ -104,6 +104,15 @@ extension PrepareEnvironmentPlugin {
     func generateBashFunctions() {
         self.output += """
         function finalize_rp2xxx_binary {
+            if [[ "${1:-}" == "--flash" || "${1:-}" == "--picotool" ]]; then
+                export AUTO_STDIO="usb"
+            elif [[ "${1:-}" == "--cortex-debug" ]]; then
+                export AUTO_STDIO="uart"
+            else
+                echo "[CPicoSDK] Warning: Launcher not specified. Defaulting to USB stdio." >&2
+                export AUTO_STDIO="usb"
+            fi
+
             "$SWIFTLY_PATH" run swift package finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
                 --incremental \\
                 --allow-writing-to-package-directory
@@ -186,10 +195,10 @@ extension PrepareEnvironmentPlugin {
             "version": "2.0.0",
             "tasks": [
                 {
-                    "label": "Compile Project [CPicoSDK]",
+                    "label": "Compile and Flash Project (cortex-debug) [CPicoSDK]",
                     "type": "process",
                     "command": "${workspaceFolder}/build.sh",
-                    "args": [],
+                    "args": ["--cortex-debug"],
                     "options": {
                         "cwd": "${workspaceFolder}",
                     },
@@ -201,7 +210,7 @@ extension PrepareEnvironmentPlugin {
                     "problemMatcher": "$swiftc",
                 },
                 {
-                    "label": "Compile and Flash Project [CPicoSDK]",
+                    "label": "Compile and Flash Project (picotool) [CPicoSDK]",
                     "type": "process",
                     "command": "${workspaceFolder}/build.sh",
                     "args": ["--flash"],
@@ -250,7 +259,7 @@ extension PrepareEnvironmentPlugin {
             "configurations": [
                 {
                     // Same settings as pico-vscode.
-                    "preLaunchTask": "Compile Project [CPicoSDK]",
+                    "preLaunchTask": "Compile and Flash Project (cortex-debug) [CPicoSDK]",
                     "name": "SwiftPM: \(envVars["SWIFTPM_PRODUCT"]!) - Debug (Cortex-Debug) [CPicoSDK]",
                     "cwd": "\(envVars["OPENOCD_PATH"]!)/scripts",
                     "executable": "${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf",
@@ -277,12 +286,12 @@ extension PrepareEnvironmentPlugin {
                     ]
                 },
                 {
+                    "preLaunchTask": "Compile and Flash Project (picotool) [CPicoSDK]",
                     "name": "SwiftPM: \(envVars["SWIFTPM_PRODUCT"]!) - Flash (picotool) [CPicoSDK]",
                     "request": "launch",
                     "type": "lldb",
                     "program": "/usr/bin/true", // Dummy program to satisfy cppdbg requirements
                     "cwd": "${workspaceFolder}",
-                    "preLaunchTask": "Compile and Flash Project [CPicoSDK]",
                     "stopOnEntry": false
                 },
             ]

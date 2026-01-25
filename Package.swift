@@ -32,6 +32,7 @@ let package = Package(
         .trait(name: "BootStage2_IS25LP080"),
         .trait(name: "BootStage2_AT25SF128A"),
 
+        .trait(name: "StdIO_Automatic", description: "Enables stdio through USB when using picotool and UART when using cortex-debug."),
         .trait(name: "StdIO_UART", description: "Enables stdio operations through UART pins"),
         .trait(name: "StdIO_USB", description: "Enables stdio operations through USB"),
         .trait(name: "StdIO_RTT", description: "Enables stdio operations through the RTT debugging protocol"),
@@ -59,7 +60,7 @@ let package = Package(
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ]
         ),
-        
+
         // Manually defined targets
         .plugin(
             name: "PIOASMPlugin", 
@@ -68,7 +69,7 @@ let package = Package(
         ),
         .binaryTarget(name: "PIOASM", path: "Sources/PIOASM/PIOASM.artifactbundle"),
         .executableTarget(name: "pioasm-swift", path: "Sources/PIOASM/pioasm-swift"),
-        
+
         .plugin(
             name: "GenerateCPicoSDKPlugin",
             capability: .command(
