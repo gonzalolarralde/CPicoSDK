@@ -19,7 +19,7 @@
                 },
                 {
                     "path": "pioasm-windows/pioasm.exe",
-                    "supportedTriples": ["x86_64-pc-windows-msvc", "arm64-pc-windows-msvc"]
+                    "supportedTriples": ["x86_64-pc-windows-msvc"]
                 }
             ]
         }
