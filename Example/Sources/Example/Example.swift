@@ -1,26 +1,28 @@
 import CPicoSDK
 
 @main
-struct App {
-    static func main() {
+struct App: EmbeddedMain {
+    static nonisolated(unsafe) var last_state: Bool = false
+
+    enum Error: Swift.Error {
+        case noFreeStateMachine
+        case pioNotResolved
+    }
+
+    // TODO: Remove this when silgen error is resolved.
+    static func main() throws(Error) { try Self._main() }
+
+    static func setup() throws(Error) {
         stdio_init_all()
         status_led_init()
 
         sleep_ms(1000)
         print("Hello, world!")
 
-        multicore_launch_core1(ledExample)
-        try! pioExample()
+        multicore_launch_core1(pioExample)
     }
-}
 
-// MARK: LED Example
-
-@c
-func ledExample() {
-    var last_state = false
-
-    while true {
+    static func loop() throws(Error) {
         status_led_set_state(last_state)
         last_state = !last_state
         sleep_ms(100)
@@ -38,7 +40,8 @@ enum PIOError: Error {
 
 // This is a reimplementation of hello_pio from pico-examples
 // https://github.com/raspberrypi/pico-examples/blob/master/pio/hello_pio/hello.c
-func pioExample() throws(PIOError) {
+@c
+func pioExample() {
     // Note that this is not the LED pin, we will blink on GPIO 20 for this example.
     // Please connect something visible to see the effect!
     let pin: UInt32 = 20
@@ -67,12 +70,15 @@ func pioExample() throws(PIOError) {
 
     // This is the manual way of doing the same as above
     pio = PIO(bitPattern: Int(PIO0_BASE))
+    sm = 0
     guard let pio = pio else {
-        throw PIOError.pioNotResolved
+        // throw PIOError.pioNotResolved
+        fatalError("PIO not resolved")
     }
 
     guard let newOffset = UInt32(exactly: pio_add_program(pio, hello.program)) else {
-        throw PIOError.noFreeStateMachine
+        // throw PIOError.noFreeStateMachine
+        fatalError("No free state machine")
     }
     offset = newOffset
 
@@ -100,8 +106,4 @@ func pioExample() throws(PIOError) {
 
     // This will free resources and unload our program
     pio_remove_program_and_unclaim_sm(hello.program, pio, sm, offset);
-
-    while true {
-        tight_loop_contents()
-    }
 }

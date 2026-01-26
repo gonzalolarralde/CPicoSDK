@@ -69,3 +69,58 @@
 
 // TODO: Implement trait generation.
 // GENERATOR MARK: TRAIT DEFINITIONS
+
+/// Optional helper main class to setup the SDK and provide async setup/loop methods.
+/// Inherit from this class and implement `setup` and `loop` methods to use it, similar
+/// to Arduino's setup/loop pattern.
+/// 
+/// StdIO setup will be performed automatically before calling `setup`.
+/// 
+/// Future enhancements might include automatic handling of other SDK features, possibly
+/// including concurrency initialization, cyw polling, and more behaviors that might help
+/// make this implementation easier and accessible, while making some assumptions.
+/// 
+/// Option out of this enhancements can be done by simply not inheriting from this class
+/// and implementing your own `main` function instead.
+/// 
+/// How to use:
+/// ```swift
+/// import CPicoSDK
+/// 
+/// @main
+/// final class App: EmbeddedMain {
+///     public enum Error: Swift.Error {
+///         // ... your error cases here
+///     }
+/// 
+///     override class func setup() throws {
+///         // Your setup code here
+///     }
+/// 
+///     override class func loop() throws {
+///         // Your loop code here
+///     }
+/// }
+/// ```
+public protocol EmbeddedMain {
+    associatedtype Error: Swift.Error
+    static func setup() throws(Error)
+    static func loop() throws(Error)
+}
+
+public extension EmbeddedMain {
+    static func _main() throws(Error) {
+        Self.sdkSetup()
+
+        try Self.setup()
+
+        while true {
+            try Self.loop()
+            tight_loop_contents()
+        }
+    }
+
+    static func sdkSetup() {
+        stdio_init_all()
+    }
+}
