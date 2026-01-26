@@ -1,5 +1,8 @@
 import Foundation
 import PackagePlugin
+#if os(Linux)
+import Glibc
+#endif
 
 @main
 struct FinalizeBinaryPlugin: CommandPlugin {
@@ -165,6 +168,15 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         return combination
     }
 
+    func unblockSigchldIfNeeded() {
+        #if os(Linux)
+        var set = sigset_t()
+        sigemptyset(&set)
+        sigaddset(&set, SIGCHLD)
+        _ = sigprocmask(SIG_UNBLOCK, &set, nil)
+        #endif
+    }
+
     func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
@@ -218,12 +230,14 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",
         ]
 
+        unblockSigchldIfNeeded()
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
 
         let cmakeBuildProcess = Process()
         cmakeBuildProcess.executableURL = cmakeBin
         cmakeBuildProcess.environment = env
         cmakeBuildProcess.arguments = ["--build", buildDir.path]
+        unblockSigchldIfNeeded()
         guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeBuildFailed }
 
         try fileManager.ensureDirectoryExists(at: outputDir.path, isDirectory: true)

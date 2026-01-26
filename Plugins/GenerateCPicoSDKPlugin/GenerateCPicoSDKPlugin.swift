@@ -1,5 +1,8 @@
 import Foundation
 import PackagePlugin
+#if os(Linux)
+import Glibc
+#endif
 
 @main
 struct GenerateCPicoSDKPlugin: CommandPlugin {
@@ -184,6 +187,15 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         """
     }
 
+    func unblockSigchldIfNeeded() {
+        #if os(Linux)
+        var set = sigset_t()
+        sigemptyset(&set)
+        sigaddset(&set, SIGCHLD)
+        _ = sigprocmask(SIG_UNBLOCK, &set, nil)
+        #endif
+    }
+
     func runCMakeBuildProcess(cmakeBin: URL, srcDir: URL, buildDir: URL, importedLibs: [String], combination: String) async throws {
         print("[CPicoSDK] Configuring CMake project in \(buildDir.path)")
 
@@ -204,6 +216,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             "-DCOMBINATION=\(combination)",
         ]
 
+        unblockSigchldIfNeeded()
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
 
         print("[CPicoSDK] Building CMake project in \(buildDir.path)")
@@ -211,6 +224,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         let cmakeBuildProcess = Process()
         cmakeBuildProcess.executableURL = cmakeBin
         cmakeBuildProcess.arguments = ["--build", buildDir.path]
+        unblockSigchldIfNeeded()
         guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
     }
 
