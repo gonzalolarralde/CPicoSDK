@@ -37,7 +37,7 @@
 
     @_exported import _CPicoSDK_pimoroni_pico_plus2_w_rp2350
 #else
-    // TODO: This is very restrained, until we can add proper board capability support this will help us move through.
+    // TODO: This is very constrained, until we can add proper board capability support this will help us keep moving.
     #error("Invalid Variant + Radio combination.")
 #endif
 

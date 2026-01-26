@@ -217,7 +217,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
     func fixPicoSDKHeader(content: String) -> String {
         let unsignedRegex = /_u\(\s*((?:0x)?[0-9a-fA-F]+)\s*\)/
 
-        var content = content.replacing(unsignedRegex) { match in
+        let content = content.replacing(unsignedRegex) { match in
             "\(match.output.1)u"
         }
 
@@ -244,7 +244,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             at: headerIndex.advanced(by: 1)
         )
 
-        guard let traitsIndex = templateLines.firstIndex(where: { $0.contains(traitsMarker) }) else {
+        guard templateLines.contains(where: { $0.contains(traitsMarker) }) else {
             throw Error.markerNotFound(traitsMarker)
         }
 
@@ -254,7 +254,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             throw Error.markerNotFound(targetsMarker)
         }
 
-        let targets = env.combinations.keys
+        let targets = env.combinations.keys.sorted()
             .map { "        .target(name: \"_CPicoSDK_\($0)\")," }
         templateLines.insert(contentsOf: targets, at: targetsIndex.advanced(by: 1))
 
@@ -262,7 +262,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             throw Error.markerNotFound(targetDependenciesMarker)
         }
 
-        let targetDependencies = env.combinations.map { name, combination in
+        let targetDependencies = env.combinations.sorted(by: \.key).map { name, combination in
             let traits = combination.traits.map { "\"\($0)\"" }.joined(separator: ", ")
             return "                .target(name: \"_CPicoSDK_\(name)\", condition: .when(traits: [\(traits)])),"
         }

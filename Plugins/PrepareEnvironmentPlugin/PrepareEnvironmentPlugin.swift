@@ -99,7 +99,8 @@ class PrepareEnvironmentPlugin: CommandPlugin {
             "--ninja", envVars["NINJA_VERSION"]!,
             "--picotool", envVars["PICOTOOL_VERSION"]!,
             "--openocd", envVars["OPENOCD_VERSION"]!,
-            "--root", envVars["PICO_SDK_BUNDLE_PATH"]!
+            "--root", envVars["PICO_SDK_BUNDLE_PATH"]!,
+            "--include-sdk-tools", "false"
         ]
 
         do {
