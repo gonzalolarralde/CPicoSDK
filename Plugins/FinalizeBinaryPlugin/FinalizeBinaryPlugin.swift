@@ -168,6 +168,8 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         return combination
     }
 
+    // TODO: Remove this when upgrading to Swift 6.3
+    // https://github.com/swiftlang/swift/issues/81272
     func unblockSigchldIfNeeded() {
         #if os(Linux)
         var set = sigset_t()

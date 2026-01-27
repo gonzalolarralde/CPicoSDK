@@ -30,6 +30,19 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["EXTRA_CONFIG_PARAMS"] = buildType.extraConfigParams
         }
 
+        // TODO: Remove this when upgrading to Swift 6.3
+        // https://github.com/swiftlang/swift/issues/81272
+        #if os(Linux)
+        let linuxSwiftPMFlags = "--disable-sandbox --disable-build-manifest-caching --manifest-cache none"
+        if let extra = newEnvVars["EXTRA_CONFIG_PARAMS"] {
+            if !extra.contains("--disable-sandbox") {
+                newEnvVars["EXTRA_CONFIG_PARAMS"] = extra + " " + linuxSwiftPMFlags
+            }
+        } else {
+            newEnvVars["EXTRA_CONFIG_PARAMS"] = linuxSwiftPMFlags
+        }
+        #endif
+
         if newEnvVars["TOOLSET_PATH"] == nil {
             newEnvVars["TOOLSET_PATH"] = context.package.directoryURL.relativePath.appending("/toolset.json")
         }
