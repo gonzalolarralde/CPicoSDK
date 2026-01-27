@@ -10,7 +10,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/gonzalolarralde/CPicoSDK",
-            .upToNextMinor(from: "2.2.1"),
+            exact: "2.2.2",
             traits: [
                 .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),

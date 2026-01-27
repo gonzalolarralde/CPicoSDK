@@ -46,6 +46,14 @@ Once your project is built, you have two options for programming your RP2xxx dev
 
 - **Using picotool** (USB flashing): Hold down the **BOOTSEL** button while connecting your device via USB (or press it while pressing the reset button). The device will appear as a USB mass storage device, and picotool can directly write the firmware without needing a debug probe.
 
+#### PIO Example
+
+The Example project includes a small PIO demo based on `hello_pio` from pico-examples. It ships a `hello.pio` file and uses the `PIOASM` SwiftPM plugin to assemble it and expose a Swift helper (`hello.program_init`). In `Example.swift`, the PIO program is loaded and a state machine drives GPIO 20 by pushing values into the TX FIFO.
+
+Swift-specific blocks can be embedded directly in a `.pio` file using a `% swift { ... }` section. In `hello.pio`, that block defines a Swift extension on the generated `hello` namespace with `program_init(...)`, which wires up pin mapping, GPIO init, pin direction, state machine config, and enable. This lets you keep PIO program + Swift setup side by side in a single source file.
+
+The `% swift { ... }` section is placed after the `.program` body in `hello.pio`, so the assembly remains up top and the Swift helper lives at the bottom of the same file.
+
 ### Versioning
 
 CPicoSDK follows a versioning scheme that tracks the underlying Pico SDK version:
@@ -133,30 +141,20 @@ let package = Package(
         .library(name: "MyPicoProject", type: .static, targets: ["MyPicoProject"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalolarralde/CPicoSDK", .upToNextMinor(from: "2.2.1")),
+        .package(
+            url: "https://github.com/gonzalolarralde/CPicoSDK", exact: "2.2.2",
+            traits: [.init(name: "Variant_RP2350A"), .init(name: "Radio_None")] // Pico 2
+            traits: [.init(name: "Variant_RP2350A"), .init(name: "Radio_CYW43439")] // Pico 2W
+        ),
     ],
     targets: [
         .target(
             name: "MyPicoProject",
-            dependencies: ["CPicoSDK"]
+            dependencies: ["CPicoSDK"],
+            plugins: [.plugin(name: "PIOASM", package: "CPicoSDK")]
         ),
     ]
 )
-```
-
-If you need to select a specific board configuration, add traits to the dependency:
-
-```swift
-.package(
-    url: "https://github.com/gonzalolarralde/CPicoSDK",
-    .upToNextMinor(from: "2.2.1"),
-    traits: [
-        .init(name: "Platform_RP2350"),
-        .init(name: "BootStage2_W25Q080"),
-        .init(name: "Variant_RP2350A"),
-        .init(name: "Radio_CYW43439"),
-    ]
-),
 ```
 
 2. **Write your Swift code**:
