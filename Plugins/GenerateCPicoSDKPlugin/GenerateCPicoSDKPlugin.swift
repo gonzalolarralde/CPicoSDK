@@ -53,7 +53,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             return false
         }
 
-        let excludedSubstrings = ["freertos"]
+        let excludedSubstrings = ["freertos", "gpio_coproc.h"]
         for substring in excludedSubstrings {
             if fileName.lowercased().contains(substring) {
                 return false
@@ -176,8 +176,10 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             return includes
         }.joined(separator: "\n")
 
+        let architectureDefine = try Env.value("ARCH_PREPROCESSOR_DEFINE", combination: combination).expected
+
         return """
-        #define __ARM_ARCH_8M_MAIN__ 1
+        #define \(architectureDefine) 1
 
         #include <pico/async_context.h>
         #include <pico/async_context_poll.h>

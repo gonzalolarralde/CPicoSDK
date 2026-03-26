@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Set the swift build configuration.
 export BUILD_TYPE="RelWithDebInfo" # Options: Debug, Release, RelWithDebInfo, MinSizeRel
+export BOARD="${BOARD:-pico_w}"
 
 ### Uncommenting the next line could help to debug issues or better understand the pipeline.
 # set -x

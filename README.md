@@ -145,7 +145,7 @@ This project is built with the intention of **streamlining the developer experie
 
 ### Current Status
 
-- ✅ **Fully supported**: Pico 2 (RP2350A), Pico 2 W (RP2350A + CYW43439), Pimoroni Pico Plus 2 (RP2350B), Pimoroni Pico Plus 2 W (RP2350B + CYW43439)
+- ✅ **Fully supported**: Pico W (RP2040 + CYW43439), Pico 2 (RP2350A), Pico 2 W (RP2350A + CYW43439), Pimoroni Pico Plus 2 (RP2350B), Pimoroni Pico Plus 2 W (RP2350B + CYW43439)
 - 🚧 **In progress**: More RP2xxx boards and configuration combinations are actively being developed
 - 🔍 **Debugging**: Currently using `cortex-debug` in VSCode, following the proven pico-vscode approach.  LLDB support is being worked on but requires additional development time.
 
@@ -153,12 +153,13 @@ This project is built with the intention of **streamlining the developer experie
 
 This matrix is temporary while we work on a more generic approach that ties traits to non-specific board configurations.
 
-| Board | Combination | Variant Trait | Radio Trait |
-| --- | --- | --- | --- |
-| Pico 2 | `pico2` | `Variant_RP2350A` | `Radio_None` |
-| Pico 2 W | `pico2_w` | `Variant_RP2350A` | `Radio_CYW43439` |
-| Pimoroni Pico Plus 2 | `pimoroni_pico_plus2_rp2350` | `Variant_RP2350B` | `Radio_None` |
-| Pimoroni Pico Plus 2 W | `pimoroni_pico_plus2_w_rp2350` | `Variant_RP2350B` | `Radio_CYW43439` |
+| Board | Combination | Platform Trait | Variant Trait | Radio Trait |
+| --- | --- | --- | --- | --- |
+| Pico W | `pico_w` | `Platform_RP2040` | `Variant_RP2040` | `Radio_CYW43439` |
+| Pico 2 | `pico2` | `Platform_RP2350` | `Variant_RP2350A` | `Radio_None` |
+| Pico 2 W | `pico2_w` | `Platform_RP2350` | `Variant_RP2350A` | `Radio_CYW43439` |
+| Pimoroni Pico Plus 2 | `pimoroni_pico_plus2_rp2350` | `Platform_RP2350` | `Variant_RP2350B` | `Radio_None` |
+| Pimoroni Pico Plus 2 W | `pimoroni_pico_plus2_w_rp2350` | `Platform_RP2350` | `Variant_RP2350B` | `Radio_CYW43439` |
 
 ### Features & Capabilities
 

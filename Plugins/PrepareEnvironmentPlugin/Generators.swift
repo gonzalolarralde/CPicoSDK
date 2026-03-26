@@ -69,6 +69,12 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
         }
 
+        if let selectedBoard = newEnvVars["BOARD"], let selectedCombination = packageEnv.combinations[selectedBoard] {
+            let selectedCombinationVars = selectedCombination.vars
+                .filter { !givenEnvVars.keys.contains($0.key) }
+            newEnvVars.merge(selectedCombinationVars, uniquingKeysWith: { _, new in new })
+        }
+
         if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
            let swiftVersion = newEnvVars["SWIFT_VERSION"] 
         {
@@ -361,12 +367,12 @@ extension PrepareEnvironmentPlugin {
                     "servertype": "openocd",
                     "serverpath": "\(envVars["OPENOCD_PATH"]!)/openocd.exe",
                     "gdbPath": "\(envVars["GDB_PATH"]!)",
-                    "device": "RP2350",
+                    "device": "\(envVars["OPENOCD_DEVICE"]!)",
                     "configFiles": [
                         "interface/cmsis-dap.cfg",
-                        "target/rp2350.cfg"
+                        "\(envVars["OPENOCD_TARGET"]!)"
                     ],
-                    "svdFile": "\(envVars["PICO_SDK_PATH"]!)/src/rp2350/hardware_regs/RP2350.svd",
+                    "svdFile": "\(envVars["SVD_FILE"]!)",
                     "runToEntryPoint": "main",
                     // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
                     // also works fine for flash binaries
