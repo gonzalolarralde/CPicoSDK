@@ -8,6 +8,7 @@ import Glibc
 struct FinalizeBinaryPlugin: CommandPlugin {
     enum Error: Swift.Error {
         case nmFailed
+        case swiftlyResolutionFailed
         case rsyncFailed
         case cmakeConfigurationFailed
         case cmakeBuildFailed
@@ -18,6 +19,8 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             switch self {
             case .nmFailed:
                 return "nm process failed"
+            case .swiftlyResolutionFailed:
+                return "swiftly run which swift failed"
             case .rsyncFailed:
                 return "rsync process failed"
             case .cmakeConfigurationFailed:
@@ -67,12 +70,14 @@ struct FinalizeBinaryPlugin: CommandPlugin {
 
         let combination = try await getCombination(from: buildArtifact)
         let stdioOptions = await getStdioOptions(from: buildArtifact, combination: combination)
+        let extraSwiftArchives = try await getExtraSwiftArchives(from: buildArtifact)
 
         print("[CPicoSDK] Finalizing build for \(libProduct.name), combination: \(combination)...")
 
         try await self.runBuild(
             combination: combination,
             stdioOptions: stdioOptions,
+            extraSwiftArchives: extraSwiftArchives,
             workingDir: context.pluginWorkDirectoryURL,
             cmakeHarness: picoSDKURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"),
             outputDir: outputDir,
@@ -145,6 +150,60 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         return combination
     }
 
+    func getExtraSwiftArchives(from buildArtifact: URL) async throws -> [String] {
+        let nmOutput = try await runNM(on: buildArtifact)
+        var extraArchives: [String] = []
+
+        let unicodeTableMarkers = [
+            "_swift_stdlib_getNormData",
+            "_swift_stdlib_getComposition",
+            "_swift_stdlib_getDecompositionEntry",
+            "_swift_stdlib_nfd_decompositions",
+            "_swift_stdlib_isInCB_",
+            "_swift_stdlib_getGraphemeBreakProperty",
+        ]
+
+        if unicodeTableMarkers.contains(where: nmOutput.contains) {
+            let toolchainPath = try await resolveSwiftToolchainPath()
+            let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
+            let archivePath = URL(filePath: toolchainPath, directoryHint: .isDirectory)
+                .appending(path: "usr/lib/swift/embedded/\(platformTriple)/libswiftUnicodeDataTables.a")
+
+            if FileManager.default.fileExists(atPath: archivePath.path) {
+                extraArchives.append(archivePath.path)
+                print("[CPicoSDK] Linking extra Swift embedded archive: \(archivePath.path)")
+            } else {
+                print("[CPicoSDK] Warning: Unicode data symbols detected, but embedded archive was not found at \(archivePath.path)")
+            }
+        } else {
+            print("[CPicoSDK] No extra Swift embedded archives were needed.")
+        }
+
+        return extraArchives
+    }
+
+    func resolveSwiftToolchainPath() async throws -> String {
+        let swiftlyProcess = Process()
+        swiftlyProcess.executableURL = URL(filePath: try Env.value("SWIFTLY_PATH").expected, directoryHint: .notDirectory)
+        swiftlyProcess.arguments = ["run", "which", "swift"]
+
+        let (status, outputData, _) = try await swiftlyProcess.asyncRun(captureStdout: true, captureStderr: false)
+        guard status == 0,
+              let outputData,
+              let swiftPath = String(data: outputData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .nonEmpty
+        else {
+            throw Error.swiftlyResolutionFailed
+        }
+
+        return URL(filePath: swiftPath, directoryHint: .notDirectory)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .path
+    }
+
     // TODO: Remove this when upgrading to Swift 6.3
     // https://github.com/swiftlang/swift/issues/81272
     func unblockSigchldIfNeeded() {
@@ -156,7 +215,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         #endif
     }
 
-    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
+    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
@@ -177,6 +236,9 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         let importedLibs = try Env.importedLibs(combination: combination)
 
         print("[CPicoSDK] Imported libraries: \(importedLibs)")
+        if !extraSwiftArchives.isEmpty {
+            print("[CPicoSDK] Extra Swift archives: \(extraSwiftArchives)")
+        }
 
         if clean {
             try? fileManager.removeItem(at: buildDir)
@@ -204,6 +266,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             "-DSDK_VERSION=\(try Env.value("SDK_VERSION", combination: combination).expected)",
             "-DIMPORTED_LIBS=\(importedLibs.joined(separator: ","))",
             "-DIMPORTED_LOCATION=\(buildArtifact.path)",
+            "-DEXTRA_SWIFT_ARCHIVES=\(extraSwiftArchives.joined(separator: ";"))",
             "-DSTDIO_UART=\(stdioOptions.uart ? "1" : "0")",
             "-DSTDIO_USB=\(stdioOptions.usb ? "1" : "0")",
             "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",

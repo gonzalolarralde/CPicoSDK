@@ -52,6 +52,10 @@ set_target_properties(Output PROPERTIES
 )
 target_link_libraries("${PROJECT_NAME}" Output)
 
+if(EXTRA_SWIFT_ARCHIVES)
+    target_link_libraries("${PROJECT_NAME}" "-Wl,--whole-archive" ${EXTRA_SWIFT_ARCHIVES} "-Wl,--no-whole-archive")
+endif()
+
 string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
 target_link_libraries("${PROJECT_NAME}" ${IMPORTED_LIBS_LIST})
 target_link_libraries("${PROJECT_NAME}" pico_async_context_poll)

@@ -54,6 +54,8 @@ Swift-specific blocks can be embedded directly in a `.pio` file using a `% swift
 
 The `% swift { ... }` section is placed after the `.program` body in `hello.pio`, so the assembly remains up top and the Swift helper lives at the bottom of the same file.
 
+The example also keeps a small Unicode-aware string check on purpose. That exercises the embedded Swift Unicode runtime path so CPicoSDK can demonstrate automatically linking `libswiftUnicodeDataTables.a` only when the final link actually needs it.
+
 ### Versioning
 
 CPicoSDK follows a versioning scheme that tracks the underlying Pico SDK version:
@@ -105,6 +107,7 @@ This matrix is temporary while we work on a more generic approach that ties trai
 - **Automated Environment Setup**: One-command setup that downloads and configures all dependencies
 - **Integrated Debugging**: Set breakpoints, inspect variables, and step through Swift code on real hardware
 - **UF2 Generation**: Automatic binary generation ready for drag-and-drop flashing
+- **Smart Embedded Swift Runtime Linking**: Automatically links extra embedded Swift archives such as `libswiftUnicodeDataTables.a` only when your build artifact actually references them
 - **Build Configurations**: Support for Debug, Release, RelWithDebInfo, and MinSizeRel builds
 
 ### Platform Support
@@ -395,6 +398,7 @@ CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
 **What it does**:
 - Takes the compiled Swift `.o` files from SwiftPM
 - Links them with Pico SDK libraries using the CMake harness
+- Detects when the final link needs extra embedded Swift runtime archives and adds them automatically
 - Runs as a native Swift plugin (no standalone shell build script)
 - Includes `shims.c` for runtime compatibility
 - Generates both ELF (for debugging) and UF2 (for flashing) binaries
