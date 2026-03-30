@@ -3,6 +3,11 @@ description: >
   Installs system dependencies, configures the pico-sdk bundle and swiftly
   cache paths, restores (or saves) both caches keyed on all relevant version
   strings from env.json, and installs swiftly (adding it to PATH).
+inputs:
+  pico-cache-lookup-only:
+    description: Check for the Pico SDK cache without downloading it
+    required: false
+    default: "false"
 outputs:
   pico-cache-hit:
     description: Whether the Pico SDK bundle cache was restored from an exact key match
@@ -41,6 +46,7 @@ runs:
       with:
         path: ${{ env.PICO_SDK_BUNDLE_PATH }}
         key: ${{ steps.sdk-versions.outputs.pico-key }}
+        lookup-only: ${{ inputs.pico-cache-lookup-only }}
 
     - name: Cache swiftly
       id: cache-swiftly
