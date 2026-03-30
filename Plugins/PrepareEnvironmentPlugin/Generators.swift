@@ -47,6 +47,24 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["TOOLSET_PATH"] = context.package.directoryURL.relativePath.appending("/toolset.json")
         }
 
+        if let swiftlyPath = newEnvVars["SWIFTLY_PATH"] {
+            let swiftlyURL = URL(fileURLWithPath: swiftlyPath)
+            if newEnvVars["SWIFTLY_BIN_DIR"] == nil {
+                newEnvVars["SWIFTLY_BIN_DIR"] = swiftlyURL.deletingLastPathComponent().path
+            }
+            if newEnvVars["SWIFTLY_HOME_DIR"] == nil {
+                newEnvVars["SWIFTLY_HOME_DIR"] = swiftlyURL
+                    .deletingLastPathComponent()
+                    .deletingLastPathComponent()
+                    .path
+            }
+            if newEnvVars["SWIFTLY_TOOLCHAINS_DIR"] == nil,
+               let swiftlyHomeDir = newEnvVars["SWIFTLY_HOME_DIR"]
+            {
+                newEnvVars["SWIFTLY_TOOLCHAINS_DIR"] = swiftlyHomeDir.appending("/toolchains")
+            }
+        }
+
         if newEnvVars["PACKAGE_PATH"] == nil {
             newEnvVars["PACKAGE_PATH"] = context.package.directoryURL.relativePath
         }
