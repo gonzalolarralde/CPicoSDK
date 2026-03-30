@@ -8,33 +8,36 @@ permissions:
   contents: read
 
 jobs:
-  build-root:
-    name: Root Build
+  prepare-deps:
+    name: Download Dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install system dependencies
+      - uses: ./.github/actions/setup-pico-env
+      - name: Download Pico SDK bundle
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0 libcurl4-openssl-dev
-      - name: Configure cache paths
-        run: echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
-      - name: Read SDK versions for cache key
-        id: sdk-versions
-        run: |
-          echo "key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
-      - name: Cache Pico SDK bundle
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.PICO_SDK_BUNDLE_PATH }}
-          key: ${{ steps.sdk-versions.outputs.key }}
-      - name: Install swiftly
-        run: |
-          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
-          tar zxf swiftly-$(uname -m).tar.gz && \
-          ./swiftly init --quiet-shell-followup && \
-          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
-          hash -r
+          # Copy Package.swift from template so Swift package commands work.
+          cp Package.swift.template Package.swift
+          # Invoke pico-bootstrap via the prepare plugin to populate the cache
+          # on a miss. On a hit the plugin detects existing files and skips.
+          swiftly run swift package prepare-rp2xxx-environment \
+              --disable-vscode-settings \
+              --disable-sourcekit-lsp-settings \
+              --disable-toolset \
+              --disable-swift-version \
+              --dump-prep-script /tmp/.env_prep \
+              --cpicosdk-envs-path env.json \
+              --dont-force-product-name \
+              --allow-writing-to-package-directory \
+              --allow-network-connections all
+
+  build-root:
+    name: Root Build
+    needs: prepare-deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-pico-env
       - name: Run root build script
         run: |
           chmod +x build.sh
@@ -42,31 +45,11 @@ jobs:
 
   build-example:
     name: Example Build
+    needs: prepare-deps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0 libcurl4-openssl-dev
-      - name: Configure cache paths
-        run: echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
-      - name: Read SDK versions for cache key
-        id: sdk-versions
-        run: |
-          echo "key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
-      - name: Cache Pico SDK bundle
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.PICO_SDK_BUNDLE_PATH }}
-          key: ${{ steps.sdk-versions.outputs.key }}
-      - name: Install swiftly
-        run: |
-          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
-          tar zxf swiftly-$(uname -m).tar.gz && \
-          ./swiftly init --quiet-shell-followup && \
-          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
-          hash -r
+      - uses: ./.github/actions/setup-pico-env
       - name: Run example build script
         working-directory: Example
         run: |
