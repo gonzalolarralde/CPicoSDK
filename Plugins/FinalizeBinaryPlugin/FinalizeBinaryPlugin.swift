@@ -82,22 +82,8 @@ struct FinalizeBinaryPlugin: CommandPlugin {
     }
 
     func getStaticTrait(from buildArtifact: URL, traitName: String) async throws -> Bool {
-        let nmProcess = Process()
-        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
-        nmProcess.arguments = [buildArtifact.path]
-
-        let standardOutput = Pipe()
-        nmProcess.standardOutput = standardOutput
-
-        guard try await nmProcess.asyncRun() == 0 else { throw Error.nmFailed }
-
-        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-        guard let outputString = String(data: outputData, encoding: .utf8) else {
-            throw Error.nmFailed
-        }
-
         let traitSymbol = "_cpicosdk_trait_\(traitName.lowercased())"
-        return outputString.contains(traitSymbol)
+        return try await runNM(on: buildArtifact).contains(traitSymbol)
     }
 
     func getStdioOptions(from buildArtifact: URL, combination: String) async -> (uart: Bool, usb: Bool, rtt: Bool) {
@@ -144,22 +130,12 @@ struct FinalizeBinaryPlugin: CommandPlugin {
     }
 
     func getCombination(from buildArtifact: URL) async throws -> String {
-        let nmProcess = Process()
-        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
-        nmProcess.arguments = [buildArtifact.path]
-
-        let standardOutput = Pipe()
-        nmProcess.standardOutput = standardOutput
-
-        guard try await nmProcess.asyncRun() == 0 else { throw Error.nmFailed }
-
-        let outputData = standardOutput.fileHandleForReading.readDataToEndOfFile()
-        guard let outputString = String(data: outputData, encoding: .utf8) else {
-            throw Error.nmFailed
-        }
-
         let combinationRegex = /_cpicosdk_combination_([a-zA-Z0-9_]+)/
-        let combinations = Set(outputString.matches(of: combinationRegex).map { String($0.output.1) })
+        let combinations = Set(
+            try await runNM(on: buildArtifact)
+                .matches(of: combinationRegex)
+                .map { String($0.output.1) }
+        )
 
         guard combinations.count == 1, let combination = combinations.first else {
             throw combinations.isEmpty ? Error.noCombinationFound : Error.multipleCombinationsFound(combinations)
@@ -263,5 +239,19 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
 
         print("[CPicoSDK] 🎉 Finalization completed successfully! 🎉")
+    }
+
+    private func runNM(on buildArtifact: URL) async throws -> String {
+        let nmProcess = Process()
+        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
+        nmProcess.arguments = [buildArtifact.path]
+
+        let (status, outputData, _) = try await nmProcess.asyncRun(captureStdout: true, captureStderr: false)
+        guard status == 0, let outputData else { throw Error.nmFailed }
+
+        guard let outputString = String(data: outputData, encoding: .utf8) else {
+            throw Error.nmFailed
+        }
+        return outputString
     }
 }

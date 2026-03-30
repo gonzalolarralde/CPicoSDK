@@ -29,16 +29,14 @@ struct Main {
         process.standardError = stderr
 
         try process.run()
+        let (outputData, errorData) = (stdout.fileHandleForReading.readDataToEndOfFile(), stderr.fileHandleForReading.readDataToEndOfFile())
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
-            let errorData = stderr.fileHandleForReading.readDataToEndOfFile()
             let errorString = String(data: errorData, encoding: .utf8)
             throw Error.compilerCallFailed(process.terminationStatus, errorString)
         }
 
-        let outputData = stdout.fileHandleForReading.readDataToEndOfFile()
-        
         let compiledSource: CompiledSource
         do {
             compiledSource = try JSONDecoder().decode(CompiledSource.self, from: outputData)
