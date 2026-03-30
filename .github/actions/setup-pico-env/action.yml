@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         echo "pico-key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
-        echo "swift-key=${{ runner.os }}-swiftly-$(jq -r '.vars.SWIFT_VERSION' env.json)" >> $GITHUB_OUTPUT
+        echo "swift-key=${{ runner.os }}-swiftly-v2-$(jq -r '.vars.SWIFT_VERSION' env.json)" >> $GITHUB_OUTPUT
 
     - name: Cache Pico SDK bundle
       id: cache-pico-sdk
@@ -76,8 +76,20 @@ runs:
           echo "swiftly-path=missing"
         fi
 
+    - name: Check requested Swift toolchain
+      id: swift-toolchain
+      shell: bash
+      run: |
+        requested_toolchain="$(jq -r '.vars.SWIFT_VERSION' env.json)"
+        echo "requested-toolchain=$requested_toolchain"
+        if jq -e --arg requested_toolchain "$requested_toolchain" '.installedToolchains | index($requested_toolchain)' "$SWIFTLY_HOME_DIR/config.json" >/dev/null 2>&1; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Install Swift toolchain
-      if: steps.cache-swiftly.outputs.cache-hit != 'true'
+      if: steps.cache-swiftly.outputs.cache-hit != 'true' || steps.swift-toolchain.outputs.installed != 'true'
       shell: bash
       run: |
         swiftly install "$(jq -r '.vars.SWIFT_VERSION' env.json)"
