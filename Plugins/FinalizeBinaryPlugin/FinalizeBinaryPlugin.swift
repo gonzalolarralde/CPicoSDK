@@ -37,9 +37,10 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             fatalError("[CPicoSDK] Expected at one argument: A product name is expected. It should be a static library in the Product section of the package.")
         }
 
-        let productName = arguments[0]
+        var arguments = arguments
+        let productName = arguments.removeFirst()
 
-        let clean = arguments.count >= 2 && arguments[1] == "--incremental"
+        let incremental = arguments.contains("--incremental")
         guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
@@ -77,7 +78,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             outputDir: outputDir,
             buildArtifact: buildArtifact,
             productName: libProduct.name,
-            clean: clean
+            clean: !incremental
         )
     }
 

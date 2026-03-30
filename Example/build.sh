@@ -45,7 +45,7 @@ source "$PREPARATION_SCRIPT_PATH"
 "$SWIFTLY_PATH" install
 
 # Builds the library using swiftpm. This is where the application code is compiled.
-"$SWIFTLY_PATH" run swift build -v \
+"$SWIFTLY_PATH" run swift build \
     --build-system native \
     --configuration $SWIFT_BUILD_TYPE \
     --toolset $TOOLSET_PATH \

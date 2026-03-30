@@ -87,6 +87,29 @@ class PrepareEnvironmentPlugin: CommandPlugin {
     }
     
     func installDependencies(context: PackagePlugin.PluginContext, envVars: [String: String]) async throws {
+        let requiredDependencyKeys = [
+            "PICO_SDK_BUNDLE_PATH",
+            "PICO_SDK_PATH",
+            "PICO_TOOLCHAIN_PATH",
+            "SDK_PATH",
+            "CMAKE_PATH",
+            "NINJA_PATH",
+            "PICOTOOL_PATH",
+            "OPENOCD_PATH",
+            "LD_PATH",
+        ]
+
+        let fileManager = FileManager.default
+        let dependenciesPresent = requiredDependencyKeys.allSatisfy { key in
+            guard let path = envVars[key] else { return false }
+            return fileManager.fileExists(atPath: path)
+        }
+
+        if dependenciesPresent {
+            print("[CPicoSDK] Dependencies already present, skipping installation.")
+            return
+        }
+
         let tool = try context.tool(named: "pico-bootstrap")
         let process = Process()
         process.executableURL = tool.url

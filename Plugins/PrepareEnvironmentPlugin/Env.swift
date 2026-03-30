@@ -10,7 +10,9 @@ struct Env: Codable, Hashable {
         let traits: [String]
     }
 
-    static let relevantEnvVars: Set<String> = [
+    // Keep this ordered and stable: it is serialized into RELEVANT_ENV_VARS,
+    // and order changes would invalidate SwiftPM plugin cache hashes.
+    static let relevantEnvVars: [String] = [
         "HOME",
         "PACKAGE_PATH",
         "PLUGIN_OUTPUT_PATH",

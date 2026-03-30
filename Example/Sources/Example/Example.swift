@@ -44,7 +44,7 @@ func pioExample() throws(PIOError) {
     let pin: UInt32 = 20
 
     var pio: PIO? = nil
-    var sm: UInt32 = 0
+    let sm: UInt32 = 0
     var offset: UInt32 = 0
 
     // ------------------------------------------------------
