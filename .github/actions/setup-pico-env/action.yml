@@ -29,9 +29,7 @@ runs:
       shell: bash
       run: |
         echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
-        echo "SWIFTLY_HOME_DIR=$HOME/.local/share/swiftly" >> $GITHUB_ENV
-        echo "SWIFTLY_BIN_DIR=$HOME/.local/share/swiftly/bin" >> $GITHUB_ENV
-        echo "SWIFTLY_TOOLCHAINS_DIR=$HOME/.local/share/swiftly/toolchains" >> $GITHUB_ENV
+        echo "SWIFTLY_CACHE_ROOT=$HOME/.local/share/swiftly" >> $GITHUB_ENV
 
     - name: Read versions for cache keys
       id: sdk-versions
@@ -52,35 +50,51 @@ runs:
       id: cache-swiftly
       uses: actions/cache@v5
       with:
-        path: ${{ env.SWIFTLY_HOME_DIR }}
+        path: ${{ env.SWIFTLY_CACHE_ROOT }}
         key: ${{ steps.sdk-versions.outputs.swift-key }}
 
     - name: Install swiftly
       shell: bash
       run: |
-        if [ ! -f "$SWIFTLY_BIN_DIR/swiftly" ]; then
+        if [ ! -f "$SWIFTLY_CACHE_ROOT/bin/swiftly" ]; then
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
           tar zxf swiftly-$(uname -m).tar.gz
           ./swiftly init --quiet-shell-followup --skip-install
         fi
-        echo "$SWIFTLY_BIN_DIR" >> $GITHUB_PATH
+    - name: Discover swiftly paths
+      id: swiftly-paths
+      shell: bash
+      run: |
+        if [ -f "$SWIFTLY_CACHE_ROOT/env.sh" ]; then
+          # shellcheck disable=SC1090
+          source "$SWIFTLY_CACHE_ROOT/env.sh"
+        fi
+        swiftly_path="$(command -v swiftly || true)"
+        if [ -z "$swiftly_path" ] && [ -x "$SWIFTLY_CACHE_ROOT/bin/swiftly" ]; then
+          swiftly_path="$SWIFTLY_CACHE_ROOT/bin/swiftly"
+        fi
+        if [ -z "$swiftly_path" ]; then
+          echo "swiftly executable could not be located" >&2
+          exit 1
+        fi
+        swiftly_bin_dir="$(dirname "$swiftly_path")"
+        swiftly_home_dir="$(dirname "$swiftly_bin_dir")"
+        echo "SWIFTLY_PATH=$swiftly_path" >> "$GITHUB_ENV"
+        echo "SWIFTLY_HOME_DIR=$swiftly_home_dir" >> "$GITHUB_ENV"
+        echo "$swiftly_bin_dir" >> "$GITHUB_PATH"
+        echo "swiftly-path=$swiftly_path" >> "$GITHUB_OUTPUT"
+        echo "swiftly-home-dir=$swiftly_home_dir" >> "$GITHUB_OUTPUT"
 
     - name: Debug swiftly state
       shell: bash
       run: |
         echo "swiftly-cache-hit=${{ steps.cache-swiftly.outputs.cache-hit }}"
         echo "SWIFTLY_HOME_DIR=$SWIFTLY_HOME_DIR"
-        echo "SWIFTLY_BIN_DIR=$SWIFTLY_BIN_DIR"
-        echo "SWIFTLY_TOOLCHAINS_DIR=$SWIFTLY_TOOLCHAINS_DIR"
         ls -la "$SWIFTLY_HOME_DIR" || true
         find "$SWIFTLY_HOME_DIR" -maxdepth 2 -type d | sort || true
         cat "$SWIFTLY_HOME_DIR/config.json" || true
-        if command -v swiftly >/dev/null 2>&1; then
-          echo "swiftly-path=$(command -v swiftly)"
-          swiftly list || true
-        else
-          echo "swiftly-path=missing"
-        fi
+        echo "swiftly-path=${{ steps.swiftly-paths.outputs.swiftly-path }}"
+        swiftly list || true
 
     - name: Check requested Swift toolchain
       id: swift-toolchain
