@@ -127,7 +127,7 @@ extension PrepareEnvironmentPlugin {
             fi
 
             "$SWIFTLY_PATH" run swift package finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
-                --incremental \\
+                "$@" \\
                 --allow-writing-to-package-directory
         }
 
@@ -211,7 +211,7 @@ extension PrepareEnvironmentPlugin {
                     "label": "Compile and Flash Project (cortex-debug) [CPicoSDK]",
                     "type": "process",
                     "command": "${workspaceFolder}/build.sh",
-                    "args": ["--cortex-debug"],
+                    "args": ["--cortex-debug", "--incremental"],
                     "options": {
                         "cwd": "${workspaceFolder}",
                     },
@@ -226,7 +226,7 @@ extension PrepareEnvironmentPlugin {
                     "label": "Compile and Flash Project (picotool) [CPicoSDK]",
                     "type": "process",
                     "command": "${workspaceFolder}/build.sh",
-                    "args": ["--flash"],
+                    "args": ["--flash", "--incremental"],
                     "options": {
                         "cwd": "${workspaceFolder}",
                     },

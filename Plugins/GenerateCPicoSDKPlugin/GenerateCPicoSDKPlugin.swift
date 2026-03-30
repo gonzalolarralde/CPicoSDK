@@ -276,7 +276,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             throw Error.markerNotFound(targetDependenciesMarker)
         }
 
-        let targetDependencies = env.combinations.sorted(by: \.key).map { name, combination in
+        let targetDependencies = env.combinations.sorted { $0.key < $1.key }.map { name, combination in
             let traits = combination.traits.map { "\"\($0)\"" }.joined(separator: ", ")
             return "                .target(name: \"_CPicoSDK_\(name)\", condition: .when(traits: [\(traits)])),"
         }
