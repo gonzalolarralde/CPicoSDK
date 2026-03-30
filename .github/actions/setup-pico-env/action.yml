@@ -1,8 +1,8 @@
 name: Setup Pico Environment
 description: >
-  Installs system dependencies, configures the pico-sdk bundle cache path,
-  restores (or saves) the bundle cache keyed on all SDK version strings from
-  env.json, and installs swiftly (adding it to PATH).
+  Installs system dependencies, configures the pico-sdk bundle and swiftly
+  cache paths, restores (or saves) both caches keyed on all relevant version
+  strings from env.json, and installs swiftly (adding it to PATH).
 
 runs:
   using: composite
@@ -13,26 +13,37 @@ runs:
         sudo apt-get update
         sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0 libcurl4-openssl-dev
 
-    - name: Configure Pico SDK bundle cache path
+    - name: Configure cache paths
       shell: bash
-      run: echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
+      run: |
+        echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
+        echo "SWIFTLY_HOME_DIR=$HOME/.local/share/swiftly" >> $GITHUB_ENV
 
-    - name: Read SDK versions for cache key
+    - name: Read versions for cache keys
       id: sdk-versions
       shell: bash
       run: |
-        echo "key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
+        echo "pico-key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
+        echo "swift-key=${{ runner.os }}-swiftly-$(jq -r '.vars.SWIFT_VERSION' env.json)" >> $GITHUB_OUTPUT
 
     - name: Cache Pico SDK bundle
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ env.PICO_SDK_BUNDLE_PATH }}
-        key: ${{ steps.sdk-versions.outputs.key }}
+        key: ${{ steps.sdk-versions.outputs.pico-key }}
+
+    - name: Cache swiftly
+      uses: actions/cache@v5
+      with:
+        path: ${{ env.SWIFTLY_HOME_DIR }}
+        key: ${{ steps.sdk-versions.outputs.swift-key }}
 
     - name: Install swiftly
       shell: bash
       run: |
-        curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
-        tar zxf swiftly-$(uname -m).tar.gz
-        ./swiftly init --quiet-shell-followup
-        echo "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/bin" >> $GITHUB_PATH
+        if [ ! -f "$SWIFTLY_HOME_DIR/bin/swiftly" ]; then
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz
+          tar zxf swiftly-$(uname -m).tar.gz
+          ./swiftly init --quiet-shell-followup
+        fi
+        echo "$SWIFTLY_HOME_DIR/bin" >> $GITHUB_PATH
