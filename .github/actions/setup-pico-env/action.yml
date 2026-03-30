@@ -47,3 +47,8 @@ runs:
           ./swiftly init --quiet-shell-followup
         fi
         echo "$SWIFTLY_HOME_DIR/bin" >> $GITHUB_PATH
+
+    - name: Install Swift toolchain
+      shell: bash
+      run: |
+        swiftly install "$(jq -r '.vars.SWIFT_VERSION' env.json)"
