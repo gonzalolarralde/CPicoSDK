@@ -59,6 +59,20 @@ runs:
         fi
         echo "$SWIFTLY_BIN_DIR" >> $GITHUB_PATH
 
+    - name: Debug swiftly state
+      shell: bash
+      run: |
+        echo "swiftly-cache-hit=${{ steps.cache-swiftly.outputs.cache-hit }}"
+        echo "SWIFTLY_HOME_DIR=$SWIFTLY_HOME_DIR"
+        echo "SWIFTLY_BIN_DIR=$SWIFTLY_BIN_DIR"
+        echo "SWIFTLY_TOOLCHAINS_DIR=$SWIFTLY_TOOLCHAINS_DIR"
+        if command -v swiftly >/dev/null 2>&1; then
+          echo "swiftly-path=$(command -v swiftly)"
+          swiftly list || true
+        else
+          echo "swiftly-path=missing"
+        fi
+
     - name: Install Swift toolchain
       if: steps.cache-swiftly.outputs.cache-hit != 'true'
       shell: bash
