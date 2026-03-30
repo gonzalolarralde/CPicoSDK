@@ -38,12 +38,11 @@ env
     --disable-sourcekit-lsp-settings \
     --disable-toolset \
     --disable-swift-version \
-    --disable-install-dependencies \
     --dump-prep-script "$PREPARATION_SCRIPT_PATH" \
     --cpicosdk-envs-path "$(dirname "$0")/env.json" \
     --dont-force-product-name \
     --allow-writing-to-package-directory \
-    --allow-network-connections all       # Originally used to download PicoSDK, shouldn't be needed here.
+    --allow-network-connections all       # Used to download PicoSDK when not already present at PICO_SDK_BUNDLE_PATH.
 
 source "$PREPARATION_SCRIPT_PATH"
 

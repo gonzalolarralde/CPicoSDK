@@ -17,6 +17,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0 libcurl4-openssl-dev
+      - name: Configure cache paths
+        run: echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
+      - name: Read SDK versions for cache key
+        id: sdk-versions
+        run: |
+          echo "key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
+      - name: Cache Pico SDK bundle
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PICO_SDK_BUNDLE_PATH }}
+          key: ${{ steps.sdk-versions.outputs.key }}
       - name: Install swiftly
         run: |
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
@@ -38,6 +49,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0 libcurl4-openssl-dev
+      - name: Configure cache paths
+        run: echo "PICO_SDK_BUNDLE_PATH=$HOME/.pico-sdk" >> $GITHUB_ENV
+      - name: Read SDK versions for cache key
+        id: sdk-versions
+        run: |
+          echo "key=${{ runner.os }}-pico-sdk-bundle-$(jq -r '[.vars.SDK_VERSION,.vars.TOOLCHAIN_VERSION,.vars.CMAKE_VERSION,.vars.NINJA_VERSION,.vars.PICOTOOL_VERSION,.vars.OPENOCD_VERSION] | join("-")' env.json)" >> $GITHUB_OUTPUT
+      - name: Cache Pico SDK bundle
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PICO_SDK_BUNDLE_PATH }}
+          key: ${{ steps.sdk-versions.outputs.key }}
       - name: Install swiftly
         run: |
           curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
