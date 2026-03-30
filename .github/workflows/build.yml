@@ -13,13 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-pico-env
+      - id: setup-pico-env
+        uses: ./.github/actions/setup-pico-env
       - name: Download Pico SDK bundle
+        if: steps.setup-pico-env.outputs.pico-cache-hit != 'true'
         run: |
           # Copy Package.swift from template so Swift package commands work.
           cp Package.swift.template Package.swift
-          # Invoke pico-bootstrap via the prepare plugin to populate the cache
-          # on a miss. On a hit the plugin detects existing files and skips.
+          # Populate the shared Pico SDK cache on a cache miss so downstream
+          # build jobs can restore it without re-running the prepare plugin.
           swiftly run swift package prepare-rp2xxx-environment \
               --disable-vscode-settings \
               --disable-sourcekit-lsp-settings \

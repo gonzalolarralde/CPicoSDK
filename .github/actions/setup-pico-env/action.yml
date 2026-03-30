@@ -3,6 +3,13 @@ description: >
   Installs system dependencies, configures the pico-sdk bundle and swiftly
   cache paths, restores (or saves) both caches keyed on all relevant version
   strings from env.json, and installs swiftly (adding it to PATH).
+outputs:
+  pico-cache-hit:
+    description: Whether the Pico SDK bundle cache was restored from an exact key match
+    value: ${{ steps.cache-pico-sdk.outputs.cache-hit }}
+  swiftly-cache-hit:
+    description: Whether the swiftly cache was restored from an exact key match
+    value: ${{ steps.cache-swiftly.outputs.cache-hit }}
 
 runs:
   using: composite
@@ -27,12 +34,14 @@ runs:
         echo "swift-key=${{ runner.os }}-swiftly-$(jq -r '.vars.SWIFT_VERSION' env.json)" >> $GITHUB_OUTPUT
 
     - name: Cache Pico SDK bundle
+      id: cache-pico-sdk
       uses: actions/cache@v5
       with:
         path: ${{ env.PICO_SDK_BUNDLE_PATH }}
         key: ${{ steps.sdk-versions.outputs.pico-key }}
 
     - name: Cache swiftly
+      id: cache-swiftly
       uses: actions/cache@v5
       with:
         path: ${{ env.SWIFTLY_HOME_DIR }}
