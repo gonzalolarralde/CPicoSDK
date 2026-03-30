@@ -19,8 +19,11 @@ jobs:
           sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0
       - name: Install swiftly
         run: |
-          curl -L https://swift.org/install/swiftly.sh | bash -s -- --quiet
-          echo "$HOME/.local/share/swiftly/bin" >> $GITHUB_PATH
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
+          tar zxf swiftly-$(uname -m).tar.gz && \
+          ./swiftly init --quiet-shell-followup && \
+          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
+          hash -r
       - name: Run root build script
         run: |
           chmod +x build.sh
@@ -37,8 +40,11 @@ jobs:
           sudo apt-get install -y build-essential libhidapi-hidraw0 libhidapi-libusb0
       - name: Install swiftly
         run: |
-          curl -L https://swift.org/install/swiftly.sh | bash -s -- --quiet
-          echo "$HOME/.local/share/swiftly/bin" >> $GITHUB_PATH
+          curl -O https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz && \
+          tar zxf swiftly-$(uname -m).tar.gz && \
+          ./swiftly init --quiet-shell-followup && \
+          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh" && \
+          hash -r
       - name: Run example build script
         working-directory: Example
         run: |
