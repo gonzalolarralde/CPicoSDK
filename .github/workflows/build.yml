@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-root:
+    name: Root Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run root build script
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+  build-example:
+    name: Example Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run example build script
+        working-directory: Example
+        run: |
+          chmod +x build.sh
+          ./build.sh
