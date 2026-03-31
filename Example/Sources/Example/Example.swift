@@ -101,6 +101,10 @@ func pioExample() throws(PIOError) {
     // This will free resources and unload our program
     pio_remove_program_and_unclaim_sm(hello.program, pio, sm, offset);
 
+    // Keep one Unicode-aware string operation in the example so the finalizer
+    // can demonstrate automatic linking of libswiftUnicodeDataTables when needed.
+    print("Composed/decomposed match: \("Cafe\u{301}".contains("é"))")
+
     while true {
         tight_loop_contents()
     }
