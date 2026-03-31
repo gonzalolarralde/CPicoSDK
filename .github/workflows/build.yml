@@ -66,6 +66,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-pico-env
+      - name: Point Example at local CPicoSDK checkout
+        working-directory: Example
+        run: |
+          perl -0pi -e 's#\.package\(\s*url: "https://github\.com/gonzalolarralde/CPicoSDK",.*?traits:\s*\[#.package(path: "..",\n            traits: [#s' Package.swift
       - name: Run example build script
         working-directory: Example
         run: |
