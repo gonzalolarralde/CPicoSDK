@@ -145,7 +145,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/gonzalolarralde/CPicoSDK", exact: "2.2.3",
+            url: "https://github.com/gonzalolarralde/CPicoSDK", exact: "2.2.4",
             traits: [.init(name: "Variant_RP2350A"), .init(name: "Radio_None")] // Pico 2
             traits: [.init(name: "Variant_RP2350A"), .init(name: "Radio_CYW43439")] // Pico 2W
         ),
