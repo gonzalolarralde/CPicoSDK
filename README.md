@@ -324,6 +324,60 @@ This approach:
 - ✅ Works around SwiftPM limitations with embedded toolchains
 - ❌ Requires regeneration when library selection or SDK version changes
 
+#### Header Fixups
+
+After preprocessing, the generated compound header is passed through `Plugins/GenerateCPicoSDKPlugin/PicoSDKHeaderFixer.swift` before it is written into `Sources/_CPicoSDK_<combination>/include/`.
+
+That fixer currently performs a few targeted transformations so the result imports more cleanly into Swift:
+
+1. **Normalize `_u(...)` numeric macros**
+   Pico headers frequently emit numeric macros in the form:
+   ```c
+   #define GPIO_FUNC_SIO _u(5)
+   ```
+   These are rewritten to:
+   ```c
+   #define GPIO_FUNC_SIO 5u
+   ```
+
+2. **Preserve importer-friendly hardware entrypoints**
+   Fixed-address hardware macros such as:
+   ```c
+   #define timer0_hw ((timer_hw_t *)TIMER0_BASE)
+   #define nvic_hw ((nvic_hw_t *)(PPB_BASE + M33_NVIC_ISER0_OFFSET))
+   #define spi0 ((spi_inst_t *)spi0_hw)
+   ```
+   are rewritten into `static ... * const ...` declarations:
+   ```c
+   static timer_hw_t * const timer0_hw = (timer_hw_t *)TIMER0_BASE; // ORIGINAL: #define timer0_hw ((timer_hw_t *)TIMER0_BASE)
+   static nvic_hw_t * const nvic_hw = (nvic_hw_t *)(PPB_BASE + M33_NVIC_ISER0_OFFSET); // ORIGINAL: #define nvic_hw ((nvic_hw_t *)(PPB_BASE + M33_NVIC_ISER0_OFFSET))
+   static spi_inst_t * const spi0 = (spi_inst_t *)spi0_hw; // ORIGINAL: #define spi0 ((spi_inst_t *)spi0_hw)
+   ```
+   This covers:
+   - direct base-address macros like `timer0_hw`
+   - base-plus-offset macros like `nvic_hw`
+   - casted handle aliases like `spi0` and `uart0`
+
+3. **Rewrite simple hardware aliases with `__typeof__`**
+   Some Pico macros are aliases or indexed aliases rather than direct casts:
+   ```c
+   #define arm_cpu_hw m33_hw
+   #define interp0_hw (&interp_hw_array[0])
+   #define pio0 pio0_hw
+   ```
+   These are rewritten as:
+   ```c
+   static __typeof__(m33_hw) const arm_cpu_hw = m33_hw; // ORIGINAL: #define arm_cpu_hw m33_hw
+   static __typeof__((&interp_hw_array[0])) const interp0_hw = (&interp_hw_array[0]); // ORIGINAL: #define interp0_hw (&interp_hw_array[0])
+   static __typeof__(pio0_hw) const pio0 = pio0_hw; // ORIGINAL: #define pio0 pio0_hw
+   ```
+   `__typeof__` is used here so the fixer does not need a separate type-reconstruction pass for alias-only macros.
+
+4. **Prefix the final header with `#pragma GCC system_header`**
+   This keeps the generated C import quieter on the Swift side by treating it as system-header input.
+
+The current fixups are intentionally narrow. They target hardware entrypoints and related aliases without attempting to rewrite every Pico macro. Function-like selector helpers such as `PIO_INSTANCE(num)` or `SPI_NUM(spi)` are left as macros unless there is a specific reason to expose them differently.
+
 ### The `shims.c` File: Runtime Compatibility
 
 Located at `Plugins/FinalizeBinaryPluginTool/CMakeHarness/shims.c`, this file provides **POSIX compatibility shims** for functions that the Swift runtime expects but aren't provided by the bare-metal ARM toolchain.
