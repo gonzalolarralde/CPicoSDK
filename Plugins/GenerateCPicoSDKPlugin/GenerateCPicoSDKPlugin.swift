@@ -140,7 +140,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         try fileManager.createDirectory(at: includeDir, withIntermediateDirectories: true)
         
         let builtHeaderURL = buildDir.appending(path: "CPicoSDK_\(combination).h")
-        let picoSDKHeaderContent = self.fixPicoSDKHeader(content: try String(contentsOf: builtHeaderURL, encoding: .utf8))
+        let picoSDKHeaderContent = PicoSDKHeaderFixer.fixHeader(content: try String(contentsOf: builtHeaderURL, encoding: .utf8))
 
         try picoSDKHeaderContent.write(
             to: destinationDir.appending(path: "include/CPicoSDK_\(combination).h"),
@@ -226,17 +226,6 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         cmakeBuildProcess.arguments = ["--build", buildDir.path]
         unblockSigchldIfNeeded()
         guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
-    }
-
-    func fixPicoSDKHeader(content: String) -> String {
-        let unsignedRegex = /_u\(\s*((?:0x)?[0-9a-fA-F]+)\s*\)/
-
-        let content = content.replacing(unsignedRegex) { match in
-            "\(match.output.1)u"
-        }
-
-        return "#pragma GCC system_header\n" +
-            content
     }
 
     func generatePackageSwiftFile(env: Env, template: URL, destination: URL) throws {
