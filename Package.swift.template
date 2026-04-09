@@ -48,11 +48,20 @@ let package = Package(
         .target(
             name: "CPicoSDK",
             dependencies: [
+                .target(name: "CShims"),
                 // GENERATOR MARK: TARGET DEPENDENCIES
             ]
         ),
 
         // Manually defined targets
+        .target(
+            name: "CShims", 
+            dependencies: [.target(name: "_CPicoSDK_pico2")], 
+            cSettings: [
+                .unsafeFlags(["-fmodules"]),
+                .headerSearchPath("../_CPicoSDK_pico2/include"),
+            ]),
+
         .plugin(
             name: "PIOASMPlugin", 
             capability: .buildTool,

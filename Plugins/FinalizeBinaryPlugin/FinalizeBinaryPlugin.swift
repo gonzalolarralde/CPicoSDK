@@ -153,6 +153,20 @@ struct FinalizeBinaryPlugin: CommandPlugin {
     func getExtraSwiftArchives(from buildArtifact: URL) async throws -> [String] {
         let nmOutput = try await runNM(on: buildArtifact)
         var extraArchives: [String] = []
+        let toolchainPath = try await resolveSwiftToolchainPath()
+        let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
+
+        func appendEmbeddedArchive(_ archiveName: String, reason: String) {
+            let archivePath = URL(filePath: toolchainPath, directoryHint: .isDirectory)
+                .appending(path: "usr/lib/swift/embedded/\(platformTriple)/\(archiveName)")
+
+            if FileManager.default.fileExists(atPath: archivePath.path) {
+                extraArchives.append(archivePath.path)
+                print("[CPicoSDK] Linking extra Swift embedded archive (\(reason)): \(archivePath.path)")
+            } else {
+                print("[CPicoSDK] Warning: \(reason) detected, but embedded archive was not found at \(archivePath.path)")
+            }
+        }
 
         let unicodeTableMarkers = [
             "_swift_stdlib_getNormData",
@@ -164,18 +178,29 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         ]
 
         if unicodeTableMarkers.contains(where: nmOutput.contains) {
-            let toolchainPath = try await resolveSwiftToolchainPath()
-            let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
-            let archivePath = URL(filePath: toolchainPath, directoryHint: .isDirectory)
-                .appending(path: "usr/lib/swift/embedded/\(platformTriple)/libswiftUnicodeDataTables.a")
+            appendEmbeddedArchive("libswiftUnicodeDataTables.a", reason: "Unicode data symbols")
+        }
 
-            if FileManager.default.fileExists(atPath: archivePath.path) {
-                extraArchives.append(archivePath.path)
-                print("[CPicoSDK] Linking extra Swift embedded archive: \(archivePath.path)")
-            } else {
-                print("[CPicoSDK] Warning: Unicode data symbols detected, but embedded archive was not found at \(archivePath.path)")
-            }
-        } else {
+        let concurrencyMarkers = [
+            "swift_task_alloc",
+            "swift_task_dealloc",
+            "swift_task_switch",
+            "swift_task_create",
+            "swift_job_run",
+            "swift_continuation_init",
+            "swift_continuation_await",
+            "swift_continuation_throwingResume",
+            "swift_task_getMainExecutor",
+            "swift_task_isCurrentExecutor",
+            "swift_task_reportUnexpectedExecutor",
+            "swift_createDefaultExecutorsOnce",
+        ]
+
+        if concurrencyMarkers.contains(where: nmOutput.contains) {
+            appendEmbeddedArchive("libswift_Concurrency.a", reason: "Swift concurrency symbols")
+        }
+
+        if extraArchives.isEmpty {
             print("[CPicoSDK] No extra Swift embedded archives were needed.")
         }
 

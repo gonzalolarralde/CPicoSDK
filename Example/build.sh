@@ -1,8 +1,11 @@
 #!/usr/bin/env /bin/bash
 set -euo pipefail
 
+export SWIFT_VERSION="main-snapshot-2026-04-01"
+# export SWIFT_VERSION="6.3"
+
 # Set the swift build configuration.
-export BUILD_TYPE="RelWithDebInfo" # Options: Debug, Release, RelWithDebInfo, MinSizeRel
+export BUILD_TYPE="Debug" # Options: Debug, Release, RelWithDebInfo, MinSizeRel
 
 ### Uncommenting the next line could help to debug issues or better understand the pipeline.
 # set -x

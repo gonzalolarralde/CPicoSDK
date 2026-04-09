@@ -1,16 +1,81 @@
 import CPicoSDK
+import _Concurrency
+
+nonisolated(unsafe) var continuations: [alarm_id_t: (UnsafeContinuation<Void, Never>)] = [:]
+
+@c
+func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
+    if let cont = continuations[id] {
+        continuations.removeValue(forKey: id)
+        cont.resume()
+    }
+    return 0 // 0 = do not reschedule
+}
+
+@_silgen_name("cshims_swift_task_poll_once")
+func cshims_swift_task_poll_once() -> Bool
 
 @main
 struct App {
-    static func main() {
+      static func main() {
+        Task {
+            try! await asyncMain()
+        }
+
+        while true {
+            _ = cshims_swift_task_poll_once()
+            tight_loop_contents()
+        }
+      }
+
+    static func sleep(us: UInt64) async {
+        await withUnsafeContinuation { continuation in
+            let id = add_alarm_in_us(us, sleep_alarm_callback, nil, true)
+            continuations[id] = continuation
+        }
+    }
+
+    static func sleep(ms: UInt32) async {
+        await withUnsafeContinuation { continuation in
+            let id = add_alarm_in_ms(ms, sleep_alarm_callback, nil, true)
+            continuations[id] = continuation
+        }
+    }
+
+    // @PicoActor
+    static func asyncMain() async throws {
         stdio_init_all()
         status_led_init()
 
-        sleep_ms(1000)
+        print("Scheduling 1 second alarm...")
+        await sleep(ms: 1000)
+        print("One second!")
+
+        // Keep one Unicode-aware string operation in the example so the finalizer
+        // can demonstrate automatic linking of libswiftUnicodeDataTables when needed.
+        print("Composed/decomposed match: \("Cafe\u{301}".contains("é"))")
+
         print("Hello, world!")
 
-        multicore_launch_core1(ledExample)
-        try! pioExample()
+
+        Task {
+            var last_state: Bool = false
+
+            while true {
+                status_led_set_state(last_state)
+                last_state = !last_state
+                await sleep(ms: 100)
+            }
+        }
+
+        // multicore_launch_core1(ledExample)
+        //try! pioExample()
+        // resets_hw.
+
+        while true {
+            await sleep(ms: 1000)
+            print("One second!")
+        }
     }
 }
 
@@ -43,7 +108,7 @@ func pioExample() throws(PIOError) {
     // Please connect something visible to see the effect!
     let pin: UInt32 = 20
 
-    var pio: PIO? = nil
+    var pio: PIO?
     let sm: UInt32 = 0
     var offset: UInt32 = 0
 
@@ -66,7 +131,7 @@ func pioExample() throws(PIOError) {
     // ------------------------------------------------------
 
     // This is the manual way of doing the same as above
-    pio = PIO(bitPattern: Int(PIO0_BASE))
+    pio = pio0
     guard let pio = pio else {
         throw PIOError.pioNotResolved
     }
@@ -87,7 +152,7 @@ func pioExample() throws(PIOError) {
     // The state machine is now running. Any value we push to its TX FIFO will
     // appear on the pin.
     // press a key to exit
-    while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT.rawValue) { // what is this supposed to do?
+    while (getchar_timeout_us(0) == PICO_ERROR_TIMEOUT.rawValue) {
         // Blink
         pio_sm_put_blocking(pio, sm, 1);
         sleep_ms(500);
@@ -100,12 +165,4 @@ func pioExample() throws(PIOError) {
 
     // This will free resources and unload our program
     pio_remove_program_and_unclaim_sm(hello.program, pio, sm, offset);
-
-    // Keep one Unicode-aware string operation in the example so the finalizer
-    // can demonstrate automatic linking of libswiftUnicodeDataTables when needed.
-    print("Composed/decomposed match: \("Cafe\u{301}".contains("é"))")
-
-    while true {
-        tight_loop_contents()
-    }
 }
