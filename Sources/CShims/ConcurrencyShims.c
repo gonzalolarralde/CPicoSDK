@@ -16,7 +16,6 @@
 #define SWIFT_NORETURN
 #endif
 
-#if defined(__arm__) || defined(__thumb__)
 static inline void cshims_wait_for_event(void) {
     __asm volatile("wfe" ::: "memory");
 }
@@ -35,11 +34,6 @@ static inline uint32_t cshims_save_and_disable_interrupts(void) {
 static inline void cshims_restore_interrupts(uint32_t status) {
     __asm volatile("msr primask, %0\n" : : "r"(status) : "memory");
 }
-#else
-static inline void cshims_wait_for_event(void) {}
-static inline uint32_t cshims_save_and_disable_interrupts(void) { return 0; }
-static inline void cshims_restore_interrupts(uint32_t status) { (void)status; }
-#endif
 
 typedef struct {
     void *first;

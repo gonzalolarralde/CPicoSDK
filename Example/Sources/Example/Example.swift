@@ -1,54 +1,14 @@
 import CPicoSDK
 import _Concurrency
 
-nonisolated(unsafe) var continuations: [alarm_id_t: (UnsafeContinuation<Void, Never>)] = [:]
-
-@c
-func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
-    if let cont = continuations[id] {
-        continuations.removeValue(forKey: id)
-        cont.resume()
-    }
-    return 0 // 0 = do not reschedule
-}
-
-@_silgen_name("cshims_swift_task_poll_once")
-func cshims_swift_task_poll_once() -> Bool
-
 @main
 struct App {
-      static func main() {
-        Task {
-            try! await asyncMain()
-        }
-
-        while true {
-            _ = cshims_swift_task_poll_once()
-            tight_loop_contents()
-        }
-      }
-
-    static func sleep(us: UInt64) async {
-        await withUnsafeContinuation { continuation in
-            let id = add_alarm_in_us(us, sleep_alarm_callback, nil, true)
-            continuations[id] = continuation
-        }
-    }
-
-    static func sleep(ms: UInt32) async {
-        await withUnsafeContinuation { continuation in
-            let id = add_alarm_in_ms(ms, sleep_alarm_callback, nil, true)
-            continuations[id] = continuation
-        }
-    }
-
-    // @PicoActor
-    static func asyncMain() async throws {
+    static func main() async throws(CancellationError) {
         stdio_init_all()
         status_led_init()
 
         print("Scheduling 1 second alarm...")
-        await sleep(ms: 1000)
+        try await Task.sleep(ms: 1000)
         print("One second!")
 
         // Keep one Unicode-aware string operation in the example so the finalizer
@@ -64,7 +24,7 @@ struct App {
             while true {
                 status_led_set_state(last_state)
                 last_state = !last_state
-                await sleep(ms: 100)
+                try! await Task.sleep(ms: 100)
             }
         }
 
@@ -73,7 +33,7 @@ struct App {
         // resets_hw.
 
         while true {
-            await sleep(ms: 1000)
+            try await Task.sleep(ms: 1000)
             print("One second!")
         }
     }
