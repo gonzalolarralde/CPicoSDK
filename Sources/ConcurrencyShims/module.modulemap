@@ -1,0 +1,4 @@
+module ConcurrencyShims {
+  header "include/ConcurrencyShims.h"
+  export *
+}

@@ -1,5 +1,7 @@
-import _Concurrency
-import CShims
+#if Concurrency
+
+@_exported import _Concurrency
+import ConcurrencyShims
 
 #if Variant_RP2350A && Radio_None
     @_exported import _CPicoSDK_pico2
@@ -65,3 +67,5 @@ extension Task {
         }
     }
 }
+
+#endif

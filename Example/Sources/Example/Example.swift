@@ -1,5 +1,4 @@
 import CPicoSDK
-import _Concurrency
 
 @main
 struct App {

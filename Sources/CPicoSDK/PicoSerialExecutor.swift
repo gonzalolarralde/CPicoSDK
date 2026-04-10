@@ -1,4 +1,6 @@
-public import _Concurrency
+#if Concurrency
+
+import _Concurrency
 
 /// A minimal queue-backed serial executor implemented in Swift.
 ///
@@ -110,3 +112,5 @@ public enum PicoConcurrency {
         }
     }
 }
+
+#endif

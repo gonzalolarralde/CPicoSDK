@@ -1,5 +1,5 @@
-#ifndef CSHIMS_H
-#define CSHIMS_H
+#ifndef CONCURRENCYSHIMS_H
+#define CONCURRENCYSHIMS_H
 
 #ifdef __cplusplus
 extern "C" {
