@@ -506,8 +506,8 @@ Reasons:
 Current implementation shape:
 
 - the toolchain-provided `libswift_Concurrency.a` is used
-- the low-level runtime hook exports remain in [Sources/ConcurrencyShims/ConcurrencyShims.c](/Users/gonzalo/src/CPicoSDK/Sources/ConcurrencyShims/ConcurrencyShims.c)
-- the scheduling backend now lives in [Sources/CPicoConcurrency/RuntimeScheduler.swift](/Users/gonzalo/src/CPicoSDK/Sources/CPicoConcurrency/RuntimeScheduler.swift)
+- the low-level runtime hook exports remain in [Sources/ConcurrencyShims/ConcurrencyShims.c](Sources/ConcurrencyShims/ConcurrencyShims.c)
+- the scheduling backend now lives in [Sources/CPicoConcurrency/RuntimeScheduler.swift](Sources/CPicoConcurrency/RuntimeScheduler.swift)
 - that scheduler uses Pico SDK `async_context` rather than a handwritten queue loop
 
 The current state is best described as:
