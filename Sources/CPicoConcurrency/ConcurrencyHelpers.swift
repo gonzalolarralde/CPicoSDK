@@ -7,8 +7,12 @@ public func picoSDKTightLoop() {
     cshims_swift_task_poll_once()
 }
 
-/// Helper to create an IRQ trampoline. The critical closure is called from the IRQn context and can return a value to be passed to the postIRQ closure, which is called from
-/// an async context worker context (non-IRQ) and can safely interact with Swift concurrency primitives.
+/// Helper to run minimal IRQ work now and schedule follow-up Swift work on the
+/// shared async context.
+///
+/// This helper intentionally allows allocations while scheduling the post-IRQ
+/// block so the call site stays simple. If a zero-allocation IRQ path is needed
+/// later, the implementation can be swapped behind this API.
 /// 
 /// Example usage:
 /// ```swift
@@ -17,32 +21,33 @@ public func picoSDKTightLoop() {
 ///         // This runs in IRQ context. Do minimal work here, just prepare any data you need to pass to postIRQ and return it.
 ///         return readSensorDataFromIRQ()
 ///     } postIRQ: { sensorData in
-///         // This runs in async_context worker context, NOT in IRQ. You can safely interact with Swift concurrency primitives here, e.g. by resuming a continuation or sending data through an AsyncStream.
+///         // This runs in async_context worker context, NOT in IRQ. You can
+///         // safely interact with Swift concurrency primitives here.
 ///         sensorDataStream.send(sensorData)
 ///     }
 /// }
 /// ```
 public func irqTrampoline<T>(_ critical: () -> T, postIRQ: @escaping (T) -> Void) {
     let value = critical()
-    let trampoline = cshimsRuntimeScheduler.registerIRQTrampoline(postIRQ: postIRQ)
-    trampoline.signalFromIRQ(value)
+    cshimsRuntimeScheduler.schedule {
+        postIRQ(value)
+    }
 }
 
-/// Helper to create an IRQ trampoline. The critical closure is called from the IRQn context and can return a value to be passed to the postIRQ closure, which is called from
-/// an async context worker context (non-IRQ) and can safely interact with Swift concurrency primitives.
+/// Schedules a one-shot follow-up block from IRQ context onto the shared async
+/// context.
 /// 
 /// Example usage:
 /// ```swift
 /// @c func someIRQHandler() {
 ///     irqTrampoline {
-///         // This runs in async_context worker context, NOT in IRQ. You can safely interact with Swift concurrency primitives here, e.g. by resuming a continuation or sending data through an AsyncStream.
+///         // This runs in async_context worker context, NOT in IRQ.
 ///         continuation.resume()
 ///     }
 /// }
 /// ```
 public func irqTrampoline(postIRQ: @escaping () -> Void) {
-    let trampoline = cshimsRuntimeScheduler.registerIRQTrampoline(postIRQ: postIRQ)
-    trampoline.signalFromIRQ(())
+    cshimsRuntimeScheduler.schedule(postIRQ)
 }
 
 // MARK: - Sleep helpers

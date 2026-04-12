@@ -39,13 +39,56 @@ private func cshimsWithCritical<T>(_ body: () -> T) -> T {
     return body()
 }
 
+private final class ScheduledBlock {
+    let id: UInt32
+    private let block: () -> Void
+    private var contextRaw: UnsafeMutableRawPointer?
+    var pendingWorker: async_when_pending_worker_t
+
+    init(id: UInt32, block: @escaping () -> Void) {
+        self.id = id
+        self.block = block
+        self.contextRaw = nil
+        self.pendingWorker = async_when_pending_worker_t(
+            next: nil,
+            do_work: cshims_scheduler_scheduled_block_worker,
+            work_pending: false,
+            user_data: nil
+        )
+    }
+
+    func attach(to contextRaw: UnsafeMutableRawPointer) -> Bool {
+        self.contextRaw = contextRaw
+        pendingWorker.user_data = Unmanaged.passUnretained(self).toOpaque()
+        let context = contextRaw.assumingMemoryBound(to: async_context_t.self)
+        return async_context_add_when_pending_worker(context, &pendingWorker)
+    }
+
+    func signal() {
+        guard let contextRaw else { return }
+        let context = contextRaw.assumingMemoryBound(to: async_context_t.self)
+        async_context_set_work_pending(context, &pendingWorker)
+    }
+
+    func execute() {
+        block()
+
+        if let contextRaw {
+            let context = contextRaw.assumingMemoryBound(to: async_context_t.self)
+            _ = async_context_remove_when_pending_worker(context, &pendingWorker)
+        }
+
+        cshimsRuntimeScheduler.completeScheduledBlock(id: id)
+    }
+}
+
 final class RuntimeScheduler {
     // Shared async_context used by both Swift runtime jobs and IRQ trampolines.
     private var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
-    // Owns registered IRQ trampolines so worker user_data pointers remain valid.
-    private var retainedIRQTrampolines: [AnyObject] = []
+    private var scheduledBlocks: [UInt32: AnyObject] = [:]
+    private var nextScheduledBlockID: UInt32 = 0
 
     init() {
         slots = .allocate(capacity: cshimsMaxJobSlots)
@@ -146,24 +189,35 @@ final class RuntimeScheduler {
         async_context_wait_for_work_until(&context.core, UInt64.max)
     }
 
-    // Register an IRQ trampoline. The returned handle is IRQ-safe: call
-    // handle.signalFromIRQ(value) from interrupt context and postIRQ will
-    // be invoked from async_context worker context (non-IRQ) for each value.
-    func registerIRQTrampoline<T>(
-        postIRQ: @escaping (T) -> Void
-    ) -> IRQTrampolineHandle<T> {
-        let box = IRQTrampolineBoxed<T>(postIRQ: postIRQ)
-        let registered = withUnsafeMutablePointer(to: &context.core) { corePtr in
-            box.attach(to: UnsafeMutableRawPointer(corePtr))
-        }
-        guard registered else {
-            fatalError("[CPicoConcurrency] failed to register IRQ trampoline worker")
+    // Schedules a one-shot block to run from async_context worker context.
+    // This is allowed to allocate; callers that need zero-allocation IRQ paths
+    // should use a dedicated preallocated mechanism instead.
+    func schedule(_ block: @escaping () -> Void) {
+        let id = cshimsWithCritical {
+            let id = nextScheduledBlockID
+            nextScheduledBlockID &+= 1
+            return id
         }
 
-        // Keep trampolines alive for the scheduler lifetime so worker
-        // user_data pointers remain valid even if callers drop handles.
-        retainedIRQTrampolines.append(box)
-        return IRQTrampolineHandle(base: box)
+        let scheduledBlock = ScheduledBlock(id: id, block: block)
+        let registered = withUnsafeMutablePointer(to: &context.core) { corePtr in
+            scheduledBlock.attach(to: UnsafeMutableRawPointer(corePtr))
+        }
+        guard registered else {
+            fatalError("[CPicoConcurrency] failed to register scheduled worker")
+        }
+
+        cshimsWithCritical {
+            scheduledBlocks[id] = scheduledBlock
+        }
+
+        scheduledBlock.signal()
+    }
+
+    func completeScheduledBlock(id: UInt32) {
+        _ = cshimsWithCritical {
+            scheduledBlocks.removeValue(forKey: id)
+        }
     }
 
     fileprivate func run(slot: UnsafeMutablePointer<JobSlot>) {
@@ -212,6 +266,19 @@ final class RuntimeScheduler {
 }
 
 nonisolated(unsafe) var cshimsRuntimeScheduler = RuntimeScheduler()
+
+@_cdecl("cshims_scheduler_scheduled_block_worker")
+private func cshims_scheduler_scheduled_block_worker(
+    _ context: UnsafeMutablePointer<async_context_t>?,
+    _ worker: UnsafeMutablePointer<async_when_pending_worker_t>?
+) {
+    _ = context
+    guard let worker, let userData = worker.pointee.user_data else {
+        return
+    }
+    let scheduledBlock = Unmanaged<ScheduledBlock>.fromOpaque(userData).takeUnretainedValue()
+    scheduledBlock.execute()
+}
 
 @_cdecl("cshims_scheduler_pending_worker")
 private func cshims_scheduler_pending_worker(
