@@ -4,13 +4,18 @@ import Foundation
 
 extension Process {
     func asyncRun() async throws -> Int32 {
-        try await withUnsafeThrowingContinuation { continuation in
+        defer {
+            self.terminationHandler = nil
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
             self.terminationHandler = { process in
                 continuation.resume(returning: process.terminationStatus)
             }
             do {
                 try self.run()
             } catch {
+                self.terminationHandler = nil
                 continuation.resume(throwing: error)
             }
         }

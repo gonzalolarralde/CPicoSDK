@@ -77,6 +77,10 @@ extension Process {
             stderrGatherer = gatherer
         }
 
+        defer {
+            self.terminationHandler = nil
+        }
+
         async let status: Int32 = try withCheckedThrowingContinuation { continuation in
             self.terminationHandler = { process in
                 continuation.resume(returning: process.terminationStatus)
@@ -92,8 +96,6 @@ extension Process {
 
         async let stdout = stdoutGatherer?.readDataToEndOfFile()
         async let stderr = stderrGatherer?.readDataToEndOfFile()
-
-        self.terminationHandler = nil
 
         return (try await status, await stdout, await stderr)
     }
