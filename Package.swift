@@ -9,13 +9,12 @@ let package = Package(
     name: "CPicoSDK",
     products: [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
+        .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
     traits: [
-        .trait(name: "Concurrency"),
-
         // TODO: The generator needs to define traits. This needs to be implemented.
         .trait(name: "Platform_RP2350"),
         .trait(name: "Platform_RP2350_arm_s"),
@@ -55,8 +54,6 @@ let package = Package(
         .target(
             name: "CPicoSDK",
             dependencies: [
-                .target(name: "ConcurrencyShims", condition: .when(traits: ["Concurrency"])),
-
                 // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
@@ -66,6 +63,13 @@ let package = Package(
         ),
 
         // Manually defined targets
+        .target(
+            name: "CPicoConcurrency",
+            dependencies: [
+                .target(name: "ConcurrencyShims"),
+                .target(name: "CPicoSDK"),
+            ]
+        ),
         .target(name: "ConcurrencyShims"),
 
         .plugin(

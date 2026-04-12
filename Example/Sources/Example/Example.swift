@@ -1,4 +1,5 @@
 import CPicoSDK
+import CPicoConcurrency
 
 @main
 struct App {
@@ -17,14 +18,12 @@ struct App {
         print("Hello, world!")
 
 
-        Task {
-            var last_state: Bool = false
+        Foo.$bar.withValue("HelloWorld") {
+            print("Task local value: \(Foo().getBar())")
+        }
 
-            while true {
-                status_led_set_state(last_state)
-                last_state = !last_state
-                try! await Task.sleep(ms: 100)
-            }
+        Task {
+            try! await blinkLeds()
         }
 
         // multicore_launch_core1(ledExample)
@@ -124,4 +123,13 @@ func pioExample() throws(PIOError) {
 
     // This will free resources and unload our program
     pio_remove_program_and_unclaim_sm(hello.program, pio, sm, offset);
+}
+
+struct Foo {
+    @TaskLocal
+    static var bar: String?
+
+    func getBar() -> String {
+        return Foo.bar ?? "no bar"
+    }
 }

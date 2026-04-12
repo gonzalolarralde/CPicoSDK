@@ -1,20 +1,6 @@
-#if Concurrency
-
 @_exported import _Concurrency
 import ConcurrencyShims
-
-#if Variant_RP2350A && Radio_None
-    @_exported import _CPicoSDK_pico2
-#elseif Variant_RP2350A && Radio_CYW43439
-    @_exported import _CPicoSDK_pico2_w
-#elseif Variant_RP2350B && Radio_None
-    @_exported import _CPicoSDK_pimoroni_pico_plus2_rp2350
-#elseif Variant_RP2350B && Radio_CYW43439
-    @_exported import _CPicoSDK_pimoroni_pico_plus2_w_rp2350
-#else
-    // TODO: This is very constrained, until we can add proper board capability support this will help us keep moving.
-    #error("Invalid Variant + Radio combination.")
-#endif
+import CPicoSDK
 
 public func picoSDKTightLoop() {
     tight_loop_contents()
@@ -67,5 +53,3 @@ extension Task {
         }
     }
 }
-
-#endif
