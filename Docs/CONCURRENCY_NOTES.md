@@ -9,6 +9,7 @@ The short version:
 - custom executors are still not usable on this toolchain
 - the runtime hook surface remains in C
 - the scheduling backend now lives in Swift and uses Pico SDK `async_context`
+- Linux has a versioned vendored fallback for missing embedded `_Concurrency` artifacts
 
 ## Current Architecture
 
@@ -83,6 +84,18 @@ The important design constraint is:
 - scheduler logic belongs in Swift
 - ABI glue belongs in C
 
+### 3. Linux vendored `_Concurrency` fallback
+
+Files:
+
+- [Vendor/EmbeddedSwiftRuntime/main-snapshot-2026-04-01/usr/lib/swift/embedded/_Concurrency.swiftmodule/armv7em-none-none-eabi.swiftmodule](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime/main-snapshot-2026-04-01/usr/lib/swift/embedded/_Concurrency.swiftmodule/armv7em-none-none-eabi.swiftmodule)
+- [Vendor/EmbeddedSwiftRuntime/main-snapshot-2026-04-01/usr/lib/swift/embedded/armv7em-none-none-eabi/libswift_Concurrency.a](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime/main-snapshot-2026-04-01/usr/lib/swift/embedded/armv7em-none-none-eabi/libswift_Concurrency.a)
+- [Vendor/EmbeddedSwiftRuntime/main-snapshot-2026-04-01/usr/lib/swift/embedded/armv7em-none-none-eabi/libswift_ConcurrencyDefaultExecutor.a](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime/main-snapshot-2026-04-01/usr/lib/swift/embedded/armv7em-none-none-eabi/libswift_ConcurrencyDefaultExecutor.a)
+
+This exists because the Linux Swift snapshot appears to be packaged without the embedded `armv7em-none-none-eabi` `_Concurrency` artifacts that are present in the macOS toolchain.
+
+The fallback is keyed by `SWIFT_VERSION`, so the build only uses a vendored runtime directory when its name matches the active compiler snapshot.
+
 ## What Actually Works
 
 The following is now confirmed.
@@ -151,6 +164,8 @@ The project does not need to reimplement the Swift concurrency runtime. It only 
 - a platform scheduler
 - the correct build/link integration
 
+On Linux, “correct build/link integration” currently includes the vendored `_Concurrency` fallback when the active toolchain package is missing those embedded artifacts.
+
 ## What Does Not Work
 
 ### Custom executors
@@ -218,6 +233,45 @@ That archive pulled in dependencies like:
 - `__error`
 
 which are the wrong model for this target.
+
+Current Linux behavior:
+
+- the finalize plugin first looks in the active toolchain under `usr/lib/swift/embedded/<triple>/`
+- if the concurrency archive is missing there, it falls back to:
+  [Vendor/EmbeddedSwiftRuntime](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime)
+- that fallback only applies when a directory matching `SWIFT_VERSION` exists
+
+### Prepare plugin compiler fallback
+
+`Plugins/PrepareEnvironmentPlugin/Generators.swift` also injects a Linux-only compiler fallback path into the generated `toolset.json` and `.sourcekit-lsp/config.json`.
+
+That fallback path points at:
+
+- `Vendor/EmbeddedSwiftRuntime/<SWIFT_VERSION>/usr/lib/swift/embedded`
+
+The current intent is:
+
+- do nothing on macOS
+- do nothing on Linux if no matching vendored runtime directory exists
+- use the vendored embedded runtime directory only for the exact pinned Swift snapshot that the package expects
+
+## Current Sharp Edges
+
+### Linux toolchain packaging is still the real issue
+
+The vendored runtime directory is a workaround, not the underlying fix.
+
+The current understanding is:
+
+- the Linux Swift snapshot package is missing embedded `_Concurrency` artifacts for `armv7em-none-none-eabi`
+- other embedded modules such as `Swift.swiftmodule`, `Synchronization.swiftmodule`, `_Volatile.swiftmodule`, and `_Builtin_float.swiftmodule` do ship correctly for the same target
+- macOS toolchains already carry the embedded concurrency artifacts needed for this target
+
+So the current repository behavior is:
+
+- macOS uses the toolchain-provided embedded concurrency artifacts directly
+- Linux uses a vendored fallback when the active `SWIFT_VERSION` matches a bundled directory
+- upstream Swift packaging still needs to be corrected
 
 ### Static archive grouping
 

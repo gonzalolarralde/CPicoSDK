@@ -78,6 +78,7 @@ Current status:
 - plain embedded `async`/`await` is working
 - the implementation is still exploratory
 - custom executors are not supported yet
+- Linux currently depends on a vendored fallback copy of the embedded `_Concurrency` artifacts for the pinned Swift snapshot
 - the API surface may still change
 
 The Example project is expected to keep demonstrating an important embedded constraint here: long-running `while true { ... }` loops need some form of yielding or scheduler pumping, otherwise non-awaiting code can monopolize the CPU.
@@ -509,6 +510,7 @@ Current implementation shape:
 - the low-level runtime hook exports remain in [Sources/ConcurrencyShims/ConcurrencyShims.c](Sources/ConcurrencyShims/ConcurrencyShims.c)
 - the scheduling backend now lives in [Sources/CPicoConcurrency/RuntimeScheduler.swift](Sources/CPicoConcurrency/RuntimeScheduler.swift)
 - that scheduler uses Pico SDK `async_context` rather than a handwritten queue loop
+- on Linux, the build can fall back to vendored embedded `_Concurrency` artifacts under [Vendor/EmbeddedSwiftRuntime](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime) when the toolchain packaging is incomplete
 
 The current state is best described as:
 
@@ -516,6 +518,8 @@ The current state is best described as:
 - the implementation is not considered stable yet
 - custom executors are still not viable on this embedded runtime
 - exploratory pieces like `@CPU0Actor` and `@CPU1Actor` exist as future-facing scaffolding, not as working CPU pinning support
+
+The Linux fallback is intentionally versioned by `SWIFT_VERSION`. The build only uses a vendored runtime directory when the active Swift snapshot has a matching directory name, which avoids silently mixing concurrency runtime files from different toolchains.
 
 The Example is expected to keep representing an important behavioral constraint:
 
