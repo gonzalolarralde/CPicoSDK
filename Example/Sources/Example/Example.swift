@@ -37,6 +37,17 @@ struct App {
     }
 }
 
+@CPU1Actor
+func blinkLeds() async throws(CancellationError) {
+    var last_state: Bool = false
+
+    while true {
+        status_led_set_state(last_state)
+        last_state = !last_state
+        try await Task.sleep(ms: 100)
+    }
+}
+
 // MARK: LED Example
 
 @c
