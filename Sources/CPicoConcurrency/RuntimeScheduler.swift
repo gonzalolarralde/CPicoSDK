@@ -39,16 +39,19 @@ private func cshimsWithCritical<T>(_ body: () -> T) -> T {
     return body()
 }
 
-private final class RuntimeScheduler {
+final class RuntimeScheduler {
+    // Shared async_context used by both Swift runtime jobs and IRQ trampolines.
     private var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
+    // Owns registered IRQ trampolines so worker user_data pointers remain valid.
+    private var retainedIRQTrampolines: [AnyObject] = []
 
     init() {
         slots = .allocate(capacity: cshimsMaxJobSlots)
 
         guard async_context_poll_init_with_defaults(&context) else {
-            fatalError("async_context_poll_init_with_defaults failed")
+            fatalError("[CPicoConcurrency] async_context_poll_init_with_defaults failed")
         }
 
         for index in 0..<cshimsMaxJobSlots {
@@ -67,7 +70,7 @@ private final class RuntimeScheduler {
             slot.pointee.delayedWorker.user_data = UnsafeMutableRawPointer(slot)
 
             guard async_context_add_when_pending_worker(&context.core, &slot.pointee.pendingWorker) else {
-                fatalError("failed to register pending worker with async_context")
+                fatalError("[CPicoConcurrency] failed to register pending worker with async_context")
             }
         }
     }
@@ -105,7 +108,7 @@ private final class RuntimeScheduler {
         let deadline = make_timeout_time_us(delayUs)
         guard async_context_add_at_time_worker_at(&context.core, &slot.pointee.delayedWorker, deadline) else {
             releaseSlot(slot)
-            fatalError("failed to schedule delayed async_context job")
+            fatalError("[CPicoConcurrency] failed to schedule delayed async_context job")
         }
     }
 
@@ -124,7 +127,7 @@ private final class RuntimeScheduler {
         let deadline = from_us_since_boot(deadlineUs)
         guard async_context_add_at_time_worker_at(&context.core, &slot.pointee.delayedWorker, deadline) else {
             releaseSlot(slot)
-            fatalError("failed to schedule deadline async_context job")
+            fatalError("[CPicoConcurrency] failed to schedule deadline async_context job")
         }
     }
 
@@ -143,7 +146,27 @@ private final class RuntimeScheduler {
         async_context_wait_for_work_until(&context.core, UInt64.max)
     }
 
-    func run(slot: UnsafeMutablePointer<JobSlot>) {
+    // Register an IRQ trampoline. The returned handle is IRQ-safe: call
+    // handle.signalFromIRQ(value) from interrupt context and postIRQ will
+    // be invoked from async_context worker context (non-IRQ) for each value.
+    func registerIRQTrampoline<T>(
+        postIRQ: @escaping (T) -> Void
+    ) -> IRQTrampolineHandle<T> {
+        let box = IRQTrampolineBoxed<T>(postIRQ: postIRQ)
+        let registered = withUnsafeMutablePointer(to: &context.core) { corePtr in
+            box.attach(to: UnsafeMutableRawPointer(corePtr))
+        }
+        guard registered else {
+            fatalError("[CPicoConcurrency] failed to register IRQ trampoline worker")
+        }
+
+        // Keep trampolines alive for the scheduler lifetime so worker
+        // user_data pointers remain valid even if callers drop handles.
+        retainedIRQTrampolines.append(box)
+        return IRQTrampolineHandle(base: box)
+    }
+
+    fileprivate func run(slot: UnsafeMutablePointer<JobSlot>) {
         let job = slot.pointee.job
         let executorFirst = slot.pointee.executorFirst
         let executorSecond = slot.pointee.executorSecond
@@ -161,7 +184,7 @@ private final class RuntimeScheduler {
             return slot
         }
 
-        fatalError("Concurrency job slot pool exhausted")
+        fatalError("[CPicoConcurrency] Concurrency job slot pool exhausted")
     }
 
     private func releaseSlot(_ slot: UnsafeMutablePointer<JobSlot>) {
@@ -188,7 +211,7 @@ private final class RuntimeScheduler {
     }
 }
 
-nonisolated(unsafe) private var cshimsRuntimeScheduler = RuntimeScheduler()
+nonisolated(unsafe) var cshimsRuntimeScheduler = RuntimeScheduler()
 
 @_cdecl("cshims_scheduler_pending_worker")
 private func cshims_scheduler_pending_worker(
