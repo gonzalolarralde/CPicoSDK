@@ -165,7 +165,6 @@ extension PrepareEnvironmentPlugin {
                     "-Xfrontend", "-disable-stack-protector",
                     "-enable-experimental-feature", "Embedded",
                     "-sdk", "\(envVars["SDK_PATH"]!)",
-                    "-I", "\(envVars["SWIFT_EMBEDDED_MODULES_PATH"]!)",
                     "-wmo"
                 ]
             },
@@ -334,8 +333,7 @@ extension PrepareEnvironmentPlugin {
                 "triple": "\(envVars["SWIFTPM_TRIPLE"]!)",
                 "toolsets": ["\(envVars["TOOLSET_PATH"]!)"],
                 "swiftCompilerFlags": [
-                    "-enable-experimental-feature", "Embedded",
-                    "-I", "\(envVars["SWIFT_EMBEDDED_MODULES_PATH"]!)"
+                    "-enable-experimental-feature", "Embedded"
                 ]
             }
         }
