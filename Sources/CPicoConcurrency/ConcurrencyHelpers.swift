@@ -7,12 +7,39 @@ public func picoSDKTightLoop() {
     cshims_swift_task_poll_once()
 }
 
+/// Helper to create an IRQ trampoline. The critical closure is called from the IRQn context and can return a value to be passed to the postIRQ closure, which is called from
+/// an async context worker context (non-IRQ) and can safely interact with Swift concurrency primitives.
+/// 
+/// Example usage:
+/// ```swift
+/// @c func someIRQHandler() {
+///     irqTrampoline {
+///         // This runs in IRQ context. Do minimal work here, just prepare any data you need to pass to postIRQ and return it.
+///         return readSensorDataFromIRQ()
+///     } postIRQ: { sensorData in
+///         // This runs in async_context worker context, NOT in IRQ. You can safely interact with Swift concurrency primitives here, e.g. by resuming a continuation or sending data through an AsyncStream.
+///         sensorDataStream.send(sensorData)
+///     }
+/// }
+/// ```
 public func irqTrampoline<T>(_ critical: () -> T, postIRQ: @escaping (T) -> Void) {
     let value = critical()
     let trampoline = cshimsRuntimeScheduler.registerIRQTrampoline(postIRQ: postIRQ)
     trampoline.signalFromIRQ(value)
 }
 
+/// Helper to create an IRQ trampoline. The critical closure is called from the IRQn context and can return a value to be passed to the postIRQ closure, which is called from
+/// an async context worker context (non-IRQ) and can safely interact with Swift concurrency primitives.
+/// 
+/// Example usage:
+/// ```swift
+/// @c func someIRQHandler() {
+///     irqTrampoline {
+///         // This runs in async_context worker context, NOT in IRQ. You can safely interact with Swift concurrency primitives here, e.g. by resuming a continuation or sending data through an AsyncStream.
+///         continuation.resume()
+///     }
+/// }
+/// ```
 public func irqTrampoline(postIRQ: @escaping () -> Void) {
     let trampoline = cshimsRuntimeScheduler.registerIRQTrampoline(postIRQ: postIRQ)
     trampoline.signalFromIRQ(())
@@ -53,6 +80,13 @@ extension Task {
             }
 
             let id = add_alarm_in_us(us, sleep_alarm_callback, nil, true)
+            guard id > 0 else {
+                mutex_exit(continuations_mutex)
+                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
+                cancelled = true
+                return
+            }
+
             continuations[id] = continuation
 
             mutex_exit(continuations_mutex)
@@ -78,6 +112,13 @@ extension Task {
             }
 
             let id = add_alarm_in_ms(ms, sleep_alarm_callback, nil, true)
+            guard id > 0 else {
+                mutex_exit(continuations_mutex)
+                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
+                cancelled = true
+                return
+            }
+
             continuations[id] = continuation
 
             mutex_exit(continuations_mutex)
