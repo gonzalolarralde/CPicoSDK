@@ -4,7 +4,7 @@ import PackagePlugin
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?) -> [String: String] {
+    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?) async throws -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
@@ -62,6 +62,8 @@ extension PrepareEnvironmentPlugin {
         if newEnvVars["RELEVANT_ENV_VARS"] == nil {
             newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
         }
+
+        try await self.enrichSwiftToolchainPaths(envVars: &newEnvVars)
 
         // Show some information about given vars first
         for (envVar, value) in givenEnvVars {
@@ -162,7 +164,10 @@ extension PrepareEnvironmentPlugin {
                 "extraCLIOptions": [
                     "-Xfrontend", "-disable-stack-protector",
                     "-enable-experimental-feature", "Embedded",
-                    "-sdk", "\(envVars["SDK_PATH"]!)", "-wmo"
+                    "-sdk", "\(envVars["SDK_PATH"]!)",
+                    "-resource-dir", "\(envVars["SWIFT_RESOURCE_DIR"]!)",
+                    "-I", "\(envVars["SWIFT_EMBEDDED_MODULES_PATH"]!)",
+                    "-wmo"
                 ]
             },
             "cCompiler": {
@@ -330,7 +335,9 @@ extension PrepareEnvironmentPlugin {
                 "triple": "\(envVars["SWIFTPM_TRIPLE"]!)",
                 "toolsets": ["\(envVars["TOOLSET_PATH"]!)"],
                 "swiftCompilerFlags": [
-                    "-enable-experimental-feature", "Embedded"
+                    "-enable-experimental-feature", "Embedded",
+                    "-resource-dir", "\(envVars["SWIFT_RESOURCE_DIR"]!)",
+                    "-I", "\(envVars["SWIFT_EMBEDDED_MODULES_PATH"]!)"
                 ]
             }
         }

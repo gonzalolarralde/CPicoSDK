@@ -52,7 +52,7 @@ class PrepareEnvironmentPlugin: CommandPlugin {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK default env values. Make sure this package depends on CPicoSDK or provide the path using --cpicosdk-envs-path. [path=\(cPicoSDKEnvVarsPath)]")
         }
 
-        let consolidatedEnvVars = self.generateEnvVars(
+        let consolidatedEnvVars = try await self.generateEnvVars(
             given: givenEnvVars, 
             packageEnv: cPicoSDKPackageEnv,
             context: context,
@@ -84,6 +84,56 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
         // Write output once generated
         try self.generatePreparationScript(dumpPrepScriptPath: dumpPrepScriptPath)
+    }
+
+    func enrichSwiftToolchainPaths(envVars: inout [String: String]) async throws {
+        guard envVars["SWIFT_TOOLCHAIN_PATH"] == nil ||
+              envVars["SWIFT_RESOURCE_DIR"] == nil ||
+              envVars["SWIFT_EMBEDDED_MODULES_PATH"] == nil else {
+            return
+        }
+
+        let swiftlyProcess = Process()
+        swiftlyProcess.executableURL = URL(filePath: envVars["SWIFTLY_PATH"]!, directoryHint: .notDirectory)
+        swiftlyProcess.arguments = ["run", "which", "swift"]
+
+        let stdoutPipe = Pipe()
+        swiftlyProcess.standardOutput = stdoutPipe
+
+        guard try await swiftlyProcess.asyncRun() == 0 else {
+            fatalError("[CPicoSDK] Failed to resolve active Swift toolchain path via swiftly.")
+        }
+
+        let outputData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let swiftPath = String(data: outputData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !swiftPath.isEmpty else {
+            fatalError("[CPicoSDK] Swiftly resolved an empty Swift compiler path.")
+        }
+
+        let toolchainPath = URL(filePath: swiftPath, directoryHint: .notDirectory)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .path
+        let resourceDir = toolchainPath + "/usr/lib/swift"
+        let embeddedModulesPath = resourceDir + "/embedded"
+
+        if envVars["SWIFT_TOOLCHAIN_PATH"] == nil {
+            envVars["SWIFT_TOOLCHAIN_PATH"] = toolchainPath
+            self.output += "export SWIFT_TOOLCHAIN_PATH=\"\(toolchainPath)\"\n"
+            print("[CPicoSDK] Using resolved Swift toolchain path: \(toolchainPath)")
+        }
+        if envVars["SWIFT_RESOURCE_DIR"] == nil {
+            envVars["SWIFT_RESOURCE_DIR"] = resourceDir
+            self.output += "export SWIFT_RESOURCE_DIR=\"\(resourceDir)\"\n"
+            print("[CPicoSDK] Using Swift resource dir: \(resourceDir)")
+        }
+        if envVars["SWIFT_EMBEDDED_MODULES_PATH"] == nil {
+            envVars["SWIFT_EMBEDDED_MODULES_PATH"] = embeddedModulesPath
+            self.output += "export SWIFT_EMBEDDED_MODULES_PATH=\"\(embeddedModulesPath)\"\n"
+            print("[CPicoSDK] Using Swift embedded modules path: \(embeddedModulesPath)")
+        }
     }
     
     func installDependencies(context: PackagePlugin.PluginContext, envVars: [String: String]) async throws {
