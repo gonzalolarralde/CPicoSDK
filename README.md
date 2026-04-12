@@ -378,6 +378,8 @@ That fixer currently performs a few targeted transformations so the result impor
 
 The current fixups are intentionally narrow. They target hardware entrypoints and related aliases without attempting to rewrite every Pico macro. Function-like selector helpers such as `PIO_INSTANCE(num)` or `SPI_NUM(spi)` are left as macros unless there is a specific reason to expose them differently.
 
+Separately from these textual fixups, maintainers may also annotate selected imported MMIO and peripheral handle types with API notes or header attributes such as `swift_attr("~Copyable")` when Swift should treat them as address-identified hardware views rather than ordinary copyable values.
+
 ### The `shims.c` File: Runtime Compatibility
 
 Located at `Plugins/FinalizeBinaryPluginTool/CMakeHarness/shims.c`, this file provides **POSIX compatibility shims** for functions that the Swift runtime expects but aren't provided by the bare-metal ARM toolchain.
