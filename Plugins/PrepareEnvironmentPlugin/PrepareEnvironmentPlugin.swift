@@ -65,9 +65,21 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         if installDependencies {
             try await self.installDependencies(context: context, envVars: consolidatedEnvVars)
         }
+
+        // On Linux the Swift toolchain may be missing the _Concurrency embedded module for
+        // bare-metal targets (e.g. armv7em-none-none-eabi).  When that is the case, build a
+        // minimal stub and return a shadow resource directory that includes it so the Swift
+        // compiler can find the module.
+        var customResourceDir: String? = nil
+        #if os(Linux)
+        customResourceDir = try await self.setupConcurrencyShim(
+            envVars: consolidatedEnvVars,
+            pluginWorkDir: context.pluginWorkDirectoryURL.path
+        )
+        #endif
         
         if generateToolset {
-            try self.generateToolset(envVars: consolidatedEnvVars)
+            try self.generateToolset(envVars: consolidatedEnvVars, customResourceDir: customResourceDir)
         }
 
         if syncSwiftVersion {

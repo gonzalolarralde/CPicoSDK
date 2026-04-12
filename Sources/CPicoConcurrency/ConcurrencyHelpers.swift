@@ -1,3 +1,4 @@
+@_exported import _Concurrency
 import ConcurrencyShims
 private import CPicoSDK
 
@@ -18,7 +19,7 @@ private func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRaw
 }
 
 extension Task {
-    public static func sleep(us: UInt64) async throws(CancellationError) where Success == Never, Failure == Never {
+    public static func sleep(us: UInt64) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
         await withUnsafeContinuation { continuation in
@@ -31,11 +32,11 @@ extension Task {
         }
 
         if cancelled {
-            throw CancellationError()
+            throw _Concurrency.CancellationError()
         }
     }
 
-    public static func sleep(ms: UInt32) async throws(CancellationError) where Success == Never, Failure == Never {
+    public static func sleep(ms: UInt32) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
         await withUnsafeContinuation { continuation in
@@ -48,7 +49,7 @@ extension Task {
         }
 
         if cancelled {
-            throw CancellationError()
+            throw _Concurrency.CancellationError()
         }
     }
 }
