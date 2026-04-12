@@ -1,16 +1,16 @@
 @_exported import _Concurrency
 import ConcurrencyShims
-import CPicoSDK
+private import CPicoSDK
 
 public func picoSDKTightLoop() {
     tight_loop_contents()
     cshims_swift_task_poll_once()
 }
 
-nonisolated(unsafe) var continuations: [alarm_id_t: (UnsafeContinuation<Void, Never>)] = [:]
+private nonisolated(unsafe) var continuations: [alarm_id_t: (UnsafeContinuation<Void, Never>)] = [:]
 
 @c
-func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
+private func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
     if let cont = continuations[id] {
         continuations.removeValue(forKey: id)
         cont.resume()
