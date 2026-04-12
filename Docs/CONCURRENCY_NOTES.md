@@ -18,7 +18,7 @@ The runtime is now split in two layers.
 
 File:
 
-- [Sources/ConcurrencyShims/ConcurrencyShims.c](/Users/gonzalo/src/CPicoSDK/Sources/ConcurrencyShims/ConcurrencyShims.c)
+- [Sources/ConcurrencyShims/ConcurrencyShims.c](../Sources/ConcurrencyShims/ConcurrencyShims.c)
 
 This file is intentionally minimal. It exists because the embedded Swift concurrency runtime expects a set of exported low-level hook symbols with the right ABI.
 
