@@ -4,7 +4,7 @@ import PackagePlugin
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?) -> [String: String] {
+    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?, embeddedSwiftRuntimeVendorPath: String) -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
@@ -61,6 +61,15 @@ extension PrepareEnvironmentPlugin {
         
         if newEnvVars["RELEVANT_ENV_VARS"] == nil {
             newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
+        }
+
+        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
+           let swiftVersion = newEnvVars["SWIFT_VERSION"] {
+            let fallbackPath = embeddedSwiftRuntimeVendorPath
+                .appending("/\(swiftVersion)/usr/lib/swift/embedded")
+            if FileManager.default.fileExists(atPath: fallbackPath) {
+                newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] = fallbackPath
+            }
         }
 
         // Show some information about given vars first
@@ -151,19 +160,43 @@ extension PrepareEnvironmentPlugin {
     }
 
     // MARK: - toolset.json
+
+    private func embeddedFallbackSwiftCompilerFlags(envVars: [String: String]) -> [String] {
+        #if os(Linux)
+        if let fallbackPath = envVars["SWIFT_EMBEDDED_FALLBACK_PATH"], !fallbackPath.isEmpty {
+            return ["-I", fallbackPath]
+        }
+        #endif
+
+        return []
+    }
+
+    private func jsonArrayString(_ values: [String], indentation: String = "                    ") throws -> String {
+        let data = try JSONSerialization.data(withJSONObject: values, options: [.prettyPrinted])
+        guard var json = String(data: data, encoding: .utf8) else {
+            fatalError("[CPicoSDK] Failed to encode JSON array.")
+        }
+
+        json = json.replacingOccurrences(of: "\n", with: "\n\(indentation)")
+        return json
+    }
     
     func generateToolset(envVars: [String: String]) throws {
         let toolsetPath = envVars["TOOLSET_PATH"]!
+        let swiftCompilerFlags = [
+            "-Xfrontend", "-disable-stack-protector",
+            "-enable-experimental-feature", "Embedded",
+            "-sdk", envVars["SDK_PATH"]!,
+        ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars) + [
+            "-wmo",
+        ]
+        let swiftCompilerFlagsJSON = try jsonArrayString(swiftCompilerFlags)
 
         let toolsetJSON = """
         {
             "schemaVersion": "1.0",
             "swiftCompiler": {
-                "extraCLIOptions": [
-                    "-Xfrontend", "-disable-stack-protector",
-                    "-enable-experimental-feature", "Embedded",
-                    "-sdk", "\(envVars["SDK_PATH"]!)", "-wmo"
-                ]
+                "extraCLIOptions": \(swiftCompilerFlagsJSON)
             },
             "cCompiler": {
                 "extraCLIOptions": [
@@ -322,6 +355,10 @@ extension PrepareEnvironmentPlugin {
     
     func generateSourceKitLSPSettings(packageURL: String, envVars: [String: String]) throws {
         let sourceKitLSPFilePath = packageURL.appending("/.sourcekit-lsp/config.json")
+        let swiftCompilerFlags = [
+            "-enable-experimental-feature", "Embedded",
+        ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars)
+        let swiftCompilerFlagsJSON = try jsonArrayString(swiftCompilerFlags)
 
         let sourceKitLSPSettings = """
         {
@@ -329,9 +366,7 @@ extension PrepareEnvironmentPlugin {
                 "configuration": "\(envVars["SWIFT_BUILD_TYPE"]!)",
                 "triple": "\(envVars["SWIFTPM_TRIPLE"]!)",
                 "toolsets": ["\(envVars["TOOLSET_PATH"]!)"],
-                "swiftCompilerFlags": [
-                    "-enable-experimental-feature", "Embedded"
-                ]
+                "swiftCompilerFlags": \(swiftCompilerFlagsJSON)
             }
         }
         """.data(using: .utf8)

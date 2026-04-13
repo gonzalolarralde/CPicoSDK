@@ -9,6 +9,7 @@ let package = Package(
     name: "CPicoSDK",
     products: [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
+        .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
@@ -62,6 +63,15 @@ let package = Package(
         ),
 
         // Manually defined targets
+        .target(
+            name: "CPicoConcurrency",
+            dependencies: [
+                .target(name: "ConcurrencyShims"),
+                .target(name: "CPicoSDK"),
+            ]
+        ),
+        .target(name: "ConcurrencyShims"),
+
         .plugin(
             name: "PIOASMPlugin", 
             capability: .buildTool,

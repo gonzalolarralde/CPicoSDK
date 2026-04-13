@@ -1,0 +1,140 @@
+@_exported import _Concurrency
+import ConcurrencyShims
+private import CPicoSDK
+
+public func picoSDKTightLoop() {
+    tight_loop_contents()
+    cshims_swift_task_poll_once()
+}
+
+/// Helper to run minimal IRQ work now and schedule follow-up Swift work on the
+/// shared async context.
+///
+/// This helper intentionally allows allocations while scheduling the post-IRQ
+/// block so the call site stays simple. If a zero-allocation IRQ path is needed
+/// later, the implementation can be swapped behind this API.
+/// 
+/// Example usage:
+/// ```swift
+/// @c func someIRQHandler() {
+///     irqTrampoline {
+///         // This runs in IRQ context. Do minimal work here, just prepare any data you need to pass to postIRQ and return it.
+///         return readSensorDataFromIRQ()
+///     } postIRQ: { sensorData in
+///         // This runs in async_context worker context, NOT in IRQ. You can
+///         // safely interact with Swift concurrency primitives here.
+///         sensorDataStream.send(sensorData)
+///     }
+/// }
+/// ```
+public func irqTrampoline<T>(_ critical: () -> T, postIRQ: @escaping (T) -> Void) {
+    let value = critical()
+    cshimsRuntimeScheduler.schedule {
+        postIRQ(value)
+    }
+}
+
+/// Schedules a one-shot follow-up block from IRQ context onto the shared async
+/// context.
+/// 
+/// Example usage:
+/// ```swift
+/// @c func someIRQHandler() {
+///     irqTrampoline {
+///         // This runs in async_context worker context, NOT in IRQ.
+///         continuation.resume()
+///     }
+/// }
+/// ```
+public func irqTrampoline(postIRQ: @escaping () -> Void) {
+    cshimsRuntimeScheduler.schedule(postIRQ)
+}
+
+// MARK: - Sleep helpers
+
+private nonisolated(unsafe) var continuations: [alarm_id_t: UnsafeContinuation<Void, Never>] = [:]
+private nonisolated(unsafe) let continuations_mutex = {
+    let mutex = UnsafeMutablePointer<mutex_t>.allocate(capacity: 1)
+    mutex_init(mutex)
+    return mutex
+}()
+
+@c
+private func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
+    irqTrampoline { [id] in
+        // This runs in async_context worker context, NOT in IRQ.
+        mutex_enter_blocking(continuations_mutex)
+        let cont = continuations[id]
+        continuations.removeValue(forKey: id)
+        mutex_exit(continuations_mutex)
+        cont?.resume()
+    }
+
+    return 0 // 0 = do not reschedule
+}
+
+extension Task {
+    public static func sleep(us: UInt64) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
+        var cancelled: Bool = false
+
+        await withUnsafeContinuation { continuation in
+            while !mutex_enter_timeout_us(continuations_mutex, 1000) {
+                print("[CPicoConcurrency] Warning: failed to acquire continuations mutex, cancelling task to avoid blocking the system.")
+                cancelled = true
+                return
+            }
+
+            let id = add_alarm_in_us(us, sleep_alarm_callback, nil, true)
+            guard id > 0 else {
+                mutex_exit(continuations_mutex)
+                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
+                cancelled = true
+                return
+            }
+
+            continuations[id] = continuation
+
+            mutex_exit(continuations_mutex)
+
+            cancelled = unsafe withUnsafeCurrentTask { task in
+                unsafe task?.isCancelled ?? false
+            }
+        }
+
+        if cancelled {
+            throw _Concurrency.CancellationError()
+        }
+    }
+
+    public static func sleep(ms: UInt32) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
+        var cancelled: Bool = false
+
+        await withUnsafeContinuation { continuation in
+            while !mutex_enter_timeout_us(continuations_mutex, 1000) {
+                print("[CPicoConcurrency] Warning: failed to acquire continuations mutex, cancelling task to avoid blocking the system.")
+                cancelled = true
+                return
+            }
+
+            let id = add_alarm_in_ms(ms, sleep_alarm_callback, nil, true)
+            guard id > 0 else {
+                mutex_exit(continuations_mutex)
+                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
+                cancelled = true
+                return
+            }
+
+            continuations[id] = continuation
+
+            mutex_exit(continuations_mutex)
+
+            cancelled = unsafe withUnsafeCurrentTask { task in
+                unsafe task?.isCancelled ?? false
+            }
+        }
+
+        if cancelled {
+            throw _Concurrency.CancellationError()
+        }
+    }
+}

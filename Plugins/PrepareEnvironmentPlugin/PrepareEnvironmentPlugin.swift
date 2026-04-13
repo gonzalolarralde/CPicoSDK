@@ -10,10 +10,18 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         let cPicoSDKEnvVarsPath: String
-        if let packageEnvVarsPath = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL {
-            cPicoSDKEnvVarsPath = packageEnvVarsPath.appending(path: "env.json").relativePath
+        let embeddedSwiftRuntimeVendorPath: String
+        if let packageURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL {
+            cPicoSDKEnvVarsPath = packageURL.appending(path: "env.json").relativePath
+            embeddedSwiftRuntimeVendorPath = packageURL
+                .appending(path: "Vendor/EmbeddedSwiftRuntime")
+                .relativePath
         } else if let argumentEnvVarsPath = self.findArgumentWithValue(from: arguments, argument: "--cpicosdk-envs-path") {
             cPicoSDKEnvVarsPath = argumentEnvVarsPath
+            embeddedSwiftRuntimeVendorPath = URL(fileURLWithPath: argumentEnvVarsPath)
+                .deletingLastPathComponent()
+                .appending(path: "Vendor/EmbeddedSwiftRuntime")
+                .path
         } else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
@@ -56,7 +64,8 @@ class PrepareEnvironmentPlugin: CommandPlugin {
             given: givenEnvVars, 
             packageEnv: cPicoSDKPackageEnv,
             context: context,
-            libraryProductName: libraryProduct?.name
+            libraryProductName: libraryProduct?.name,
+            embeddedSwiftRuntimeVendorPath: embeddedSwiftRuntimeVendorPath
         )
 
         self.generateBashFunctions()

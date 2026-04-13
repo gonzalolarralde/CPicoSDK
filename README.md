@@ -56,6 +56,33 @@ The `% swift { ... }` section is placed after the `.program` body in `hello.pio`
 
 The example also keeps a small Unicode-aware string check on purpose. That exercises the embedded Swift Unicode runtime path so CPicoSDK can demonstrate automatically linking `libswiftUnicodeDataTables.a` only when the final link actually needs it.
 
+### Experimental Concurrency Support
+
+CPicoSDK now has a first pass at embedded Swift Concurrency support, but it is still experimental.
+
+Important points:
+
+- it is opt-in
+- it currently lives in a secondary package product: `CPicoConcurrency`
+- no concurrency support is pulled in unless you depend on and import it explicitly
+
+For now, if you want to use `Task`, `await`, or the helper APIs in this repository, add `CPicoConcurrency` to your target dependencies and import it in your code:
+
+```swift
+import CPicoSDK
+import CPicoConcurrency
+```
+
+Current status:
+
+- plain embedded `async`/`await` is working
+- the implementation is still exploratory
+- custom executors are not supported yet
+- Linux currently depends on a vendored fallback copy of the embedded `_Concurrency` artifacts for the pinned Swift snapshot
+- the API surface may still change
+
+The Example project is expected to keep demonstrating an important embedded constraint here: long-running `while true { ... }` loops need some form of yielding or scheduler pumping, otherwise non-awaiting code can monopolize the CPU.
+
 ### Versioning
 
 CPicoSDK follows a versioning scheme that tracks the underlying Pico SDK version:
@@ -128,7 +155,7 @@ Then install Swiftly from [swift.org](https://www.swift.org/download/) and ensur
 
 ### Swift Version
 
-> **Note**: This project currently uses a very specific Swift version (`main-snapshot-2025-11-03`) due to bugs that need resolution in newer versions. This requirement will be relaxed as upstream issues are addressed.
+> **Note**: This project currently uses a very specific Swift version (`main-snapshot-2026-04-01`) due to bugs that need resolution in newer versions. This requirement will be relaxed as upstream issues are addressed.
 
 ### Getting Started
 
@@ -240,7 +267,7 @@ Example:
 ```json
 {
     "vars": {
-        "SWIFT_VERSION": "main-snapshot-2025-11-03",
+        "SWIFT_VERSION": "main-snapshot-2026-04-01",
         "SDK_VERSION": "2.2.0",
         "TOOLCHAIN_VERSION": "14_2_Rel1",
         "BOARD": "pico2",
@@ -461,6 +488,46 @@ CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
 - Optionally flashes to a connected device
 
 **Why it's necessary**: SwiftPM can't directly produce firmware binaries - it generates object files that must be linked with the Pico SDK's startup code, linker scripts, and library implementations.
+
+### Experimental Concurrency Support
+
+There is now a first pass at Swift Concurrency support in a separate target:
+
+- `CPicoConcurrency`
+
+This is intentionally not folded into the base `CPicoSDK` product yet.
+
+Reasons:
+
+- the implementation is still experimental
+- the current goal is to get a mostly functional baseline on device
+- the limitations of Embedded Swift concurrency on RP2350 are still being mapped out
+- no concurrency code should be referenced unless the package explicitly opts into it
+
+Current implementation shape:
+
+- the toolchain-provided `libswift_Concurrency.a` is used
+- the low-level runtime hook exports remain in [Sources/ConcurrencyShims/ConcurrencyShims.c](Sources/ConcurrencyShims/ConcurrencyShims.c)
+- the scheduling backend now lives in [Sources/CPicoConcurrency/RuntimeScheduler.swift](Sources/CPicoConcurrency/RuntimeScheduler.swift)
+- that scheduler uses Pico SDK `async_context` rather than a handwritten queue loop
+- on Linux, the build can fall back to vendored embedded `_Concurrency` artifacts under [Vendor/EmbeddedSwiftRuntime](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime) when the toolchain packaging is incomplete
+
+The current state is best described as:
+
+- generic embedded `async`/`await` works
+- the implementation is not considered stable yet
+- custom executors are still not viable on this embedded runtime
+- exploratory pieces like `@CPU0Actor` and `@CPU1Actor` exist as future-facing scaffolding, not as working CPU pinning support
+
+The Linux fallback is intentionally versioned by `SWIFT_VERSION`. The build only uses a vendored runtime directory when the active Swift snapshot has a matching directory name, which avoids silently mixing concurrency runtime files from different toolchains.
+
+The Example is expected to keep representing an important behavioral constraint:
+
+- a tight `while true { ... }` loop still needs some kind of yielding or scheduler pumping so non-awaiting code does not lock the CPU
+
+For the detailed investigation history, current architecture, and known limitations, see:
+
+- [Docs/CONCURRENCY_NOTES.md](/Users/gonzalo/src/CPicoSDK/Docs/CONCURRENCY_NOTES.md)
 
 ### Bash + Swift:  A Pragmatic Hybrid
 

@@ -14,6 +14,7 @@ let package = Package(
             traits: [
                 .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),
+                .init(name: "StdIO_Automatic"),
 
                 // - Pico 2
                 .init(name: "Variant_RP2350A"),
@@ -36,7 +37,10 @@ let package = Package(
     targets: [
         .target(
             name: "Example",
-            dependencies: ["CPicoSDK"],
+            dependencies: [
+                .product(name: "CPicoSDK", package: "CPicoSDK"),
+                .product(name: "CPicoConcurrency", package: "CPicoSDK"),
+            ],
             plugins: [.plugin(name: "PIOASM", package: "CPicoSDK")]
         ),
     ]
