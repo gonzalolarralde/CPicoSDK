@@ -17,7 +17,6 @@ struct App {
 
         print("Hello, world!")
 
-
         Foo.$bar.withValue("HelloWorld") {
             print("Task local value: \(Foo().getBar())")
         }
@@ -27,8 +26,7 @@ struct App {
         }
 
         // multicore_launch_core1(ledExample)
-        //try! pioExample()
-        // resets_hw.
+        // try! pioExample()
 
         while true {
             try await Task.sleep(ms: 1000)
@@ -37,7 +35,8 @@ struct App {
     }
 }
 
-@CPU1Actor
+// MARK: LED Example
+
 func blinkLeds() async throws(CancellationError) {
     var last_state: Bool = false
 
@@ -48,8 +47,6 @@ func blinkLeds() async throws(CancellationError) {
     }
 }
 
-// MARK: LED Example
-
 @c
 func ledExample() {
     var last_state = false
@@ -57,9 +54,13 @@ func ledExample() {
     while true {
         status_led_set_state(last_state)
         last_state = !last_state
+
+        // In async contexts this is discouraged, as sleep_ms will
+        // block the entire async context. This example works fine
+        // when not using or expecting to use Concurrency features.
         sleep_ms(100)
 
-        tight_loop_contents()
+        picoSDKTightLoop()
     }
 }
 
