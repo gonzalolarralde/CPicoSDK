@@ -2,10 +2,22 @@
 import ConcurrencyShims
 private import CPicoSDK
 
+public typealias CancellationError = _Concurrency.CancellationError
+
+/// Function to be called in tight loops to allow the concurrency system to make progress. 
+/// This is only needed if you're doing a busy wait in a non-async context, if you're in 
+/// an async context you can just use `await Task.yield()` instead.
+/// 
+/// Use this instead of `tight_loop_contents()` in your code to ensure that the concurrency 
+/// system can make progress and schedule other tasks while you're busy-waiting.
+/// 
+/// Note: USB polling (tud_task) happens automatically in the global executor loops.
 public func picoSDKTightLoop() {
     tight_loop_contents()
     cshims_swift_task_poll_once()
 }
+
+// MARK: - IRQ trampoline helpers
 
 /// Helper to run minimal IRQ work now and schedule follow-up Swift work on the
 /// shared async context.
@@ -50,90 +62,233 @@ public func irqTrampoline(postIRQ: @escaping () -> Void) {
     cshimsRuntimeScheduler.schedule(postIRQ)
 }
 
+public struct EmbeddedContinuation<T: Sendable, E: Error> {
+    private let continuation: @Sendable (sending Result<T, E>) -> Void
+
+    fileprivate init(_ continuation: UnsafeContinuation<Result<T, E>, Never>) {
+        self.continuation = continuation.resume(returning:)
+    }
+
+    fileprivate init(_ continuation: CheckedContinuation<Result<T, E>, Never>) {
+        self.continuation = continuation.resume(returning:)
+    }    
+
+    public func resume(returning value: T) {
+        continuation(.success(value))
+    }
+
+    public func resume(throwing error: E) {
+        continuation(.failure(error))
+    }
+
+    public func resume(with result: Result<T, E>) {
+        continuation(result)
+    }
+}
+
+/// Embedded version of `withUnsafeContinuation` supporting typed error handling.
+/// TODO: Remove when support is fixed in the standard library.
+public func withEmbeddedUnsafeThrowingContinuation<T: Sendable, E: Error>(_ fn: (EmbeddedContinuation<T, E>) -> Void) async throws(E) -> sending T {
+    let result: Result<T, E> = await withUnsafeContinuation { continuation in 
+        fn(EmbeddedContinuation(continuation))
+    }
+
+    switch result {
+    case .success(let value):
+        return value
+    case .failure(let error):
+        throw error
+    }
+}
+
+/// Embedded version of `withCheckedContinuation` supporting typed error handling.
+/// TODO: Remove when support is fixed in the standard library.
+public func withEmbeddedCheckedThrowingContinuation<T: Sendable, E: Error>(_ fn: (EmbeddedContinuation<T, E>) -> Void) async throws(E) -> sending T {
+    let result: Result<T, E> = await withCheckedContinuation { continuation in 
+        fn(EmbeddedContinuation(continuation))
+    }
+
+    switch result {
+    case .success(let value):
+        return value
+    case .failure(let error):
+        throw error
+    }
+}
+
+extension Task where Success == Never, Failure == Never {
+    /// Checks for cancellation in embedded contexts. This is a temporary replacement
+    /// for `Task.checkCancellation()` which is currently not supported in embedded contexts.
+    public static func checkEmbeddedCancellation() throws(CancellationError) {
+        if Self.isCancelled {
+            throw _Concurrency.CancellationError()
+        }
+    }
+}
+
 // MARK: - Sleep helpers
 
-private nonisolated(unsafe) var continuations: [alarm_id_t: UnsafeContinuation<Void, Never>] = [:]
-private nonisolated(unsafe) let continuations_mutex = {
-    let mutex = UnsafeMutablePointer<mutex_t>.allocate(capacity: 1)
-    mutex_init(mutex)
-    return mutex
-}()
+actor PicoTimeoutManager {
+    typealias ContinuationID = Int
+
+    final class SyncExchangeBox<T>: @unchecked Sendable {
+        private var value: T?
+        private let mutex: UnsafeMutablePointer<mutex_t> = .allocate(capacity: 1)
+
+        init() {
+            mutex_init(mutex)
+        }
+
+        func put(_ newValue: sending T) {
+            mutex_enter_blocking(mutex)
+            value = newValue
+            mutex_exit(mutex)
+        }
+
+        func take() -> sending T? {
+            mutex_enter_blocking(mutex)
+            defer {
+                mutex_exit(mutex)
+            }
+            let value = self.value
+            self.value = nil
+            return value
+        }
+    }
+
+    struct Continuation: Identifiable {
+        let id: ContinuationID
+        fileprivate var alarmId: SyncExchangeBox<alarm_id_t>
+        var handler: SyncExchangeBox<UnsafeContinuation<Void, Never>>
+    }
+
+    static let shared = PicoTimeoutManager()
+
+    var nextContinuationId: ContinuationID = 1
+    var continuations: [ContinuationID: Continuation] = [:]
+
+    func nextId() -> ContinuationID {
+        defer { nextContinuationId &+= 1 }
+        return nextContinuationId
+    }
+
+    fileprivate func createNewContinuation() -> (ContinuationID, SyncExchangeBox<alarm_id_t>, SyncExchangeBox<UnsafeContinuation<Void, Never>>) {
+        let id = nextId()
+        let alarmBox = SyncExchangeBox<alarm_id_t>()
+        let handlerBox = SyncExchangeBox<UnsafeContinuation<Void, Never>>()
+        continuations[id] = Continuation(id: id, alarmId: alarmBox, handler: handlerBox)
+        return (id, alarmBox, handlerBox)
+    }
+
+    func triggeredAlarm(for continuationId: ContinuationID) -> UnsafeContinuation<Void, Never>? {
+        guard let continuation = continuations.removeValue(forKey: continuationId) else {
+            // Assuming the continuation was cancelled
+            return nil
+        }
+
+        return continuation.handler.take()
+    }
+
+    func cancel(continuationId: ContinuationID) {
+        if let alarmId = continuations.removeValue(forKey: continuationId)?.alarmId.take() {
+            // There might not be an alarm Id if the cancellation happened before the scheduling
+            // or if the alarm failed to schedule in the first place, in which case there's nothing to cancel.
+            cancel_alarm(alarmId)
+        }
+    }
+}
+
+/// Time threshold under which we use the busy-waiting `sleep_us` instead of scheduling a task, 
+/// to avoid the overhead of scheduling for very short sleeps. This value is subject to tuning
+/// based on benchmarks and may be exposed as a configuration option in the future.
+let timerBlockPathCutoff: UInt64 = 500 // microseconds
 
 @c
-private func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
-    irqTrampoline { [id] in
-        // This runs in async_context worker context, NOT in IRQ.
-        mutex_enter_blocking(continuations_mutex)
-        let cont = continuations[id]
-        continuations.removeValue(forKey: id)
-        mutex_exit(continuations_mutex)
-        cont?.resume()
+private func sleep_alarm_callback(_ alarmId: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
+    irqTrampoline {
+        PicoTimeoutManager.ContinuationID(bitPattern: userData)
+    } postIRQ: { continuationId in
+        guard continuationId > 0 else {
+            // Invalid continuation ID, this should never happen.
+            assertionFailure("[CPicoSDK] Invalid continuation Id in sleep alarm callback. \(continuationId)")
+            return
+        }
+
+        Task { 
+            if let continuation = await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId) {
+                continuation.resume()
+            }
+        }
     }
 
     return 0 // 0 = do not reschedule
 }
 
 extension Task {
-    public static func sleep(us: UInt64) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
+    /// Async sleep implementation that uses the PicoSDK timers to avoid blocking worker threads.
+    /// This allows other tasks to run while waiting, and is more power efficient than busy-waiting.
+    public static func sleep(us: UInt64) async throws(CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
-        await withUnsafeContinuation { continuation in
-            while !mutex_enter_timeout_us(continuations_mutex, 1000) {
-                print("[CPicoConcurrency] Warning: failed to acquire continuations mutex, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
+        guard us >= timerBlockPathCutoff else {
+            // For very short sleeps, just busy-wait to avoid the overhead of scheduling a task.
+            sleep_us(us)
+            return
+        }
+
+        let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
+    
+        await withTaskCancellationHandler {
+            await withUnsafeContinuation { continuation in
+                handlerBox.put(continuation)
+
+                let id = add_alarm_in_us(us, sleep_alarm_callback, .init(bitPattern: continuationId), true)
+                guard id > 0 else {
+                    cancelled = true
+                    continuation.resume()
+                    return
+                }
+
+                alarmIdBox.put(id)
             }
-
-            let id = add_alarm_in_us(us, sleep_alarm_callback, nil, true)
-            guard id > 0 else {
-                mutex_exit(continuations_mutex)
-                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
-            }
-
-            continuations[id] = continuation
-
-            mutex_exit(continuations_mutex)
-
-            cancelled = unsafe withUnsafeCurrentTask { task in
-                unsafe task?.isCancelled ?? false
-            }
+        } onCancel: {
+            cancelled = true
+            handlerBox.take()?.resume()
         }
 
         if cancelled {
+            await PicoTimeoutManager.shared.cancel(continuationId: continuationId)
             throw _Concurrency.CancellationError()
         }
     }
 
-    public static func sleep(ms: UInt32) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
+    /// Async sleep implementation that uses the PicoSDK timers to avoid blocking worker threads.
+    /// This allows other tasks to run while waiting, and is more power efficient than busy-waiting.
+    public static func sleep(ms: UInt32) async throws(CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
-        await withUnsafeContinuation { continuation in
-            while !mutex_enter_timeout_us(continuations_mutex, 1000) {
-                print("[CPicoConcurrency] Warning: failed to acquire continuations mutex, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
+        let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
+    
+        await withTaskCancellationHandler {
+            await withUnsafeContinuation { continuation in
+                handlerBox.put(continuation)
+
+                let id = add_alarm_in_ms(ms, sleep_alarm_callback, .init(bitPattern: continuationId), true)
+                guard id > 0 else {
+                    cancelled = true
+                    continuation.resume()
+                    return
+                }
+
+                alarmIdBox.put(id)
             }
-
-            let id = add_alarm_in_ms(ms, sleep_alarm_callback, nil, true)
-            guard id > 0 else {
-                mutex_exit(continuations_mutex)
-                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
-            }
-
-            continuations[id] = continuation
-
-            mutex_exit(continuations_mutex)
-
-            cancelled = unsafe withUnsafeCurrentTask { task in
-                unsafe task?.isCancelled ?? false
-            }
+        } onCancel: {
+            cancelled = true
+            handlerBox.take()?.resume()
         }
 
         if cancelled {
+            await PicoTimeoutManager.shared.cancel(continuationId: continuationId)
             throw _Concurrency.CancellationError()
         }
     }

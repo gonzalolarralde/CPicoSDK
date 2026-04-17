@@ -84,7 +84,7 @@ private final class ScheduledBlock {
 
 final class RuntimeScheduler {
     // Shared async_context used by both Swift runtime jobs and IRQ trampolines.
-    private var context = async_context_poll_t()
+    fileprivate var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
     private var scheduledBlocks: [UInt32: AnyObject] = [:]
@@ -266,6 +266,12 @@ final class RuntimeScheduler {
 }
 
 nonisolated(unsafe) var cshimsRuntimeScheduler = RuntimeScheduler()
+
+@_spi(Internal) public func callWithAsyncContext(_ body: (UnsafeMutableRawPointer) -> Void) {
+    withUnsafeMutablePointer(to: &cshimsRuntimeScheduler.context.core) { contextPtr in
+        body(UnsafeMutableRawPointer(contextPtr))
+    }
+}
 
 @_cdecl("cshims_scheduler_scheduled_block_worker")
 private func cshims_scheduler_scheduled_block_worker(
