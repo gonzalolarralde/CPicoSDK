@@ -42,6 +42,7 @@ pico_enable_stdio_rtt(CMakeHarness 0)
 
 target_compile_definitions("${PROJECT_NAME}" PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
+    PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1
     PICO_ENTER_USB_BOOT_ON_EXIT=1
 )
 
