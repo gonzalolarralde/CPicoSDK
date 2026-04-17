@@ -2,6 +2,8 @@
 import ConcurrencyShims
 private import CPicoSDK
 
+public typealias CancellationError = _Concurrency.CancellationError
+
 /// Function to be called in tight loops to allow the concurrency system to make progress. 
 /// This is only needed if you're doing a busy wait in a non-async context, if you're in 
 /// an async context you can just use `await Task.yield()` instead.
@@ -60,7 +62,6 @@ public func irqTrampoline(postIRQ: @escaping () -> Void) {
     cshimsRuntimeScheduler.schedule(postIRQ)
 }
 
-
 public struct EmbeddedContinuation<T: Sendable, E: Error> {
     private let continuation: @Sendable (sending Result<T, E>) -> Void
 
@@ -115,10 +116,19 @@ public func withEmbeddedCheckedThrowingContinuation<T: Sendable, E: Error>(_ fn:
     }
 }
 
+extension Task where Success == Never, Failure == Never {
+    /// Checks for cancellation in embedded contexts. This is a temporary replacement
+    /// for `Task.checkCancellation()` which is currently not supported in embedded contexts.
+    public static func checkEmbeddedCancellation() throws(CancellationError) {
+        if Self.isCancelled {
+            throw _Concurrency.CancellationError()
+        }
+    }
+}
+
 // MARK: - Sleep helpers
 
 actor PicoTimeoutManager {
-    typealias CancellationError = _Concurrency.CancellationError
     typealias ContinuationID = Int
 
     final class SyncExchangeBox<T>: @unchecked Sendable {
@@ -217,7 +227,7 @@ private func sleep_alarm_callback(_ alarmId: alarm_id_t, _ userData: UnsafeMutab
 extension Task {
     /// Async sleep implementation that uses the PicoSDK timers to avoid blocking worker threads.
     /// This allows other tasks to run while waiting, and is more power efficient than busy-waiting.
-    public static func sleep(us: UInt64) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
+    public static func sleep(us: UInt64) async throws(CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
         guard us >= timerBlockPathCutoff else {
@@ -254,7 +264,7 @@ extension Task {
 
     /// Async sleep implementation that uses the PicoSDK timers to avoid blocking worker threads.
     /// This allows other tasks to run while waiting, and is more power efficient than busy-waiting.
-    public static func sleep(ms: UInt32) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
+    public static func sleep(ms: UInt32) async throws(CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
         let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
