@@ -154,7 +154,7 @@ actor PicoTimeoutManager {
 
     static let shared = PicoTimeoutManager()
 
-    var nextContinuationId: ContinuationID = 0
+    var nextContinuationId: ContinuationID = 1
     var continuations: [ContinuationID: Continuation] = [:]
 
     func nextId() -> ContinuationID {
@@ -191,13 +191,19 @@ actor PicoTimeoutManager {
 /// Time threshold under which we use the busy-waiting `sleep_us` instead of scheduling a task, 
 /// to avoid the overhead of scheduling for very short sleeps. This value is subject to tuning
 /// based on benchmarks and may be exposed as a configuration option in the future.
-let timerBlockPathCutoff: UInt32 = 500 // microseconds
+let timerBlockPathCutoff: UInt64 = 500 // microseconds
 
 @c
 private func sleep_alarm_callback(_ alarmId: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
     irqTrampoline {
         PicoTimeoutManager.ContinuationID(bitPattern: userData)
     } postIRQ: { continuationId in
+        guard continuationId > 0 else {
+            // Invalid continuation ID, this should never happen.
+            assertionFailure("[CPicoSDK] Invalid continuation Id in sleep alarm callback. \(continuationId)")
+            return
+        }
+
         Task { 
             if let continuation = await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId) {
                 continuation.resume()
@@ -229,6 +235,7 @@ extension Task {
                 let id = add_alarm_in_us(us, sleep_alarm_callback, .init(bitPattern: continuationId), true)
                 guard id > 0 else {
                     cancelled = true
+                    continuation.resume()
                     return
                 }
 
@@ -236,6 +243,7 @@ extension Task {
             }
         } onCancel: {
             cancelled = true
+            handlerBox.take()?.resume()
         }
 
         if cancelled {
@@ -258,6 +266,7 @@ extension Task {
                 let id = add_alarm_in_ms(ms, sleep_alarm_callback, .init(bitPattern: continuationId), true)
                 guard id > 0 else {
                     cancelled = true
+                    continuation.resume()
                     return
                 }
 
@@ -265,6 +274,7 @@ extension Task {
             }
         } onCancel: {
             cancelled = true
+            handlerBox.take()?.resume()
         }
 
         if cancelled {
