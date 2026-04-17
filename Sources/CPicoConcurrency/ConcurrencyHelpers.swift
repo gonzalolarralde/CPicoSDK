@@ -117,28 +117,92 @@ public func withEmbeddedCheckedThrowingContinuation<T: Sendable, E: Error>(_ fn:
 
 // MARK: - Sleep helpers
 
+actor PicoTimeoutManager {
+    typealias CancellationError = _Concurrency.CancellationError
+    typealias ContinuationID = Int
+
+    final class SyncExchangeBox<T>: @unchecked Sendable {
+        private var value: T?
+        private let mutex: UnsafeMutablePointer<mutex_t> = .allocate(capacity: 1)
+
+        init() {
+            mutex_init(mutex)
+        }
+
+        func put(_ newValue: sending T) {
+            mutex_enter_blocking(mutex)
+            value = newValue
+            mutex_exit(mutex)
+        }
+
+        func take() -> sending T? {
+            mutex_enter_blocking(mutex)
+            defer {
+                mutex_exit(mutex)
+            }
+            let value = self.value
+            self.value = nil
+            return value
+        }
+    }
+
+    struct Continuation: Identifiable {
+        let id: ContinuationID
+        fileprivate var alarmId: SyncExchangeBox<alarm_id_t>
+        var handler: SyncExchangeBox<UnsafeContinuation<Void, Never>>
+    }
+
+    static let shared = PicoTimeoutManager()
+
+    var nextContinuationId: ContinuationID = 0
+    var continuations: [ContinuationID: Continuation] = [:]
+
+    func nextId() -> ContinuationID {
+        defer { nextContinuationId &+= 1 }
+        return nextContinuationId
+    }
+
+    fileprivate func createNewContinuation() -> (ContinuationID, SyncExchangeBox<alarm_id_t>, SyncExchangeBox<UnsafeContinuation<Void, Never>>) {
+        let id = nextId()
+        let alarmBox = SyncExchangeBox<alarm_id_t>()
+        let handlerBox = SyncExchangeBox<UnsafeContinuation<Void, Never>>()
+        continuations[id] = Continuation(id: id, alarmId: alarmBox, handler: handlerBox)
+        return (id, alarmBox, handlerBox)
+    }
+
+    func triggeredAlarm(for continuationId: ContinuationID) -> UnsafeContinuation<Void, Never>? {
+        guard let continuation = continuations.removeValue(forKey: continuationId) else {
+            // Assuming the continuation was cancelled
+            return nil
+        }
+
+        return continuation.handler.take()
+    }
+
+    func cancel(continuationId: ContinuationID) {
+        if let alarmId = continuations.removeValue(forKey: continuationId)?.alarmId.take() {
+            // There might not be an alarm Id if the cancellation happened before the scheduling
+            // or if the alarm failed to schedule in the first place, in which case there's nothing to cancel.
+            cancel_alarm(alarmId)
+        }
+    }
+}
+
 /// Time threshold under which we use the busy-waiting `sleep_us` instead of scheduling a task, 
 /// to avoid the overhead of scheduling for very short sleeps. This value is subject to tuning
 /// based on benchmarks and may be exposed as a configuration option in the future.
 let timerBlockPathCutoff: UInt32 = 500 // microseconds
 
-// TODO: Maybe replace with a global actor isolated storage instead of using Mutex.
-private nonisolated(unsafe) var continuations: [alarm_id_t: UnsafeContinuation<Void, Never>] = [:]
-private nonisolated(unsafe) let continuations_mutex = {
-    let mutex = UnsafeMutablePointer<mutex_t>.allocate(capacity: 1)
-    mutex_init(mutex)
-    return mutex
-}()
-
 @c
-private func sleep_alarm_callback(_ id: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
-    irqTrampoline { [id] in
-        // This runs in async_context worker context, NOT in IRQ.
-        mutex_enter_blocking(continuations_mutex)
-        let cont = continuations[id]
-        continuations.removeValue(forKey: id)
-        mutex_exit(continuations_mutex)
-        cont?.resume()
+private func sleep_alarm_callback(_ alarmId: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
+    irqTrampoline {
+        PicoTimeoutManager.ContinuationID(bitPattern: userData)
+    } postIRQ: { continuationId in
+        Task { 
+            if let continuation = await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId) {
+                continuation.resume()
+            }
+        }
     }
 
     return 0 // 0 = do not reschedule
@@ -156,32 +220,26 @@ extension Task {
             return
         }
 
-        await withUnsafeContinuation { continuation in
-            while !mutex_enter_timeout_us(continuations_mutex, timerBlockPathCutoff) {
-                print("[CPicoConcurrency] Warning: failed to acquire continuations mutex, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
+        let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
+    
+        await withTaskCancellationHandler {
+            await withUnsafeContinuation { continuation in
+                handlerBox.put(continuation)
+
+                let id = add_alarm_in_us(us, sleep_alarm_callback, .init(bitPattern: continuationId), true)
+                guard id > 0 else {
+                    cancelled = true
+                    return
+                }
+
+                alarmIdBox.put(id)
             }
-
-            let id = add_alarm_in_us(us, sleep_alarm_callback, nil, true)
-            guard id > 0 else {
-                mutex_exit(continuations_mutex)
-                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
-            }
-
-            continuations[id] = continuation
-
-            mutex_exit(continuations_mutex)
-
-            // TODO: Implement alarm cancellation on Task.cancel()
-            cancelled = unsafe withUnsafeCurrentTask { task in
-                unsafe task?.isCancelled ?? false
-            }
+        } onCancel: {
+            cancelled = true
         }
 
         if cancelled {
+            await PicoTimeoutManager.shared.cancel(continuationId: continuationId)
             throw _Concurrency.CancellationError()
         }
     }
@@ -191,32 +249,26 @@ extension Task {
     public static func sleep(ms: UInt32) async throws(_Concurrency.CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
-        await withUnsafeContinuation { continuation in
-            while !mutex_enter_timeout_us(continuations_mutex, timerBlockPathCutoff) {
-                print("[CPicoConcurrency] Warning: failed to acquire continuations mutex, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
+        let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
+    
+        await withTaskCancellationHandler {
+            await withUnsafeContinuation { continuation in
+                handlerBox.put(continuation)
+
+                let id = add_alarm_in_ms(ms, sleep_alarm_callback, .init(bitPattern: continuationId), true)
+                guard id > 0 else {
+                    cancelled = true
+                    return
+                }
+
+                alarmIdBox.put(id)
             }
-
-            let id = add_alarm_in_ms(ms, sleep_alarm_callback, nil, true)
-            guard id > 0 else {
-                mutex_exit(continuations_mutex)
-                print("[CPicoConcurrency] Warning: failed to create alarm, cancelling task to avoid blocking the system.")
-                cancelled = true
-                return
-            }
-
-            continuations[id] = continuation
-
-            mutex_exit(continuations_mutex)
-
-            // TODO: Implement alarm cancellation on Task.cancel()
-            cancelled = unsafe withUnsafeCurrentTask { task in
-                unsafe task?.isCancelled ?? false
-            }
+        } onCancel: {
+            cancelled = true
         }
 
         if cancelled {
+            await PicoTimeoutManager.shared.cancel(continuationId: continuationId)
             throw _Concurrency.CancellationError()
         }
     }
