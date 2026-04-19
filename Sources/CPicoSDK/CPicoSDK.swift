@@ -41,6 +41,10 @@
 #else
     // TODO: This is very constrained, until we can add proper board capability support this will help us keep moving.
     #error("Invalid Variant + Radio combination.")
+
+    // This is kept here to trick sourcekit into resolving the imports for the correct symbols, 
+    // even if they won't be used due to the error above.
+    import _CPicoSDK_pico2_w
 #endif
 
 #if StdIO_Automatic && (StdIO_UART || StdIO_USB || StdIO_RTT)
@@ -71,3 +75,29 @@
 
 // TODO: Implement trait generation.
 // GENERATOR MARK: TRAIT DEFINITIONS
+
+@_spi(Internal) public func setupPicoSDK() {
+    stdio_init_all()
+}
+
+/// Embedded app protocol. Provides a default implementation of the `main` method that
+/// ensures to setup basic PicoSDK features before calling the user-defined `setup` and `loop`.
+/// 
+/// Using this protocol is optional, if a custom `main` start sequence is needed, it can be
+/// implemented directly in their app.
+public protocol EmbeddedApp {
+    static func setup()
+    static func loop()
+}
+
+public extension EmbeddedApp {
+    static func main() {
+        // TODO: WatchDog
+        setupPicoSDK()
+        setup()
+        while true {
+            loop()
+            tight_loop_contents()
+        }
+    }
+}
