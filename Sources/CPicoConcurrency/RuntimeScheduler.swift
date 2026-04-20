@@ -39,16 +39,17 @@ private func cshimsWithCritical<T>(_ body: () -> T) -> T {
     return body()
 }
 
-private final class ScheduledBlock {
-    let id: UInt32
-    private let block: () -> Void
-    private var contextRaw: UnsafeMutableRawPointer?
-    var pendingWorker: async_when_pending_worker_t
+final class ScheduledBlock {
+    private var block: (() -> Void)?
+    private var finalizer: (() -> Void)?
+    private var context: UnsafeMutablePointer<async_context_t>?
+    private var pendingWorker: async_when_pending_worker_t
+    private var didFinish = false
 
-    init(id: UInt32, block: @escaping () -> Void) {
-        self.id = id
+    init(block: (() -> Void)? = nil, finalizer: (() -> Void)? = nil) {
         self.block = block
-        self.contextRaw = nil
+        self.finalizer = finalizer
+        self.context = nil
         self.pendingWorker = async_when_pending_worker_t(
             next: nil,
             do_work: cshims_scheduler_scheduled_block_worker,
@@ -57,28 +58,57 @@ private final class ScheduledBlock {
         )
     }
 
-    func attach(to contextRaw: UnsafeMutableRawPointer) -> Bool {
-        self.contextRaw = contextRaw
+    func configure(block: @escaping () -> Void, finalizer: (() -> Void)? = nil) {
+        self.block = block
+        self.finalizer = finalizer
+    }
+
+    fileprivate func attach(to context: UnsafeMutablePointer<async_context_t>) -> Bool {
+        self.context = context
         pendingWorker.user_data = Unmanaged.passUnretained(self).toOpaque()
-        let context = contextRaw.assumingMemoryBound(to: async_context_t.self)
         return async_context_add_when_pending_worker(context, &pendingWorker)
     }
 
     func signal() {
-        guard let contextRaw else { return }
-        let context = contextRaw.assumingMemoryBound(to: async_context_t.self)
+        guard let context else { return }
         async_context_set_work_pending(context, &pendingWorker)
     }
 
     func execute() {
-        block()
+        block?()
+        finish()
+    }
 
-        if let contextRaw {
-            let context = contextRaw.assumingMemoryBound(to: async_context_t.self)
-            _ = async_context_remove_when_pending_worker(context, &pendingWorker)
+    func cancel() {
+        finish()
+    }
+
+    private func finish() {
+        guard cshimsWithCritical({
+            guard !didFinish else {
+                return false
+            }
+            didFinish = true
+            return true
+        }) else {
+            return
         }
 
-        cshimsRuntimeScheduler.completeScheduledBlock(id: id)
+        block = nil
+        removeWorker()
+
+        let finalizer = self.finalizer
+        self.finalizer = nil
+        finalizer?()
+    }
+
+    private func removeWorker() {
+        guard let context else {
+            return
+        }
+
+        _ = async_context_remove_when_pending_worker(context, &pendingWorker)
+        self.context = nil
     }
 }
 
@@ -87,8 +117,6 @@ final class RuntimeScheduler {
     fileprivate var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
-    private var scheduledBlocks: [UInt32: AnyObject] = [:]
-    private var nextScheduledBlockID: UInt32 = 0
 
     init() {
         slots = .allocate(capacity: cshimsMaxJobSlots)
@@ -193,30 +221,29 @@ final class RuntimeScheduler {
     // This is allowed to allocate; callers that need zero-allocation IRQ paths
     // should use a dedicated preallocated mechanism instead.
     func schedule(_ block: @escaping () -> Void) {
-        let id = cshimsWithCritical {
-            let id = nextScheduledBlockID
-            nextScheduledBlockID &+= 1
-            return id
+        let scheduledBlock = ScheduledBlock()
+        _ = Unmanaged.passRetained(scheduledBlock)
+        scheduledBlock.configure(block: block) {
+            Unmanaged.passUnretained(scheduledBlock).release()
         }
 
-        let scheduledBlock = ScheduledBlock(id: id, block: block)
-        let registered = withUnsafeMutablePointer(to: &context.core) { corePtr in
-            scheduledBlock.attach(to: UnsafeMutableRawPointer(corePtr))
+        let registered = withUnsafeMutablePointer(to: &context.core) { context in
+            scheduledBlock.attach(to: context)
         }
         guard registered else {
+            scheduledBlock.cancel()
             fatalError("[CPicoConcurrency] failed to register scheduled worker")
-        }
-
-        cshimsWithCritical {
-            scheduledBlocks[id] = scheduledBlock
         }
 
         scheduledBlock.signal()
     }
 
-    func completeScheduledBlock(id: UInt32) {
-        _ = cshimsWithCritical {
-            scheduledBlocks.removeValue(forKey: id)
+    func register(_ scheduledBlock: ScheduledBlock) {
+        let registered = withUnsafeMutablePointer(to: &context.core) { context in
+            scheduledBlock.attach(to: context)
+        }
+        guard registered else {
+            fatalError("[CPicoConcurrency] failed to register scheduled worker")
         }
     }
 
@@ -283,7 +310,9 @@ private func cshims_scheduler_scheduled_block_worker(
         return
     }
     let scheduledBlock = Unmanaged<ScheduledBlock>.fromOpaque(userData).takeUnretainedValue()
+    _ = Unmanaged.passRetained(scheduledBlock)
     scheduledBlock.execute()
+    Unmanaged.passUnretained(scheduledBlock).release()
 }
 
 @_cdecl("cshims_scheduler_pending_worker")

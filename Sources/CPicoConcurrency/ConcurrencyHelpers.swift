@@ -2,6 +2,8 @@
 import ConcurrencyShims
 @_spi(Internal) private import CPicoSDK
 
+// MARK: - Cancellation and scheduling helpers
+
 public typealias CancellationError = _Concurrency.CancellationError
 
 extension Task where Success == Never, Failure == Never {
@@ -42,51 +44,144 @@ public extension EmbeddedAsyncApp {
     }
 }
 
-// MARK: - IRQ trampoline helpers
+// MARK: - ISR trampoline helpers
 
-/// Helper to run minimal IRQ work now and schedule follow-up Swift work on the
-/// shared async context.
-///
-/// This helper intentionally allows allocations while scheduling the post-IRQ
-/// block so the call site stays simple. If a zero-allocation IRQ path is needed
-/// later, the implementation can be swapped behind this API.
-/// 
-/// Example usage:
-/// ```swift
-/// @c func someIRQHandler() {
-///     irqTrampoline {
-///         // This runs in IRQ context. Do minimal work here, just prepare any data you need to pass to postIRQ and return it.
-///         return readSensorDataFromIRQ()
-///     } postIRQ: { sensorData in
-///         // This runs in async_context worker context, NOT in IRQ. You can
-///         // safely interact with Swift concurrency primitives here.
-///         sensorDataStream.send(sensorData)
-///     }
-/// }
-/// ```
-public func irqTrampoline<T>(_ critical: () -> T, postIRQ: @escaping (T) -> Void) {
-    let value = critical()
-    cshimsRuntimeScheduler.schedule {
-        postIRQ(value)
+/// Helper class to allow scheduling work from an ISR onto the shared async context, with support
+/// for passing data from the ISR to the async context without allocations. This is used internally
+/// for the sleep implementation, but can also be used directly by users for other IRQ handling scenarios.
+public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
+    /// Creates a new trampoline with the given user data and post-ISR handler, and returns the trampoline 
+    /// along with an opaque pointer that can be passed to C code and later consumed to trigger the trampoline.
+    /// 
+    /// Example:
+    /// ```swift
+    /// @c func someHandlingFunction(pointer: UnsafeMutableRawPointer?) {
+    ///     ISRTrampoline.consume(pointer) { userData in
+    ///         // This runs in IRQ context. Do minimal work here, just prepare any data you need to pass to postISR and return it.
+    ///         return prepareCriticalDataFromIRQ(userData)
+    ///     }
+    /// }
+    /// 
+    /// let (trampoline, pointer) = ISRTrampoline.create(value: someUserData) { criticalData in
+    ///     // This runs in async_context worker context, NOT in IRQ. You can safely interact with Swift concurrency primitives here.
+    ///     handleCriticalData(criticalData)
+    /// }
+    /// 
+    /// setIRQHandler(someHandlingFunction, pointer)
+    /// ```
+    /// 
+    /// The data flow is as follows:
+    /// - The trampoline is created with some user data and a post-ISR handler. An opaque pointer to the trampoline is returned.
+    /// - The pointer is passed to C code and stored there (e.g. as an IRQ handler argument).
+    /// - When the C code calls the handler with the pointer, `ISRTrampoline.consume` is called to obtain the userData, handle the critical section in the ISR, and obtain an output named criticalData.
+    /// - The post-ISR handler is scheduled on the async context with the criticalData, allowing safe interaction with Swift concurrency primitives.
+    /// - The trampoline is automatically cleaned up when the post-ISR handler runs, but it can also be manually cancelled if needed to free resources earlier.
+    /// 
+    /// When the trampoline is created User Data comes in > When the ISR is triggered Critical Data is prepared > Post-ISR handler is executed with Critical Data
+    /// 
+    /// Note: The trampoline is designed to be signaled only once. If the trampoline is signaled multiple times, it will trigger an assertion failure and ignore subsequent signals after the first one.
+    public static func create(value: sending UserData, postISR: @Sendable @escaping @isolated(any) (sending CriticalData) async -> Void) -> sending (ISRTrampoline, UnsafeMutableRawPointer) {
+        let trampoline = ISRTrampoline(value: value, postISR: postISR)
+        return (trampoline, Unmanaged.passRetained(trampoline).toOpaque())
+    }
+
+    /// Consumes the trampoline pointer, executes the critical section in the ISR, and signals the post-ISR handler with the resulting critical data.
+    /// This function is designed to be called from C code with the opaque pointer obtained from `ISRTrampoline.create`. It will handle the necessary 
+    /// conversions and scheduling to ensure that the post-ISR handler is executed on the async context with the critical data prepared in the ISR.
+    /// 
+    /// Example:
+    /// ```swift
+    /// @c func someHandlingFunction(pointer: UnsafeMutableRawPointer?) {
+    ///     ISRTrampoline.consume(pointer) { userData in
+    ///         // This runs in IRQ context. Do minimal work here, just prepare any data you need to pass to postISR and return it.
+    ///         return prepareCriticalDataFromIRQ(userData)
+    ///     }
+    /// }
+    /// ```
+    public static func consume(_ pointer: UnsafeMutableRawPointer?, criticalSection: (sending UserData) -> sending CriticalData) {
+        guard let pointer else {
+            assertionFailure("[CPicoSDK] ISRTrampoline consume called with null pointer.")
+            return
+        }
+
+        let trampoline = Unmanaged<ISRTrampoline<UserData, CriticalData>>.fromOpaque(pointer).takeUnretainedValue()
+
+        trampoline.signal(criticalData: criticalSection(trampoline.value))
+    }
+
+    /// Preallocated work schedule to avoid allocations in the ISR path.
+    nonisolated(unsafe) private let scheduledWork: ScheduledBlock
+    private let value: UserData
+    nonisolated(unsafe) private let criticalData: UnsafeMutablePointer<CriticalData> = .allocate(capacity: 1)
+    private var postISR: (@isolated(any) (sending CriticalData) async -> Void)?
+
+    private init(value: sending UserData, postISR: @Sendable @escaping @isolated(any) (sending CriticalData) async -> Void) {
+        self.value = value
+        self.postISR = postISR
+        self.scheduledWork = ScheduledBlock()
+
+        let rawSelf: UnsafeMutableRawPointer = Unmanaged.passUnretained(self).toOpaque()
+        scheduledWork.configure {
+            Task {
+                await self.run()
+            }
+        } finalizer: {
+            Unmanaged<ISRTrampoline<UserData, CriticalData>>.fromOpaque(rawSelf).release()
+        }
+
+        cshimsRuntimeScheduler.register(scheduledWork)
+    }
+
+    nonisolated private func signal(criticalData: sending CriticalData) {
+        self.criticalData.pointee = criticalData
+        scheduledWork.signal()
+    }
+
+    private func run() async {
+        guard let postISR = self.postISR.take() else {
+            assertionFailure("[CPicoSDK] ISRTrampoline postISR handler is gone, the trampoline was signaled more than once.")
+            return
+        }
+
+        await postISR(criticalData.pointee)
+    }
+
+    /// Cancels the trampoline, preventing the post-ISR handler from being called if the trampoline is still pending, and freeing resources. 
+    /// If the trampoline has already been signaled, this has no effect.
+    public func cancel() {
+        scheduledWork.cancel()
+    }
+
+    deinit {
+        criticalData.deallocate()
     }
 }
 
-/// Schedules a one-shot follow-up block from IRQ context onto the shared async
-/// context.
+/// Schedules a one-shot block onto the shared async context. It cannot be cancelled.
+/// This is useful for scheduling work from an ISR or other non-async contexts without 
+/// needing to manage continuations or trampolines, but it should be used with care as 
+/// it does not provide any guarantees about when the block will be executed.
+/// 
+/// Prefer using `ISRTrampoline` if you need to pass data from the ISR context avoiding
+/// allocations.
 /// 
 /// Example usage:
 /// ```swift
 /// @c func someIRQHandler() {
-///     irqTrampoline {
-///         // This runs in async_context worker context, NOT in IRQ.
+///     executeLater {
+///         // This runs in async_context worker context.
 ///         continuation.resume()
 ///     }
 /// }
 /// ```
-public func irqTrampoline(postIRQ: @escaping () -> Void) {
-    cshimsRuntimeScheduler.schedule(postIRQ)
+public func executeLater(_ block: @escaping () -> Void) {
+    cshimsRuntimeScheduler.schedule(block)
 }
 
+// MARK: - Continuation helpers
+
+/// Embedded friendly wrapper of `UnsafeContinuation` and `CheckedContinuation` that supports typed 
+/// error handling.
 public struct EmbeddedContinuation<T: Sendable, E: Error> {
     private let continuation: @Sendable (sending Result<T, E>) -> Void
 
@@ -164,7 +259,12 @@ actor PicoTimeoutManager {
             mutex_init(mutex)
         }
 
-        func put(_ newValue: sending T) {
+        deinit {
+            mutex.deinitialize(count: 1)
+            mutex.deallocate()
+        }
+
+        func put(_ newValue: T) {
             mutex_enter_blocking(mutex)
             value = newValue
             mutex_exit(mutex)
@@ -175,15 +275,15 @@ actor PicoTimeoutManager {
             defer {
                 mutex_exit(mutex)
             }
-            let value = self.value
-            self.value = nil
-            return value
+
+            return self.value.take()
         }
     }
 
     struct Continuation: Identifiable {
         let id: ContinuationID
         fileprivate var alarmId: SyncExchangeBox<alarm_id_t>
+        let trampoline: ISRTrampoline<ContinuationID, ContinuationID>
         var handler: SyncExchangeBox<UnsafeContinuation<Void, Never>>
     }
 
@@ -197,12 +297,12 @@ actor PicoTimeoutManager {
         return nextContinuationId
     }
 
-    fileprivate func createNewContinuation() -> (ContinuationID, SyncExchangeBox<alarm_id_t>, SyncExchangeBox<UnsafeContinuation<Void, Never>>) {
+    fileprivate func createNewContinuation(postISR: @Sendable @escaping @isolated(any) (sending ContinuationID) async -> Void) -> sending (Continuation, UnsafeMutableRawPointer) {
         let id = nextId()
-        let alarmBox = SyncExchangeBox<alarm_id_t>()
-        let handlerBox = SyncExchangeBox<UnsafeContinuation<Void, Never>>()
-        continuations[id] = Continuation(id: id, alarmId: alarmBox, handler: handlerBox)
-        return (id, alarmBox, handlerBox)
+        let (trampoline, trampolinePointer) = ISRTrampoline<ContinuationID, ContinuationID>.create(value: id, postISR: postISR)
+        let continuation = Continuation(id: id, alarmId: .init(), trampoline: trampoline, handler: .init())
+        continuations[id] = continuation
+        return (continuation, trampolinePointer)
     }
 
     func triggeredAlarm(for continuationId: ContinuationID) -> UnsafeContinuation<Void, Never>? {
@@ -214,11 +314,17 @@ actor PicoTimeoutManager {
         return continuation.handler.take()
     }
 
-    func cancel(continuationId: ContinuationID) {
-        if let alarmId = continuations.removeValue(forKey: continuationId)?.alarmId.take() {
+    func cancel(continuationId: ContinuationID) async {
+        if let continuation = continuations.removeValue(forKey: continuationId) {
             // There might not be an alarm Id if the cancellation happened before the scheduling
             // or if the alarm failed to schedule in the first place, in which case there's nothing to cancel.
-            cancel_alarm(alarmId)
+            if let alarmId = continuation.alarmId.take() {
+                if cancel_alarm(alarmId) {
+                    await continuation.trampoline.cancel()
+                }
+            } else {
+                await continuation.trampoline.cancel()
+            }
         }
     }
 }
@@ -229,21 +335,9 @@ actor PicoTimeoutManager {
 let timerBlockPathCutoff: UInt64 = 500 // microseconds
 
 @c
-private func sleep_alarm_callback(_ alarmId: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
-    irqTrampoline {
-        PicoTimeoutManager.ContinuationID(bitPattern: userData)
-    } postIRQ: { continuationId in
-        guard continuationId > 0 else {
-            // Invalid continuation ID, this should never happen.
-            assertionFailure("[CPicoSDK] Invalid continuation Id in sleep alarm callback. \(continuationId)")
-            return
-        }
-
-        Task { 
-            if let continuation = await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId) {
-                continuation.resume()
-            }
-        }
+private func sleep_alarm_callback(_: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
+    ISRTrampoline<PicoTimeoutManager.ContinuationID, PicoTimeoutManager.ContinuationID>.consume(userData) {
+        $0
     }
 
     return 0 // 0 = do not reschedule
@@ -261,28 +355,30 @@ extension Task {
             return
         }
 
-        let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
+        let (registeredContinuation, trampolinePointer) = await PicoTimeoutManager.shared.createNewContinuation() { continuationId in
+            await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId)?.resume()
+        }
     
         await withTaskCancellationHandler {
             await withUnsafeContinuation { continuation in
-                handlerBox.put(continuation)
+                registeredContinuation.handler.put(continuation)
 
-                let id = add_alarm_in_us(us, sleep_alarm_callback, .init(bitPattern: continuationId), true)
+                let id = add_alarm_in_us(us, sleep_alarm_callback, trampolinePointer, true)
                 guard id > 0 else {
                     cancelled = true
                     continuation.resume()
                     return
                 }
 
-                alarmIdBox.put(id)
+                registeredContinuation.alarmId.put(id)
             }
         } onCancel: {
             cancelled = true
-            handlerBox.take()?.resume()
+            registeredContinuation.handler.take()?.resume()
         }
 
         if cancelled {
-            await PicoTimeoutManager.shared.cancel(continuationId: continuationId)
+            await PicoTimeoutManager.shared.cancel(continuationId: registeredContinuation.id)
             throw _Concurrency.CancellationError()
         }
     }
@@ -292,28 +388,30 @@ extension Task {
     public static func sleep(ms: UInt32) async throws(CancellationError) where Success == Never, Failure == Never {
         var cancelled: Bool = false
 
-        let (continuationId, alarmIdBox, handlerBox) = await PicoTimeoutManager.shared.createNewContinuation()
+        let (registeredContinuation, trampolinePointer) = await PicoTimeoutManager.shared.createNewContinuation() { continuationId in
+            await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId)?.resume()
+        }
     
         await withTaskCancellationHandler {
             await withUnsafeContinuation { continuation in
-                handlerBox.put(continuation)
+                registeredContinuation.handler.put(continuation)
 
-                let id = add_alarm_in_ms(ms, sleep_alarm_callback, .init(bitPattern: continuationId), true)
+                let id = add_alarm_in_ms(ms, sleep_alarm_callback, trampolinePointer, true)
                 guard id > 0 else {
                     cancelled = true
                     continuation.resume()
                     return
                 }
 
-                alarmIdBox.put(id)
+                registeredContinuation.alarmId.put(id)
             }
         } onCancel: {
             cancelled = true
-            handlerBox.take()?.resume()
+            registeredContinuation.handler.take()?.resume()
         }
 
         if cancelled {
-            await PicoTimeoutManager.shared.cancel(continuationId: continuationId)
+            await PicoTimeoutManager.shared.cancel(continuationId: registeredContinuation.id)
             throw _Concurrency.CancellationError()
         }
     }
