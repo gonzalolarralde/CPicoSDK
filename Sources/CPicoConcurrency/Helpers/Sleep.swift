@@ -101,7 +101,7 @@ extension Task {
     /// Async sleep implementation that uses the PicoSDK timers to avoid blocking worker threads.
     /// This allows other tasks to run while waiting, and is more power efficient than busy-waiting.
     public static func sleep(us: UInt64) async throws(CancellationError) where Success == Never, Failure == Never {
-        var cancelled: Bool = false
+        var registrationFailed = false
 
         guard us >= timerBlockPathCutoff else {
             // For very short sleeps, just busy-wait to avoid the overhead of scheduling a task.
@@ -119,7 +119,7 @@ extension Task {
 
                 let id = add_alarm_in_us(us, sleep_alarm_callback, trampolinePointer, true)
                 guard id > 0 else {
-                    cancelled = true
+                    registrationFailed = true
                     continuation.resume()
                     return
                 }
@@ -127,11 +127,10 @@ extension Task {
                 registeredContinuation.alarmId.put(id)
             }
         } onCancel: {
-            cancelled = true
             registeredContinuation.handler.take()?.resume()
         }
 
-        if cancelled {
+        if Task.isCancelled || registrationFailed {
             await PicoTimeoutManager.shared.cancel(continuationId: registeredContinuation.id)
             throw _Concurrency.CancellationError()
         }
@@ -140,7 +139,7 @@ extension Task {
     /// Async sleep implementation that uses the PicoSDK timers to avoid blocking worker threads.
     /// This allows other tasks to run while waiting, and is more power efficient than busy-waiting.
     public static func sleep(ms: UInt32) async throws(CancellationError) where Success == Never, Failure == Never {
-        var cancelled: Bool = false
+        var registrationFailed = false
 
         let (registeredContinuation, trampolinePointer) = await PicoTimeoutManager.shared.createNewContinuation() { continuationId in
             await PicoTimeoutManager.shared.triggeredAlarm(for: continuationId)?.resume()
@@ -152,7 +151,7 @@ extension Task {
 
                 let id = add_alarm_in_ms(ms, sleep_alarm_callback, trampolinePointer, true)
                 guard id > 0 else {
-                    cancelled = true
+                    registrationFailed = true
                     continuation.resume()
                     return
                 }
@@ -160,11 +159,10 @@ extension Task {
                 registeredContinuation.alarmId.put(id)
             }
         } onCancel: {
-            cancelled = true
             registeredContinuation.handler.take()?.resume()
         }
 
-        if cancelled {
+        if Task.isCancelled || registrationFailed {
             await PicoTimeoutManager.shared.cancel(continuationId: registeredContinuation.id)
             throw _Concurrency.CancellationError()
         }

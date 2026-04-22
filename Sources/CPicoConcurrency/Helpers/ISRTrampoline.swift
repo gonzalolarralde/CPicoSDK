@@ -68,13 +68,14 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     /// Preallocated work schedule to avoid allocations in the ISR path.
     nonisolated(unsafe) private let scheduledWork: ScheduledBlock
     private let value: UserData
-    nonisolated(unsafe) private let criticalData: UnsafeMutablePointer<CriticalData> = .allocate(capacity: 1)
+    nonisolated(unsafe) private let criticalData: UnsafeMutablePointer<CriticalData?> = .allocate(capacity: 1)
     private var postISR: (@isolated(any) (sending CriticalData) async -> Void)?
 
     private init(value: sending UserData, postISR: @Sendable @escaping @isolated(any) (sending CriticalData) async -> Void) {
         self.value = value
         self.postISR = postISR
         self.scheduledWork = ScheduledBlock()
+        self.criticalData.pointee = nil
 
         let rawSelf: UnsafeMutableRawPointer = Unmanaged.passUnretained(self).toOpaque()
         scheduledWork.configure {
@@ -89,7 +90,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     }
 
     nonisolated private func signal(criticalData: sending CriticalData) {
-        self.criticalData.pointee = criticalData
+        self.criticalData.initialize(to: criticalData)
         scheduledWork.signal()
     }
 
@@ -99,7 +100,12 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
             return
         }
 
-        await postISR(criticalData.pointee)
+        guard let criticalData = criticalData.pointee else {
+            assertionFailure("[CPicoSDK] ISRTrampoline critical data is missing. This is unexpected.")
+            return
+        }
+
+        await postISR(criticalData)
     }
 
     /// Cancels the trampoline, preventing the post-ISR handler from being called if the trampoline is still pending, and freeing resources. 
@@ -109,6 +115,9 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     }
 
     deinit {
+        if criticalData.pointee != nil {
+            criticalData.deinitialize(count: 1)
+        }
         criticalData.deallocate()
     }
 }
