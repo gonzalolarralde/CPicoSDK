@@ -54,6 +54,7 @@ let package = Package(
         .target(
             name: "CPicoSDK",
             dependencies: [
+                .target(name: "ARMClib"),
                 // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
@@ -63,6 +64,8 @@ let package = Package(
         ),
 
         // Manually defined targets
+        .target(name: "ARMClib"),
+
         .target(
             name: "CPicoConcurrency",
             dependencies: [
