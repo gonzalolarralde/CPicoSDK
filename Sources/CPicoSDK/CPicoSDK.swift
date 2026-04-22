@@ -81,7 +81,7 @@
 }
 
 /// Embedded app protocol. Provides a default implementation of the `main` method that
-/// ensures to setup basic PicoSDK features before calling the user-defined `setup` and `loop`.
+/// sets up basic PicoSDK features before calling the user-defined `setup` and `loop`.
 /// 
 /// Using this protocol is optional, if a custom `main` start sequence is needed, it can be
 /// implemented directly in their app.

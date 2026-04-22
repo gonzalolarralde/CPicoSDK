@@ -20,7 +20,7 @@ extension Task where Success == Never, Failure == Never {
 }
 
 /// Embedded async app protocol. Provides a default implementation of the `main` method that
-/// ensures to setup basic PicoSDK features before calling the user-defined `setup` and `loop`
+/// sets up basic PicoSDK features before calling the user-defined `setup` and `loop`
 /// methods, and uses the `tightLoop` helper to allow concurrency progress in busy loops.
 /// 
 /// Using this protocol is optional, if a custom `main` start sequence is needed, it can be
