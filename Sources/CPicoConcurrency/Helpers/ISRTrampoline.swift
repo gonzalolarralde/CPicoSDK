@@ -67,6 +67,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
 
     /// Preallocated work schedule to avoid allocations in the ISR path.
     nonisolated(unsafe) private let scheduledWork: ScheduledBlock
+    nonisolated(unsafe) private var signaled = false
     private let value: UserData
     nonisolated(unsafe) private let criticalData: UnsafeMutablePointer<CriticalData?> = .allocate(capacity: 1)
     private var postISR: (@isolated(any) (sending CriticalData) async -> Void)?
@@ -90,6 +91,13 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     }
 
     nonisolated private func signal(criticalData: sending CriticalData) {
+        guard !self.signaled else {
+            assertionFailure("[CPicoSDK] ISRTrampoline signaled more than once. This is not supported.")
+            return
+        }
+
+        self.signaled = true
+        self.criticalData.deinitialize(count: 1)
         self.criticalData.initialize(to: criticalData)
         scheduledWork.signal()
     }
