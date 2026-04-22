@@ -1,0 +1,4 @@
+module ARMClib [system] {
+    umbrella header "include/ARMClib.h"
+    export *
+}

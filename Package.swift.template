@@ -49,11 +49,14 @@ let package = Package(
         .target(
             name: "CPicoSDK",
             dependencies: [
+                .target(name: "ARMClib"),
                 // GENERATOR MARK: TARGET DEPENDENCIES
             ]
         ),
 
         // Manually defined targets
+        .target(name: "ARMClib"),
+
         .target(
             name: "CPicoConcurrency",
             dependencies: [
