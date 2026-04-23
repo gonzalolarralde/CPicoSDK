@@ -1,3 +1,5 @@
+@_exported import _Concurrency
+
 // This is for a future exploration.
 
 // @globalActor

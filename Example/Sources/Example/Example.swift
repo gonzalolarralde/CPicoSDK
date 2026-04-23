@@ -60,7 +60,7 @@ func ledExample() {
         // when not using or expecting to use Concurrency features.
         sleep_ms(100)
 
-        picoSDKTightLoop()
+        Task.tightLoop()
     }
 }
 
