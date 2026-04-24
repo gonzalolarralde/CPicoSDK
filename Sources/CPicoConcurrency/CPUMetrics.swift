@@ -9,6 +9,16 @@ public enum CPUCore: UInt8 {
 /// Report containing CPU usage metrics for a given time window. The `usageEvents` 
 /// async stream provides periodic reports with the latest CPU usage data, which 
 /// can be used for monitoring or debugging purposes.
+/// 
+/// WARNING: *THIS IS AN EXPERIMENTAL IMPLEMENTATION* Expect inaccurate readings,
+/// missing features, and potential performance issues. Use with caution.
+/// 
+/// WARNING: To count CPU usage accurately the IRQ handlers are wrapped with 
+/// a shim that accounts for their execution time in the CPU usage metrics.
+/// Expect potential performance degradations and unexpected interactions with 
+/// third-party libraries that also wrap IRQ handlers. If you experience issues,
+/// you can disable CPU monitoring and the IRQ wrapping by undefining the `CPUMetrics`
+/// flag in your build configuration.
 public struct CPUStats {
     public static var enabled: Bool {
         #if CPUMetrics
