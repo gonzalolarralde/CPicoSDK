@@ -1,6 +1,6 @@
 import _Concurrency
 import ConcurrencyShims
-private import CPicoSDK
+import CPicoSDK
 
 /// Embedded friendly wrapper of `UnsafeContinuation` and `CheckedContinuation` that supports typed 
 /// error handling.

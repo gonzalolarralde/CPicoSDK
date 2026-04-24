@@ -1,6 +1,6 @@
 import _Concurrency
 import ConcurrencyShims
-@_spi(Internal) private import CPicoSDK
+@_spi(Internal) import CPicoSDK
 
 public typealias CancellationError = _Concurrency.CancellationError
 

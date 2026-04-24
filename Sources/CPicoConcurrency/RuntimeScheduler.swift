@@ -1,5 +1,5 @@
 import ConcurrencyShims
-private import CPicoSDK
+import CPicoSDK
 
 private let cshimsMaxJobSlots = 64
 

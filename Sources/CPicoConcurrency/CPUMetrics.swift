@@ -1,15 +1,15 @@
 import ConcurrencyShims
-private import CPicoSDK
+import CPicoSDK
 
-public enum CPUCore {
-    case core0
-    case core1
+public enum CPUCore: UInt8 {
+    case core0 = 0
+    case core1 = 1
 }
 
 /// Report containing CPU usage metrics for a given time window. The `usageEvents` 
 /// async stream provides periodic reports with the latest CPU usage data, which 
 /// can be used for monitoring or debugging purposes.
-public struct CPUUsageReport {
+public struct CPUStats {
     public static var enabled: Bool {
         #if CPUMetrics
             true
@@ -28,11 +28,14 @@ public struct CPUUsageReport {
     }
 
     public let timestamp: UInt64
+    public let core: CPUCore = .core0 // TODO: Support per-core metrics.
     public let taskUsageTime: UInt64
     public let interruptUsageTime: UInt64
     public let idleUsageTime: UInt64
     public let totalTime: UInt64
     public let interruptEvents: UInt64
+
+    public let memoryStats: MemoryStats = .current
 
     public var taskUsagePercent: Double {
         totalTime > 0 ? Double(taskUsageTime) / Double(totalTime) * 100 : 0
@@ -45,11 +48,14 @@ public struct CPUUsageReport {
     }
 
     public var description: String {
-        "CPU usage: task=\(taskUsagePercent)% irq=\(interruptUsagePercent)% idle=\(idleUsagePercent)% total_us=\(totalTime) irq_events=\(interruptEvents)"
+        "CPU(core: \(core.rawValue)) usage: task=\(taskUsagePercent)%; irq=\(interruptUsagePercent)%; idle=\(idleUsagePercent)%; total_us=\(totalTime); irq_events=\(interruptEvents)"
     }
 
-    public func print() {
+    public func print(includeMemoryStats: Bool = true) {
         Swift::print("[CPicoConcurrency] \(self.description)")
+        if includeMemoryStats {
+            memoryStats.print()
+        }
     }
 }
 
@@ -153,8 +159,8 @@ struct RuntimeCPUUsageMeter {
 
     private static let windowUs: UInt64 = 1_000_000
 
-    private let streamPair = AsyncStream.makeStream(of: CPUUsageReport.self, bufferingPolicy: .bufferingNewest(1))
-    var stream: AsyncStream<CPUUsageReport> { streamPair.stream }
+    private let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(1))
+    var stream: AsyncStream<CPUStats> { streamPair.stream }
 
     private var windowStartUs: UInt64 = 0
     private var lastEventUs: UInt64 = 0
@@ -226,7 +232,7 @@ struct RuntimeCPUUsageMeter {
         }
 
         let totalUs = taskUs &+ interruptUs &+ idleUs
-        let report = CPUUsageReport(
+        let report = CPUStats(
             timestamp: nowUs, 
             taskUsageTime: taskUs, 
             interruptUsageTime: interruptUs, 

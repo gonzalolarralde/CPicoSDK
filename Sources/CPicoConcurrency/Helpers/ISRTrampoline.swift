@@ -1,6 +1,6 @@
 import _Concurrency
 import ConcurrencyShims
-private import CPicoSDK
+import CPicoSDK
 
 /// Helper class to allow scheduling work from an ISR onto the shared async context, with support
 /// for passing data from the ISR to the async context without allocations. This is used internally

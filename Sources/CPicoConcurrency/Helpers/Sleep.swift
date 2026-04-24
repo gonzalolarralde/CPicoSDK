@@ -1,6 +1,6 @@
 import _Concurrency
 import ConcurrencyShims
-private import CPicoSDK
+import CPicoSDK
 
 actor PicoTimeoutManager {
     typealias ContinuationID = Int
