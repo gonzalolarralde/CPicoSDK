@@ -15,7 +15,7 @@ extension Task where Success == Never, Failure == Never {
     /// Note: USB polling (tud_task) happens automatically in the global executor loops.
     public static func tightLoop() {
         tight_loop_contents()
-        cshimsRuntimeScheduler.pollOnce()
+        _ = cshimsRuntimeScheduler.pollOnce()
     }
 }
 

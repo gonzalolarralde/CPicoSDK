@@ -115,6 +115,9 @@ final class RuntimeScheduler {
     fileprivate var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
+#if CPU_USAGE_ENABLED
+    private var cpuUsage = RuntimeCPUUsageMeter()
+#endif
 
     init() {
         slots = .allocate(capacity: JobSlot.maxJobSlots)
@@ -211,8 +214,14 @@ final class RuntimeScheduler {
     }
 
     func pollOnce() -> Int32 {
+    #if CPU_USAGE_ENABLED
+        cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
+    #endif
         didRunJob = false
         async_context_poll(&context.core)
+    #if CPU_USAGE_ENABLED
+        cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
+    #endif
         return didRunJob ? 1 : 0
     }
 
@@ -222,8 +231,24 @@ final class RuntimeScheduler {
     }
 
     func waitForever() {
+#if CPU_USAGE_ENABLED
+        cpuUsage.sample()
+#endif
         async_context_wait_for_work_until(&context.core, UInt64.max)
+#if CPU_USAGE_ENABLED
+        cpuUsage.sample()
+#endif
     }
+
+#if CPU_USAGE_ENABLED
+    fileprivate func recordExternalEvent(_ event: RuntimeCPUUsageMeter.Event) {
+        cpuUsage.record(event: event)
+    }
+
+    func sampleCPUUsage() {
+        cpuUsage.sample()
+    }
+#endif
 
     // Schedules a one-shot block to run from async_context worker context.
     // This is allowed to allocate; callers that need zero-allocation IRQ paths
@@ -294,6 +319,118 @@ final class RuntimeScheduler {
     }
 }
 
+#if CPU_USAGE_ENABLED
+private struct RuntimeCPUUsageMeter {
+    enum Event {
+        case enterTask(name: String)
+        case exitTask(name: String)
+        case enterInterrupt(interrupt: UInt)
+        case exitInterrupt(interrupt: UInt)
+    }
+
+    private static let windowUs: UInt64 = 1_000_000
+
+    private var windowStartUs: UInt64 = 0
+    private var lastEventUs: UInt64 = 0
+
+    private var taskUs: UInt64 = 0
+    private var interruptUs: UInt64 = 0
+    private var idleUs: UInt64 = 0
+
+    private var taskIsActive = false
+    private var interruptDepth: UInt = 0
+
+    @_transparent
+    mutating func record(event: Event) {
+        let nowUs = time_us_64()
+        accountElapsed(nowUs: nowUs)
+
+        switch event {
+        case .enterTask:
+            taskIsActive = true
+        case .exitTask:
+            taskIsActive = false
+        case .enterInterrupt:
+            interruptDepth &+= 1
+        case .exitInterrupt:
+            if interruptDepth > 0 {
+                interruptDepth &-= 1
+            }
+        }
+
+        reportIfNeeded(nowUs: nowUs)
+    }
+
+    @_transparent
+    mutating func sample() {
+        let nowUs = time_us_64()
+        accountElapsed(nowUs: nowUs)
+        reportIfNeeded(nowUs: nowUs)
+    }
+
+    @_transparent
+    private mutating func accountElapsed(nowUs: UInt64) {
+        if windowStartUs == 0 {
+            windowStartUs = nowUs
+            lastEventUs = nowUs
+            return
+        }
+
+        let elapsedUs = nowUs &- lastEventUs
+        lastEventUs = nowUs
+
+        if interruptDepth > 0 {
+            interruptUs &+= elapsedUs
+        } else if taskIsActive {
+            taskUs &+= elapsedUs
+        } else {
+            idleUs &+= elapsedUs
+        }
+    }
+
+    @_transparent
+    private mutating func reportIfNeeded(nowUs: UInt64) {
+        guard windowStartUs != 0 else {
+            return
+        }
+
+        guard nowUs &- windowStartUs >= Self.windowUs else {
+            return
+        }
+
+        let totalUs = taskUs &+ interruptUs &+ idleUs
+        let taskPct = percentageTimes100(numerator: taskUs, denominator: totalUs)
+        let irqPct = percentageTimes100(numerator: interruptUs, denominator: totalUs)
+        let idlePct = percentageTimes100(numerator: idleUs, denominator: totalUs)
+        print(
+            "[CPicoConcurrency] CPU usage: task=\(formatPercent(taskPct))% irq=\(formatPercent(irqPct))% idle=\(formatPercent(idlePct))% total_us=\(totalUs)"
+        )
+
+        windowStartUs = nowUs
+        lastEventUs = nowUs
+        taskUs = 0
+        interruptUs = 0
+        idleUs = 0
+    }
+
+    @_transparent
+    private func percentageTimes100(numerator: UInt64, denominator: UInt64) -> UInt64 {
+        guard denominator != 0 else {
+            return 0
+        }
+        return (numerator &* 10_000) / denominator
+    }
+
+    @_transparent
+    private func formatPercent(_ valueTimes100: UInt64) -> String {
+        let whole = valueTimes100 / 100
+        let fraction = valueTimes100 % 100
+        let fractionText = fraction < 10 ? "0\(fraction)" : "\(fraction)"
+        return "\(whole).\(fractionText)"
+    }
+}
+#endif
+
 nonisolated(unsafe) var cshimsRuntimeScheduler = RuntimeScheduler()
 
 @_spi(Internal) public func callWithAsyncContext(_ body: (UnsafeMutableRawPointer) -> Void) {
@@ -301,6 +438,23 @@ nonisolated(unsafe) var cshimsRuntimeScheduler = RuntimeScheduler()
         body(UnsafeMutableRawPointer(contextPtr))
     }
 }
+
+#if CPU_USAGE_ENABLED
+@_spi(Internal)
+public func recordRuntimeSchedulerEnterInterrupt(_ interrupt: UInt) {
+    cshimsRuntimeScheduler.recordExternalEvent(.enterInterrupt(interrupt: interrupt))
+}
+
+@_spi(Internal)
+public func recordRuntimeSchedulerExitInterrupt(_ interrupt: UInt) {
+    cshimsRuntimeScheduler.recordExternalEvent(.exitInterrupt(interrupt: interrupt))
+}
+
+@_spi(Internal)
+public func sampleRuntimeSchedulerCPUUsage() {
+    cshimsRuntimeScheduler.sampleCPUUsage()
+}
+#endif
 
 @_cdecl("cshims_scheduler_scheduled_block_worker")
 private func cshims_scheduler_scheduled_block_worker(
