@@ -1,43 +1,39 @@
 import ConcurrencyShims
 private import CPicoSDK
 
-private let cshimsJobSlotFree: UInt8 = 0
-private let cshimsJobSlotPending: UInt8 = 1
-private let cshimsJobSlotDelayed: UInt8 = 2
 private let cshimsMaxJobSlots = 64
 
 private struct JobSlot {
-    var state: UInt8
+    static let maxJobSlots = 64
+    enum State: UInt8 {
+        case free = 0
+        case pending = 1
+        case delayed = 2
+    }
+
+    var state: State
     var job: UnsafeMutableRawPointer?
     var executorFirst: UnsafeMutableRawPointer?
     var executorSecond: UnsafeMutableRawPointer?
     var pendingWorker: async_when_pending_worker_t
     var delayedWorker: async_at_time_worker_t
+
+    mutating func free() {
+        state = .free
+        job = nil
+        executorFirst = nil
+        executorSecond = nil
+        pendingWorker.work_pending = false
+        delayedWorker.next = nil
+        delayedWorker.next_time = 0
+    }
 }
 
-private func cshimsMakePendingWorker() -> async_when_pending_worker_t {
-    async_when_pending_worker_t(
-        next: nil,
-        do_work: cshims_scheduler_pending_worker,
-        work_pending: false,
-        user_data: nil
-    )
-}
-
-private func cshimsMakeDelayedWorker() -> async_at_time_worker_t {
-    async_at_time_worker_t(
-        next: nil,
-        do_work: cshims_scheduler_delayed_worker,
-        next_time: 0,
-        user_data: nil
-    )
-}
-
-private func cshimsWithCritical<T>(_ body: () -> T) -> T {
-    let state = cshims_enter_critical()
-    defer { cshims_exit_critical(state) }
-    return body()
-}
+private func withCritical<T>(_ body: () -> T) -> T {
+        let state = cshims_enter_critical()
+        defer { cshims_exit_critical(state) }
+        return body()
+    }
 
 final class ScheduledBlock {
     private var block: (() -> Void)?
@@ -84,13 +80,15 @@ final class ScheduledBlock {
     }
 
     private func finish() {
-        guard cshimsWithCritical({
-            guard !didFinish else {
+        let markedAsFinished = withCritical { () -> Bool in
+            guard !self.didFinish else {
                 return false
             }
-            didFinish = true
+            self.didFinish = true
             return true
-        }) else {
+        }
+
+        guard markedAsFinished else {
             return
         }
 
@@ -119,22 +117,32 @@ final class RuntimeScheduler {
     private var didRunJob = false
 
     init() {
-        slots = .allocate(capacity: cshimsMaxJobSlots)
+        slots = .allocate(capacity: JobSlot.maxJobSlots)
 
         guard async_context_poll_init_with_defaults(&context) else {
             fatalError("[CPicoConcurrency] async_context_poll_init_with_defaults failed")
         }
 
-        for index in 0..<cshimsMaxJobSlots {
+        for index in 0..<JobSlot.maxJobSlots {
             let slot = slots.advanced(by: index)
             slot.initialize(
                 to: JobSlot(
-                    state: cshimsJobSlotFree,
+                    state: .free,
                     job: nil,
                     executorFirst: nil,
                     executorSecond: nil,
-                    pendingWorker: cshimsMakePendingWorker(),
-                    delayedWorker: cshimsMakeDelayedWorker()
+                    pendingWorker: .init(
+                        next: nil,
+                        do_work: cshims_scheduler_pending_worker,
+                        work_pending: false,
+                        user_data: nil
+                    ),
+                    delayedWorker: .init(
+                        next: nil,
+                        do_work: cshims_scheduler_delayed_worker,
+                        next_time: 0,
+                        user_data: nil
+                    )
                 )
             )
             slot.pointee.pendingWorker.user_data = UnsafeMutableRawPointer(slot)
@@ -157,7 +165,7 @@ final class RuntimeScheduler {
         executorSecond: UnsafeMutableRawPointer?
     ) {
         let slot = allocateSlot()
-        slot.pointee.state = cshimsJobSlotPending
+        slot.pointee.state = .pending
         slot.pointee.job = job
         slot.pointee.executorFirst = executorFirst
         slot.pointee.executorSecond = executorSecond
@@ -171,7 +179,7 @@ final class RuntimeScheduler {
         executorSecond: UnsafeMutableRawPointer?
     ) {
         let slot = allocateSlot()
-        slot.pointee.state = cshimsJobSlotDelayed
+        slot.pointee.state = .delayed
         slot.pointee.job = job
         slot.pointee.executorFirst = executorFirst
         slot.pointee.executorSecond = executorSecond
@@ -190,7 +198,7 @@ final class RuntimeScheduler {
         executorSecond: UnsafeMutableRawPointer?
     ) {
         let slot = allocateSlot()
-        slot.pointee.state = cshimsJobSlotDelayed
+        slot.pointee.state = .delayed
         slot.pointee.job = job
         slot.pointee.executorFirst = executorFirst
         slot.pointee.executorSecond = executorSecond
@@ -258,7 +266,7 @@ final class RuntimeScheduler {
     }
 
     private func allocateSlot() -> UnsafeMutablePointer<JobSlot> {
-        if let slot = cshimsWithCritical(findFreeSlot) {
+        if let slot = withCritical(findFreeSlot) {
             slot.pointee.pendingWorker.work_pending = false
             slot.pointee.delayedWorker.next = nil
             slot.pointee.delayedWorker.next_time = 0
@@ -269,22 +277,16 @@ final class RuntimeScheduler {
     }
 
     private func releaseSlot(_ slot: UnsafeMutablePointer<JobSlot>) {
-        cshimsWithCritical {
-            slot.pointee.state = cshimsJobSlotFree
-            slot.pointee.job = nil
-            slot.pointee.executorFirst = nil
-            slot.pointee.executorSecond = nil
-            slot.pointee.pendingWorker.work_pending = false
-            slot.pointee.delayedWorker.next = nil
-            slot.pointee.delayedWorker.next_time = 0
+        withCritical {
+            slot.pointee.free()
         }
     }
 
     private func findFreeSlot() -> UnsafeMutablePointer<JobSlot>? {
-        for index in 0..<cshimsMaxJobSlots {
+        for index in 0..<JobSlot.maxJobSlots {
             let slot = slots.advanced(by: index)
-            if slot.pointee.state == cshimsJobSlotFree {
-                slot.pointee.state = cshimsJobSlotPending
+            if slot.pointee.state == .free {
+                slot.pointee.state = .pending
                 return slot
             }
         }
