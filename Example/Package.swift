@@ -15,6 +15,7 @@ let package = Package(
                 .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),
                 .init(name: "StdIO_Automatic"),
+                .init(name: "CPUMetrics"),
 
                 // - Pico 2
                 .init(name: "Variant_RP2350A"),
