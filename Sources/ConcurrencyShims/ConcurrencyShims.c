@@ -30,29 +30,6 @@ extern void cshims_scheduler_enqueue_delayed(uint64_t delayUs, void *job, void *
 extern void cshims_scheduler_enqueue_deadline(uint64_t deadlineUs, void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_wait_for_work_forever(void);
 
-static inline uint32_t cshims_save_and_disable_interrupts(void) {
-#if defined(__arm__) || defined(__thumb__)
-    uint32_t status;
-    __asm volatile(
-        "mrs %0, primask\n"
-        "cpsid i\n"
-        : "=r"(status)
-        :
-        : "memory");
-    return status;
-#else
-    return 0;
-#endif
-}
-
-static inline void cshims_restore_interrupts(uint32_t status) {
-#if defined(__arm__) || defined(__thumb__)
-    __asm volatile("msr primask, %0\n" : : "r"(status) : "memory");
-#else
-    (void)status;
-#endif
-}
-
 static SwiftExecutorRef cshims_generic_executor(void) {
     SwiftExecutorRef executor = {NULL, NULL};
     return executor;
@@ -68,24 +45,31 @@ static bool cshims_executor_equal(SwiftExecutorRef lhs, SwiftExecutorRef rhs) {
 
 void swift_createDefaultExecutors(void) {}
 
-int cshims_swift_task_poll_once(void) {
-    return cshims_scheduler_poll_once();
-}
-
-void cshims_swift_task_drain(void) {
-    cshims_scheduler_drain();
-}
-
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond) {
     swift_job_run(job, executorFirst, executorSecond);
 }
 
 uint32_t cshims_enter_critical(void) {
-    return cshims_save_and_disable_interrupts();
+#if defined(__arm__) || defined(__thumb__)
+    uint32_t status;
+    __asm volatile(
+        "mrs %0, primask\n"
+        "cpsid i\n"
+        : "=r"(status)
+        :
+        : "memory");
+    return status;
+#else
+    return 0;
+#endif
 }
 
 void cshims_exit_critical(uint32_t state) {
-    cshims_restore_interrupts(state);
+#if defined(__arm__) || defined(__thumb__)
+    __asm volatile("msr primask, %0\n" : : "r"(state) : "memory");
+#else
+    (void)state;
+#endif
 }
 
 SWIFT_CC_SWIFT void swift_task_enqueueGlobalImpl(void *job) {
@@ -217,13 +201,18 @@ int8_t SWIFT_CC_SWIFT _task_serialExecutor_isIsolatingCurrentContext(
 }
 
 bool _swift_shouldReportFatalErrorsToDebugger(void) {
-    return false;
+    return true;
 }
 
 void _swift_reportToDebugger(uintptr_t flags, const char *message, void *details) {
-    (void)flags;
-    (void)message;
-    (void)details;
+  // Do nothing. This function is meant to be used by the debugger.
+
+  // The following is necessary to avoid calls from being optimized out.
+  asm volatile("" // Do nothing.
+               : // Output list, empty.
+               : "r" (flags), "r" (message), "r" (details) // Input list.
+               : // Clobber list, empty.
+               );
 }
 
 int memset_s(void *dest, size_t destSize, int ch, size_t count) {
