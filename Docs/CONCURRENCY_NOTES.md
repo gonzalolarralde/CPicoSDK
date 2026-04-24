@@ -359,3 +359,134 @@ The current system is:
 - manual runtime polling from sync `main`
 
 That is the current working model.
+
+## Task Introspection: Job Kind and Task Name
+
+This section documents the exact locations in the Swift runtime where the job kind and task-name metadata are defined, and how they connect to each other and to the executor shim layer.
+
+All references point at swiftlang/swift commit `8104e4c3ae46d1211755afa5a709f6b8624c1c79`.
+
+### (1) Where job kind is defined and extracted
+
+**`include/swift/ABI/MetadataValues.h`**
+
+- `enum class JobKind : size_t { Task = 0, ... }`
+  Enumerates all schedulable job kinds. `Task` (value `0`) means the job is
+  a live `AsyncTask`.
+
+- `class JobFlags : public FlagSet<uint32_t>`
+  The flag word stored inside every `Job`. Key bit ranges:
+
+  | Bits | Name | Meaning |
+  |------|------|---------|
+  | 0–7  | `Kind` / `Kind_width = 8` | `JobKind` enum value |
+  | 30   | `Task_HasInitialTaskName` | task was spawned with a name |
+
+  `getKind()` extracts bits 0–7 and compares against `JobKind::Task`.
+
+**`include/swift/ABI/Task.h`**
+
+- `class alignas(2 * alignof(void*)) Job : public HeapObject`
+
+  Carries the field:
+  ```cpp
+  /// WARNING: DO NOT MOVE.
+  /// Schedulers may assume the memory location of the Flags.
+  JobFlags Flags;
+  ```
+  This is the field a scheduler reads to determine job type and priority.
+  On ARM Cortex-M embedded 32-bit it sits at **byte offset 16** from `Job*`
+  (after `HeapObject` = 8 bytes and `SchedulerPrivate[2]` = 8 bytes).
+
+### (2) Where task name metadata is stored
+
+**`include/swift/ABI/TaskOptions.h`**
+
+- `class InitialTaskNameTaskOptionRecord : public TaskOptionRecord`
+  ```cpp
+  const char* TaskName;
+  ```
+  This is the *creation-time* option record. The Swift compiler emits a
+  reference to it when a task is spawned with
+  `Builtin.createTask(... taskName: ...)`. Kind value:
+  `TaskOptionRecordKind::InitialTaskName = 7`.
+
+**`include/swift/ABI/TaskStatus.h`**
+
+- `class TaskNameStatusRecord : public TaskStatusRecord`
+  ```cpp
+  const char *Name;
+  ```
+  This is the *runtime* status record. It lives in the task's status-record
+  chain for the **entire lifetime** of the task (even after completion, unlike
+  most other records). Kind value: `TaskStatusRecordKind::TaskName = 6`.
+
+**`stdlib/public/Concurrency/Task.cpp` (≈ line 753)**
+
+Inside `swift_task_create_commonImpl`, the option-record loop contains:
+```cpp
+case TaskOptionRecordKind::InitialTaskName:
+    taskName = cast<InitialTaskNameTaskOptionRecord>(option)->getTaskName();
+    jobFlags.task_setHasInitialTaskName(true);
+    break;
+```
+And later, after the task allocation:
+```cpp
+if (jobFlags.task_hasInitialTaskName()) {
+    task->pushInitialTaskName(taskName);
+}
+```
+
+**`stdlib/public/Concurrency/TaskStatus.cpp`**
+
+- `AsyncTask::pushInitialTaskName(const char*)` allocates a copy of the name
+  string on the task allocator, allocates a `TaskNameStatusRecord`, and links
+  it as the *innermost* status record. This record must be the **first**
+  allocation on the task allocator stack.
+
+- `AsyncTask::getTaskName()` checks `hasInitialTaskNameRecord()` (i.e. bit 30
+  of `JobFlags`) first. If set, it acquires the status-record lock and walks
+  the chain looking for a record with kind `TaskStatusRecordKind::TaskName`
+  (value 6). It returns the `Name` pointer from that record.
+
+### Connection path from `SwiftJob*` to task name
+
+```
+void *job (SwiftJob*)
+  │
+  ├─ read uint32_t at offset 16         → Job::Flags (JobFlags)
+  │    bits 0–7 == 0?                   → JobKind::Task confirmed
+  │    bit 30 set?                      → task_hasInitialTaskName confirmed
+  │
+  └─ treat as AsyncTask*
+       │
+       └─ read void* at offset 84 (32 + 48 + 4)
+              │  Private (offset 32)
+              │  ActiveTaskStatus (offset 48 within Private)
+              │  Record ptr (offset 4 within ActiveTaskStatus)
+              │
+              └─ walk TaskStatusRecord chain via Parent pointers
+                   find record with flags bits 0–7 == 6  (TaskName)
+                   │
+                   └─ read const char* at offset 8 from that record
+                           = TaskNameStatusRecord::Name
+```
+
+### C implementation
+
+Two helpers are provided in the shim layer:
+
+- `cshims_job_get_flags(void *job)` — returns the raw `JobFlags` word.
+- `cshims_job_get_task_name(void *job)` — returns the NUL-terminated task
+  name, or `NULL` if the job is not a named task.
+
+Full layout derivation and stability caveats are in:
+
+- [`Sources/ConcurrencyShims/include/SwiftJobInternals.h`](../Sources/ConcurrencyShims/include/SwiftJobInternals.h)
+
+**Stability caveats.** These offsets are valid only for ARM Cortex-M
+(`armv7em-none-none-eabi`, 32-bit pointers), embedded Swift without priority
+escalation, and the specific runtime commit listed above. They will need
+updating if the runtime layout changes. Both functions compile to a no-op
+(`return 0` / `return NULL`) on non-ARM targets.
+

@@ -1,4 +1,5 @@
 #include "ConcurrencyShims.h"
+#include "SwiftJobInternals.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -264,3 +265,40 @@ int clock_getres(clockid_t clockID, struct timespec *ts) {
     ts->tv_nsec = 1000;
     return 0;
 }
+
+// ===== Unstable task-introspection helpers (see SwiftJobInternals.h) =====
+
+unsigned int cshims_job_get_flags(void *job)
+{
+    if (job == NULL) {
+        return 0;
+    }
+#if defined(__arm__) || defined(__thumb__)
+    return (unsigned int)cshims_job_read_flags(job);
+#else
+    (void)job;
+    return 0;
+#endif
+}
+
+const char *cshims_job_get_task_name(void *job)
+{
+    if (job == NULL) {
+        return NULL;
+    }
+#if defined(__arm__) || defined(__thumb__)
+    uint32_t flags = cshims_job_read_flags(job);
+    if (!cshims_job_is_async_task(flags)) {
+        return NULL;
+    }
+    if (!cshims_job_has_initial_task_name(flags)) {
+        return NULL;
+    }
+    void *record = cshims_async_task_get_record_head(job);
+    return cshims_find_task_name_in_records(record);
+#else
+    (void)job;
+    return NULL;
+#endif
+}
+
