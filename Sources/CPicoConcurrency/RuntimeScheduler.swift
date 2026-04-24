@@ -116,7 +116,7 @@ final class RuntimeScheduler {
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
 #if CPU_USAGE_ENABLED
-    private var cpuUsage = RuntimeCPUUsageMeter()
+    private(set) var cpuUsage = RuntimeCPUUsageMeter()
 #endif
 
     init() {
@@ -223,6 +223,7 @@ final class RuntimeScheduler {
         async_context_poll(&context.core)
     #if CPU_USAGE_ENABLED
         cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
+        cpuUsage.reportIfNeeded()
     #endif
         return didRunJob ? 1 : 0
     }

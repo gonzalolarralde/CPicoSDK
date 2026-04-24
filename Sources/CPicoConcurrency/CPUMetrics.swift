@@ -1,8 +1,56 @@
 import ConcurrencyShims
 private import CPicoSDK
 
+public enum CPUCore {
+    case core0
+    case core1
+}
+
+/// Report containing CPU usage metrics for a given time window. The `usageEvents` 
+/// async stream provides periodic reports with the latest CPU usage data, which 
+/// can be used for monitoring or debugging purposes.
+public struct CPUUsageReport {
+    public static func usageEvents(for core: CPUCore) -> AsyncStream<Self> {
+        #if CPU_USAGE_ENABLED
+            // TODO: Support per-core metrics.
+            cshimsRuntimeScheduler.cpuUsage.stream
+        #else
+            AsyncStream { continuation in
+                continuation.finish()
+            }
+        #endif
+    }
+
+    public let timestamp: UInt64
+    public let taskUsageTime: UInt64
+    public let interruptUsageTime: UInt64
+    public let idleUsageTime: UInt64
+    public let totalTime: UInt64
+    public let interruptEvents: UInt64
+
+    public var taskUsagePercent: Double {
+        totalTime > 0 ? Double(taskUsageTime) / Double(totalTime) * 100 : 0
+    }
+    public var interruptUsagePercent: Double {
+        totalTime > 0 ? Double(interruptUsageTime) / Double(totalTime) * 100 : 0
+    }
+    public var idleUsagePercent: Double {
+        totalTime > 0 ? Double(idleUsageTime) / Double(totalTime) * 100 : 0
+    }
+
+    public var description: String {
+        "CPU usage: task=\(taskUsagePercent)% irq=\(interruptUsagePercent)% idle=\(idleUsagePercent)% total_us=\(totalTime) irq_events=\(interruptEvents)"
+    }
+
+    public func print() {
+        Swift::print("[CPicoConcurrency] \(self.description)")
+    }
+}
+
 #if CPU_USAGE_ENABLED
+
 struct RuntimeCPUUsageMeter {
+    // MARK: - IRQ Wrapping for Accurate CPU Usage Attribution
     private static let irqWrapReconcileIntervalUs: UInt64 = 1_000_000
     nonisolated(unsafe) private static var irqWrapNextReconcileUs: UInt64 = 0
 
@@ -82,8 +130,6 @@ struct RuntimeCPUUsageMeter {
                 }
             }
         }
-
-        print("[CPicoConcurrency] IRQ wrap reconcile done: wrapped=\(wrappedCount)") // TODO: Make this a log entry
     }
 
     private static func address(for handler: irq_handler_t?) -> UInt {
@@ -97,7 +143,12 @@ struct RuntimeCPUUsageMeter {
         case exitInterrupt(interrupt: UInt)
     }
 
+    // MARK: - CPU Usage Metering
+
     private static let windowUs: UInt64 = 1_000_000
+
+    private let streamPair = AsyncStream.makeStream(of: CPUUsageReport.self, bufferingPolicy: .bufferingNewest(1))
+    var stream: AsyncStream<CPUUsageReport> { streamPair.stream }
 
     private var windowStartUs: UInt64 = 0
     private var lastEventUs: UInt64 = 0
@@ -128,15 +179,12 @@ struct RuntimeCPUUsageMeter {
                 interruptDepth &-= 1
             }
         }
-
-        reportIfNeeded(nowUs: nowUs)
     }
 
     @_transparent
     mutating func sample() {
         let nowUs = time_us_64()
         accountElapsed(nowUs: nowUs)
-        reportIfNeeded(nowUs: nowUs)
     }
 
     @_transparent
@@ -160,7 +208,9 @@ struct RuntimeCPUUsageMeter {
     }
 
     @_transparent
-    private mutating func reportIfNeeded(nowUs: UInt64) {
+    mutating func reportIfNeeded() {
+        let nowUs = time_us_64()
+
         guard windowStartUs != 0 else {
             return
         }
@@ -170,12 +220,16 @@ struct RuntimeCPUUsageMeter {
         }
 
         let totalUs = taskUs &+ interruptUs &+ idleUs
-        let taskPct = percentageTimes100(numerator: taskUs, denominator: totalUs)
-        let irqPct = percentageTimes100(numerator: interruptUs, denominator: totalUs)
-        let idlePct = percentageTimes100(numerator: idleUs, denominator: totalUs)
-        print(
-            "[CPicoConcurrency] CPU usage: task=\(formatPercent(taskPct))% irq=\(formatPercent(irqPct))% idle=\(formatPercent(idlePct))% total_us=\(totalUs) irq_events=\(interruptEvents)"
+        let report = CPUUsageReport(
+            timestamp: nowUs, 
+            taskUsageTime: taskUs, 
+            interruptUsageTime: interruptUs, 
+            idleUsageTime: idleUs, 
+            totalTime: totalUs, 
+            interruptEvents: interruptEvents
         )
+
+        streamPair.continuation.yield(report)
 
         windowStartUs = nowUs
         lastEventUs = nowUs
@@ -183,22 +237,6 @@ struct RuntimeCPUUsageMeter {
         interruptUs = 0
         idleUs = 0
         interruptEvents = 0
-    }
-
-    @_transparent
-    private func percentageTimes100(numerator: UInt64, denominator: UInt64) -> UInt64 {
-        guard denominator != 0 else {
-            return 0
-        }
-        return (numerator &* 10_000) / denominator
-    }
-
-    @_transparent
-    private func formatPercent(_ valueTimes100: UInt64) -> String {
-        let whole = valueTimes100 / 100
-        let fraction = valueTimes100 % 100
-        let fractionText = fraction < 10 ? "0\(fraction)" : "\(fraction)"
-        return "\(whole).\(fractionText)"
     }
 }
 
