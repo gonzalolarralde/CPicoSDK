@@ -335,8 +335,34 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).uf2").path) to \(outputDir.appending(path: "\(productName).uf2").path)")
 
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
+        printArtifactStats(outputDir: outputDir, productName: productName)
 
         print("[CPicoSDK] 🎉 Finalization completed successfully! 🎉")
+    }
+
+    private func printArtifactStats(outputDir: URL, productName: String) {
+        let fileManager = FileManager.default
+
+        func formatSize(_ bytes: Int64) -> String {
+            let kib = Double(bytes) / 1024.0
+            return "\(bytes) B (\(String(format: "%.2f", kib)) KiB)"
+        }
+
+        let artifactPaths = [
+            ("Device Storage Used", "UF2", outputDir.appending(path: "\(productName).uf2").path),
+            ("Host Debug Binary Size", "ELF", outputDir.appending(path: "\(productName).elf").path),
+        ]
+
+        print("[CPicoSDK] Artifact stats:")
+        for (label, kind, path) in artifactPaths {
+            guard
+                let attrs = try? fileManager.attributesOfItem(atPath: path),
+                let fileSize = attrs[.size] as? NSNumber
+            else {
+                continue
+            }
+            print("[CPicoSDK]   - \(label): \(formatSize(fileSize.int64Value)) (\(kind))")
+        }
     }
 
     private func runNM(on buildArtifact: URL) async throws -> String {
