@@ -41,15 +41,6 @@ fi
 # Users can opt to place the output in a different location and source it here once inspected if preferred.
 source "$PREPARATION_SCRIPT_PATH"
 
-# Optional runtime scheduler CPU usage meter.
-# Enable with: CPU_USAGE_ENABLED=1 ./build.sh ...
-EXTRA_CONFIG_PARAMS="${EXTRA_CONFIG_PARAMS:-}"
-if [ "${CPU_USAGE_ENABLED:-0}" = "1" ]; then
-  EXTRA_CONFIG_PARAMS="$EXTRA_CONFIG_PARAMS -Xswiftc -DCPU_USAGE_ENABLED"
-  echo "CPU usage meter enabled (Swift define: CPU_USAGE_ENABLED)."
-fi
-export EXTRA_CONFIG_PARAMS
-
 # Make sure the selected swift toolchain is installed.
 "$SWIFTLY_PATH" install
 

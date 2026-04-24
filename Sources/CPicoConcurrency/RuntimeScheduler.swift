@@ -115,7 +115,7 @@ final class RuntimeScheduler {
     fileprivate var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
-#if CPU_USAGE_ENABLED
+#if CPUMetrics
     private(set) var cpuUsage = RuntimeCPUUsageMeter()
 #endif
 
@@ -215,13 +215,13 @@ final class RuntimeScheduler {
 
     @discardableResult
     func pollOnce() -> Int32 {
-    #if CPU_USAGE_ENABLED
+    #if CPUMetrics
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
     #endif
         didRunJob = false
         async_context_poll(&context.core)
-    #if CPU_USAGE_ENABLED
+    #if CPUMetrics
         cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
         cpuUsage.reportIfNeeded()
     #endif
@@ -234,18 +234,18 @@ final class RuntimeScheduler {
     }
 
     func waitForever() {
-#if CPU_USAGE_ENABLED
+#if CPUMetrics
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         cpuUsage.sample()
 #endif
         async_context_wait_for_work_until(&context.core, UInt64.max)
-#if CPU_USAGE_ENABLED
+#if CPUMetrics
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         cpuUsage.sample()
 #endif
     }
 
-#if CPU_USAGE_ENABLED
+#if CPUMetrics
     func recordExternalEvent(_ event: RuntimeCPUUsageMeter.Event) {
         cpuUsage.record(event: event)
     }

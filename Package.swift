@@ -15,6 +15,8 @@ let package = Package(
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
     traits: [
+        .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUUsageReport`."),
+
         // TODO: The generator needs to define traits. This needs to be implemented.
         .trait(name: "Platform_RP2350"),
         .trait(name: "Platform_RP2350_arm_s"),

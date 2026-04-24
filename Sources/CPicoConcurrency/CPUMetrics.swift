@@ -10,14 +10,20 @@ public enum CPUCore {
 /// async stream provides periodic reports with the latest CPU usage data, which 
 /// can be used for monitoring or debugging purposes.
 public struct CPUUsageReport {
-    public static func usageEvents(for core: CPUCore) -> AsyncStream<Self> {
-        #if CPU_USAGE_ENABLED
+    public static var enabled: Bool {
+        #if CPUMetrics
+            true
+        #else
+            false
+        #endif
+    }
+
+    public static func usageEvents(for core: CPUCore) -> AsyncStream<Self>? {
+        #if CPUMetrics
             // TODO: Support per-core metrics.
             cshimsRuntimeScheduler.cpuUsage.stream
         #else
-            AsyncStream { continuation in
-                continuation.finish()
-            }
+            nil
         #endif
     }
 
@@ -47,7 +53,7 @@ public struct CPUUsageReport {
     }
 }
 
-#if CPU_USAGE_ENABLED
+#if CPUMetrics
 
 struct RuntimeCPUUsageMeter {
     // MARK: - IRQ Wrapping for Accurate CPU Usage Attribution
