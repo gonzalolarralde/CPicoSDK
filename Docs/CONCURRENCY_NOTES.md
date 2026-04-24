@@ -325,6 +325,70 @@ Reasons:
 
 So the meaningful build path for this work remains the real embedded target build / finalize flow, not generic host compilation.
 
+## Debug Probe: Reading Task Names from a SwiftJob Pointer
+
+`cshims_task_get_name_debug(void *job)` is a **debug-only, unstable** helper that
+attempts to recover the Swift task name from a raw `SwiftJob*` passed to any of
+the enqueue hooks.
+
+### When it works
+
+The probe is compiled **only** on `__arm__` / `__thumb__` targets (i.e., the embedded
+build) and is hard-wired to the memory layout of:
+
+- Swift runtime commit `8104e4c3ae46d1211755afa5a709f6b8624c1c79`
+- Target triple `armv7em-none-none-eabi` (`sizeof(void*) == 4`)
+- Configuration: `SWIFT_CONCURRENCY_EMBEDDED`, no Dispatch, no priority escalation
+
+It returns `NULL` for any job that was not created with a task name.
+
+### Usage
+
+Call it from any of the shim enqueue functions during debugging:
+
+```c
+SWIFT_CC_SWIFT void swift_task_enqueueGlobalImpl(void *job) {
+    const char *name = cshims_task_get_name_debug(job);
+    if (name) {
+        // log or inspect name here
+    }
+    cshims_scheduler_enqueue_immediate(job, NULL, NULL);
+}
+```
+
+### Memory layout rationale
+
+The function reads two fields that are not part of the public `SwiftJob` ABI:
+
+| offset | field | derivation |
+|--------|-------|------------|
+| 16 | `Job.Flags` (uint32_t) | `HeapObject`(8) + `SchedulerPrivate[2]`(8) |
+| 60 | `ActiveTaskStatus.Record` (void*) | `Job`(40) + `ResumeContext`(4) + padding(4) + `ExclusivityAccessSet[2]`(8) + `StatusStorage`(4 Flags + 4 Record) |
+
+Bit 30 of `Flags` is `Task_HasInitialTaskName` (checked first to skip the record
+walk when no name was set).  Bits 0–7 of `Flags` must be `0` (`SwiftTaskJobKind`).
+
+`TaskStatusRecord.Flags` bits 0–7 hold the `TaskStatusRecordKind`.
+`TaskStatusRecordKind::TaskName == 6`.  The `Name` (`const char*`) sits at word 2
+(offset 8) inside a `TaskNameStatusRecord`.
+
+All offsets are verified against the static assertion in `Task.h`:
+
+```
+offsetof(AsyncTask, Id) == 4 * sizeof(void*) + 4  // == 20 on 32-bit
+```
+
+### Stability caveats
+
+This probe **will silently return wrong results or crash** if:
+
+- the runtime is rebuilt from a different commit
+- the target is 64-bit
+- priority escalation is enabled (`SWIFT_CONCURRENCY_ENABLE_PRIORITY_ESCALATION`)
+- the `PrivateStorage` field order changes
+
+Never ship this in production firmware.
+
 ## Current Recommended Direction
 
 The current implementation direction should remain:

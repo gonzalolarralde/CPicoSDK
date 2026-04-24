@@ -264,3 +264,116 @@ int clock_getres(clockid_t clockID, struct timespec *ts) {
     ts->tv_nsec = 1000;
     return 0;
 }
+
+/* ==========================================================================
+ * UNSTABLE DEBUG PROBE: cshims_task_get_name_debug
+ *
+ * Attempts to read the Swift task name from a raw SwiftJob pointer using
+ * private runtime internals.
+ *
+ * VALID ONLY FOR:
+ *   runtime commit : 8104e4c3ae46d1211755afa5a709f6b8624c1c79
+ *   target triple  : armv7em-none-none-eabi  (32-bit, sizeof(void*)==4)
+ *   config         : SWIFT_CONCURRENCY_EMBEDDED, no Dispatch,
+ *                    SWIFT_CONCURRENCY_ENABLE_PRIORITY_ESCALATION=0
+ *
+ * Layout derivation (all offsets are byte offsets from the SwiftJob pointer):
+ *
+ *  AsyncTask : Job
+ *  ───────────────────────────────────────────────────────────
+ *  [ 0] HeapObject.metadata          void*       4 B
+ *  [ 4] HeapObject.refcount          uint32_t    4 B
+ *  [ 8] SchedulerPrivate[0]          void*       4 B
+ *  [12] SchedulerPrivate[1]          void*       4 B
+ *  [16] Flags  (JobFlags, uint32_t)              4 B
+ *         bits  0-7 : JobKind (0 = task job)
+ *         bit  30   : Task_HasInitialTaskName
+ *  [20] Id     (uint32_t)                        4 B  ← verified in Task.h:
+ *                                                        offsetof(AsyncTask,Id)
+ *                                                        == 4*sizeof(void*)+4 == 20
+ *  [24] Voucher                      void*       4 B
+ *  [28] Reserved                     void*       4 B
+ *  [32] ResumeTask/RunJob            fnptr       4 B
+ *  [36] <4 B tail padding — sizeof(Job) == 40 B>
+ *  [40] ResumeContext                void*       4 B
+ *  [44] <4 B padding — aligns Private to 8 B>
+ *
+ *  [48] Private.Storage  (= PrivateStorage struct)
+ *  [48]   ExclusivityAccessSet[2]    uintptr_t   4+4 B
+ *  [56]   StatusStorage  (= std::atomic<ActiveTaskStatus>, alignas(8), 8 B)
+ *           ActiveTaskStatus layout (no priority escalation, 32-bit):
+ *  [56]     .Flags                   uint32_t    4 B  (status flags)
+ *  [60]     .Record                  void*       4 B  ← innermost TaskStatusRecord*
+ *  [64]   Allocator  (TaskAllocator, 2 words + 4 B)   12 B
+ *  [76]   Local  (TaskLocal::Storage, 1 word)          4 B
+ *  [80]   Id  (upper 32 bits of 64-bit TaskID)        4 B
+ *  ...
+ *
+ *  TaskStatusRecord (singly-linked, from innermost outward via Parent):
+ *  [ 0] Flags  (TaskStatusRecordFlags = uintptr_t)    4 B
+ *         bits 0-7: kind  (6 = TaskName)
+ *  [ 4] Parent                       void*            4 B
+ *
+ *  TaskNameStatusRecord extends TaskStatusRecord:
+ *  [ 8] Name                         const char*      4 B  ← task name string
+ *
+ *  Source references (commit 8104e4c3ae46d1211755afa5a709f6b8624c1c79):
+ *    include/swift/ABI/Task.h          — AsyncTask / Job layout, Id static_assert
+ *    include/swift/ABI/TaskStatus.h    — TaskNameStatusRecord, TaskStatusRecord
+ *    include/swift/ABI/MetadataValues.h— TaskStatusRecordKind::TaskName = 6,
+ *                                        Task_HasInitialTaskName = bit 30
+ *    stdlib/public/Concurrency/TaskPrivate.h — ActiveTaskStatus, PrivateStorage
+ *    stdlib/public/Concurrency/TaskStatus.cpp — AsyncTask::getTaskName()
+ * ==========================================================================*/
+const char *cshims_task_get_name_debug(void *job) {
+#if defined(__arm__) || defined(__thumb__)
+    if (job == NULL) {
+        return NULL;
+    }
+
+    /* Read JobFlags (uint32_t) at byte offset 16. */
+    uint32_t jobFlags;
+    __builtin_memcpy(&jobFlags, (const char *)job + 16, sizeof(jobFlags));
+
+    /* Bits 0-7 encode the JobKind.  A value of 0 means SwiftTaskJobKind
+     * (async task).  Any other kind is not a task — skip it. */
+    if ((jobFlags & 0xFFu) != 0u) {
+        return NULL;
+    }
+
+    /* Bit 30 = Task_HasInitialTaskName.  If clear the task has no name. */
+    if (!(jobFlags & (1u << 30))) {
+        return NULL;
+    }
+
+    /* Read the innermost TaskStatusRecord* from ActiveTaskStatus.Record
+     * at byte offset 60:  48 (Private) + 8 (StatusStorage) + 4 (Record). */
+    void *record;
+    __builtin_memcpy(&record, (const char *)job + 60, sizeof(record));
+
+    /* Walk the status record chain (Parent links) looking for kind == 6. */
+    for (int depth = 0; depth < 16 && record != NULL; ++depth) {
+        /* TaskStatusRecordFlags (uintptr_t) at offset 0 — kind in bits 0-7. */
+        uint32_t recordFlags;
+        __builtin_memcpy(&recordFlags, record, sizeof(recordFlags));
+
+        if ((recordFlags & 0xFFu) == 6u) { /* TaskStatusRecordKind::TaskName */
+            /* Name pointer is at offset 8 (= 2 pointer-words into the record). */
+            const char *name = NULL;
+            __builtin_memcpy(&name, (const char *)record + 8, sizeof(name));
+            return name;
+        }
+
+        /* Follow the Parent link at offset 4. */
+        void *parent = NULL;
+        __builtin_memcpy(&parent, (const char *)record + 4, sizeof(parent));
+        record = parent;
+    }
+
+    return NULL;
+#else
+    /* This probe is only valid on the embedded ARM target. */
+    (void)job;
+    return NULL;
+#endif
+}
