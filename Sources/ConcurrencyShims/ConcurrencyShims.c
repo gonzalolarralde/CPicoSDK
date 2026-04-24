@@ -264,3 +264,92 @@ int clock_getres(clockid_t clockID, struct timespec *ts) {
     ts->tv_nsec = 1000;
     return 0;
 }
+
+// ============================================================================
+// Task name extraction from SwiftJob* (debug/experimental)
+// ============================================================================
+//
+// UNSTABLE ABI WARNING
+// --------------------
+// Everything in this section depends on Swift runtime internals that are NOT
+// part of the stable public ABI.  The kind constant and symbol names below
+// were verified against the main-snapshot-2026-04-01 embedded runtime
+// (libswift_Concurrency.a, armv7em-none-none-eabi).  They can change in any
+// future Swift release without notice.
+//
+// Use these helpers only for debug diagnostics and experimental tooling.
+// Do not rely on their output in production firmware.
+//
+// See Docs/TASK_NAME_EXTRACTION.md for the full investigation notes,
+// memory-layout diagrams, and guidance for callers.
+// ============================================================================
+
+// swift_job_getKind
+//   Exported as a plain C symbol from libswift_Concurrency.a.
+//   Returns the JobKind value for a job:
+//     0 = Unknown / non-task work item
+//     1 = Task    (Swift AsyncTask — has a name field)
+//     2 = JobDispatch (non-task enqueued work item)
+//   Source: stdlib/public/Concurrency/JobFlags.h
+extern SWIFT_CC_SWIFT uint32_t swift_job_getKind(const void *job);
+
+// swift_task_getTaskName
+//   Returns the debug name of an AsyncTask as a C string, or NULL if the task
+//   was created without a name.  Available in Swift 5.9+ runtimes.
+//
+//   In embedded builds this function is exported only under its C++ mangled
+//   symbol name:
+//     _Z22swift_task_getTaskNamePN5swift9AsyncTaskE
+//   (i.e. swift_task_getTaskName(swift::AsyncTask*))
+//
+//   We reach it from C via the __asm__ linkage-name attribute, which is a
+//   Clang/GCC extension that redirects the symbol lookup at link time without
+//   changing the calling convention.  The SWIFT_CC_SWIFT attribute matches the
+//   function's swiftcall ABI; on ARMv7-EM, swiftcall is identical to the C
+//   calling convention for a single pointer argument and pointer return value,
+//   so the call is safe in practice.
+#if defined(__clang__)
+extern SWIFT_CC_SWIFT const char *cshims_swift_task_getTaskName_impl(const void *task)
+    __asm__("_Z22swift_task_getTaskNamePN5swift9AsyncTaskE");
+#endif
+
+// swift_task_getCurrentTaskName
+//   Plain C export.  Returns the name of the task that is currently executing
+//   on this thread (the name that the runtime stores in its thread-local
+//   current-task slot).  Only valid when called from inside a job callback
+//   (e.g. after swift_job_run has been entered).  Returns NULL if the running
+//   job is not a named task.
+extern SWIFT_CC_SWIFT const char *swift_task_getCurrentTaskName(void);
+
+// JobKind constant — Task is kind 1 across Swift 5.9+ releases.
+#define CSHIMS_JOB_KIND_TASK 1u
+
+// cshims_job_is_task
+//   Returns true if `job` is an AsyncTask (Swift Task infrastructure), false
+//   for NULL, non-task work items, or any job whose kind cannot be read.
+bool cshims_job_is_task(const void *job) {
+    if (job == NULL) return false;
+    return swift_job_getKind(job) == CSHIMS_JOB_KIND_TASK;
+}
+
+// cshims_job_get_task_name
+//   Returns the debug name of the AsyncTask associated with `job`, or NULL if:
+//     - job is NULL or is not an AsyncTask
+//     - the task was created without a name (Task { } rather than Task(name:) { })
+//     - the runtime was compiled in a configuration that omits name metadata
+//     - the compiler in use is not Clang (the __asm__ linkage trick is
+//       Clang/GCC-specific)
+//
+//   The returned pointer is owned by the runtime and valid for the lifetime of
+//   the task.  The caller must not free it.
+//
+//   Intended for debug logging only.  Do not use in production code paths.
+const char *cshims_job_get_task_name(const void *job) {
+    if (!cshims_job_is_task(job)) return NULL;
+#if defined(__clang__)
+    // Reach the C++-mangled swift_task_getTaskName via its ARM/Thumb symbol.
+    return cshims_swift_task_getTaskName_impl(job);
+#else
+    return NULL;
+#endif
+}

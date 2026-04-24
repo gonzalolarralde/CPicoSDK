@@ -55,6 +55,12 @@ It also provides a tiny bridge surface for the Swift scheduler:
 - `cshims_enter_critical`
 - `cshims_exit_critical`
 
+And a pair of debug-only helpers for extracting task names from opaque job
+pointers (see [TASK_NAME_EXTRACTION.md](TASK_NAME_EXTRACTION.md)):
+
+- `cshims_job_is_task`
+- `cshims_job_get_task_name`
+
 The important design constraint is:
 
 - the C file owns the runtime hook exports
