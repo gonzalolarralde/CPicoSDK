@@ -222,6 +222,7 @@ extern "C" {
 // Read the JobFlags uint32_t from any Job-derived pointer (Job, AsyncTask, …).
 static inline uint32_t cshims_job_read_flags(const void *job)
 {
+    if (!job) { return 0; }
     uint32_t flags;
     memcpy(&flags, (const uint8_t *)job + CSHIMS_JOB_FLAGS_OFFSET, sizeof(flags));
     return flags;
@@ -240,9 +241,10 @@ static inline int cshims_job_has_initial_task_name(uint32_t job_flags)
 }
 
 // Read the head of the status record chain from an AsyncTask pointer.
-// Returns NULL if no records are present.
+// Returns NULL if no records are present or task is NULL.
 static inline void *cshims_async_task_get_record_head(const void *task)
 {
+    if (!task) { return NULL; }
     void *record;
     memcpy(&record,
            (const uint8_t *)task + CSHIMS_ASYNC_TASK_RECORD_OFFSET,
