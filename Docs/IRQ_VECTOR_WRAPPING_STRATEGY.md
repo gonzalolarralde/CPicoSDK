@@ -25,13 +25,14 @@ Root cause: Swift runtime code in interrupt context.
 
 ## Current Safe Baseline
 
-ISR execution path is C-only:
+The IRQ wrapper dispatch remains C-driven, but it is not fully C-only end-to-end:
 
 - Per-IRQ wrapper functions are defined in `Sources/ConcurrencyShims/IRQWrappers.c` (extracted from `ConcurrencyShims.c` for modularity).
-- Wrapper dispatch and original-handler call chain happen entirely in C.
-- Swift only performs periodic reconciliation (non-ISR context).
+- The wrapper dispatch and original-handler call chain are anchored in C so the actual IRQ forwarding logic does not depend on Swift.
+- The wrapped dispatch path currently also invokes Swift runtime accounting hooks to record synthetic interrupt enter/exit events for usage attribution.
+- Swift still performs periodic vector-table reconciliation from non-ISR context.
 
-This restores interrupt behavior while preserving global interception.
+This preserves global interception and interrupt accounting, but it also means Swift is still entered from ISR context for bookkeeping.
 
 ## Reconciliation Constraints (Exclusive-Handler-Only Model)
 
