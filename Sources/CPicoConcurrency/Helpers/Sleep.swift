@@ -88,17 +88,8 @@ actor PicoTimeoutManager {
 /// based on benchmarks and may be exposed as a configuration option in the future.
 let timerBlockPathCutoff: UInt64 = 500 // microseconds
 
-#if CPUMetrics
-private let runtimeSchedulerSyntheticAlarmInterrupt: UInt = UInt.max
-#endif
-
 @c
 private func sleep_alarm_callback(_: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
-#if CPUMetrics
-    recordRuntimeSchedulerEnterInterrupt(runtimeSchedulerSyntheticAlarmInterrupt)
-    defer { recordRuntimeSchedulerExitInterrupt(runtimeSchedulerSyntheticAlarmInterrupt) }
-#endif
-
     ISRTrampoline<PicoTimeoutManager.ContinuationID, PicoTimeoutManager.ContinuationID>.consume(userData) {
         $0
     }

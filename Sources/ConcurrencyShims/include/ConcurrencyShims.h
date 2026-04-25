@@ -13,6 +13,8 @@ void cshims_exit_critical(unsigned int state);
 typedef void (*cshims_irq_handler_t)(void);
 cshims_irq_handler_t cshims_get_irq_wrapper(unsigned int irq);
 void cshims_set_irq_wrapper_original(unsigned int irq, cshims_irq_handler_t handler);
+cshims_irq_handler_t cshims_get_irq_vtor_handler(unsigned int irq);
+void cshims_set_irq_vtor_handler(unsigned int irq, cshims_irq_handler_t handler);
 
 #ifdef __cplusplus
 }

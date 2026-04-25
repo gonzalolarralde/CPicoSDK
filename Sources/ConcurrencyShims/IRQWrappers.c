@@ -2,14 +2,57 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static cshims_irq_handler_t cshims_irq_wrapper_originals[64] = {0};
+extern void _cpicosdk_record_runtime_scheduler_enter_interrupt(uintptr_t interrupt);
+extern void _cpicosdk_record_runtime_scheduler_exit_interrupt(uintptr_t interrupt);
+extern void _cpicosdk_sample_runtime_scheduler_cpu_usage(void);
 
-void cshims_set_irq_wrapper_original(unsigned int irq, cshims_irq_handler_t handler) {
+typedef void (*cshims_irq_handler_fn_t)(void);
+
+static cshims_irq_handler_fn_t cshims_irq_wrapper_originals[64] = {0};
+
+static cshims_irq_handler_fn_t *cshims_get_irq_vector_table(void) {
+    // ARMv8-M VTOR register (SCB->VTOR).
+    volatile uintptr_t *const vtor = (volatile uintptr_t *)0xE000ED08u;
+    uintptr_t table = *vtor;
+    if ((table & 0xF0000000u) != 0x20000000u) {
+        // RP2xxx SRAM lives at 0x20000000...; refuse raw writes if VTOR points elsewhere.
+        return NULL;
+    }
+    return (cshims_irq_handler_fn_t *)table;
+}
+
+void cshims_set_irq_wrapper_original(unsigned int irq, void (*handler)(void)) {
     const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
     if (irq >= count) {
         return;
     }
     cshims_irq_wrapper_originals[irq] = handler;
+}
+
+void (*cshims_get_irq_vtor_handler(unsigned int irq))(void) {
+    const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
+    if (irq >= count) {
+        return NULL;
+    }
+
+    cshims_irq_handler_fn_t *const vectorTable = cshims_get_irq_vector_table();
+    if (vectorTable == NULL) {
+        return NULL;
+    }
+    return vectorTable[16u + irq];
+}
+
+void cshims_set_irq_vtor_handler(unsigned int irq, void (*handler)(void)) {
+    const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
+    if (irq >= count) {
+        return;
+    }
+
+    cshims_irq_handler_fn_t *const vectorTable = cshims_get_irq_vector_table();
+    if (vectorTable == NULL) {
+        return;
+    }
+    vectorTable[16u + irq] = handler;
 }
 
 static void cshims_irq_wrapper_dispatch(uint32_t irq) {
@@ -18,10 +61,14 @@ static void cshims_irq_wrapper_dispatch(uint32_t irq) {
         return;
     }
 
-    cshims_irq_handler_t original = cshims_irq_wrapper_originals[irq];
+    _cpicosdk_record_runtime_scheduler_enter_interrupt(irq);
+
+    cshims_irq_handler_fn_t original = cshims_irq_wrapper_originals[irq];
     if (original != NULL) {
         original();
     }
+
+    _cpicosdk_record_runtime_scheduler_exit_interrupt(irq);
 }
 
 #define CSHIMS_DEFINE_IRQ_WRAPPER(N) \
@@ -92,7 +139,7 @@ CSHIMS_DEFINE_IRQ_WRAPPER(61)
 CSHIMS_DEFINE_IRQ_WRAPPER(62)
 CSHIMS_DEFINE_IRQ_WRAPPER(63)
 
-static cshims_irq_handler_t cshims_irq_wrappers[] = {
+static const cshims_irq_handler_fn_t cshims_irq_wrappers[] = {
     cshims_irq_wrapper_0,
     cshims_irq_wrapper_1,
     cshims_irq_wrapper_2,
@@ -159,7 +206,7 @@ static cshims_irq_handler_t cshims_irq_wrappers[] = {
     cshims_irq_wrapper_63,
 };
 
-cshims_irq_handler_t cshims_get_irq_wrapper(unsigned int irq) {
+void (*cshims_get_irq_wrapper(unsigned int irq))(void) {
     const size_t wrapperCount = sizeof(cshims_irq_wrappers) / sizeof(cshims_irq_wrappers[0]);
     if (irq >= wrapperCount) {
         return NULL;

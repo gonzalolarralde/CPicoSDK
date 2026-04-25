@@ -82,18 +82,15 @@ struct RuntimeCPUUsageMeter: ~Copyable {
             return false
         }
 
-        if irq_has_shared_handler(irq) {
+        let currentVector = cshims_get_irq_vtor_handler(irq)
+        if address(for: currentVector) == address(for: wrapper) {
             return false
         }
 
-        let currentExclusive = irq_get_exclusive_handler(irq)
-        if address(for: currentExclusive) == address(for: wrapper) {
-            return false
-        }
-
-        return true
+        return currentVector != nil
     }
 
+    @discardableResult @_transparent
     static func wrapIRQ(num irq: UInt32) -> Bool {
         guard let wrapper = cshims_get_irq_wrapper(irq) else {
             return false
@@ -110,22 +107,17 @@ struct RuntimeCPUUsageMeter: ~Copyable {
             }
         }
 
-        if irq_has_shared_handler(irq) {
+        let currentVector = cshims_get_irq_vtor_handler(irq)
+        if address(for: currentVector) == address(for: wrapper) {
             return false
         }
 
-        let currentExclusive = irq_get_exclusive_handler(irq)
-        if address(for: currentExclusive) == address(for: wrapper) {
+        guard let currentVector else {
             return false
         }
 
-        guard let currentExclusive else {
-            return false
-        }
-
-        cshims_set_irq_wrapper_original(irq, currentExclusive)
-        irq_remove_handler(irq, currentExclusive)
-        irq_set_exclusive_handler(irq, wrapper)
+        cshims_set_irq_wrapper_original(irq, currentVector)
+        cshims_set_irq_vtor_handler(irq, wrapper)
 
         return true
     }
@@ -145,7 +137,7 @@ struct RuntimeCPUUsageMeter: ~Copyable {
         }
 
         let numIRQs = min(NUM_IRQS, 64)
-        let candidates: UInt64 = 0
+        var candidates: UInt64 = 0
         for irqIndex in 0..<numIRQs {
             if irqNeedsWrapping(num: irqIndex) {
                 candidates |= (1 << irqIndex)
@@ -314,17 +306,17 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     }
 }
 
-@_spi(Internal)
+@_spi(Internal) @_cdecl("_cpicosdk_record_runtime_scheduler_enter_interrupt")
 public func recordRuntimeSchedulerEnterInterrupt(_ interrupt: UInt) {
     cshimsRuntimeScheduler.recordExternalEvent(.enterInterrupt(interrupt: interrupt))
 }
 
-@_spi(Internal)
+@_spi(Internal) @_cdecl("_cpicosdk_record_runtime_scheduler_exit_interrupt")
 public func recordRuntimeSchedulerExitInterrupt(_ interrupt: UInt) {
     cshimsRuntimeScheduler.recordExternalEvent(.exitInterrupt(interrupt: interrupt))
 }
 
-@_spi(Internal)
+@_spi(Internal) @_cdecl("_cpicosdk_sample_runtime_scheduler_cpu_usage")
 public func sampleRuntimeSchedulerCPUUsage() {
     cshimsRuntimeScheduler.sampleCPUUsage()
 }
