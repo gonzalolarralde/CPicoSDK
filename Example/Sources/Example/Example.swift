@@ -2,13 +2,14 @@ import CPicoSDK
 import CPicoConcurrency
 
 @main
-struct App {
-    static func main() async throws(CancellationError) {
+struct App: EmbeddedAsyncApp {
+    static func setup() async {
         stdio_init_all()
         status_led_init()
 
         print("Scheduling 1 second alarm...")
-        try await Task.sleep(ms: 1000)
+        try? await Task.sleep(ms: 1000)
+
         print("One second!")
 
         // Keep one Unicode-aware string operation in the example so the finalizer
@@ -28,10 +29,20 @@ struct App {
         // multicore_launch_core1(ledExample)
         // try! pioExample()
 
-        while true {
-            try await Task.sleep(ms: 1000)
-            print("One second!")
+        if let cpuStats = CPUStats.usageEvents(for: .core0) {
+            Task {
+                for await report in cpuStats {
+                    report.print()
+                }
+            }
+        } else {
+            print("CPU Usage metrics not enabled.")
         }
+    }
+
+    static func loop() async {
+        print("One second!")
+        try? await Task.sleep(ms: 1000)
     }
 }
 

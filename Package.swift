@@ -15,6 +15,8 @@ let package = Package(
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
     traits: [
+        .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
+
         // TODO: The generator needs to define traits. This needs to be implemented.
         .trait(name: "Platform_RP2350"),
         .trait(name: "Platform_RP2350_arm_s"),
@@ -60,7 +62,8 @@ let package = Package(
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_None"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
-            ]
+            ],
+            swiftSettings: [.enableExperimentalFeature("Extern")]
         ),
 
         // Manually defined targets

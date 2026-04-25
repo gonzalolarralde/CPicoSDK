@@ -1,5 +1,5 @@
 import ConcurrencyShims
-private import CPicoSDK
+import CPicoSDK
 
 private let cshimsMaxJobSlots = 64
 
@@ -29,11 +29,11 @@ private struct JobSlot {
     }
 }
 
-private func withCritical<T>(_ body: () -> T) -> T {
-        let state = cshims_enter_critical()
-        defer { cshims_exit_critical(state) }
-        return body()
-    }
+func withCritical<T>(_ body: () -> T) -> T {
+    let state = cshims_enter_critical()
+    defer { cshims_exit_critical(state) }
+    return body()
+}
 
 final class ScheduledBlock {
     private var block: (() -> Void)?
@@ -115,6 +115,9 @@ final class RuntimeScheduler {
     fileprivate var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
+#if CPUMetrics
+    private(set) var cpuUsage = RuntimeCPUUsageMeter()
+#endif
 
     init() {
         slots = .allocate(capacity: JobSlot.maxJobSlots)
@@ -210,9 +213,18 @@ final class RuntimeScheduler {
         }
     }
 
+    @discardableResult
     func pollOnce() -> Int32 {
+    #if CPUMetrics
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
+    #endif
         didRunJob = false
         async_context_poll(&context.core)
+    #if CPUMetrics
+        cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
+        cpuUsage.reportIfNeeded()
+    #endif
         return didRunJob ? 1 : 0
     }
 
@@ -222,8 +234,26 @@ final class RuntimeScheduler {
     }
 
     func waitForever() {
+#if CPUMetrics
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cpuUsage.sample()
+#endif
         async_context_wait_for_work_until(&context.core, UInt64.max)
+#if CPUMetrics
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cpuUsage.sample()
+#endif
     }
+
+#if CPUMetrics
+    func recordExternalEvent(_ event: RuntimeCPUUsageMeter.Event) {
+        cpuUsage.record(event: event)
+    }
+
+    func sampleCPUUsage() {
+        cpuUsage.sample()
+    }
+#endif
 
     // Schedules a one-shot block to run from async_context worker context.
     // This is allowed to allocate; callers that need zero-allocation IRQ paths
