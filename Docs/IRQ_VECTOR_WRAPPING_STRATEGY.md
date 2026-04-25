@@ -34,18 +34,20 @@ The IRQ wrapper dispatch remains C-driven, but it is not fully C-only end-to-end
 
 This preserves global interception and interrupt accounting, but it also means Swift is still entered from ISR context for bookkeeping.
 
-## Reconciliation Constraints (Exclusive-Handler-Only Model)
+## Reconciliation Constraints (Current VTOR-Based Model)
 
-The Pico SDK's `irq_set_exclusive_handler` asserts that the current vector entry is either `__unhandled_user_irq` or already the same handler being installed. This means we cannot blindly overwrite arbitrary vector entries.
+The current implementation does **not** reconcile through Pico SDK exclusive-handler APIs such as `irq_get_exclusive_handler`, `irq_remove_handler`, or `irq_set_exclusive_handler`.
 
-To avoid the assert panic, reconciliation uses the following approach:
+Instead, reconciliation operates directly on the active vector table:
 
-1. **Scan pass (no critical section):** Iterate `0..<NUM_IRQS`. Skip any IRQ that has no exclusive handler (`irq_get_exclusive_handler` returns nil) or that already points to our wrapper. Skip any IRQ with a shared handler (`irq_has_shared_handler` returns true).
-2. **Apply pass (inside critical section):** Re-check each candidate. Use `irq_remove_handler` to remove the existing exclusive handler, then `irq_set_exclusive_handler` to install our wrapper. Store the displaced original handler in `cshims_irq_wrapper_originals[]`.
+1. Periodically inspect each IRQ's current VTOR entry via `cshims_get_irq_vtor_handler`.
+2. If the entry already points at our stable wrapper for that IRQ, leave it unchanged.
+3. Otherwise, record the displaced handler in `cshims_irq_wrapper_originals[]`.
+4. Install the wrapper by writing the VTOR entry via `cshims_set_irq_vtor_handler`.
 
-The scan/apply two-phase approach avoids holding interrupts disabled while iterating all IRQ slots, which would be a long critical section.
+This matches the implementation used by `RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()`: reconciliation is done at the vector-entry level as a global interception mechanism, rather than by reasoning about how a handler was registered with the Pico SDK.
 
-IRQs with shared handlers are intentionally skipped because the shared-handler dispatch table is managed by the SDK and cannot be wrapped through the exclusive-handler API.
+Because the implementation wraps the vector table directly, it does not currently branch on SDK shared-handler vs exclusive-handler state during reconciliation. Any distinctions imposed by the SDK's handler-registration APIs are therefore not part of the current wrapping path.
 
 ## IRQ Accounting and `irq_events`
 
