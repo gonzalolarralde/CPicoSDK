@@ -71,10 +71,28 @@ public struct CPUStats {
 
 #if CPUMetrics
 
-struct RuntimeCPUUsageMeter {
+struct RuntimeCPUUsageMeter: ~Copyable {
     // MARK: - IRQ Wrapping for Accurate CPU Usage Attribution
     private static let irqWrapReconcileIntervalUs: UInt64 = 1_000_000
     nonisolated(unsafe) private static var irqWrapNextReconcileUs: UInt64 = 0
+
+    @_transparent
+    static func irqNeedsWrapping(num irq: UInt32) -> Bool {
+        guard let wrapper = cshims_get_irq_wrapper(irq) else {
+            return false
+        }
+
+        if irq_has_shared_handler(irq) {
+            return false
+        }
+
+        let currentExclusive = irq_get_exclusive_handler(irq)
+        if address(for: currentExclusive) == address(for: wrapper) {
+            return false
+        }
+
+        return true
+    }
 
     static func wrapIRQ(num irq: UInt32) -> Bool {
         guard let wrapper = cshims_get_irq_wrapper(irq) else {
@@ -122,33 +140,26 @@ struct RuntimeCPUUsageMeter {
         // Non-critical fast pass to find IRQs that might need wrapping. We will check them again in 
         // the critical section to avoid doing any potentially expensive operations while interrupts
         // are disabled.
-        let candidates = (0..<UInt32(exactly: NUM_IRQS)!).filter { irqIndex in
-            guard let wrapper = cshims_get_irq_wrapper(irqIndex) else {
-                return false
-            }
-
-            let currentExclusive = irq_get_exclusive_handler(irqIndex)
-            if address(for: currentExclusive) == address(for: wrapper) {
-                return false
-            }
-
-            guard currentExclusive != nil else {
-                return false
-            }
-
-            return true
+        if NUM_IRQS > 64 {
+            assertionFailure("[CPicoConcurrency] NUM_IRQS exceeds 64, which is currently not supported by the IRQ wrapping logic.")
         }
 
-        if candidates.isEmpty {
+        let numIRQs = min(NUM_IRQS, 64)
+        let candidates: UInt64 = 0
+        for irqIndex in 0..<numIRQs {
+            if irqNeedsWrapping(num: irqIndex) {
+                candidates |= (1 << irqIndex)
+            }
+        }
+
+        guard candidates > 0 else {
             return
         }
 
-        var wrappedCount = 0
-
         withCritical {
-            for irq in candidates {
-                if wrapIRQ(num: irq) {
-                    wrappedCount += 1
+            for irqIndex in 0..<numIRQs {
+                if (candidates & (1 << irqIndex)) != 0 {
+                    wrapIRQ(num: irqIndex)
                 }
             }
         }
@@ -182,9 +193,30 @@ struct RuntimeCPUUsageMeter {
 
     private var taskIsActive = false
     private var interruptDepth: UInt = 0
+    
+    private let mutex: UnsafeMutablePointer<mutex_t> = .allocate(capacity: 1)
+
+    init() {
+        mutex_init(mutex)
+    }
+
+    deinit {
+        mutex.deinitialize(count: 1)
+        mutex.deallocate()
+    }
 
     @_transparent
     mutating func record(event: Event) {
+        guard mutex_try_enter(mutex, nil) else {
+            // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
+            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
+            return
+        }
+
+        defer {
+            mutex_exit(mutex)
+        }
+
         let nowUs = time_us_64()
         accountElapsed(nowUs: nowUs)
 
@@ -205,32 +237,32 @@ struct RuntimeCPUUsageMeter {
 
     @_transparent
     mutating func sample() {
+        guard mutex_try_enter(mutex, nil) else {
+            // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
+            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
+            return
+        }
+
+        defer {
+            mutex_exit(mutex)
+        }
+
         let nowUs = time_us_64()
         accountElapsed(nowUs: nowUs)
     }
 
     @_transparent
-    private mutating func accountElapsed(nowUs: UInt64) {
-        if windowStartUs == 0 {
-            windowStartUs = nowUs
-            lastEventUs = nowUs
+    mutating func reportIfNeeded() {
+        guard mutex_try_enter(mutex, nil) else {
+            // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
+            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
             return
         }
 
-        let elapsedUs = nowUs &- lastEventUs
-        lastEventUs = nowUs
-
-        if interruptDepth > 0 {
-            interruptUs &+= elapsedUs
-        } else if taskIsActive {
-            taskUs &+= elapsedUs
-        } else {
-            idleUs &+= elapsedUs
+        defer {
+            mutex_exit(mutex)
         }
-    }
 
-    @_transparent
-    mutating func reportIfNeeded() {
         let nowUs = time_us_64()
 
         guard windowStartUs != 0 else {
@@ -259,6 +291,26 @@ struct RuntimeCPUUsageMeter {
         interruptUs = 0
         idleUs = 0
         interruptEvents = 0
+    }
+
+    @_transparent
+    private mutating func accountElapsed(nowUs: UInt64) {
+        if windowStartUs == 0 {
+            windowStartUs = nowUs
+            lastEventUs = nowUs
+            return
+        }
+
+        let elapsedUs = nowUs &- lastEventUs
+        lastEventUs = nowUs
+
+        if interruptDepth > 0 {
+            interruptUs &+= elapsedUs
+        } else if taskIsActive {
+            taskUs &+= elapsedUs
+        } else {
+            idleUs &+= elapsedUs
+        }
     }
 }
 

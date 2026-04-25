@@ -118,7 +118,7 @@ public struct MemoryStats {
     public static var current: MemoryStats {
         // Get the current end of the heap (sbrk(0))
         guard let currentHeapEnd = sbrk(0) else {
-            assertionFailure("[CPicoConcurrency] Failed to get current heap end using sbrk(0).")
+            assertionFailure("[CPicoSDK] Failed to get current heap end using sbrk(0).")
             return .init(untouched: 0, freed: 0, used: 0)
         }
         
