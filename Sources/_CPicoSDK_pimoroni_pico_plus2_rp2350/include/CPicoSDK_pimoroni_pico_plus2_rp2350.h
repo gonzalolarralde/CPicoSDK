@@ -50895,7 +50895,7 @@ _Static_assert(sizeof (sysinfo_hw_t) == 0x0018, "");
 #define XIP_STREAM_FIFO_MSB 31u
 #define XIP_STREAM_FIFO_LSB 0u
 #define XIP_STREAM_FIFO_ACCESS "RF"
-typedef struct {
+typedef struct  __attribute__((swift_attr("~Copyable"))) {
    
     io_rw_32 ctrl;
     uint32_t _pad0;
@@ -52809,7 +52809,7 @@ typedef struct {
    
     io_rw_32 wcmd;
 } qmi_mem_hw_t;
-typedef struct {
+typedef struct __attribute__((swift_attr("~Copyable"))) {
    
     io_rw_32 direct_csr;
    
