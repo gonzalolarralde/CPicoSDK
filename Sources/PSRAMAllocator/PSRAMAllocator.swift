@@ -30,6 +30,48 @@ private nonisolated(unsafe) var allocatorDetectedPSRAMSize: Int = 0
 
 private let qmiPollTimeout: UInt32 = 10_000_000
 
+@inline(never)
+@section(".time_critical.psram")
+@_optimize(none)
+private func qmiDirectCSRRead32() -> UInt32 {
+    psram_mmio_read32_cshim(&qmi_hw.pointee.direct_csr)
+}
+
+@inline(never)
+@section(".time_critical.psram")
+@_optimize(none)
+private func qmiDirectCSRWrite32(_ value: UInt32) {
+    psram_mmio_write32_cshim(&qmi_hw.pointee.direct_csr, value)
+}
+
+@inline(never)
+@section(".time_critical.psram")
+@_optimize(none)
+private func qmiDirectCSRSetBits(_ mask: UInt32) {
+    psram_mmio_set_bits32_cshim(&qmi_hw.pointee.direct_csr, mask)
+}
+
+@inline(never)
+@section(".time_critical.psram")
+@_optimize(none)
+private func qmiDirectCSRClearBits(_ mask: UInt32) {
+    psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, mask)
+}
+
+@inline(never)
+@section(".time_critical.psram")
+@_optimize(none)
+private func qmiDirectRXRead32() -> UInt32 {
+    qmi_hw.pointee.direct_rx
+}
+
+@inline(never)
+@section(".time_critical.psram")
+@_optimize(none)
+private func qmiDirectTXWrite32(_ value: UInt32) {
+    psram_mmio_write32_cshim(&qmi_hw.pointee.direct_tx, value)
+}
+
 @inline(__always)
 private func psramLocation() -> UnsafeMutableRawPointer? {
     UnsafeMutableRawPointer(bitPattern: 0x1100_0000)
@@ -40,7 +82,7 @@ private func psramLocation() -> UnsafeMutableRawPointer? {
 @_optimize(none)
 private func waitQmiBusyClear() -> Bool {
     var timeout: UInt32 = qmiPollTimeout
-    while (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_BUSY_BITS) != 0 {
+    while (qmiDirectCSRRead32() & QMI_DIRECT_CSR_BUSY_BITS) != 0 {
         timeout = timeout &- 1
         if timeout == 0 { return false }
     }
@@ -52,7 +94,7 @@ private func waitQmiBusyClear() -> Bool {
 @_optimize(none)
 private func waitQmiTxNotFull() -> Bool {
     var timeout: UInt32 = qmiPollTimeout
-    while (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_TXFULL_BITS) != 0 {
+    while (qmiDirectCSRRead32() & QMI_DIRECT_CSR_TXFULL_BITS) != 0 {
         timeout = timeout &- 1
         if timeout == 0 { return false }
     }
@@ -64,7 +106,7 @@ private func waitQmiTxNotFull() -> Bool {
 @_optimize(none)
 private func waitQmiRxNotEmpty() -> Bool {
     var timeout: UInt32 = qmiPollTimeout
-    while (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_RXEMPTY_BITS) != 0 {
+    while (qmiDirectCSRRead32() & QMI_DIRECT_CSR_RXEMPTY_BITS) != 0 {
         timeout = timeout &- 1
         if timeout == 0 { return false }
     }
@@ -76,29 +118,30 @@ private func waitQmiRxNotEmpty() -> Bool {
 @_optimize(none)
 private func getPSRAMSize() -> Int {
     let intrStash = save_and_disable_interrupts()
-    qmi_hw.pointee.direct_csr = (30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS
+    qmiDirectCSRWrite32((30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS)
 
     guard waitQmiBusyClear() else {
-        qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+        qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
         restore_interrupts(intrStash)
         return 0
     }
 
-    qmi_hw.pointee.direct_csr |= QMI_DIRECT_CSR_ASSERT_CS1N_BITS
-    qmi_hw.pointee.direct_tx =
+    qmiDirectCSRSetBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
+    qmiDirectTXWrite32(
         QMI_DIRECT_TX_OE_BITS | (QMI_DIRECT_TX_IWIDTH_VALUE_Q << QMI_DIRECT_TX_IWIDTH_LSB) | SparkFunPSRAM.cmdQuadEnd
+    )
 
     guard waitQmiBusyClear() else {
-        qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+        qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
         restore_interrupts(intrStash)
         return 0
     }
-    if (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-        _ = qmi_hw.pointee.direct_rx
+    if (qmiDirectCSRRead32() & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
+        _ = qmiDirectRXRead32()
     }
-    qmi_hw.pointee.direct_csr &= ~QMI_DIRECT_CSR_ASSERT_CS1N_BITS
+    qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
-    qmi_hw.pointee.direct_csr |= QMI_DIRECT_CSR_ASSERT_CS1N_BITS
+    qmiDirectCSRSetBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
     var kgd: UInt32 = 0
     var eid: UInt32 = 0
@@ -106,19 +149,19 @@ private func getPSRAMSize() -> Int {
     var i: UInt32 = 0
     while i < 7 {
         guard waitQmiTxNotFull() else {
-            qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
             restore_interrupts(intrStash)
             return 0
         }
-        qmi_hw.pointee.direct_tx = i == 0 ? SparkFunPSRAM.cmdReadID : SparkFunPSRAM.cmdNoop
+        qmiDirectTXWrite32(i == 0 ? SparkFunPSRAM.cmdReadID : SparkFunPSRAM.cmdNoop)
 
         guard waitQmiRxNotEmpty() else {
-            qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
             restore_interrupts(intrStash)
             return 0
         }
 
-        let rx = qmi_hw.pointee.direct_rx & 0xff
+        let rx = qmiDirectRXRead32() & 0xff
         if i == 5 {
             kgd = rx
         } else if i == 6 {
@@ -127,7 +170,7 @@ private func getPSRAMSize() -> Int {
         i = i &+ 1
     }
 
-    qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+    qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
 
     restore_interrupts(intrStash)
     return interpretedPSRAMSize(kgd: kgd, eid: eid)
@@ -159,48 +202,49 @@ public func probePSRAM(csPin: UInt32) -> (kgd: UInt32, eid: UInt32, size: Int) {
     gpio_set_function(csPin, GPIO_FUNC_XIP_CS1)
 
     let intrStash = save_and_disable_interrupts()
-    qmi_hw.pointee.direct_csr = (30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS
+    qmiDirectCSRWrite32((30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS)
 
     guard waitQmiBusyClear() else {
-        qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+        qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
         restore_interrupts(intrStash)
         return (0, 0, 0)
     }
 
-    qmi_hw.pointee.direct_csr |= QMI_DIRECT_CSR_ASSERT_CS1N_BITS
-    qmi_hw.pointee.direct_tx =
+    qmiDirectCSRSetBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
+    qmiDirectTXWrite32(
         QMI_DIRECT_TX_OE_BITS | (QMI_DIRECT_TX_IWIDTH_VALUE_Q << QMI_DIRECT_TX_IWIDTH_LSB) | SparkFunPSRAM.cmdQuadEnd
+    )
 
     guard waitQmiBusyClear() else {
-        qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+        qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
         restore_interrupts(intrStash)
         return (0, 0, 0)
     }
-    if (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-        _ = qmi_hw.pointee.direct_rx
+    if (qmiDirectCSRRead32() & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
+        _ = qmiDirectRXRead32()
     }
-    qmi_hw.pointee.direct_csr &= ~QMI_DIRECT_CSR_ASSERT_CS1N_BITS
+    qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
-    qmi_hw.pointee.direct_csr |= QMI_DIRECT_CSR_ASSERT_CS1N_BITS
+    qmiDirectCSRSetBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
     var kgd: UInt32 = 0
     var eid: UInt32 = 0
     var i: UInt32 = 0
     while i < 7 {
         guard waitQmiTxNotFull() else {
-            qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
             restore_interrupts(intrStash)
             return (0, 0, 0)
         }
-        qmi_hw.pointee.direct_tx = i == 0 ? SparkFunPSRAM.cmdReadID : SparkFunPSRAM.cmdNoop
+        qmiDirectTXWrite32(i == 0 ? SparkFunPSRAM.cmdReadID : SparkFunPSRAM.cmdNoop)
 
         guard waitQmiRxNotEmpty() else {
-            qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
             restore_interrupts(intrStash)
             return (0, 0, 0)
         }
 
-        let rx = qmi_hw.pointee.direct_rx & 0xff
+        let rx = qmiDirectRXRead32() & 0xff
         if i == 5 {
             kgd = rx
         } else if i == 6 {
@@ -209,7 +253,7 @@ public func probePSRAM(csPin: UInt32) -> (kgd: UInt32, eid: UInt32, size: Int) {
         i = i &+ 1
     }
 
-    qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+    qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
     restore_interrupts(intrStash)
 
     return (kgd, eid, interpretedPSRAMSize(kgd: kgd, eid: eid))
@@ -226,7 +270,7 @@ public func probePSRAMViaCShim(csPin: UInt32) -> (ok: Bool, kgd: UInt32, eid: UI
 
 public func debugQMIState() -> (primask: UInt32, directCSR: UInt32, busy: Bool, txFull: Bool, rxEmpty: Bool, assertCS1: Bool, en: Bool) {
     let primask: UInt32 = (save_and_disable_interrupts() & 1)
-    let csr = qmi_hw.pointee.direct_csr
+    let csr = qmiDirectCSRRead32()
     restore_interrupts(primask)
     return (
         primask: primask,
@@ -242,13 +286,13 @@ public func debugQMIState() -> (primask: UInt32, directCSR: UInt32, busy: Bool, 
 @discardableResult
 public func sanitizeQMIDirectStateForDebug(maxDrainReads: UInt32 = 16) -> UInt32 {
     let intrStash = save_and_disable_interrupts()
-    var csr = qmi_hw.pointee.direct_csr
+    var csr = qmiDirectCSRRead32()
     csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
-    qmi_hw.pointee.direct_csr = csr
+    qmiDirectCSRWrite32(csr)
 
     var drained: UInt32 = 0
-    while drained < maxDrainReads && (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-        _ = qmi_hw.pointee.direct_rx
+    while drained < maxDrainReads && (qmiDirectCSRRead32() & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
+        _ = qmiDirectRXRead32()
         drained = drained &+ 1
     }
     restore_interrupts(intrStash)
@@ -297,46 +341,46 @@ public func setupPSRAM(csPin: UInt32) -> Int {
     }
 
     var intrStash = save_and_disable_interrupts()
-    qmi_hw.pointee.direct_csr = (30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS
+    qmiDirectCSRWrite32((30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS)
 
     guard waitQmiBusyClear() else {
-        qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+        qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
         restore_interrupts(intrStash)
         return 0
     }
 
     var setupStep: UInt32 = 0
     while setupStep < 3 {
-        qmi_hw.pointee.direct_csr |= QMI_DIRECT_CSR_ASSERT_CS1N_BITS
+        qmiDirectCSRSetBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
         guard waitQmiTxNotFull() else {
-            qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
             restore_interrupts(intrStash)
             return 0
         }
 
         if setupStep == 0 {
-            qmi_hw.pointee.direct_tx = SparkFunPSRAM.cmdResetEnable
+            qmiDirectTXWrite32(SparkFunPSRAM.cmdResetEnable)
         } else if setupStep == 1 {
-            qmi_hw.pointee.direct_tx = SparkFunPSRAM.cmdReset
+            qmiDirectTXWrite32(SparkFunPSRAM.cmdReset)
         } else {
-            qmi_hw.pointee.direct_tx = SparkFunPSRAM.cmdQuadEnable
+            qmiDirectTXWrite32(SparkFunPSRAM.cmdQuadEnable)
         }
 
         guard waitQmiBusyClear() else {
-            qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
             restore_interrupts(intrStash)
             return 0
         }
-        qmi_hw.pointee.direct_csr &= ~QMI_DIRECT_CSR_ASSERT_CS1N_BITS
+        qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
         busy_wait_us_32(1)
-        if (qmi_hw.pointee.direct_csr & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-            _ = qmi_hw.pointee.direct_rx
+        if (qmiDirectCSRRead32() & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
+            _ = qmiDirectRXRead32()
         }
         setupStep = setupStep &+ 1
     }
 
-    qmi_hw.pointee.direct_csr &= ~(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+    qmiDirectCSRClearBits(QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
     restore_interrupts(intrStash)
 
     setPSRAMTiming()

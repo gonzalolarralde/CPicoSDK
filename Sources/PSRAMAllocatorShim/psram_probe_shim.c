@@ -18,6 +18,22 @@
 
 #define SHIM_POLL_TIMEOUT 10000000u
 
+uint32_t __no_inline_not_in_flash_func(psram_mmio_read32_cshim)(const volatile uint32_t *addr) {
+    return *addr;
+}
+
+void __no_inline_not_in_flash_func(psram_mmio_write32_cshim)(volatile uint32_t *addr, uint32_t value) {
+    *addr = value;
+}
+
+void __no_inline_not_in_flash_func(psram_mmio_set_bits32_cshim)(volatile uint32_t *addr, uint32_t mask) {
+    *addr = *addr | mask;
+}
+
+void __no_inline_not_in_flash_func(psram_mmio_clear_bits32_cshim)(volatile uint32_t *addr, uint32_t mask) {
+    *addr = *addr & ~mask;
+}
+
 static int wait_busy_clear(void) {
     uint32_t timeout = SHIM_POLL_TIMEOUT;
     while ((qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS) != 0) {
