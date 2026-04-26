@@ -82,6 +82,8 @@ let package = Package(
         ),
         .target(name: "ConcurrencyShims"),
 
+        .target(name: "TLSF"),
+
         .plugin(
             name: "PIOASMPlugin", 
             capability: .buildTool,
