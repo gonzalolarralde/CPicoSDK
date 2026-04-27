@@ -1,15 +1,4 @@
-#if __has_include("CPicoSDK_pimoroni_pico_plus2_w_rp2350.h")
-#include "CPicoSDK_pimoroni_pico_plus2_w_rp2350.h"
-#elif __has_include("CPicoSDK_pimoroni_pico_plus2_rp2350.h")
-#include "CPicoSDK_pimoroni_pico_plus2_rp2350.h"
-#elif __has_include("CPicoSDK_pico2_w.h")
-#include "CPicoSDK_pico2_w.h"
-#elif __has_include("CPicoSDK_pico2.h")
-#include "CPicoSDK_pico2.h"
-#else
-#error "No CPicoSDK board header available for PSRAMAllocatorShim"
-#endif
-
+#include "pico.h"
 #include "CShims.h"
 
 uint32_t __no_inline_not_in_flash_func(cshims_mmio_read32)(const volatile uint32_t *addr) {

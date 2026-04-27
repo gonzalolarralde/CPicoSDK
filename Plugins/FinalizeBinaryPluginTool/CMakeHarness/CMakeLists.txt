@@ -43,6 +43,11 @@ pico_enable_stdio_uart("${PROJECT_NAME}" ${STDIO_UART})
 pico_enable_stdio_usb("${PROJECT_NAME}" ${STDIO_USB})
 pico_enable_stdio_rtt("${PROJECT_NAME}" ${STDIO_RTT})
 
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=malloc")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=calloc")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=realloc")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=free")
+
 target_compile_definitions("${PROJECT_NAME}" PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
     PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1
