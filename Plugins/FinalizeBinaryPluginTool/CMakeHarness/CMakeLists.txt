@@ -31,7 +31,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable("${PROJECT_NAME}" shims.c)
+add_executable("${PROJECT_NAME}")
 
 pico_set_program_name("${PROJECT_NAME}" "${PROJECT_NAME}")
 pico_set_program_version("${PROJECT_NAME}" "0.1")
