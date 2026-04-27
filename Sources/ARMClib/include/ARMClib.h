@@ -18,3 +18,5 @@
 #include <math.h>
 #include <inttypes.h>
 #include <time.h>
+
+#include <stdatomic.h>

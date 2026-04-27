@@ -4,7 +4,13 @@ import PackagePlugin
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?, embeddedSwiftRuntimeVendorPath: String) -> [String: String] {
+    func generateEnvVars(
+        given givenEnvVars: [String: String],
+        packageEnv: Env,
+        context: PackagePlugin.PluginContext,
+        libraryProductName: String?,
+        embeddedSwiftRuntimeVendorPath: String
+    ) -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
@@ -180,13 +186,41 @@ extension PrepareEnvironmentPlugin {
         json = json.replacingOccurrences(of: "\n", with: "\n\(indentation)")
         return json
     }
+
+    // MARK: - Generated newlib overlay
+
+    func generateNewlibOverlayHeader(envVars: [String: String]) throws -> String {
+        let overlayDir = URL(fileURLWithPath: envVars["PLUGIN_OUTPUT_PATH"]!)
+            .appending(path: "generated/newlib_overlay")
+            .path
+        let overlayHeaderPath = overlayDir + "/stdatomic.h"
+        let newlibIncludeDir = "\(envVars["SDK_PATH"]!)/include"
+        let overlayHeader = """
+        #pragma once
+        
+        #include "\(newlibIncludeDir)/stdint.h"
+        #include "\(newlibIncludeDir)/inttypes.h"
+        #include "\(newlibIncludeDir)/stdatomic.h"
+        """
+
+        if try self.overwriteOrCreateIfNeeded(path: overlayHeaderPath, matchingContent: overlayHeader.data(using: .utf8)) {
+            print("[CPicoSDK] Generated/Updated newlib overlay header at \(overlayHeaderPath).")
+        } else {
+            print("[CPicoSDK] Not updating newlib overlay header as existing one is up-to-date.")
+        }
+
+        return overlayDir
+    }
     
-    func generateToolset(envVars: [String: String]) throws {
+    func generateToolset(envVars: [String: String], newlibOverlayDir: String) throws {
         let toolsetPath = envVars["TOOLSET_PATH"]!
+
         let swiftCompilerFlags = [
             "-Xfrontend", "-disable-stack-protector",
             "-enable-experimental-feature", "Embedded",
             "-sdk", envVars["SDK_PATH"]!,
+            "-Xcc", "-isystem",
+            "-Xcc", newlibOverlayDir,
         ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars) + [
             "-wmo",
         ]
@@ -200,7 +234,8 @@ extension PrepareEnvironmentPlugin {
             },
             "cCompiler": {
                 "extraCLIOptions": [
-                    "--sysroot", "\(envVars["SDK_PATH"]!)"
+                    "--sysroot", "\(envVars["SDK_PATH"]!)",
+                    "-isystem", "\(newlibOverlayDir)"
                 ]
             },
             "linker": {

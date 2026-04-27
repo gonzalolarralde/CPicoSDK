@@ -25,7 +25,6 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         } else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
-
         guard let dumpPrepScriptPath = self.findArgumentWithValue(from: arguments, argument: "--dump-prep-script") else {
             fatalError("[CPicoSDK] No --dump-prep-script argument provided.")
         }
@@ -76,7 +75,8 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
         
         if generateToolset {
-            try self.generateToolset(envVars: consolidatedEnvVars)
+            let generatedNewlibOverlayDir = try self.generateNewlibOverlayHeader(envVars: consolidatedEnvVars)
+            try self.generateToolset(envVars: consolidatedEnvVars, newlibOverlayDir: generatedNewlibOverlayDir)
         }
 
         if syncSwiftVersion {
