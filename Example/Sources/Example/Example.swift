@@ -7,9 +7,12 @@ struct App: EmbeddedAsyncApp {
         stdio_init_all()
         status_led_init()
 
-        print("Scheduling 1 second alarm...")
-        try? await Task.sleep(ms: 1000)
+        // Checking atomics
+        let atomicBool = ManagedAtomic<Bool>(false)
+        print("Atomic exchange: old=\(atomicBool.exchange(true, ordering: .sequentiallyConsistent)) new=\(atomicBool.load(ordering: .sequentiallyConsistent))")
 
+        print("Scheduling 1 second wait...")
+        try? await Task.sleep(ms: 1000)
         print("One second!")
 
         // Keep one Unicode-aware string operation in the example so the finalizer

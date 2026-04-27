@@ -44,6 +44,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.4"),
+        .package(url: "https://github.com/apple/swift-atomics", from: "1.3.0"),
     ],
     targets: [
         // GENERATOR MARK: TARGETS
@@ -57,6 +58,8 @@ let package = Package(
             name: "CPicoSDK",
             dependencies: [
                 .target(name: "ARMClib"),
+                .product(name: "Atomics", package: "swift-atomics"),
+
                 // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),

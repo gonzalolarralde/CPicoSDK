@@ -4,7 +4,13 @@ import PackagePlugin
 extension PrepareEnvironmentPlugin {
     // MARK: - Env Vars
     
-    func generateEnvVars(given givenEnvVars: [String: String], packageEnv: Env, context: PackagePlugin.PluginContext, libraryProductName: String?, embeddedSwiftRuntimeVendorPath: String) -> [String: String] {
+    func generateEnvVars(
+        given givenEnvVars: [String: String],
+        packageEnv: Env,
+        context: PackagePlugin.PluginContext,
+        libraryProductName: String?,
+        embeddedSwiftRuntimeVendorPath: String
+    ) -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
@@ -181,12 +187,14 @@ extension PrepareEnvironmentPlugin {
         return json
     }
     
-    func generateToolset(envVars: [String: String]) throws {
+    func generateToolset(envVars: [String: String], newlibOverlayDir: String) throws {
         let toolsetPath = envVars["TOOLSET_PATH"]!
         let swiftCompilerFlags = [
             "-Xfrontend", "-disable-stack-protector",
             "-enable-experimental-feature", "Embedded",
             "-sdk", envVars["SDK_PATH"]!,
+            "-Xcc", "-isystem",
+            "-Xcc", newlibOverlayDir,
         ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars) + [
             "-wmo",
         ]
@@ -200,7 +208,8 @@ extension PrepareEnvironmentPlugin {
             },
             "cCompiler": {
                 "extraCLIOptions": [
-                    "--sysroot", "\(envVars["SDK_PATH"]!)"
+                    "--sysroot", "\(envVars["SDK_PATH"]!)",
+                    "-isystem", "\(newlibOverlayDir)"
                 ]
             },
             "linker": {

@@ -10,14 +10,19 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         let cPicoSDKEnvVarsPath: String
+        let cPicoSDKPackagePath: String
         let embeddedSwiftRuntimeVendorPath: String
         if let packageURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL {
             cPicoSDKEnvVarsPath = packageURL.appending(path: "env.json").relativePath
+            cPicoSDKPackagePath = packageURL.relativePath
             embeddedSwiftRuntimeVendorPath = packageURL
                 .appending(path: "Vendor/EmbeddedSwiftRuntime")
                 .relativePath
         } else if let argumentEnvVarsPath = self.findArgumentWithValue(from: arguments, argument: "--cpicosdk-envs-path") {
             cPicoSDKEnvVarsPath = argumentEnvVarsPath
+            cPicoSDKPackagePath = URL(fileURLWithPath: argumentEnvVarsPath)
+                .deletingLastPathComponent()
+                .path
             embeddedSwiftRuntimeVendorPath = URL(fileURLWithPath: argumentEnvVarsPath)
                 .deletingLastPathComponent()
                 .appending(path: "Vendor/EmbeddedSwiftRuntime")
@@ -25,6 +30,9 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         } else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
+        let cPicoSDKNewlibOverlayDir = URL(fileURLWithPath: cPicoSDKPackagePath)
+            .appending(path: "Sources/ARMClib/newlib_overlay")
+            .path
 
         guard let dumpPrepScriptPath = self.findArgumentWithValue(from: arguments, argument: "--dump-prep-script") else {
             fatalError("[CPicoSDK] No --dump-prep-script argument provided.")
@@ -76,7 +84,7 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
         
         if generateToolset {
-            try self.generateToolset(envVars: consolidatedEnvVars)
+            try self.generateToolset(envVars: consolidatedEnvVars, newlibOverlayDir: cPicoSDKNewlibOverlayDir)
         }
 
         if syncSwiftVersion {
