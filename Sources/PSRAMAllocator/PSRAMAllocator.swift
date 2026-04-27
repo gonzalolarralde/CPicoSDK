@@ -87,7 +87,7 @@ public final class PSRAMAllocator {
             return 0
         }
         if (psram_mmio_read32_cshim(&qmi_hw.pointee.direct_csr) & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-            _ = qmi_hw.pointee.direct_rx
+            _ = psram_mmio_read32_cshim(&qmi_hw.pointee.direct_rx)
         }
         psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
@@ -111,7 +111,7 @@ public final class PSRAMAllocator {
                 return 0
             }
 
-            let rx = qmi_hw.pointee.direct_rx & 0xff
+            let rx = psram_mmio_read32_cshim(&qmi_hw.pointee.direct_rx) & 0xff
             if i == 5 {
                 kgd = rx
             } else if i == 6 {
@@ -145,69 +145,69 @@ public final class PSRAMAllocator {
         return size
     }
 
-    // @inline(never)
-    // @section(".time_critical.psram")
-    // @_optimize(none)
-    // public static func probePSRAM(csPin: UInt32) -> (kgd: UInt32, eid: UInt32, size: Int) {
-    //     gpio_set_function(csPin, GPIO_FUNC_XIP_CS1)
+    @inline(never)
+    @section(".time_critical.psram")
+    @_optimize(none)
+    public static func probePSRAM(csPin: UInt32) -> (kgd: UInt32, eid: UInt32, size: Int) {
+        gpio_set_function(csPin, GPIO_FUNC_XIP_CS1)
 
-    //     let intrStash = save_and_disable_interrupts()
-    //     psram_mmio_write32_cshim(&qmi_hw.pointee.direct_csr, ((30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS))
+        let intrStash = save_and_disable_interrupts()
+        psram_mmio_write32_cshim(&qmi_hw.pointee.direct_csr, ((30 << QMI_DIRECT_CSR_CLKDIV_LSB) | QMI_DIRECT_CSR_EN_BITS))
 
-    //     guard waitQmiBusyClear() else {
-    //         psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
-    //         restore_interrupts(intrStash)
-    //         return (0, 0, 0)
-    //     }
+        guard waitQmiBusyClear() else {
+            psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            restore_interrupts(intrStash)
+            return (0, 0, 0)
+        }
 
-    //     psram_mmio_set_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
-    //     psram_mmio_write32_cshim(&qmi_hw.pointee.direct_tx, 
-    //         QMI_DIRECT_TX_OE_BITS | (QMI_DIRECT_TX_IWIDTH_VALUE_Q << QMI_DIRECT_TX_IWIDTH_LSB) | Commands.quadEnd
-    //     )
+        psram_mmio_set_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
+        psram_mmio_write32_cshim(&qmi_hw.pointee.direct_tx, 
+            QMI_DIRECT_TX_OE_BITS | (QMI_DIRECT_TX_IWIDTH_VALUE_Q << QMI_DIRECT_TX_IWIDTH_LSB) | Commands.quadEnd
+        )
 
-    //     guard waitQmiBusyClear() else {
-    //         psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
-    //         restore_interrupts(intrStash)
-    //         return (0, 0, 0)
-    //     }
-    //     if (psram_mmio_read32_cshim(&qmi_hw.pointee.direct_csr) & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-    //         _ = qmi_hw.pointee.direct_rx
-    //     }
-    //     psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
+        guard waitQmiBusyClear() else {
+            psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+            restore_interrupts(intrStash)
+            return (0, 0, 0)
+        }
+        if (psram_mmio_read32_cshim(&qmi_hw.pointee.direct_csr) & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
+            _ = psram_mmio_read32_cshim(&qmi_hw.pointee.direct_rx)
+        }
+        psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
-    //     psram_mmio_set_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
+        psram_mmio_set_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS)
 
-    //     var kgd: UInt32 = 0
-    //     var eid: UInt32 = 0
-    //     var i: UInt32 = 0
-    //     while i < 7 {
-    //         guard waitQmiTxNotFull() else {
-    //             psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
-    //             restore_interrupts(intrStash)
-    //             return (0, 0, 0)
-    //         }
-    //         psram_mmio_write32_cshim(&qmi_hw.pointee.direct_tx, i == 0 ? Commands.readID : Commands.noop)
+        var kgd: UInt32 = 0
+        var eid: UInt32 = 0
+        var i: UInt32 = 0
+        while i < 7 {
+            guard waitQmiTxNotFull() else {
+                psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+                restore_interrupts(intrStash)
+                return (0, 0, 0)
+            }
+            psram_mmio_write32_cshim(&qmi_hw.pointee.direct_tx, i == 0 ? Commands.readID : Commands.noop)
 
-    //         guard waitQmiRxNotEmpty() else {
-    //             psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
-    //             restore_interrupts(intrStash)
-    //             return (0, 0, 0)
-    //         }
+            guard waitQmiRxNotEmpty() else {
+                psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+                restore_interrupts(intrStash)
+                return (0, 0, 0)
+            }
 
-    //         let rx = qmi_hw.pointee.direct_rx & 0xff
-    //         if i == 5 {
-    //             kgd = rx
-    //         } else if i == 6 {
-    //             eid = rx
-    //         }
-    //         i = i &+ 1
-    //     }
+            let rx = psram_mmio_read32_cshim(&qmi_hw.pointee.direct_rx) & 0xff
+            if i == 5 {
+                kgd = rx
+            } else if i == 6 {
+                eid = rx
+            }
+            i = i &+ 1
+        }
 
-    //     psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
-    //     restore_interrupts(intrStash)
+        psram_mmio_clear_bits32_cshim(&qmi_hw.pointee.direct_csr, QMI_DIRECT_CSR_ASSERT_CS1N_BITS | QMI_DIRECT_CSR_EN_BITS)
+        restore_interrupts(intrStash)
 
-    //     return (kgd, eid, interpretedPSRAMSize(kgd: kgd, eid: eid))
-    // }
+        return (kgd, eid, interpretedPSRAMSize(kgd: kgd, eid: eid))
+    }
 
     // public func debugQMIState() -> (primask: UInt32, directCSR: UInt32, busy: Bool, txFull: Bool, rxEmpty: Bool, assertCS1: Bool, en: Bool) {
     //     let primask: UInt32 = (save_and_disable_interrupts() & 1)
@@ -233,7 +233,7 @@ public final class PSRAMAllocator {
 
     //     var drained: UInt32 = 0
     //     while drained < maxDrainReads && (psram_mmio_read32_cshim(&qmi_hw.pointee.direct_csr) & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-    //         _ = qmi_hw.pointee.direct_rx
+    //         _ = psram_mmio_read32_cshim(&qmi_hw.pointee.direct_rx)
     //         drained = drained &+ 1
     //     }
     //     restore_interrupts(intrStash)
@@ -316,7 +316,7 @@ public final class PSRAMAllocator {
             }
 
             if (psram_mmio_read32_cshim(&qmi_hw.pointee.direct_csr) & QMI_DIRECT_CSR_RXEMPTY_BITS) == 0 {
-                _ = qmi_hw.pointee.direct_rx
+                _ = psram_mmio_read32_cshim(&qmi_hw.pointee.direct_rx)
             }
             setupStep = setupStep &+ 1
         }
