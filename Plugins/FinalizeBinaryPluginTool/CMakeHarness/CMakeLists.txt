@@ -21,6 +21,8 @@ set(picotoolVersion "${SDK_VERSION}")
 
 set(PICO_BOARD "${BOARD_TYPE}" CACHE STRING "Board type")
 
+set (SKIP_PICO_MALLOC 1)
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
