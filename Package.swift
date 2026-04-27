@@ -73,18 +73,19 @@ let package = Package(
             ]
         ),
 
-        // Manually defined targets
-        .target(name: "ARMClib"),
         .target(
             name: "CShims",
             dependencies: [
+                // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_None"])),
-
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ]
         ),
+
+        // Manually defined targets
+        .target(name: "ARMClib"),
         .target(name: "TLSF"),
 
         .target(
