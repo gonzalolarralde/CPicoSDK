@@ -1,8 +1,22 @@
 import Foundation
+#if os(Linux)
+import Glibc
+#endif
 
 // TODO: Figure out how to share or keep synchronized between GenerateCPicoSDKPlugin and FinalizeBinaryPlugin
 
 extension Process {
+    // TODO: Remove this workaround when upgrading to Swift 6.3+
+    // https://github.com/swiftlang/swift/issues/81272
+    private func unblockSigchldBeforeSpawnIfNeeded() {
+        #if os(Linux)
+        var set = sigset_t()
+        sigemptyset(&set)
+        sigaddset(&set, SIGCHLD)
+        _ = pthread_sigmask(SIG_UNBLOCK, &set, nil)
+        #endif
+    }
+
     func asyncRun() async throws -> Int32 {
         defer {
             self.terminationHandler = nil
@@ -13,6 +27,7 @@ extension Process {
                 continuation.resume(returning: process.terminationStatus)
             }
             do {
+                self.unblockSigchldBeforeSpawnIfNeeded()
                 try self.run()
             } catch {
                 self.terminationHandler = nil
