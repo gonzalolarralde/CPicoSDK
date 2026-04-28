@@ -5,61 +5,6 @@ import Glibc
 
 // TODO: Figure out how to share or keep synchronized between GenerateCPicoSDKPlugin and FinalizeBinaryPlugin
 
-final actor SelfGatheringReadPipe {
-    private let pipe: Pipe
-    private var data = Data()
-    private var isClosed = false
-    private var dataWaiters: [CheckedContinuation<Data, Never>] = []
-
-    init() {
-        self.pipe = Pipe()
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let chunk = handle.availableData
-            guard let actorSelf = self else { return }
-            Task { [actorSelf, chunk] in
-                await actorSelf.consume(chunk)
-            }
-        }
-    }
-
-    nonisolated var ioPipe: Pipe {
-        pipe
-    }
-
-    func readDataToEndOfFile() async -> Data {
-        if isClosed {
-            return data
-        }
-
-        return await withCheckedContinuation { continuation in
-            if isClosed {
-                continuation.resume(returning: self.data)
-            } else {
-                dataWaiters.append(continuation)
-            }
-        }
-    }
-
-    private func consume(_ chunk: Data) {
-        guard !isClosed else { return }
-
-        if chunk.isEmpty {
-            isClosed = true
-            pipe.fileHandleForReading.readabilityHandler = nil
-
-            let finalData = data
-            let waiters = dataWaiters
-            dataWaiters.removeAll(keepingCapacity: false)
-            for waiter in waiters {
-                waiter.resume(returning: finalData)
-            }
-            return
-        }
-
-        data.append(chunk)
-    }
-}
-
 extension Process {
     // TODO: Remove this workaround when upgrading to Swift 6.3+
     // https://github.com/swiftlang/swift/issues/81272
@@ -77,42 +22,52 @@ extension Process {
     }
 
     func asyncRun(captureStdout: Bool, captureStderr: Bool) async throws -> (status: Int32, stdout: Data?, stderr: Data?) {
-        var stdoutGatherer: SelfGatheringReadPipe?
+        var stdoutPipe: Pipe?
         if captureStdout {
-            let gatherer = SelfGatheringReadPipe()
-            self.standardOutput = gatherer.ioPipe
-            stdoutGatherer = gatherer
+            let pipe = Pipe()
+            self.standardOutput = pipe
+            stdoutPipe = pipe
         }
 
-        var stderrGatherer: SelfGatheringReadPipe?
+        var stderrPipe: Pipe?
         if captureStderr {
-            let gatherer = SelfGatheringReadPipe()
-            self.standardError = gatherer.ioPipe
-            stderrGatherer = gatherer
+            let pipe = Pipe()
+            self.standardError = pipe
+            stderrPipe = pipe
         }
 
-        defer {
-            self.terminationHandler = nil
-        }
+        self.unblockSigchldBeforeSpawnIfNeeded()
+        try self.run()
 
-        async let status: Int32 = try withCheckedThrowingContinuation { continuation in
-            self.terminationHandler = { process in
-                continuation.resume(returning: process.terminationStatus)
+        async let status: Int32 = withCheckedContinuation { continuation in
+            let waiter = Thread {
+                self.waitUntilExit()
+                continuation.resume(returning: self.terminationStatus)
             }
-
-            do {
-                self.unblockSigchldBeforeSpawnIfNeeded()
-                try self.run()
-            } catch {
-                self.terminationHandler = nil
-                continuation.resume(throwing: error)
-            }
+            waiter.start()
         }
 
-        async let stdout = stdoutGatherer?.readDataToEndOfFile()
-        async let stderr = stderrGatherer?.readDataToEndOfFile()
+        async let stdout: Data? = {
+            guard let stdoutPipe else { return nil }
+            return await withCheckedContinuation { continuation in
+                let reader = Thread {
+                    continuation.resume(returning: stdoutPipe.fileHandleForReading.readDataToEndOfFile())
+                }
+                reader.start()
+            }
+        }()
 
-        return (try await status, await stdout, await stderr)
+        async let stderr: Data? = {
+            guard let stderrPipe else { return nil }
+            return await withCheckedContinuation { continuation in
+                let reader = Thread {
+                    continuation.resume(returning: stderrPipe.fileHandleForReading.readDataToEndOfFile())
+                }
+                reader.start()
+            }
+        }()
+
+        return (await status, await stdout, await stderr)
     }
 }
 
