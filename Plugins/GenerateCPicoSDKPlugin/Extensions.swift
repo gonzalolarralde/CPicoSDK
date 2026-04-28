@@ -18,21 +18,15 @@ extension Process {
     }
 
     func asyncRun() async throws -> Int32 {
-        defer {
-            self.terminationHandler = nil
-        }
+        self.unblockSigchldBeforeSpawnIfNeeded()
+        try self.run()
 
-        return try await withCheckedThrowingContinuation { continuation in
-            self.terminationHandler = { process in
-                continuation.resume(returning: process.terminationStatus)
+        return await withCheckedContinuation { continuation in
+            let waiter = Thread {
+                self.waitUntilExit()
+                continuation.resume(returning: self.terminationStatus)
             }
-            do {
-                self.unblockSigchldBeforeSpawnIfNeeded()
-                try self.run()
-            } catch {
-                self.terminationHandler = nil
-                continuation.resume(throwing: error)
-            }
+            waiter.start()
         }
     }
 }
