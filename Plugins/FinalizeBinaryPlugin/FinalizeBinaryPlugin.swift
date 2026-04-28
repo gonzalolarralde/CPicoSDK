@@ -319,12 +319,12 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).uf2").path) to \(outputDir.appending(path: "\(productName).uf2").path)")
 
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
-        printArtifactStats(outputDir: outputDir, productName: productName)
+        await printArtifactStats(outputDir: outputDir, productName: productName)
 
         print("[CPicoSDK] 🎉 Finalization completed successfully! 🎉")
     }
 
-    private func printArtifactStats(outputDir: URL, productName: String) {
+    private func printArtifactStats(outputDir: URL, productName: String) async {
         let fileManager = FileManager.default
 
         func formatSize(_ bytes: Int64) -> String {
@@ -347,6 +347,20 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             }
             print("[CPicoSDK]   - \(label): \(formatSize(fileSize.int64Value)) (\(kind))")
         }
+
+        let elfURL = outputDir.appending(path: "\(productName).elf")
+        do {
+            let output = try await runSize(on: elfURL)
+            if let parsed = parseSizeOutput(output) {
+                let flashFootprint = parsed.text + parsed.data
+                print("[CPicoSDK]   - Linked image footprint (`arm-none-eabi-size`): text=\(parsed.text) data=\(parsed.data) bss=\(parsed.bss) dec=\(parsed.dec) (\(formatSize(Int64(parsed.dec))))")
+                print("[CPicoSDK]   - Flash payload estimate: text+data=\(flashFootprint) B (\(String(format: "%.2f", Double(flashFootprint) / 1024.0)) KiB)")
+            } else {
+                print("[CPicoSDK]   - Linked image footprint (`arm-none-eabi-size`): could not parse output")
+            }
+        } catch {
+            print("[CPicoSDK]   - Linked image footprint (`arm-none-eabi-size`): unavailable (\(error))")
+        }
     }
 
     private func runNM(on buildArtifact: URL) async throws -> String {
@@ -361,5 +375,74 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             throw Error.nmFailed
         }
         return outputString
+    }
+
+    private func runSize(on elfArtifact: URL) async throws -> String {
+        let sizeProcess = Process()
+        sizeProcess.executableURL = URL(filePath: try resolveSizeToolPath().expected, directoryHint: .notDirectory)
+        sizeProcess.arguments = [elfArtifact.path]
+
+        let (status, outputData, _) = try await sizeProcess.asyncRun(captureStdout: true, captureStderr: true)
+        guard status == 0, let outputData, let outputString = String(data: outputData, encoding: .utf8), outputString.nonEmpty != nil else {
+            throw OptionalError.valueNotFound
+        }
+        return outputString
+    }
+
+    private func resolveSizeToolPath() -> String? {
+        if let explicitSizePath = Env.value("SIZE_PATH"), explicitSizePath.nonEmpty != nil {
+            return explicitSizePath
+        }
+
+        if let picoToolchainPath = Env.value("PICO_TOOLCHAIN_PATH"), picoToolchainPath.nonEmpty != nil {
+            let candidate = URL(filePath: picoToolchainPath, directoryHint: .isDirectory)
+                .appending(path: "bin/arm-none-eabi-size")
+                .path
+            if FileManager.default.fileExists(atPath: candidate) {
+                return candidate
+            }
+        }
+
+        guard let nmPath = Env.value("NM_PATH"), nmPath.nonEmpty != nil else {
+            return nil
+        }
+
+        let nmURL = URL(filePath: nmPath, directoryHint: .notDirectory)
+        let nmName = nmURL.lastPathComponent
+        let sizeName: String
+        if nmName.hasSuffix("-nm") {
+            sizeName = String(nmName.dropLast(2)) + "size"
+        } else if nmName == "nm" {
+            sizeName = "size"
+        } else {
+            return nil
+        }
+
+        let candidate = nmURL.deletingLastPathComponent().appending(path: sizeName).path
+        if FileManager.default.fileExists(atPath: candidate) {
+            return candidate
+        }
+
+        return nil
+    }
+
+    private func parseSizeOutput(_ output: String) -> (text: Int64, data: Int64, bss: Int64, dec: Int64, hex: String)? {
+        let rows = output
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard rows.count >= 2 else { return nil }
+        let columns = rows[1].split(whereSeparator: \.isWhitespace)
+        guard columns.count >= 5 else { return nil }
+        guard
+            let text = Int64(columns[0]),
+            let data = Int64(columns[1]),
+            let bss = Int64(columns[2]),
+            let dec = Int64(columns[3])
+        else {
+            return nil
+        }
+        return (text, data, bss, dec, String(columns[4]))
     }
 }

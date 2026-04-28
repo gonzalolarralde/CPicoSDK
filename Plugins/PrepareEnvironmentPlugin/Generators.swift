@@ -359,12 +359,23 @@ extension PrepareEnvironmentPlugin {
                     // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
                     // also works fine for flash binaries
                     "overrideLaunchCommands": [
-                    "monitor reset init",
-                    "load \\"${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf\\""
+                        "monitor reset init",
+                        "load \\"${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf\\""
                     ],
                     "openOCDLaunchCommands": [
-                    "adapter speed 5000"
-                    ]
+                        "adapter speed 5000"
+                    ],
+                    "rttConfig": {
+                        "enabled": true,
+                        "address": "auto",
+                        "decoders": [
+                            {
+                                "label": "",
+                                "port": 0,
+                                "type": "console"
+                            }
+                        ]
+                    }
                 },
                 {
                     "preLaunchTask": "Compile and Flash Project (picotool) [CPicoSDK]",
