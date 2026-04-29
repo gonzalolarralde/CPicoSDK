@@ -17,7 +17,154 @@ public enum MemoryType: String {
     case psram = "PSRAM"
 }
 
-// MARK: - Real malloc symbols
+
+// MARK: - Allocator manager
+
+struct Allocator {
+    static let addressSpaceMask: UInt32 = 0xFF00_0000
+
+    let memoryType: MemoryType
+
+    let addressSpace: UInt32
+    let stackLimit: UInt
+    let malloc: (Int) -> UnsafeMutableRawPointer?
+    let calloc: (Int, Int) -> UnsafeMutableRawPointer?
+    let realloc: (UnsafeMutableRawPointer?, Int) -> UnsafeMutableRawPointer?
+    let free: (UnsafeMutableRawPointer?) -> Void
+    let memStats: () -> MemoryStats
+
+    @inline(__always)
+    func owns(address: UInt32) -> Bool {
+        (address & Self.addressSpaceMask) == (addressSpace & Self.addressSpaceMask)
+    }
+}
+
+final class AllocatorManager: @unchecked Sendable {
+    public static let shared = AllocatorManager()
+
+    enum Error: Swift.Error {
+        case overlappingAllocator
+
+        var description: String {
+            switch self {
+            case .overlappingAllocator: return "Allocator overlaps with an existing allocator's address space."
+            }
+        }
+    }
+
+    private struct AllocatorRegistryNode {
+        var allocator: Allocator
+        var next: UnsafeMutablePointer<AllocatorRegistryNode>?
+    }
+
+    private let registryMutex: UnsafeMutablePointer<mutex_t> = {
+        let ptr = UnsafeMutablePointer<mutex_t>.allocate(capacity: 1)
+        ptr.initialize(to: mutex_t())
+        mutex_init(ptr)
+        return ptr
+    }()
+
+    private var allocatorRegistryHead: UnsafeMutablePointer<AllocatorRegistryNode>? = {
+        let node = UnsafeMutablePointer<AllocatorRegistryNode>.allocate(capacity: 1)
+        node.initialize(to: AllocatorRegistryNode(allocator: .sram, next: nil))
+        return node
+    }()
+
+    var allocators: [Allocator] {
+        var count = 0
+        mutex_enter_blocking(registryMutex)
+        var cursor = allocatorRegistryHead
+        while cursor != nil {
+            count += 1
+            cursor = cursor?.pointee.next
+        }
+        mutex_exit(registryMutex)
+
+        var allocators: [Allocator] = []
+        allocators.reserveCapacity(count)
+
+        mutex_enter_blocking(registryMutex)
+        cursor = allocatorRegistryHead
+        while let node = cursor {
+            allocators.append(node.pointee.allocator)
+            cursor = node.pointee.next
+        }
+        mutex_exit(registryMutex)
+        return allocators.reversed()
+    }
+
+    @inline(__always)
+    private func hasOverlappingAllocator(_ allocator: Allocator) -> Bool {
+        let newAddressSpace = allocator.addressSpace & Allocator.addressSpaceMask
+        var cursor = allocatorRegistryHead
+        while let node = cursor {
+            let existing = node.pointee.allocator
+            if (existing.addressSpace & Allocator.addressSpaceMask) == newAddressSpace {
+                return true
+            }
+            cursor = node.pointee.next
+        }
+        return false
+    }
+
+    func register(_ allocator: Allocator) throws(Error) {
+        // Pre-allocate node outside the lock to avoid malloc reentrancy while the registry mutex is held.
+        let node = UnsafeMutablePointer<AllocatorRegistryNode>.allocate(capacity: 1)
+        node.initialize(to: AllocatorRegistryNode(allocator: allocator, next: nil))
+
+        mutex_enter_blocking(registryMutex)
+        if hasOverlappingAllocator(allocator) {
+            mutex_exit(registryMutex)
+            node.deinitialize(count: 1)
+            node.deallocate()
+            throw Error.overlappingAllocator
+        }
+
+        var cursor = allocatorRegistryHead
+        if cursor == nil {
+            allocatorRegistryHead = node
+            mutex_exit(registryMutex)
+            return
+        }
+
+        while cursor?.pointee.next != nil {
+            cursor = cursor?.pointee.next
+        }
+        cursor?.pointee.next = node
+        mutex_exit(registryMutex)
+    }
+
+    @inline(__always)
+    func allocator(for pointer: UnsafeMutableRawPointer?) -> Allocator {
+        guard let pointer else { return .sram }
+
+        let address = UInt32(truncatingIfNeeded: UInt(bitPattern: pointer))
+
+        // Fast path: SRAM pointers always resolve to the built-in SRAM allocator.
+        if (address & Allocator.addressSpaceMask) == (Allocator.sramAddressSpace & Allocator.addressSpaceMask) {
+            return .sram
+        }
+
+        var match: Allocator?
+
+        mutex_enter_blocking(registryMutex)
+        var cursor = allocatorRegistryHead
+        while let node = cursor {
+            let allocator = node.pointee.allocator
+            if allocator.owns(address: address) {
+                match = allocator
+                break
+            }
+            cursor = node.pointee.next
+        }
+        mutex_exit(registryMutex)
+
+        return match ?? .sram
+    }
+
+}
+
+// MARK: - SRAM allocator
 
 @_extern(c, "__real_malloc")
 func real_malloc(_ size: Int) -> UnsafeMutableRawPointer?
@@ -31,44 +178,26 @@ func real_realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutable
 @_extern(c, "__real_free")
 func real_free(_ ptr: UnsafeMutableRawPointer?)
 
-// MARK: - Malloc overrides
+extension Allocator {
+    fileprivate static let sramAddressSpace: UInt32 = 0x2000_0000
 
-struct Allocator {
-    static let addressSpaceMask = 0xFF00_0000
-    let addressSpace: UInt32,
-    let malloc: (Int) -> UnsafeMutableRawPointer?
-    let calloc: (Int, Int) -> UnsafeMutableRawPointer?
-    let realloc: (UnsafeMutableRawPointer?, Int) -> UnsafeMutableRawPointer?
-    let free: (UnsafeMutableRawPointer?) -> Void
+    private static let sramStackLimit: UInt = withUnsafePointer(to: &stackLimitSymbol) { UInt(bitPattern: $0) }
+
+    nonisolated(unsafe) static let sram: Allocator = {
+        Allocator(
+            memoryType: .sram,
+            addressSpace: sramAddressSpace,
+            stackLimit: sramStackLimit,
+            malloc: real_malloc,
+            calloc: real_calloc,
+            realloc: real_realloc,
+            free: real_free,
+            memStats: { MemoryStats.sram }
+        )
+    }()
 }
 
-final class AllocatorManager {
-    enum Error: Swift.Error {
-        case overlappingAllocator
-    }
-
-    static let shared = AllocatorManager()
-
-    private let allocators: Mutex<[UInt32: Allocator]> = .init([])
-
-    func register(allocator: Allocator) throws {
-        allocators.withLock { allocators in
-            for existingAllocator in self.allocators {
-                guard allocator.addressSpace.value & Allocator.addressSpaceMask != existingAllocator.addressSpace.value & Allocator.addressSpaceMask else {
-                    throw Error.overlappingAllocator
-                }
-            }
-
-            allocators.append(allocator)
-        }
-    }
-
-    func allocator(forAddress address: UInt32) -> Allocator? {
-        return allocators.withLock { allocators in
-            .first { $0.addressSpace & Allocator.addressSpaceMask == address & Allocator.addressSpaceMask }
-        }
-    }
-}
+// MARK: - Allocator integration with malloc
 
 private nonisolated(unsafe) let mallocMutex: UnsafeMutablePointer<mutex_t> = {
     let ptr = UnsafeMutablePointer<mutex_t>.allocate(capacity: 1)
@@ -129,72 +258,75 @@ private func mallocExit(_ state: MallocLockState) {
 }
 
 @inline(__always)
-private func mallocPanic() -> Never {
-    fatalError("[CPicoSDK] Out of memory")
+private func mallocPanic(memoryType: MemoryType) -> Never {
+    fatalError("[CPicoSDK] \(memoryType.rawValue) Out of memory")
 }
 
 @inline(__always)
-private func checkAlloc(_ mem: UnsafeMutableRawPointer?, _ size: Int) {
+private func checkAlloc(_ mem: UnsafeMutableRawPointer?, _ size: Int, allocator: Allocator) {
     guard let mem else {
-        mallocPanic()
+        mallocPanic(memoryType: allocator.memoryType)
     }
-    let end = UInt(bitPattern: mem) &+ UInt(size)
-    let limit = withUnsafePointer(to: &stackLimit) { UInt(bitPattern: $0) }
-    if end > limit {
-        mallocPanic()
+
+    if UInt(bitPattern: mem) &+ UInt(size) > allocator.stackLimit {
+        mallocPanic(memoryType: allocator.memoryType)
     }
 }
 
 @inline(__always)
-private func debugAllocFailure(_ fn: StaticString, _ size: Int) {
-    Swift::print("[CPicoSDK] \(fn) failed to allocate \(size) bytes")
+private func debugAllocFailure(_ fn: StaticString, _ size: Int, memoryType: MemoryType) {
+    print("[CPicoSDK] \(fn) failed to allocate \(size) bytes in \(memoryType.rawValue) allocator.")
 }
 
 @_cdecl("__wrap_malloc")
 func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
+    let allocator = Allocator.sram
     let state = mallocEnter(outer: false)
-    let rc = real_malloc(size)
+    let rc = allocator.malloc(size)
     mallocExit(state)
-    if rc == nil { debugAllocFailure("malloc", size) }
-    checkAlloc(rc, size)
+    if rc == nil { debugAllocFailure("malloc", size, memoryType: allocator.memoryType) }
+    checkAlloc(rc, size, allocator: allocator)
     return rc
 }
 
 @_cdecl("__wrap_calloc")
 func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
     let (totalSize, overflow) = num.multipliedReportingOverflow(by: size)
+    let allocator = Allocator.sram
     if overflow {
-        mallocPanic()
+        mallocPanic(memoryType: allocator.memoryType)
     }
     let state = mallocEnter(outer: true)
-    let rc = real_calloc(num, size)
+    let rc = allocator.calloc(num, size)
     mallocExit(state)
-    if rc == nil { debugAllocFailure("calloc", totalSize) }
-    checkAlloc(rc, totalSize)
+    if rc == nil { debugAllocFailure("calloc", totalSize, memoryType: allocator.memoryType) }
+    checkAlloc(rc, totalSize, allocator: allocator)
     return rc
 }
 
 @_cdecl("__wrap_realloc")
 func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
     let state = mallocEnter(outer: true)
-    let rc = real_realloc(ptr, size)
+    let allocator = AllocatorManager.shared.allocator(for: ptr)
+    let rc = allocator.realloc(ptr, size)
     mallocExit(state)
-    if rc == nil { debugAllocFailure("realloc", size) }
-    checkAlloc(rc, size)
+    if rc == nil { debugAllocFailure("realloc", size, memoryType: allocator.memoryType) }
+    checkAlloc(rc, size, allocator: allocator)
     return rc
 }
 
 @_cdecl("__wrap_free")
 func free(_ ptr: UnsafeMutableRawPointer?) {
     let state = mallocEnter(outer: false)
-    real_free(ptr)
+    let allocator = AllocatorManager.shared.allocator(for: ptr)
+    allocator.free(ptr)
     mallocExit(state)
 }
 
 // MARK: - Memory stats
 
 @_extern(c, "__StackLimit") 
-private nonisolated(unsafe) var stackLimit: UInt8
+private nonisolated(unsafe) var stackLimitSymbol: UInt8
 
 @_extern(c, "_sbrk")
 private func sbrk(_ incr: Int) -> UnsafeMutableRawPointer?
@@ -204,6 +336,12 @@ private func sbrk(_ incr: Int) -> UnsafeMutableRawPointer?
 /// including how much memory is currently used, how much is freed but not 
 /// yet reused, and how much is untouched (never allocated).
 public struct MemoryStats {
+    public static var stats: [MemoryType: MemoryStats] {
+        AllocatorManager.shared.allocators.reduce(into: [MemoryType: MemoryStats]()) { partial, allocator in
+            partial[allocator.memoryType] = allocator.memStats()
+        }
+    }
+
     public static var sram: MemoryStats {
         // Get the current end of the heap (sbrk(0))
         guard let currentHeapEnd = sbrk(0) else {
@@ -213,7 +351,7 @@ public struct MemoryStats {
         
         // Get the address of the Stack Limit
         // Use withUnsafePointer to treat the symbol as an address
-        let limitAddress = withUnsafePointer(to: &stackLimit) { ptr in
+        let limitAddress = withUnsafePointer(to: &stackLimitSymbol) { ptr in
             return UInt(bitPattern: ptr)
         }
         
@@ -233,17 +371,10 @@ public struct MemoryStats {
         return .init(type: .sram, untouched: untouchedRam, freed: UInt32(mi.fordblks), used: UInt32(mi.uordblks))
     }
 
-    public static var psram: MemoryStats? {
-        #if PSRAM
-            if let allocator = try? PSRAMAllocator.shared(initialize: false) {
-                let used = allocator.usedMemory
-                return .init(type: .psram, untouched: 0, freed: UInt32(allocator.totalMemory - used), used: UInt32(used))
-            } else {
-                return nil
-            }
-        #else
-            return nil
-        #endif
+    public static func print() {
+        for allocator in AllocatorManager.shared.allocators {
+            allocator.memStats().print()
+        }
     }
 
     public let type: MemoryType

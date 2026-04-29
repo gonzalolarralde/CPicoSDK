@@ -45,7 +45,7 @@ public struct CPUStats {
     public let totalTime: UInt64
     public let interruptEvents: UInt64
 
-    public let memoryStats: [MemoryStats] = [.sram, .psram].compactMap { $0 }
+    public let memoryStats: [MemoryType: MemoryStats] = MemoryStats.stats
 
     public var taskUsagePercent: Double {
         totalTime > 0 ? Double(taskUsageTime) / Double(totalTime) * 100 : 0
@@ -64,7 +64,7 @@ public struct CPUStats {
     public func print(includeMemoryStats: Bool = true) {
         Swift::print("[CPicoConcurrency] \(self.description)")
         if includeMemoryStats {
-            for memoryStats in memoryStats {
+            for memoryStats in memoryStats.values {
                 memoryStats.print()
             }
         }

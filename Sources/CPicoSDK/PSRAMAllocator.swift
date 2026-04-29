@@ -66,6 +66,7 @@ public final class PSRAMAllocator {
         case heapInitializationFailed
         case configurationMissing
         case notInitialized
+        case allocatorRegistrationFailed(String)
 
         var description: String {
             switch self {
@@ -73,6 +74,7 @@ public final class PSRAMAllocator {
             case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
             case .configurationMissing: return "PSRAM configuration is missing. Please provide a `PSRAMConfiguration` in your `configure` block."
             case .notInitialized: return "PSRAMAllocator was not initialized yet."
+            case .allocatorRegistrationFailed(let error): return "Failed to register allocator: \(error)"
             }
         }
     }
@@ -401,7 +403,7 @@ public final class PSRAMAllocator {
 
     let configuration: PSRAMConfiguration
 
-    init(configuration: PSRAMConfiguration) throws(Error) {
+    init(configuration: PSRAMConfiguration, registerAutomatically: Bool = true) throws(Error) {
         self.configuration = configuration
 
         let psramSize = try Self.setupPSRAM(csPin: configuration.csPin, sysClockHz: UInt64(clock_get_hz(clk_sys)))
@@ -413,6 +415,28 @@ public final class PSRAMAllocator {
         self.psramSize = psramSize
         self.heap = heap
         self.psramPool = tlsf_get_pool(heap)
+
+        if registerAutomatically {
+            do {
+                try AllocatorManager.shared.register(
+                    Allocator(
+                        memoryType: .psram,
+                        addressSpace: UInt32(truncatingIfNeeded: UInt(bitPattern: psramBase)),
+                        stackLimit: UInt(bitPattern: psramBase) + UInt(psramSize),
+                        malloc: { [self] size in self.malloc(size) },
+                        calloc: { [self] num, size in self.calloc(num, size) },
+                        realloc: { [self] ptr, size in self.realloc(ptr, size) },
+                        free: { [self] ptr in self.free(ptr) },
+                        memStats: { [self] in
+                            let used = self.usedMemory
+                            return .init(type: .psram, untouched: 0, freed: UInt32(self.totalMemory - used), used: UInt32(used))
+                        }
+                    )
+                )
+            } catch {
+                throw Error.allocatorRegistrationFailed(error.description)
+            }
+        }
     }
 
     public func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
