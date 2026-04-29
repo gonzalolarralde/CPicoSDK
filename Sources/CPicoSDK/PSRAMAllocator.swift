@@ -474,4 +474,51 @@ public final class PSRAMAllocator {
     }
 }
 
+extension UnsafeMutablePointer {
+    public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutablePointer<Pointee>? {
+        switch memory {
+        case .sram:
+            return Self.allocate(capacity: capacity)
+        case .psram:
+            return try? PSRAMAllocator.shared().malloc(MemoryLayout<Pointee>.size * capacity)?.assumingMemoryBound(to: Pointee.self)
+        }
+    }
+}
+
+extension UnsafeMutableRawPointer {
+    public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawPointer? {
+        switch memory {
+        case .sram:
+             return Self.allocate(byteCount: byteCount, alignment: alignment)
+        case .psram:
+            return try? PSRAMAllocator.shared().malloc(byteCount)
+        }
+    }
+}
+
+extension UnsafeMutableBufferPointer {
+    public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutableBufferPointer<Element>? {
+        switch memory {
+        case .sram:
+            return Self.allocate(capacity: capacity)
+        case .psram:
+            guard let ptr = try? PSRAMAllocator.shared().malloc(MemoryLayout<Element>.size * capacity)?
+                .assumingMemoryBound(to: Element.self) else { return nil }
+            return UnsafeMutableBufferPointer(start: ptr, count: capacity)
+        }
+    }
+}
+
+extension UnsafeMutableRawBufferPointer {
+    public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawBufferPointer? {
+        switch memory {
+        case .sram:
+            return Self.allocate(byteCount: byteCount, alignment: alignment)
+        case .psram:
+            guard let ptr = try? PSRAMAllocator.shared().malloc(byteCount) else { return nil }
+            return UnsafeMutableRawBufferPointer(start: ptr, count: byteCount)
+        }
+    }
+}
+
 #endif
