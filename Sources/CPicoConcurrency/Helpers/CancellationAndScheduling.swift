@@ -34,12 +34,14 @@ public protocol EmbeddedAsyncApp {
 
 public extension EmbeddedAsyncApp {
     static func main() async {
+        setupPicoSDK()
+
         var configurator = Configurator()
         configure(with: &configurator)
         try! configurator.sealConfiguration()
 
         // TODO: Add WatchDog support here, and maybe a way to setup lwip callbacks in tightLoop.
-        setupPicoSDK()
+
         await setup()
         while true {
             await loop()

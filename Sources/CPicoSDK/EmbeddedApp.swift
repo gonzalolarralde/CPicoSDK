@@ -36,7 +36,7 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
         return ptr.load(as: C.self)
     }
 
-    private var configurations: [String: UnsafeMutableRawPointer] = [:]
+    private var configurations: [Configuration.ID: UnsafeMutableRawPointer] = [:]
 
     @_spi(Internal) public init() {}
 
@@ -64,7 +64,7 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
 /// behavior of the SDK, its features and the hardware connected to it.
 public protocol Configuration: ~Copyable {
     typealias ID = String
-    static var id: String { get }
+    static var id: ID { get }
 }
 
 /// Embedded app protocol. Provides a default implementation of the `main` method that
@@ -80,12 +80,14 @@ public protocol EmbeddedApp {
 
 public extension EmbeddedApp {
     static func main() {
+        setupPicoSDK()
+
         var configurator = Configurator()
         self.configure(with: &configurator)
         try! configurator.sealConfiguration()
 
         // TODO: WatchDog
-        setupPicoSDK()
+
         setup()
         while true {
             loop()

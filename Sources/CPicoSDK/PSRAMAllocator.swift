@@ -10,8 +10,11 @@
     import _CPicoSDK_pico2_w
 #endif
 
+#if PSRAM
 import CShims
 import TLSF
+import Synchronization
+#endif
 
 public struct PSRAMConfiguration: Configuration {
     public static var id: String { "CPicoSDK-PSRAMConfiguration" }
@@ -30,33 +33,42 @@ public struct PSRAMConfiguration: Configuration {
 /// 
 /// This implementation is heavily based on https://github.com/sparkfun/sparkfun-pico
 public final class PSRAMAllocator {
-    // TODO: Add a mutex
+    // private let instanceMutex = UnsafeMutablePointer<Bool>.allocate(capacity: 1)
     private nonisolated(unsafe) static var instance: PSRAMAllocator?
+    // private static let instance: Mutex<PSRAMAllocator?> = .init(nil)
 
     /// Tries to initialize the PSRAM allocator with the configuration provided in the `Configurator`. 
     /// If the configuration is missing or invalid, it will throw an error.
-    public static func shared() throws(Error) -> PSRAMAllocator {
-        if let instance = instance {
-            return instance
-        } else if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
-            let allocator = try PSRAMAllocator(configuration: config)
-            instance = allocator
-            return allocator
-        } else {
-            throw Error.configurationMissing
-        }
+    public static func shared(initialize: Bool = true) throws(Error) -> PSRAMAllocator {
+        // try instance.withLock { (instance: inout sending PSRAMAllocator?) throws(Error) -> sending PSRAMAllocator in
+            if let instance = instance {
+                return instance
+            } else if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
+                if initialize {
+                    let allocator = try PSRAMAllocator(configuration: config)
+                    instance = allocator
+                    return allocator
+                } else {
+                    throw Error.notInitialized
+                }
+            } else {
+                throw Error.configurationMissing
+            }
+        // }
     }
 
     public enum Error: Swift.Error {
         case noMemoryDetected
         case heapInitializationFailed
         case configurationMissing
+        case notInitialized
 
         var description: String {
             switch self {
             case .noMemoryDetected: return "No PSRAM memory detected. Check your connections and try again."
             case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
             case .configurationMissing: return "PSRAM configuration is missing. Please provide a `PSRAMConfiguration` in your `configure` block."
+            case .notInitialized: return "PSRAMAllocator was not initialized yet."
             }
         }
     }

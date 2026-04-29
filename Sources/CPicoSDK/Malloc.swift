@@ -22,24 +22,22 @@ func real_realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutable
 @_extern(c, "__real_free")
 func real_free(_ ptr: UnsafeMutableRawPointer?)
 
-import _Concurrency
-public enum Allocator: Sendable {
-    @TaskLocal
-    public static var current: Allocator = .auto
-
+#if PSRAM
+public enum AllocatorConfiguration: Sendable {
     case sram
-    case psram
-    case auto
+    case psram(afterSRAMWatermark: UInt32? = 1024 * 450, forAllocationsBiggerThan: UInt32 = 1024 * 20)
 
-    var description: String {
-        switch self {
-        case .sram: return "SRAM"
-        case .psram: return "PSRAM"
-        case .auto: return "Automatic"
-        }
-    }
+    // var description: String {
+    //     switch self {
+    //     case .sram: "SRAM"
+    //     case let .psram(watermark?, nil): "SRAM until \(watermark) bytes, then PSRAM"
+    //     case let .psram(nil, threshold?): "SRAM for allocations smaller than \(threshold)"
+    //     case let .psram(watermark?, threshold?): "SRAM until \(watermark) bytes and for allocations smaller than \(threshold), then PSRAM"
+    //     case .psram(nil, nil): "PSRAM"
+    //     }
+    // }
 }
-
+#endif
 // #if PSRAM
 
 // nonisolated(unsafe) let allocator = try! PSRAMAllocator(csPin: 47)
@@ -68,7 +66,7 @@ public enum Allocator: Sendable {
 
 @_cdecl("__wrap_malloc")
 func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
-    print("Using task-local \(size) allocator=\(Allocator.current.description)")
+    // print("Using task-local \(size) allocator=\(Allocator.current.description)")
     return real_malloc(size)
 }
 
@@ -88,3 +86,79 @@ func free(_ ptr: UnsafeMutableRawPointer?) {
 }
 
 // #endif
+
+// MARK: - Memory stats
+
+@_extern(c, "__StackLimit") 
+private nonisolated(unsafe) var stackLimit: UInt8
+
+@_extern(c, "_sbrk")
+private func sbrk(_ incr: Int) -> UnsafeMutableRawPointer?
+
+/// Memory usage statistics for the current state of the heap and stack. 
+/// The `current` property provides a snapshot of the current memory stats,
+/// including how much memory is currently used, how much is freed but not 
+/// yet reused, and how much is untouched (never allocated).
+public struct MemoryStats {
+    public static var sram: MemoryStats {
+        // Get the current end of the heap (sbrk(0))
+        guard let currentHeapEnd = sbrk(0) else {
+            assertionFailure("[CPicoSDK] Failed to get current heap end using sbrk(0).")
+            return .init(untouched: 0, freed: 0, used: 0)
+        }
+        
+        // Get the address of the Stack Limit
+        // Use withUnsafePointer to treat the symbol as an address
+        let limitAddress = withUnsafePointer(to: &stackLimit) { ptr in
+            return UInt(bitPattern: ptr)
+        }
+        
+        let currentHeapAddr = UInt(bitPattern: currentHeapEnd)
+        
+        // Calculate untouched RAM
+        // Ensure we don't underflow if the heap has somehow passed the limit
+        let untouchedRam: UInt32 = if limitAddress > currentHeapAddr {
+            UInt32(limitAddress - currentHeapAddr)
+        } else {
+            0
+        }
+        
+        // Get internal free blocks via mallinfo
+        let mi = mallinfo()
+
+        return .init(untouched: untouchedRam, freed: UInt32(mi.fordblks), used: UInt32(mi.uordblks))
+    }
+
+    public static var psram: MemoryStats? {
+        #if PSRAM
+            if let allocator = try? PSRAMAllocator.shared(initialize: false) {
+                let used = allocator.usedMemory
+                return .init(untouched: 0, freed: UInt32(allocator.totalMemory - used), used: UInt32(used))
+            } else {
+                return nil
+            }
+        #else
+            return nil
+        #endif
+    }
+
+    public let untouched: UInt32
+    public let freed: UInt32
+    public let used: UInt32
+
+    public var totalFree: UInt32 {
+        return untouched + freed
+    }
+
+    public var total: UInt32 {
+        return used + totalFree
+    }
+
+    public var description: String {
+        "Memory: used=\(used) bytes; freed=\(freed) bytes; untouched=\(untouched) bytes; total_free=\(totalFree) bytes; total=\(total) bytes"
+    }
+
+    public func print() {
+        Swift::print("[CPicoSDK] \(self.description)")
+    }
+}
