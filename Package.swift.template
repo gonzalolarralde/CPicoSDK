@@ -57,7 +57,10 @@ let package = Package(
 
                 // GENERATOR MARK: TARGET DEPENDENCIES
             ],
-            swiftSettings: [.enableExperimentalFeature("Extern")]
+            swiftSettings: [
+                .enableExperimentalFeature("Extern"),
+                .enableExperimentalFeature("StaticExclusiveOnly"),
+            ]
         ),
 
         // Manually defined targets

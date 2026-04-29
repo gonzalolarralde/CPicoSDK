@@ -66,7 +66,10 @@ let package = Package(
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_None"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ],
-            swiftSettings: [.enableExperimentalFeature("Extern")]
+            swiftSettings: [
+                .enableExperimentalFeature("Extern"),
+                .enableExperimentalFeature("StaticExclusiveOnly"),
+            ]
         ),
 
         // Manually defined targets
