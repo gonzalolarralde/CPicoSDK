@@ -1,5 +1,3 @@
-#if PSRAM
-
 #if Variant_RP2350A && Radio_None
     import _CPicoSDK_pico2
 #elseif Variant_RP2350A && Radio_CYW43439
@@ -15,15 +13,52 @@
 import CShims
 import TLSF
 
+public struct PSRAMConfiguration: Configuration {
+    public static var id: String { "CPicoSDK-PSRAMConfiguration" }
+    let csPin: UInt32
+
+    public init(csPin: UInt32) {
+        self.csPin = csPin
+    }
+}
+
+#if PSRAM
+
 /// Allocator implementation to provide dynamic memory allocation from PSRAM,
 /// using the Pico's QMI interface to access it and TLSF as the heap management 
 /// algorithm.
 /// 
 /// This implementation is heavily based on https://github.com/sparkfun/sparkfun-pico
 public final class PSRAMAllocator {
+    // TODO: Add a mutex
+    private nonisolated(unsafe) static var instance: PSRAMAllocator?
+
+    /// Tries to initialize the PSRAM allocator with the configuration provided in the `Configurator`. 
+    /// If the configuration is missing or invalid, it will throw an error.
+    public static func shared() throws(Error) -> PSRAMAllocator {
+        if let instance = instance {
+            return instance
+        } else if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
+            let allocator = try PSRAMAllocator(configuration: config)
+            instance = allocator
+            return allocator
+        } else {
+            throw Error.configurationMissing
+        }
+    }
+
     public enum Error: Swift.Error {
         case noMemoryDetected
         case heapInitializationFailed
+        case configurationMissing
+
+        var description: String {
+            switch self {
+            case .noMemoryDetected: return "No PSRAM memory detected. Check your connections and try again."
+            case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
+            case .configurationMissing: return "PSRAM configuration is missing. Please provide a `PSRAMConfiguration` in your `configure` block."
+            }
+        }
     }
 
     struct Commands {
@@ -348,12 +383,12 @@ public final class PSRAMAllocator {
     let psramPool: pool_t
     let psramSize: Int
 
-    let csPin: UInt32
+    let configuration: PSRAMConfiguration
 
-    public init(csPin: UInt32) throws(Error) {
-        self.csPin = csPin
+    init(configuration: PSRAMConfiguration) throws(Error) {
+        self.configuration = configuration
 
-        let psramSize = try Self.setupPSRAM(csPin: csPin, sysClockHz: UInt64(clock_get_hz(clk_sys)))
+        let psramSize = try Self.setupPSRAM(csPin: configuration.csPin, sysClockHz: UInt64(clock_get_hz(clk_sys)))
 
         guard let heap = tlsf_create_with_pool(psramBase, psramSize, 64 * 1024 * 1024) else {
             throw Error.heapInitializationFailed
@@ -364,19 +399,19 @@ public final class PSRAMAllocator {
         self.psramPool = tlsf_get_pool(heap)
     }
 
-    public func sfeMemMalloc(_ size: Int) -> UnsafeMutableRawPointer? {
+    public func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
         tlsf_malloc(heap, size)
     }
 
-    public func sfeMemFree(_ ptr: UnsafeMutableRawPointer?) {
+    public func free(_ ptr: UnsafeMutableRawPointer?) {
         tlsf_free(heap, ptr)
     }
 
-    public func sfeMemRealloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
+    public func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
         tlsf_realloc(heap, ptr, size)
     }
 
-    public func sfeMemCalloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
+    public func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
         let (totalSize, overflow) = num.multipliedReportingOverflow(by: size)
         if overflow || totalSize < 0 { return nil }
         guard let ptr = tlsf_malloc(heap, totalSize) else { return nil }
@@ -422,55 +457,5 @@ public final class PSRAMAllocator {
         return total
     }
 }
-
-// @_cdecl("sfe_setup_psram")
-// public func sfe_setup_psram_c(_ psram_cs_pin: UInt32) -> Int {
-//     setupPSRAM(csPin: psram_cs_pin)
-// }
-
-// @_cdecl("sfe_psram_update_timing")
-// public func sfe_psram_update_timing_c() {
-//     setPSRAMTiming()
-// }
-
-// @_cdecl("sfe_pico_alloc_init")
-// public func sfe_pico_alloc_init_c() -> Bool {
-//     sfePicoAllocInit()
-// }
-
-// @_cdecl("sfe_mem_malloc")
-// public func sfe_mem_malloc_c(_ size: Int) -> UnsafeMutableRawPointer? {
-//     sfeMemMalloc(size)
-// }
-
-// @_cdecl("sfe_mem_free")
-// public func sfe_mem_free_c(_ ptr: UnsafeMutableRawPointer?) {
-//     sfeMemFree(ptr)
-// }
-
-// @_cdecl("sfe_mem_realloc")
-// public func sfe_mem_realloc_c(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
-//     sfeMemRealloc(ptr, size)
-// }
-
-// @_cdecl("sfe_mem_calloc")
-// public func sfe_mem_calloc_c(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
-//     sfeMemCalloc(num, size)
-// }
-
-// @_cdecl("sfe_mem_max_free_size")
-// public func sfe_mem_max_free_size_c() -> Int {
-//     poolWalkTotal(maxFreeWalker)
-// }
-
-// @_cdecl("sfe_mem_size")
-// public func sfe_mem_size_c() -> Int {
-//     poolWalkTotal(memorySizeWalker)
-// }
-
-// @_cdecl("sfe_mem_used")
-// public func sfe_mem_used_c() -> Int {
-//     poolWalkTotal(memoryUsedWalker)
-// }
 
 #endif

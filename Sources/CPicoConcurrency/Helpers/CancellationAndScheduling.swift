@@ -26,12 +26,18 @@ extension Task where Success == Never, Failure == Never {
 /// Using this protocol is optional, if a custom `main` start sequence is needed, it can be
 /// implemented directly in their app.
 public protocol EmbeddedAsyncApp {
+    static func configure(with configurator: inout Configurator)
+
     static func setup() async
     static func loop() async
 }
 
 public extension EmbeddedAsyncApp {
     static func main() async {
+        var configurator = Configurator()
+        configure(with: &configurator)
+        try! configurator.sealConfiguration()
+
         // TODO: Add WatchDog support here, and maybe a way to setup lwip callbacks in tightLoop.
         setupPicoSDK()
         await setup()

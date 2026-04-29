@@ -80,28 +80,6 @@
     stdio_init_all()
 }
 
-/// Embedded app protocol. Provides a default implementation of the `main` method that
-/// sets up basic PicoSDK features before calling the user-defined `setup` and `loop`.
-/// 
-/// Using this protocol is optional, if a custom `main` start sequence is needed, it can be
-/// implemented directly in their app.
-public protocol EmbeddedApp {
-    static func setup()
-    static func loop()
-}
-
-public extension EmbeddedApp {
-    static func main() {
-        // TODO: WatchDog
-        setupPicoSDK()
-        setup()
-        while true {
-            loop()
-            tight_loop_contents()
-        }
-    }
-}
-
 // MARK: - Memory stats
 
 @_extern(c, "__StackLimit") 
