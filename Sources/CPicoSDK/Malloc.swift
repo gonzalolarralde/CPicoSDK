@@ -10,6 +10,8 @@
     import _CPicoSDK_pico2_w
 #endif
 
+// MARK: - Real malloc symbols
+
 @_extern(c, "__real_malloc")
 func real_malloc(_ size: Int) -> UnsafeMutableRawPointer?
 
@@ -22,80 +24,39 @@ func real_realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutable
 @_extern(c, "__real_free")
 func real_free(_ ptr: UnsafeMutableRawPointer?)
 
-#if PSRAM
+// MARK: - Malloc overrides
 
-private nonisolated(unsafe) var _allocator_storage: PSRAMAllocator?
-private nonisolated(unsafe) var _strategy_storage: PSRAMConfiguration.MallocStrategy?
-
-private var allocator: PSRAMAllocator? {
-    if let allocator = _allocator_storage {
-        return allocator
-    } else {
-        if let allocatorInstance = try? PSRAMAllocator.shared(initialize: true) {
-            _allocator_storage = allocatorInstance
-            return allocatorInstance
-        } else {
-            return nil
-        }
-    }
-}
-
-private var strategy: PSRAMConfiguration.MallocStrategy {
-    if let strategy = _strategy_storage {
-        return strategy
-    } else {
-        if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
-            _strategy_storage = config.mallocStrategy
-            return config.mallocStrategy
-        } else {
-            return .default
-        }
-    }
-}
+let mallocMutex = Mutex(Void())
 
 @_cdecl("__wrap_malloc")
 func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
-    return real_malloc(size)
+    mallocMutex.withLock { _ in
+        real_malloc(size)
+    }
 }
 
 @_cdecl("__wrap_calloc")
 func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
-    return real_calloc(num, size)
+    mallocMutex.withLock { _ in
+        real_calloc(num, size)
+    }
 }
 
 @_cdecl("__wrap_realloc")
 func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
+    mallocMutex._unsafeLock()
+    defer {
+        mallocMutex._unsafeUnlock()
+    }
     return real_realloc(ptr, size)
 }
 
 @_cdecl("__wrap_free")
 func free(_ ptr: UnsafeMutableRawPointer?) {
-    allocator.real_free(ptr)
+    mallocMutex.withLock { _ in
+        real_free(ptr)
+    }
 }
-
-#else
-
-@_cdecl("__wrap_malloc")
-func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
-    return real_malloc(size)
-}
-
-@_cdecl("__wrap_calloc")
-func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
-    return real_calloc(num, size)
-}
-
-@_cdecl("__wrap_realloc")
-func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
-    return real_realloc(ptr, size)
-}
-
-@_cdecl("__wrap_free")
-func free(_ ptr: UnsafeMutableRawPointer?) {
-    real_free(ptr)
-}
-
-#endif
 
 // MARK: - Memory stats
 

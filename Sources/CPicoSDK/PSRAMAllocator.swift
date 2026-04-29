@@ -17,36 +17,17 @@ import Synchronization
 #endif
 
 public struct PSRAMConfiguration: Configuration {
-    public enum MallocStrategy: Sendable {
-        /// Only use the internal SRAM for allocations, PSRAM won't be automatically used by malloc.
-        case sram
-        /// Use PSRAM for allocations bigger than the provided threshold, and SRAM for smaller ones. 
-        // This is useful to keep small allocations in the faster internal memory, while still being 
-        // able to use the PSRAM for bigger buffers. 
-        case psram(afterSRAMWatermark: UInt32?, forAllocationsBiggerThan: UInt32?)
-
-        // The first 450KB of allocations smaller than 20KB will be allocated in SRAM, while the rest
-        // will be sent to the PSRAM.
-        static var `default`: Self { .psram(afterSRAMWatermark: 1024 * 450, forAllocationsBiggerThan: 1024 * 20) }
-
-        // var description: String {
-        //     switch self {
-        //     case .sram: "SRAM"
-        //     case let .psram(watermark?, nil): "SRAM until \(watermark) bytes, then PSRAM"
-        //     case let .psram(nil, threshold?): "SRAM for allocations smaller than \(threshold)"
-        //     case let .psram(watermark?, threshold?): "SRAM until \(watermark) bytes and for allocations smaller than \(threshold), then PSRAM"
-        //     case .psram(nil, nil): "PSRAM"
-        //     }
-        // }
-    }
+    public static let defaultCSPin: UInt32 = 47
 
     public static var id: String { "CPicoSDK-PSRAMConfiguration" }
-    let csPin: UInt32
-    let mallocStrategy: MallocStrategy
 
-    public init(csPin: UInt32, mallocStrategy: MallocStrategy = .default) {
+    /// The pin used for the PSRAM chip select. This pin will be configured as `GPIO_FUNC_XIP_CS1` 
+    // internally, so make sure to connect your PSRAM's CS pin to a compatible GPIO. It's usually
+    // GPIO 47 on most Pico models, but check your board's pinout to be sure.
+    let csPin: UInt32
+
+    public init(csPin: UInt32 = defaultCSPin) {
         self.csPin = csPin
-        self.mallocStrategy = mallocStrategy
     }
 }
 
