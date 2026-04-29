@@ -46,11 +46,12 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
         self.configurations[C.id] = ptr
     }
 
-    @_spi(Internal) public func sealConfiguration() throws {
+    @_spi(Internal) public mutating func sealConfiguration() throws {
         if Self.configurations != nil {
             throw Error.configurationWasAlreadySealed
         }
         Self.configurations = self.configurations
+        self.configurations = [:]
     }
 
     deinit {
