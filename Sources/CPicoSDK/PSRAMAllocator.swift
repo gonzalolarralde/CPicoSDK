@@ -17,11 +17,36 @@ import Synchronization
 #endif
 
 public struct PSRAMConfiguration: Configuration {
+    public enum MallocStrategy: Sendable {
+        /// Only use the internal SRAM for allocations, PSRAM won't be automatically used by malloc.
+        case sram
+        /// Use PSRAM for allocations bigger than the provided threshold, and SRAM for smaller ones. 
+        // This is useful to keep small allocations in the faster internal memory, while still being 
+        // able to use the PSRAM for bigger buffers. 
+        case psram(afterSRAMWatermark: UInt32?, forAllocationsBiggerThan: UInt32?)
+
+        // The first 450KB of allocations smaller than 20KB will be allocated in SRAM, while the rest
+        // will be sent to the PSRAM.
+        static var `default`: Self { .psram(afterSRAMWatermark: 1024 * 450, forAllocationsBiggerThan: 1024 * 20) }
+
+        // var description: String {
+        //     switch self {
+        //     case .sram: "SRAM"
+        //     case let .psram(watermark?, nil): "SRAM until \(watermark) bytes, then PSRAM"
+        //     case let .psram(nil, threshold?): "SRAM for allocations smaller than \(threshold)"
+        //     case let .psram(watermark?, threshold?): "SRAM until \(watermark) bytes and for allocations smaller than \(threshold), then PSRAM"
+        //     case .psram(nil, nil): "PSRAM"
+        //     }
+        // }
+    }
+
     public static var id: String { "CPicoSDK-PSRAMConfiguration" }
     let csPin: UInt32
+    let mallocStrategy: MallocStrategy
 
-    public init(csPin: UInt32) {
+    public init(csPin: UInt32, mallocStrategy: MallocStrategy = .default) {
         self.csPin = csPin
+        self.mallocStrategy = mallocStrategy
     }
 }
 
@@ -33,14 +58,12 @@ public struct PSRAMConfiguration: Configuration {
 /// 
 /// This implementation is heavily based on https://github.com/sparkfun/sparkfun-pico
 public final class PSRAMAllocator {
-    // private let instanceMutex = UnsafeMutablePointer<Bool>.allocate(capacity: 1)
-    private nonisolated(unsafe) static var instance: PSRAMAllocator?
-    // private static let instance: Mutex<PSRAMAllocator?> = .init(nil)
+    private static let instance: Mutex<PSRAMAllocator?> = .init(nil)
 
     /// Tries to initialize the PSRAM allocator with the configuration provided in the `Configurator`. 
     /// If the configuration is missing or invalid, it will throw an error.
     public static func shared(initialize: Bool = true) throws(Error) -> PSRAMAllocator {
-        // try instance.withLock { (instance: inout sending PSRAMAllocator?) throws(Error) -> sending PSRAMAllocator in
+        try instance.withLock { (instance: inout sending PSRAMAllocator?) throws(Error) -> sending PSRAMAllocator in
             if let instance = instance {
                 return instance
             } else if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
@@ -54,7 +77,7 @@ public final class PSRAMAllocator {
             } else {
                 throw Error.configurationMissing
             }
-        // }
+        }
     }
 
     public enum Error: Swift.Error {

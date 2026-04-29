@@ -23,50 +23,60 @@ func real_realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutable
 func real_free(_ ptr: UnsafeMutableRawPointer?)
 
 #if PSRAM
-public enum AllocatorConfiguration: Sendable {
-    case sram
-    case psram(afterSRAMWatermark: UInt32? = 1024 * 450, forAllocationsBiggerThan: UInt32 = 1024 * 20)
 
-    // var description: String {
-    //     switch self {
-    //     case .sram: "SRAM"
-    //     case let .psram(watermark?, nil): "SRAM until \(watermark) bytes, then PSRAM"
-    //     case let .psram(nil, threshold?): "SRAM for allocations smaller than \(threshold)"
-    //     case let .psram(watermark?, threshold?): "SRAM until \(watermark) bytes and for allocations smaller than \(threshold), then PSRAM"
-    //     case .psram(nil, nil): "PSRAM"
-    //     }
-    // }
+private nonisolated(unsafe) var _allocator_storage: PSRAMAllocator?
+private nonisolated(unsafe) var _strategy_storage: PSRAMConfiguration.MallocStrategy?
+
+private var allocator: PSRAMAllocator? {
+    if let allocator = _allocator_storage {
+        return allocator
+    } else {
+        if let allocatorInstance = try? PSRAMAllocator.shared(initialize: true) {
+            _allocator_storage = allocatorInstance
+            return allocatorInstance
+        } else {
+            return nil
+        }
+    }
 }
-#endif
-// #if PSRAM
 
-// nonisolated(unsafe) let allocator = try! PSRAMAllocator(csPin: 47)
-
-// @_cdecl("__wrap_malloc")
-// func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
-//     return allocator.sfeMemMalloc(size)
-// }
-
-// @_cdecl("__wrap_calloc")
-// func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
-//     return allocator.sfeMemCalloc(num, size)
-// }
-
-// @_cdecl("__wrap_realloc")
-// func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
-//     return allocator.sfeMemRealloc(ptr, size)
-// }
-
-// @_cdecl("__wrap_free")
-// func free(_ ptr: UnsafeMutableRawPointer?) {
-//     allocator.sfeMemFree(ptr)
-// }
-
-// #else
+private var strategy: PSRAMConfiguration.MallocStrategy {
+    if let strategy = _strategy_storage {
+        return strategy
+    } else {
+        if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
+            _strategy_storage = config.mallocStrategy
+            return config.mallocStrategy
+        } else {
+            return .default
+        }
+    }
+}
 
 @_cdecl("__wrap_malloc")
 func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
-    // print("Using task-local \(size) allocator=\(Allocator.current.description)")
+    return real_malloc(size)
+}
+
+@_cdecl("__wrap_calloc")
+func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
+    return real_calloc(num, size)
+}
+
+@_cdecl("__wrap_realloc")
+func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
+    return real_realloc(ptr, size)
+}
+
+@_cdecl("__wrap_free")
+func free(_ ptr: UnsafeMutableRawPointer?) {
+    allocator.real_free(ptr)
+}
+
+#else
+
+@_cdecl("__wrap_malloc")
+func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
     return real_malloc(size)
 }
 
@@ -85,7 +95,7 @@ func free(_ ptr: UnsafeMutableRawPointer?) {
     real_free(ptr)
 }
 
-// #endif
+#endif
 
 // MARK: - Memory stats
 
@@ -100,11 +110,16 @@ private func sbrk(_ incr: Int) -> UnsafeMutableRawPointer?
 /// including how much memory is currently used, how much is freed but not 
 /// yet reused, and how much is untouched (never allocated).
 public struct MemoryStats {
+    public enum MemoryType: String {
+        case sram = "SRAM"
+        case psram = "PSRAM"
+    }
+
     public static var sram: MemoryStats {
         // Get the current end of the heap (sbrk(0))
         guard let currentHeapEnd = sbrk(0) else {
             assertionFailure("[CPicoSDK] Failed to get current heap end using sbrk(0).")
-            return .init(untouched: 0, freed: 0, used: 0)
+            return .init(type: .sram, untouched: 0, freed: 0, used: 0)
         }
         
         // Get the address of the Stack Limit
@@ -126,14 +141,14 @@ public struct MemoryStats {
         // Get internal free blocks via mallinfo
         let mi = mallinfo()
 
-        return .init(untouched: untouchedRam, freed: UInt32(mi.fordblks), used: UInt32(mi.uordblks))
+        return .init(type: .sram, untouched: untouchedRam, freed: UInt32(mi.fordblks), used: UInt32(mi.uordblks))
     }
 
     public static var psram: MemoryStats? {
         #if PSRAM
             if let allocator = try? PSRAMAllocator.shared(initialize: false) {
                 let used = allocator.usedMemory
-                return .init(untouched: 0, freed: UInt32(allocator.totalMemory - used), used: UInt32(used))
+                return .init(type: .psram, untouched: 0, freed: UInt32(allocator.totalMemory - used), used: UInt32(used))
             } else {
                 return nil
             }
@@ -142,6 +157,7 @@ public struct MemoryStats {
         #endif
     }
 
+    public let type: MemoryType
     public let untouched: UInt32
     public let freed: UInt32
     public let used: UInt32
@@ -155,7 +171,7 @@ public struct MemoryStats {
     }
 
     public var description: String {
-        "Memory: used=\(used) bytes; freed=\(freed) bytes; untouched=\(untouched) bytes; total_free=\(totalFree) bytes; total=\(total) bytes"
+        "\(type.rawValue) Memory: used=\(used) bytes; freed=\(freed) bytes; untouched=\(untouched) bytes; total_free=\(totalFree) bytes; total=\(total) bytes"
     }
 
     public func print() {
