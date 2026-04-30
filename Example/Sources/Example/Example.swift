@@ -4,6 +4,11 @@ import Synchronization
 
 @main
 struct App: EmbeddedAsyncApp {
+    static func configure(with configurator: inout Configurator) {
+        /// Enable only if the hardware includes a PSRAM chip. 
+        // configurator.configure(PSRAMConfiguration())
+    }
+
     static func setup() async {
         stdio_init_all()
         status_led_init()
@@ -12,7 +17,24 @@ struct App: EmbeddedAsyncApp {
         let atomicBool = Atomic<Bool>(false)
         print("Atomic exchange: old=\(atomicBool.exchange(true, ordering: .sequentiallyConsistent)) new=\(atomicBool.load(ordering: .sequentiallyConsistent))")
 
-        print("Scheduling 1 second wait...")
+        // Checking custom allocator
+        print("Testing PSRAM allocator: ")
+        if let mem = UnsafeMutableRawPointer.allocate(byteCount: 1024, alignment: 4, in: .psram) {
+            print("Allocated 1024 bytes in PSRAM at \(String(UInt(bitPattern: mem), radix: 16))")
+            mem.deallocate()
+        } else {
+            print("Failed to allocate memory in PSRAM.")
+        }
+
+        print("Testing PSRAM fallback: ")
+        if let mem = UnsafeMutableRawPointer.allocate(byteCount: 1024, alignment: 4, in: .psramIfAvailable) {
+            print("Allocated 1024 bytes in PSRAM or SRAM memory at \(String(UInt(bitPattern: mem), radix: 16))")
+            mem.deallocate()
+        } else {
+            print("Failed to allocate memory in PSRAM or SRAM.")
+        }
+
+        print("Scheduling 1 second alarm...")
         try? await Task.sleep(ms: 1000)
         print("One second!")
 
