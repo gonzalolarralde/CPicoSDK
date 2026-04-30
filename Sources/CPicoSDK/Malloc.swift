@@ -17,11 +17,20 @@ public enum MemoryType: String {
     case psram = "PSRAM"
 }
 
-
 // MARK: - Allocator manager
 
-struct Allocator: Configuration, @unchecked Sendable {
-    static let id = "Allocator_CPicoSDK_\(Int.random(in: Int.min...Int.max))"
+public struct Allocator: Configuration, @unchecked Sendable {
+    public enum Error: Swift.Error {
+        case overlappingAllocator
+
+        var description: String {
+            switch self {
+            case .overlappingAllocator: return "Allocator overlaps with an existing allocator's address space."
+            }
+        }
+    }
+
+    public static let id = "Allocator_CPicoSDK_\(Int.random(in: Int.min...Int.max))"
     static let addressSpaceMask: UInt32 = 0xFF00_0000
 
     let memoryType: MemoryType
@@ -34,28 +43,38 @@ struct Allocator: Configuration, @unchecked Sendable {
     let free: (UnsafeMutableRawPointer?) -> Void
     let memStats: () -> MemoryStats
 
+    public init(
+        memoryType: MemoryType,
+        addressSpace: UInt32,
+        stackLimit: UInt,
+        malloc: @escaping (Int) -> UnsafeMutableRawPointer?,
+        calloc: @escaping (Int, Int) -> UnsafeMutableRawPointer?,
+        realloc: @escaping (UnsafeMutableRawPointer?, Int) -> UnsafeMutableRawPointer?,
+        free: @escaping (UnsafeMutableRawPointer?) -> Void,
+        memStats: @escaping () -> MemoryStats
+    ) {
+        self.memoryType = memoryType
+        self.addressSpace = addressSpace
+        self.stackLimit = stackLimit
+        self.malloc = malloc
+        self.calloc = calloc
+        self.realloc = realloc
+        self.free = free
+        self.memStats = memStats
+    }
+
     @inline(__always)
     func owns(address: UInt32) -> Bool {
         (address & Self.addressSpaceMask) == (addressSpace & Self.addressSpaceMask)
     }
 
-    func executeConfiguration(with configurator: inout Configurator) throws(AllocatorManager.Error) {
+    public func executeConfiguration(with configurator: inout Configurator) throws(Allocator.Error) {
         try AllocatorManager.shared.register(self)
     }
 }
 
 final class AllocatorManager: @unchecked Sendable {
     public static let shared = AllocatorManager()
-
-    enum Error: Swift.Error {
-        case overlappingAllocator
-
-        var description: String {
-            switch self {
-            case .overlappingAllocator: return "Allocator overlaps with an existing allocator's address space."
-            }
-        }
-    }
 
     private struct AllocatorRegistryNode {
         var allocator: Allocator
@@ -101,7 +120,7 @@ final class AllocatorManager: @unchecked Sendable {
         return false
     }
 
-    func register(_ allocator: Allocator) throws(Error) {
+    func register(_ allocator: Allocator) throws(Allocator.Error) {
         // Pre-allocate node outside the lock to avoid malloc reentrancy while the registry mutex is held.
         let node = UnsafeMutablePointer<AllocatorRegistryNode>.allocate(capacity: 1)
         node.initialize(to: AllocatorRegistryNode(allocator: allocator, next: nil))
@@ -111,7 +130,7 @@ final class AllocatorManager: @unchecked Sendable {
             mutex_exit(registryMutex)
             node.deinitialize(count: 1)
             node.deallocate()
-            throw Error.overlappingAllocator
+            throw Allocator.Error.overlappingAllocator
         }
 
         var cursor = allocatorRegistryHead
@@ -386,6 +405,13 @@ public struct MemoryStats {
 
     public var description: String {
         "\(type.rawValue) Memory: used=\(used) bytes; freed=\(freed) bytes; untouched=\(untouched) bytes; total_free=\(totalFree) bytes; total=\(total) bytes"
+    }
+
+    public init(type: MemoryType, untouched: UInt32, freed: UInt32, used: UInt32) {
+        self.type = type
+        self.untouched = untouched
+        self.freed = freed
+        self.used = used
     }
 
     public func print() {
