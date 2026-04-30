@@ -14,11 +14,11 @@
 /// place. It provides a type-safe way to configure the SDK and its features, and can 
 /// be used to configure hardware features and capabilities as well.
 public struct Configurator: ~Copyable { // TODO: Make ~Escapable
-    public enum Error: Swift.Error {
+    public enum Error: Swift.Error, CustomStringConvertible {
         case configurationWasAlreadySealed
         case configurationExecutionsFailed([(Configuration.ID, ConfigurationError)])
 
-        var description: String {
+        public var description: String {
             switch self {
             case .configurationWasAlreadySealed: "Configuration was already sealed, can't modify it anymore."
             case .configurationExecutionsFailed(let errors): "Configuration executions failed: \n\(errors.map { "\($0.0): \($0.1)" }.joined(separator: "\n"))"
@@ -56,30 +56,27 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
         }
     }
 
-    @_spi(Internal) public mutating func sealConfiguration() throws {
+    @_spi(Internal) public mutating func sealConfiguration() -> [ConfigurationError] {
         if Self.configurations != nil {
-            throw Error.configurationWasAlreadySealed
+            return [ConfigurationError(configurationID: "_Configurator", underlyingError: Error.configurationWasAlreadySealed)]
         }
 
         var processedIDs: Set<Configuration.ID> = []
+        var errors: [ConfigurationError] = []
+
         while true {
             let pending = accumulatedConfigurations.filter { !processedIDs.contains($0.key) }
             guard !pending.isEmpty else { break }
 
-            var errors: [(Configuration.ID, ConfigurationError)] = []
             for (id, configurations) in pending {
                 processedIDs.insert(id)
                 for configuration in configurations {
                     do {
                         try configuration.executeConfiguration(configuration.erasedConfiguration, &self)
                     } catch {
-                        errors.append((error.configurationID, error))
+                        errors.append(ConfigurationError(configurationID: id, underlyingError: error))
                     }
                 }
-            }
-
-            if !errors.isEmpty {
-                throw Error.configurationExecutionsFailed(errors)
             }
         }
 
@@ -88,6 +85,8 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
                 configuration.erasedConfiguration
             }
         }
+
+        return errors
     }
 }
 
@@ -95,7 +94,7 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
 /// behavior of the SDK, its features and the hardware connected to it.
 public protocol Configuration: ~Copyable {
     typealias ID = String
-    associatedtype ExecutionError: Swift.Error = Never
+    associatedtype ExecutionError: Swift.Error & CustomStringConvertible = Never
     static var id: ID { get }
     static var dependencies: [Configuration.ID] { get }
     func executeConfiguration(with configurator: inout Configurator) throws(ExecutionError)
@@ -112,16 +111,18 @@ extension Configuration {
     }
 }
 
-public struct ConfigurationError: Swift.Error {
+public struct ConfigurationError: Swift.Error & CustomStringConvertible {
     public let configurationID: Configuration.ID
+    public let description: String
     let underlyingError: UnsafeWeaklyTypedContainer
 
-    init<E: Swift.Error>(configurationID: Configuration.ID, underlyingError: E) {
+    init<E: Swift.Error & CustomStringConvertible>(configurationID: Configuration.ID, underlyingError: E) {
         self.configurationID = configurationID
+        self.description = underlyingError.description
         self.underlyingError = UnsafeWeaklyTypedContainer(underlyingError)
     }
 
-    static func wrapError<T, E: Swift.Error>(for configurationId: Configuration.ID, _ body: () throws(E) -> T) throws(ConfigurationError) -> T {
+    static func wrapError<T, E: Swift.Error & CustomStringConvertible>(for configurationId: Configuration.ID, _ body: () throws(E) -> T) throws(ConfigurationError) -> T {
         do {
             return try body()
         } catch {
@@ -173,6 +174,7 @@ extension [Configuration.ID: [UnsafeWeaklyTypedContainer]] {
 /// implemented directly in their app.
 public protocol EmbeddedApp {
     static func configure(with configurator: inout Configurator)
+    static func handleConfigurationErrors(_ errors: [ConfigurationError])
     static func setup()
     static func loop()
 }
@@ -183,7 +185,11 @@ public extension EmbeddedApp {
 
         var configurator = Configurator()
         self.configure(with: &configurator)
-        try! configurator.sealConfiguration()
+        let errors = configurator.sealConfiguration()
+
+        if errors.count > 0 {
+            self.handleConfigurationErrors(errors)
+        }
 
         // TODO: WatchDog
 
@@ -196,5 +202,11 @@ public extension EmbeddedApp {
 
     static func configure(with configurator: inout Configurator) {
         // Default implementation does nothing, this can be used by apps that don't need configuration.
+    }
+
+    static func handleConfigurationErrors(_ errors: [ConfigurationError]) {
+        for error in errors {
+            print("[CPicoSDK] Configuration error in \(error.configurationID): \(error.description)")
+        }
     }
 }

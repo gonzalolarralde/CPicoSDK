@@ -20,10 +20,10 @@ public enum MemoryType: String {
 // MARK: - Allocator manager
 
 public struct Allocator: Configuration, @unchecked Sendable {
-    public enum Error: Swift.Error {
+    public enum Error: Swift.Error, CustomStringConvertible {
         case overlappingAllocator
 
-        var description: String {
+        public var description: String {
             switch self {
             case .overlappingAllocator: return "Allocator overlaps with an existing allocator's address space."
             }
@@ -76,75 +76,72 @@ public struct Allocator: Configuration, @unchecked Sendable {
 final class AllocatorManager: @unchecked Sendable {
     public static let shared = AllocatorManager()
 
-    private struct AllocatorRegistryNode {
-        var allocator: Allocator
-        var next: UnsafeMutablePointer<AllocatorRegistryNode>?
+    private static func makeInitialStorage() -> [MemoryType: [Allocator]] {
+        var storage: [MemoryType: [Allocator]] = [:]
+        storage.reserveCapacity(2)
+
+        var sramAllocators: [Allocator] = []
+        sramAllocators.reserveCapacity(1)
+        sramAllocators.append(.sram)
+        storage[.sram] = sramAllocators
+
+        var psramAllocators: [Allocator] = []
+        psramAllocators.reserveCapacity(1)
+        storage[.psram] = psramAllocators
+
+        return storage
     }
 
-    private let registryMutex: UnsafeMutablePointer<mutex_t> = {
-        let ptr = UnsafeMutablePointer<mutex_t>.allocate(capacity: 1)
-        ptr.initialize(to: mutex_t())
-        mutex_init(ptr)
-        return ptr
-    }()
-
-    private var allocatorRegistryHead: UnsafeMutablePointer<AllocatorRegistryNode>? = {
-        let node = UnsafeMutablePointer<AllocatorRegistryNode>.allocate(capacity: 1)
-        node.initialize(to: AllocatorRegistryNode(allocator: .sram, next: nil))
-        return node
-    }()
+    private let storage: Mutex<[MemoryType: [Allocator]]> = .init(makeInitialStorage())
 
     var allocators: [Allocator] {
-        var allocators: [Allocator] = []
-        mutex_enter_blocking(registryMutex)
-        var cursor = allocatorRegistryHead
-        while let node = cursor {
-            allocators.append(node.pointee.allocator)
-            cursor = node.pointee.next
+        var all: [Allocator] = []
+        storage.withLock { storage in
+            for allocators in storage.values {
+                all.append(contentsOf: allocators)
+            }
         }
-        mutex_exit(registryMutex)
-        return allocators.reversed()
+        return all
     }
 
     @inline(__always)
-    private func hasOverlappingAllocator(_ allocator: Allocator) -> Bool {
+    func allocator(for memoryType: MemoryType) -> Allocator? {
+        allocators.first { $0.memoryType == memoryType }
+    }
+
+    @inline(__always)
+    private func hasOverlappingAllocator(_ allocator: Allocator, in storage: [MemoryType: [Allocator]]) -> Bool {
         let newAddressSpace = allocator.addressSpace & Allocator.addressSpaceMask
-        var cursor = allocatorRegistryHead
-        while let node = cursor {
-            let existing = node.pointee.allocator
-            if (existing.addressSpace & Allocator.addressSpaceMask) == newAddressSpace {
-                return true
+        for allocators in storage.values {
+            for existing in allocators {
+                if (existing.addressSpace & Allocator.addressSpaceMask) == newAddressSpace {
+                    return true
+                }
             }
-            cursor = node.pointee.next
         }
         return false
     }
 
     func register(_ allocator: Allocator) throws(Allocator.Error) {
-        // Pre-allocate node outside the lock to avoid malloc reentrancy while the registry mutex is held.
-        let node = UnsafeMutablePointer<AllocatorRegistryNode>.allocate(capacity: 1)
-        node.initialize(to: AllocatorRegistryNode(allocator: allocator, next: nil))
+        var overlapDetected = false
 
-        mutex_enter_blocking(registryMutex)
-        if hasOverlappingAllocator(allocator) {
-            mutex_exit(registryMutex)
-            node.deinitialize(count: 1)
-            node.deallocate()
+        storage.withLock { storage in
+            if hasOverlappingAllocator(allocator, in: storage) {
+                overlapDetected = true
+                return
+            }
+
+            var allocators = storage[allocator.memoryType] ?? []
+            if allocators.isEmpty {
+                allocators.reserveCapacity(1)
+            }
+            allocators.append(allocator)
+            storage[allocator.memoryType] = allocators
+        }
+
+        if overlapDetected {
             throw Allocator.Error.overlappingAllocator
         }
-
-        var cursor = allocatorRegistryHead
-        if cursor == nil {
-            allocatorRegistryHead = node
-            mutex_exit(registryMutex)
-            return
-        }
-
-        while cursor?.pointee.next != nil {
-            cursor = cursor?.pointee.next
-        }
-        cursor?.pointee.next = node
-        mutex_exit(registryMutex)
     }
 
     @inline(__always)
@@ -158,21 +155,16 @@ final class AllocatorManager: @unchecked Sendable {
             return .sram
         }
 
-        var match: Allocator?
-
-        mutex_enter_blocking(registryMutex)
-        var cursor = allocatorRegistryHead
-        while let node = cursor {
-            let allocator = node.pointee.allocator
-            if allocator.owns(address: address) {
-                match = allocator
-                break
+        return storage.withLock { storage in
+            for allocators in storage.values {
+                for allocator in allocators {
+                    if allocator.owns(address: address) {
+                        return allocator
+                    }
+                }
             }
-            cursor = node.pointee.next
+            return .sram
         }
-        mutex_exit(registryMutex)
-
-        return match ?? .sram
     }
 
 }
@@ -451,12 +443,9 @@ extension UnsafeMutablePointer {
     ///   of `Pointee`.
     /// - Parameter memory: The memory type in which to allocate the memory.
     public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutablePointer<Pointee>? {
-        switch memory {
-        case .sram:
-            return Self.allocate(capacity: capacity)
-        case .psram:
-            return try? PSRAMAllocator.shared().malloc(MemoryLayout<Pointee>.size * capacity)?.assumingMemoryBound(to: Pointee.self)
-        }
+        let size = MemoryLayout<Pointee>.size * capacity
+        guard let allocator = AllocatorManager.shared.allocator(for: memory) else { return nil }
+        return allocator.malloc(size)?.assumingMemoryBound(to: Pointee.self)
     }
 
     /// Allocates uninitialized memory for the specified number of instances of
@@ -520,12 +509,9 @@ extension UnsafeMutableRawPointer {
     /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
     ///     to `alignment`.
     public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawPointer? {
-        switch memory {
-        case .sram:
-             return Self.allocate(byteCount: byteCount, alignment: alignment)
-        case .psram:
-            return try? PSRAMAllocator.shared().malloc(byteCount)
-        }
+        let _ = alignment
+        guard let allocator = AllocatorManager.shared.allocator(for: memory) else { return nil }
+        return allocator.malloc(byteCount)
     }
 
     /// Allocates uninitialized memory with the specified size and alignment in the 
@@ -583,14 +569,10 @@ extension UnsafeMutableBufferPointer {
     ///   of `Element`.
     /// - Parameter memory: The memory type in which to allocate the memory.
     public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutableBufferPointer<Element>? {
-        switch memory {
-        case .sram:
-            return Self.allocate(capacity: capacity)
-        case .psram:
-            guard let ptr = try? PSRAMAllocator.shared().malloc(MemoryLayout<Element>.size * capacity)?
-                .assumingMemoryBound(to: Element.self) else { return nil }
-            return UnsafeMutableBufferPointer(start: ptr, count: capacity)
-        }
+        let size = MemoryLayout<Element>.size * capacity
+        guard let allocator = AllocatorManager.shared.allocator(for: memory) else { return nil }
+        guard let ptr = allocator.malloc(size)?.assumingMemoryBound(to: Element.self) else { return nil }
+        return UnsafeMutableBufferPointer(start: ptr, count: capacity)
     }
 
     /// Allocates uninitialized memory for the specified number of instances of
@@ -648,13 +630,10 @@ extension UnsafeMutableRawBufferPointer {
     /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
     ///     to `alignment`.
     public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawBufferPointer? {
-        switch memory {
-        case .sram:
-            return Self.allocate(byteCount: byteCount, alignment: alignment)
-        case .psram:
-            guard let ptr = try? PSRAMAllocator.shared().malloc(byteCount) else { return nil }
-            return UnsafeMutableRawBufferPointer(start: ptr, count: byteCount)
-        }
+        let _ = alignment
+        guard let allocator = AllocatorManager.shared.allocator(for: memory) else { return nil }
+        guard let ptr = allocator.malloc(byteCount) else { return nil }
+        return UnsafeMutableRawBufferPointer(start: ptr, count: byteCount)
     }
 
     /// Allocates uninitialized memory with the specified size and alignment in the

@@ -27,6 +27,7 @@ extension Task where Success == Never, Failure == Never {
 /// implemented directly in their app.
 public protocol EmbeddedAsyncApp {
     static func configure(with configurator: inout Configurator)
+    static func handleConfigurationErrors(_ errors: [ConfigurationError])
 
     static func setup() async
     static func loop() async
@@ -37,8 +38,12 @@ public extension EmbeddedAsyncApp {
         setupPicoSDK()
 
         var configurator = Configurator()
-        configure(with: &configurator)
-        try! configurator.sealConfiguration()
+        self.configure(with: &configurator)
+        let errors = configurator.sealConfiguration()
+
+        if errors.count > 0 {
+            self.handleConfigurationErrors(errors)
+        }
 
         // TODO: Add WatchDog support here, and maybe a way to setup lwip callbacks in tightLoop.
 
@@ -46,6 +51,16 @@ public extension EmbeddedAsyncApp {
         while true {
             await loop()
             Task.tightLoop()
+        }
+    }
+
+    static func configure(with configurator: inout Configurator) {
+        // Default implementation does nothing, this can be used by apps that don't need configuration.
+    }
+
+    static func handleConfigurationErrors(_ errors: [ConfigurationError]) {
+        for error in errors {
+            print("[CPicoSDK] Configuration error in \(error.configurationID): \(error.description)")
         }
     }
 }

@@ -48,14 +48,14 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
         }
     }
 
-    public enum Error: Swift.Error {
+    public enum Error: Swift.Error, CustomStringConvertible {
         case noMemoryDetected
         case heapInitializationFailed
         case configurationMissing
         case notInitialized
         case allocatorRegistrationFailed(String)
 
-        var description: String {
+        public var description: String {
             switch self {
             case .noMemoryDetected: return "No PSRAM memory detected. Check your connections and try again."
             case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
