@@ -10,13 +10,13 @@ let package = Package(
     products: [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
+        .library(name: "PSRAM", targets: ["PSRAM"]),
         .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
     traits: [
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
-        .trait(name: "PSRAM", description: "Enables support for PSRAM chips, allowing dynamic allocation of memory from the PSRAM."),
 
         // TODO: The generator needs to define traits. This needs to be implemented.
         .trait(name: "Platform_RP2350"),
@@ -59,7 +59,6 @@ let package = Package(
             dependencies: [
                 .target(name: "ARMClib"),
                 .target(name: "CShims"),
-                .target(name: "TLSF", condition: .when(traits: ["PSRAM"])),
 
                 // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
@@ -96,6 +95,15 @@ let package = Package(
             ]
         ),
         .target(name: "ConcurrencyShims"),
+
+        .target(
+            name: "PSRAM", 
+            dependencies: [
+                .target(name: "CShims"),
+                .target(name: "CPicoSDK"),
+                .target(name: "TLSF")
+            ]
+        ),
 
         .plugin(
             name: "PIOASMPlugin", 
