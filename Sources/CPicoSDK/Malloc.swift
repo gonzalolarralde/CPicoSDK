@@ -177,7 +177,7 @@ extension Allocator {
 
     private static let sramStackLimit: UInt = withUnsafePointer(to: &stackLimitSymbol) { UInt(bitPattern: $0) }
 
-    nonisolated(unsafe) static let sram: Allocator = {
+    static let sram: Allocator = {
         Allocator(
             memoryType: .sram,
             addressSpace: sramAddressSpace,
