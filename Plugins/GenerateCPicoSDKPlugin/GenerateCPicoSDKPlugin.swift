@@ -67,7 +67,10 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             throw Error.picoSDKNotFound
         }
 
-        let libDirs = try fileManager.subpathsOfDirectory(atPath: picoSDKSrc.path).filter { $0.hasSuffix("/" + libraryName) && !$0.contains("/host/") }
+        let libDirs = try fileManager.subpathsOfDirectory(atPath: picoSDKSrc.path).filter { dir in
+            dir.hasSuffix("/" + libraryName) && !dir.contains("/host/") && !dir.contains("/rp2040/")
+        }
+
         guard let firstLibDir = libDirs.first else {
             throw Error.libraryNotFound(libraryName)
         }
