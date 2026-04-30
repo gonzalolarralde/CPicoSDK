@@ -29,6 +29,24 @@ public struct PSRAMConfiguration: Configuration {
     public init(csPin: UInt32 = defaultCSPin) {
         self.csPin = csPin
     }
+
+    public func executeConfiguration(with configurator: inout Configurator) throws(PSRAMAllocator.Error) {
+        let allocator = try PSRAMAllocator.shared(configuration: self)
+
+        configurator.configure(Allocator(
+            memoryType: .psram,
+            addressSpace: UInt32(truncatingIfNeeded: UInt(bitPattern: allocator.psramBase)),
+            stackLimit: UInt(bitPattern: allocator.psramBase) + UInt(allocator.psramSize),
+            malloc: { size in allocator.malloc(size) },
+            calloc: { num, size in allocator.calloc(num, size) },
+            realloc: { ptr, size in allocator.realloc(ptr, size) },
+            free: { ptr in allocator.free(ptr) },
+            memStats: {
+                let used = allocator.usedMemory
+                return .init(type: .psram, untouched: 0, freed: UInt32(allocator.totalMemory - used), used: UInt32(used))
+            }
+        ))
+    }
 }
 
 #if PSRAM
@@ -38,16 +56,21 @@ public struct PSRAMConfiguration: Configuration {
 /// algorithm.
 /// 
 /// This implementation is heavily based on https://github.com/sparkfun/sparkfun-pico
-public final class PSRAMAllocator {
+public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper synchronization to make this thread-safe, currently it's not but it should be fine given the typical use case.
     private static let instance: Mutex<PSRAMAllocator?> = .init(nil)
 
     /// Tries to initialize the PSRAM allocator with the configuration provided in the `Configurator`. 
     /// If the configuration is missing or invalid, it will throw an error.
-    public static func shared(initialize: Bool = true) throws(Error) -> PSRAMAllocator {
+    public static func shared(initialize: Bool = true, configuration: PSRAMConfiguration? = nil) throws(Error) -> PSRAMAllocator {
         try instance.withLock { (instance: inout sending PSRAMAllocator?) throws(Error) -> sending PSRAMAllocator in
+            // let configs = Configurator.configurations(for: PSRAMConfiguration.self)
             if let instance = instance {
                 return instance
-            } else if let config = Configurator.configuration(for: PSRAMConfiguration.self) {
+            } else if let config = configuration {
+                // if configs.count > 1 {
+                //     print("[CPicoSDK] WARNING: Multiple PSRAM configurations found. Using the first one.")
+                // }
+
                 if initialize {
                     let allocator = try PSRAMAllocator(configuration: config)
                     instance = allocator
@@ -403,7 +426,7 @@ public final class PSRAMAllocator {
 
     let configuration: PSRAMConfiguration
 
-    init(configuration: PSRAMConfiguration, registerAutomatically: Bool = true) throws(Error) {
+    init(configuration: PSRAMConfiguration) throws(Error) {
         self.configuration = configuration
 
         let psramSize = try Self.setupPSRAM(csPin: configuration.csPin, sysClockHz: UInt64(clock_get_hz(clk_sys)))
@@ -415,28 +438,6 @@ public final class PSRAMAllocator {
         self.psramSize = psramSize
         self.heap = heap
         self.psramPool = tlsf_get_pool(heap)
-
-        if registerAutomatically {
-            do {
-                try AllocatorManager.shared.register(
-                    Allocator(
-                        memoryType: .psram,
-                        addressSpace: UInt32(truncatingIfNeeded: UInt(bitPattern: psramBase)),
-                        stackLimit: UInt(bitPattern: psramBase) + UInt(psramSize),
-                        malloc: { [self] size in self.malloc(size) },
-                        calloc: { [self] num, size in self.calloc(num, size) },
-                        realloc: { [self] ptr, size in self.realloc(ptr, size) },
-                        free: { [self] ptr in self.free(ptr) },
-                        memStats: { [self] in
-                            let used = self.usedMemory
-                            return .init(type: .psram, untouched: 0, freed: UInt32(self.totalMemory - used), used: UInt32(used))
-                        }
-                    )
-                )
-            } catch {
-                throw Error.allocatorRegistrationFailed(error.description)
-            }
-        }
     }
 
     public func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
@@ -495,53 +496,6 @@ public final class PSRAMAllocator {
             tlsf_walk_pool(psramPool, walker, user)
         }
         return total
-    }
-}
-
-extension UnsafeMutablePointer {
-    public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutablePointer<Pointee>? {
-        switch memory {
-        case .sram:
-            return Self.allocate(capacity: capacity)
-        case .psram:
-            return try? PSRAMAllocator.shared().malloc(MemoryLayout<Pointee>.size * capacity)?.assumingMemoryBound(to: Pointee.self)
-        }
-    }
-}
-
-extension UnsafeMutableRawPointer {
-    public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawPointer? {
-        switch memory {
-        case .sram:
-             return Self.allocate(byteCount: byteCount, alignment: alignment)
-        case .psram:
-            return try? PSRAMAllocator.shared().malloc(byteCount)
-        }
-    }
-}
-
-extension UnsafeMutableBufferPointer {
-    public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutableBufferPointer<Element>? {
-        switch memory {
-        case .sram:
-            return Self.allocate(capacity: capacity)
-        case .psram:
-            guard let ptr = try? PSRAMAllocator.shared().malloc(MemoryLayout<Element>.size * capacity)?
-                .assumingMemoryBound(to: Element.self) else { return nil }
-            return UnsafeMutableBufferPointer(start: ptr, count: capacity)
-        }
-    }
-}
-
-extension UnsafeMutableRawBufferPointer {
-    public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawBufferPointer? {
-        switch memory {
-        case .sram:
-            return Self.allocate(byteCount: byteCount, alignment: alignment)
-        case .psram:
-            guard let ptr = try? PSRAMAllocator.shared().malloc(byteCount) else { return nil }
-            return UnsafeMutableRawBufferPointer(start: ptr, count: byteCount)
-        }
     }
 }
 

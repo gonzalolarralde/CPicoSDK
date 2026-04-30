@@ -20,7 +20,8 @@ public enum MemoryType: String {
 
 // MARK: - Allocator manager
 
-struct Allocator {
+struct Allocator: Configuration, @unchecked Sendable {
+    static let id = "Allocator_CPicoSDK_\(Int.random(in: Int.min...Int.max))"
     static let addressSpaceMask: UInt32 = 0xFF00_0000
 
     let memoryType: MemoryType
@@ -36,6 +37,10 @@ struct Allocator {
     @inline(__always)
     func owns(address: UInt32) -> Bool {
         (address & Self.addressSpaceMask) == (addressSpace & Self.addressSpaceMask)
+    }
+
+    func executeConfiguration(with configurator: inout Configurator) throws(AllocatorManager.Error) {
+        try AllocatorManager.shared.register(self)
     }
 }
 
@@ -71,20 +76,9 @@ final class AllocatorManager: @unchecked Sendable {
     }()
 
     var allocators: [Allocator] {
-        var count = 0
+        var allocators: [Allocator] = []
         mutex_enter_blocking(registryMutex)
         var cursor = allocatorRegistryHead
-        while cursor != nil {
-            count += 1
-            cursor = cursor?.pointee.next
-        }
-        mutex_exit(registryMutex)
-
-        var allocators: [Allocator] = []
-        allocators.reserveCapacity(count)
-
-        mutex_enter_blocking(registryMutex)
-        cursor = allocatorRegistryHead
         while let node = cursor {
             allocators.append(node.pointee.allocator)
             cursor = node.pointee.next
@@ -372,8 +366,8 @@ public struct MemoryStats {
     }
 
     public static func print() {
-        for allocator in AllocatorManager.shared.allocators {
-            allocator.memStats().print()
+        for stats in stats.values {
+            stats.print()
         }
     }
 
@@ -397,4 +391,277 @@ public struct MemoryStats {
     public func print() {
         Swift::print("[CPicoSDK] \(self.description)")
     }
+}
+
+// MARK: - Swift Pointer helpers
+
+extension UnsafeMutablePointer {
+    /// Allocates uninitialized memory for the specified number of instances of
+    /// type `Pointee` in the specified memory space.
+    ///
+    /// The resulting pointer references a region of memory that is bound to
+    /// `Pointee` and is `count * MemoryLayout<Pointee>.stride` bytes in size.
+    ///
+    /// The following example allocates enough new memory to store four `Int`
+    /// instances and then initializes that memory with the elements of a range.
+    ///
+    ///     let intPointer = UnsafeMutablePointer<Int>.allocate(capacity: 4)
+    ///     for i in 0..<4 {
+    ///         (intPointer + i).initialize(to: i)
+    ///     }
+    ///     print(intPointer.pointee)
+    ///     // Prints "0"
+    ///
+    /// When you allocate memory, always remember to deallocate once you're
+    /// finished.
+    ///
+    ///     intPointer.deallocate()
+    ///
+    /// You must only use `deallocate()` to end the lifetime of memory
+    /// created with `allocate()`; it is a programming error to use `free` or
+    /// another deallocation API, and may result in undefined behavior.
+    ///
+    /// - Parameter count: The amount of memory to allocate, counted in instances
+    ///   of `Pointee`.
+    /// - Parameter memory: The memory type in which to allocate the memory.
+    public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutablePointer<Pointee>? {
+        switch memory {
+        case .sram:
+            return Self.allocate(capacity: capacity)
+        case .psram:
+            return try? PSRAMAllocator.shared().malloc(MemoryLayout<Pointee>.size * capacity)?.assumingMemoryBound(to: Pointee.self)
+        }
+    }
+
+    /// Allocates uninitialized memory for the specified number of instances of
+    /// type `Pointee` in the specified memory space, with an optional fallback.
+    ///
+    /// The resulting pointer references a region of memory that is bound to
+    /// `Pointee` and is `count * MemoryLayout<Pointee>.stride` bytes in size.
+    ///
+    /// The following example allocates enough new memory to store four `Int`
+    /// instances and then initializes that memory with the elements of a range.
+    ///
+    ///     let intPointer = UnsafeMutablePointer<Int>.allocate(capacity: 4)
+    ///     for i in 0..<4 {
+    ///         (intPointer + i).initialize(to: i)
+    ///     }
+    ///     print(intPointer.pointee)
+    ///     // Prints "0"
+    ///
+    /// When you allocate memory, always remember to deallocate once you're
+    /// finished.
+    ///
+    ///     intPointer.deallocate()
+    ///
+    /// You must only use `deallocate()` to end the lifetime of memory
+    /// created with `allocate()`; it is a programming error to use `free` or
+    /// another deallocation API, and may result in undefined behavior.
+    ///
+    /// - Parameter count: The amount of memory to allocate, counted in instances
+    ///   of `Pointee`.
+    /// - Parameter memory: The memory types in which try to allocate the memory. 
+    ///   Use `.psramIfAvailable` to attempt PSRAM first and fall back to SRAM if
+    ///   PSRAM allocation fails or is not configured.
+    public static func allocate(capacity: Int, in memory: [MemoryType]) -> UnsafeMutablePointer<Pointee>? {
+        for mem in memory {
+            if let ptr = Self.allocate(capacity: capacity, in: mem) {
+                return ptr
+            }
+        }
+        return nil
+    }
+}
+
+extension UnsafeMutableRawPointer {
+    /// Allocates uninitialized memory with the specified size and alignment in the 
+    /// specified memory space.
+    ///
+    /// You are in charge of managing the allocated memory. Be sure to deallocate
+    /// any memory that you manually allocate.
+    ///
+    /// The allocated memory is not bound to any specific type and must be bound
+    /// before performing any typed operations. If you are using the memory for
+    /// a specific type, allocate memory using the
+    /// `UnsafeMutablePointerBuffer.allocate(capacity:)` static method instead.
+    ///
+    /// - Parameters:
+    ///   - byteCount: The number of bytes to allocate. `byteCount` must not be
+    ///     negative.
+    ///   - alignment: The alignment of the new region of allocated memory, in
+    ///     bytes. `alignment` must be a whole power of 2.
+    ///   - memory: The memory type in which to allocate the memory.
+    /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
+    ///     to `alignment`.
+    public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawPointer? {
+        switch memory {
+        case .sram:
+             return Self.allocate(byteCount: byteCount, alignment: alignment)
+        case .psram:
+            return try? PSRAMAllocator.shared().malloc(byteCount)
+        }
+    }
+
+    /// Allocates uninitialized memory with the specified size and alignment in the 
+    /// specified memory space, with an optional fallback.
+    ///
+    /// You are in charge of managing the allocated memory. Be sure to deallocate
+    /// any memory that you manually allocate.
+    ///
+    /// The allocated memory is not bound to any specific type and must be bound
+    /// before performing any typed operations. If you are using the memory for
+    /// a specific type, allocate memory using the
+    /// `UnsafeMutablePointerBuffer.allocate(capacity:)` static method instead.
+    ///
+    /// - Parameters:
+    ///   - byteCount: The number of bytes to allocate. `byteCount` must not be
+    ///     negative.
+    ///   - alignment: The alignment of the new region of allocated memory, in
+    ///     bytes. `alignment` must be a whole power of 2.
+    ///   - memory: The memory types in which try to allocate the memory. 
+    ///     Use `.psramIfAvailable` to attempt PSRAM first and fall back to SRAM if
+    ///     PSRAM allocation fails or is not configured.
+    /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
+    ///     to `alignment`.
+    public static func allocate(byteCount: Int, alignment: Int, in memory: [MemoryType]) -> UnsafeMutableRawPointer? {
+        for mem in memory {
+            if let ptr = Self.allocate(byteCount: byteCount, alignment: alignment, in: mem) {
+                return ptr
+            }
+        }
+        return nil
+    }
+}
+
+extension UnsafeMutableBufferPointer {
+    /// Allocates uninitialized memory for the specified number of instances of
+    /// type `Element` in the specified memory space.
+    ///
+    /// The resulting buffer references a region of memory that is bound to
+    /// `Element` and is `count * MemoryLayout<Element>.stride` bytes in size.
+    ///
+    /// The following example allocates a buffer that can store four `Int`
+    /// instances and then initializes that memory with the elements of a range:
+    ///
+    ///     let buffer = UnsafeMutableBufferPointer<Int>.allocate(capacity: 4)
+    ///     _ = buffer.initialize(from: 1...4)
+    ///     print(buffer[2])
+    ///     // Prints "3"
+    ///
+    /// When you allocate memory, always remember to deallocate once you're
+    /// finished.
+    ///
+    ///     buffer.deallocate()
+    ///
+    /// - Parameter count: The amount of memory to allocate, counted in instances
+    ///   of `Element`.
+    /// - Parameter memory: The memory type in which to allocate the memory.
+    public static func allocate(capacity: Int, in memory: MemoryType) -> UnsafeMutableBufferPointer<Element>? {
+        switch memory {
+        case .sram:
+            return Self.allocate(capacity: capacity)
+        case .psram:
+            guard let ptr = try? PSRAMAllocator.shared().malloc(MemoryLayout<Element>.size * capacity)?
+                .assumingMemoryBound(to: Element.self) else { return nil }
+            return UnsafeMutableBufferPointer(start: ptr, count: capacity)
+        }
+    }
+
+    /// Allocates uninitialized memory for the specified number of instances of
+    /// type `Element` in the specified memory space, with an optional fallback.
+    ///
+    /// The resulting buffer references a region of memory that is bound to
+    /// `Element` and is `count * MemoryLayout<Element>.stride` bytes in size.
+    ///
+    /// The following example allocates a buffer that can store four `Int`
+    /// instances and then initializes that memory with the elements of a range:
+    ///
+    ///     let buffer = UnsafeMutableBufferPointer<Int>.allocate(capacity: 4)
+    ///     _ = buffer.initialize(from: 1...4)
+    ///     print(buffer[2])
+    ///     // Prints "3"
+    ///
+    /// When you allocate memory, always remember to deallocate once you're
+    /// finished.
+    ///
+    ///     buffer.deallocate()
+    ///
+    /// - Parameter count: The amount of memory to allocate, counted in instances
+    ///   of `Element`.
+    /// - Parameter memory: The memory types in which try to allocate the memory. 
+    ///   Use `.psramIfAvailable` to attempt PSRAM first and fall back to SRAM if
+    ///   PSRAM allocation fails or is not configured.
+    public static func allocate(capacity: Int, in memory: [MemoryType]) -> UnsafeMutableBufferPointer<Element>? {
+        for mem in memory {
+            if let ptr = Self.allocate(capacity: capacity, in: mem) {
+                return ptr
+            }
+        }
+        return nil
+    }
+}
+
+extension UnsafeMutableRawBufferPointer {
+    /// Allocates uninitialized memory with the specified size and alignment in the
+    /// specified memory space.
+    ///
+    /// You are in charge of managing the allocated memory. Be sure to deallocate
+    /// any memory that you manually allocate.
+    ///
+    /// The allocated memory is not bound to any specific type and must be bound
+    /// before performing any typed operations. If you are using the memory for
+    /// a specific type, allocate memory using the
+    /// `UnsafeMutablePointerBuffer.allocate(capacity:)` static method instead.
+    ///
+    /// - Parameters:
+    ///   - byteCount: The number of bytes to allocate. `byteCount` must not be
+    ///     negative.
+    ///   - alignment: The alignment of the new region of allocated memory, in
+    ///     bytes. `alignment` must be a whole power of 2.
+    ///   - memory: The memory types in which try to allocate the memory.
+    /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
+    ///     to `alignment`.
+    public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawBufferPointer? {
+        switch memory {
+        case .sram:
+            return Self.allocate(byteCount: byteCount, alignment: alignment)
+        case .psram:
+            guard let ptr = try? PSRAMAllocator.shared().malloc(byteCount) else { return nil }
+            return UnsafeMutableRawBufferPointer(start: ptr, count: byteCount)
+        }
+    }
+
+    /// Allocates uninitialized memory with the specified size and alignment in the
+    /// specified memory space, with an optional fallback.
+    ///
+    /// You are in charge of managing the allocated memory. Be sure to deallocate
+    /// any memory that you manually allocate.
+    ///
+    /// The allocated memory is not bound to any specific type and must be bound
+    /// before performing any typed operations. If you are using the memory for
+    /// a specific type, allocate memory using the
+    /// `UnsafeMutablePointerBuffer.allocate(capacity:)` static method instead.
+    ///
+    /// - Parameters:
+    ///   - byteCount: The number of bytes to allocate. `byteCount` must not be
+    ///     negative.
+    ///   - alignment: The alignment of the new region of allocated memory, in
+    ///     bytes. `alignment` must be a whole power of 2.
+    /// - Parameter memory: The memory types in which try to allocate the memory. 
+    ///   Use `.psramIfAvailable` to attempt PSRAM first and fall back to SRAM if
+    ///   PSRAM allocation fails or is not configured.
+    /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
+    ///     to `alignment`.
+    public static func allocate(byteCount: Int, alignment: Int, in memory: [MemoryType]) -> UnsafeMutableRawBufferPointer? {
+        for mem in memory {
+            if let ptr = Self.allocate(byteCount: byteCount, alignment: alignment, in: mem) {
+                return ptr
+            }
+        }
+        return nil
+    }
+}
+
+extension [MemoryType] {
+    public static var psramIfAvailable: Self { [.psram, .sram] }
 }
