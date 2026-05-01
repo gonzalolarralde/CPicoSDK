@@ -1,6 +1,7 @@
 import CPicoSDK
 import CPicoConcurrency
 import Synchronization
+import PSRAM
 
 @main
 struct App: EmbeddedAsyncApp {

@@ -12,6 +12,8 @@
 
 // MARK: - Memory type
 
+/// The type of memory for an allocator. This is used to categorize allocators and
+/// provide information about the type of memory being allocated.
 public enum MemoryType: String {
     case sram = "SRAM"
     case psram = "PSRAM"
@@ -19,7 +21,14 @@ public enum MemoryType: String {
 
 // MARK: - Allocator manager
 
-public struct Allocator: Configuration, @unchecked Sendable {
+/// A memory allocator that can be registered with the CPicoSDK configuration system.
+/// Each allocator is associated with a specific memory type and address space, and
+/// provides implementations for malloc, calloc, realloc, and free, as well as a way
+/// to retrieve memory usage statistics. 
+/// 
+/// Allocators must be registered during the configuration phase and must not have
+/// overlapping address spaces with other allocators.
+public struct Allocator: Configuration, @unchecked Sendable { // TODO: Check how to make this non-sendable
     public enum Error: Swift.Error, CustomStringConvertible {
         case overlappingAllocator
 

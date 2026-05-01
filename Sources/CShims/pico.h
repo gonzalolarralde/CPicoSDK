@@ -9,6 +9,6 @@
 #elif __has_include("CPicoSDK_pico2.h")
 #include "CPicoSDK_pico2.h"
 #else
-#warning "No CPicoSDK board header available for PSRAMAllocatorShim"
+#warning "No CPicoSDK board header available"
 #include "CPicoSDK_pico2.h"
 #endif

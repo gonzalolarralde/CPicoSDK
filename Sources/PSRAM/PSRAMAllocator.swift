@@ -15,17 +15,36 @@ import CShims
 import TLSF
 import Synchronization
 
+public enum AllocatorError: Swift.Error, CustomStringConvertible {
+    case noMemoryDetected
+    case heapInitializationFailed
+    case configurationMissing
+    case notInitialized
+    case allocatorRegistrationFailed(String)
+
+    public var description: String {
+        switch self {
+        case .noMemoryDetected: return "No PSRAM memory detected. Check your connections and try again."
+        case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
+        case .configurationMissing: return "PSRAM configuration is missing. Please provide a `PSRAMConfiguration` in your `configure` block."
+        case .notInitialized: return "PSRAMAllocator was not initialized yet."
+        case .allocatorRegistrationFailed(let error): return "Failed to register allocator: \(error)"
+        }
+    }
+}
+
 /// Allocator implementation to provide dynamic memory allocation from PSRAM,
 /// using the Pico's QMI interface to access it and TLSF as the heap management 
 /// algorithm.
 /// 
 /// This implementation is heavily based on https://github.com/sparkfun/sparkfun-pico
-public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper synchronization to make this thread-safe, currently it's not but it should be fine given the typical use case.
+final class PSRAMAllocator: @unchecked Sendable { // TODO: Consider adding proper synchronization, right now relies on mallocEnter and mallocExit.
+    typealias Error = AllocatorError
     private static let instance: Mutex<PSRAMAllocator?> = .init(nil)
 
     /// Tries to initialize the PSRAM allocator with the configuration provided in the `Configurator`. 
     /// If the configuration is missing or invalid, it will throw an error.
-    public static func shared(initialize: Bool = true, configuration: PSRAMConfiguration? = nil) throws(Error) -> PSRAMAllocator {
+    static func shared(initialize: Bool = true, configuration: PSRAMConfiguration? = nil) throws(Error) -> PSRAMAllocator {
         try instance.withLock { (instance: inout sending PSRAMAllocator?) throws(Error) -> sending PSRAMAllocator in
             // let configs = Configurator.configurations(for: PSRAMConfiguration.self)
             if let instance = instance {
@@ -44,24 +63,6 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
                 }
             } else {
                 throw Error.configurationMissing
-            }
-        }
-    }
-
-    public enum Error: Swift.Error, CustomStringConvertible {
-        case noMemoryDetected
-        case heapInitializationFailed
-        case configurationMissing
-        case notInitialized
-        case allocatorRegistrationFailed(String)
-
-        public var description: String {
-            switch self {
-            case .noMemoryDetected: return "No PSRAM memory detected. Check your connections and try again."
-            case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
-            case .configurationMissing: return "PSRAM configuration is missing. Please provide a `PSRAMConfiguration` in your `configure` block."
-            case .notInitialized: return "PSRAMAllocator was not initialized yet."
-            case .allocatorRegistrationFailed(let error): return "Failed to register allocator: \(error)"
             }
         }
     }
@@ -206,7 +207,7 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
     @inline(never)
     @section(".time_critical.psram")
     @_optimize(none)
-    public static func probePSRAM(csPin: UInt32) -> (kgd: UInt32, eid: UInt32, size: Int) {
+    static func probePSRAM(csPin: UInt32) -> (kgd: UInt32, eid: UInt32, size: Int) {
         gpio_set_function(csPin, GPIO_FUNC_XIP_CS1)
 
         let intrStash = save_and_disable_interrupts()
@@ -270,7 +271,7 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
     @inline(never)
     @section(".time_critical.psram")
     @_optimize(none)
-    public static func setPSRAMTiming(sysClockHz: UInt64) {
+    static func setPSRAMTiming(sysClockHz: UInt64) {
         let clockDivider = UInt32((sysClockHz + UInt64(psramMaxSckHz) - 1) / UInt64(psramMaxSckHz))
         let fsPerCycle = secToFs / sysClockHz
         if fsPerCycle == 0 { return }
@@ -295,7 +296,7 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
     @inline(never)
     @section(".time_critical.psram")
     @_optimize(none)
-    public static func setupPSRAM(csPin: UInt32, sysClockHz: UInt64) throws(Error) -> Int {
+    static func setupPSRAM(csPin: UInt32, sysClockHz: UInt64) throws(Error) -> Int {
         gpio_set_function(csPin, GPIO_FUNC_XIP_CS1)
 
         let psramSize = getPSRAMSize()
@@ -404,19 +405,19 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
         self.psramPool = tlsf_get_pool(heap)
     }
 
-    public func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
+    func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
         tlsf_malloc(heap, size)
     }
 
-    public func free(_ ptr: UnsafeMutableRawPointer?) {
+    func free(_ ptr: UnsafeMutableRawPointer?) {
         tlsf_free(heap, ptr)
     }
 
-    public func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
+    func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
         tlsf_realloc(heap, ptr, size)
     }
 
-    public func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
+    func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
         let (totalSize, overflow) = num.multipliedReportingOverflow(by: size)
         if overflow || totalSize < 0 { return nil }
         guard let ptr = tlsf_malloc(heap, totalSize) else { return nil }
@@ -424,7 +425,7 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
         return ptr
     }
 
-    public var maxFreeSize: Int {
+    var maxFreeSize: Int {
         poolWalkTotal { ptr, size, used, user in
             guard let user else { return true }
             let maxSize = user.assumingMemoryBound(to: Int.self)
@@ -435,7 +436,7 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
         }
     }
 
-    public var totalMemory: Int {
+    var totalMemory: Int {
         poolWalkTotal { ptr, size, used, user in
             guard let user else { return true }
             user.assumingMemoryBound(to: Int.self).pointee += size
@@ -443,7 +444,7 @@ public final class PSRAMAllocator: @unchecked Sendable { // TODO: Add proper syn
         }
     }
 
-    public var usedMemory: Int {
+    var usedMemory: Int {
         poolWalkTotal { ptr, size, used, user in
             guard let user else { return true }
             if used != 0 {

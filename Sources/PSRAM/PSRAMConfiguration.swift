@@ -14,7 +14,7 @@ public struct PSRAMConfiguration: Configuration {
         self.csPin = csPin
     }
 
-    public func executeConfiguration(with configurator: inout Configurator) throws(PSRAMAllocator.Error) {
+    public func executeConfiguration(with configurator: inout Configurator) throws(AllocatorError) {
         let allocator = try PSRAMAllocator.shared(configuration: self)
 
         configurator.configure(Allocator(
