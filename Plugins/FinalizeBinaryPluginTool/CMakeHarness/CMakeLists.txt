@@ -21,6 +21,8 @@ set(picotoolVersion "${SDK_VERSION}")
 
 set(PICO_BOARD "${BOARD_TYPE}" CACHE STRING "Board type")
 
+set (SKIP_PICO_MALLOC 1)
+
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
@@ -31,7 +33,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable("${PROJECT_NAME}" shims.c)
+add_executable("${PROJECT_NAME}")
 
 pico_set_program_name("${PROJECT_NAME}" "${PROJECT_NAME}")
 pico_set_program_version("${PROJECT_NAME}" "0.1")
@@ -40,6 +42,11 @@ pico_set_program_version("${PROJECT_NAME}" "0.1")
 pico_enable_stdio_uart("${PROJECT_NAME}" ${STDIO_UART})
 pico_enable_stdio_usb("${PROJECT_NAME}" ${STDIO_USB})
 pico_enable_stdio_rtt("${PROJECT_NAME}" ${STDIO_RTT})
+
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=malloc")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=calloc")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=realloc")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=free")
 
 target_compile_definitions("${PROJECT_NAME}" PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1

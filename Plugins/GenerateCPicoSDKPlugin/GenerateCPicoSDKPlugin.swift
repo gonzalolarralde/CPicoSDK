@@ -250,7 +250,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             .map { "        .target(name: \"_CPicoSDK_\($0)\")," }
         templateLines.insert(contentsOf: targets, at: targetsIndex.advanced(by: 1))
 
-        guard let targetDependenciesIndex = templateLines.firstIndex(where: { $0.contains(targetDependenciesMarker) }) else {
+        guard templateLines.contains(where: { $0.contains(targetDependenciesMarker) }) else {
             throw Error.markerNotFound(targetDependenciesMarker)
         }
 
@@ -259,7 +259,9 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             return "                .target(name: \"_CPicoSDK_\(name)\", condition: .when(traits: [\(traits)])),"
         }
 
-        templateLines.insert(contentsOf: targetDependencies, at: targetDependenciesIndex.advanced(by: 1))
+        for targetDependenciesIndex in templateLines.indices.filter({ templateLines[$0].contains(targetDependenciesMarker) }).reversed() {
+            templateLines.insert(contentsOf: targetDependencies, at: targetDependenciesIndex.advanced(by: 1))
+        }
 
         let content = templateLines.joined(separator: "\n")
         try content.write(to: destination, atomically: true, encoding: .utf8)

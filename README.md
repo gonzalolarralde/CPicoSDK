@@ -56,6 +56,39 @@ The `% swift { ... }` section is placed after the `.program` body in `hello.pio`
 
 The example also keeps a small Unicode-aware string check on purpose. That exercises the embedded Swift Unicode runtime path so CPicoSDK can demonstrate automatically linking `libswiftUnicodeDataTables.a` only when the final link actually needs it.
 
+#### PSRAM (Optional)
+
+The Example shows PSRAM as an optional configuration and allocator target.
+
+In `configure(with:)`, enable PSRAM by adding:
+
+```swift
+configurator.configure(PSRAMConfiguration())
+```
+
+Then allocate explicitly in PSRAM:
+
+```swift
+if let ptr = UnsafeMutableRawPointer.allocate(byteCount: 1024, alignment: 4, in: .psram) {
+    ptr.deallocate()
+}
+```
+
+Or use fallback allocation:
+
+```swift
+if let ptr = UnsafeMutableRawPointer.allocate(byteCount: 1024, alignment: 4, in: .psramIfAvailable) {
+    ptr.deallocate()
+}
+```
+
+How it behaves:
+
+- If `PSRAMConfiguration` is present and initialization succeeds, a PSRAM allocator is registered.
+- `.psram` allocations require a PSRAM allocator and fail if unavailable.
+- `.psramIfAvailable` prefers PSRAM and falls back to SRAM when PSRAM is not registered.
+- The Example keeps this opt-in commented by default because not all boards include external PSRAM.
+
 ### Experimental Concurrency Support
 
 CPicoSDK now has a first pass at embedded Swift Concurrency support, but it is still experimental.
@@ -252,6 +285,73 @@ This section explains how CPicoSDK works internally and how the various pieces f
 ### Architecture Overview
 
 CPicoSDK uses a hybrid approach combining **SwiftPM plugins** for Swift-native tooling with **bash scripts** for complex build orchestration. This approach balances maintainability with the flexibility needed for embedded cross-compilation workflows.
+
+### Configurator Execution Model
+
+The configuration system is built around `Configuration` values collected by `Configurator`.
+
+Current flow:
+
+1. App code adds configuration values via `configurator.configure(...)`.
+2. Values are stored as `AnyConfiguration` and type-erased through `UnsafeWeaklyTypedContainer`.
+3. During `sealConfiguration()`, CPicoSDK executes configuration closures and allows those executions to append additional configurations.
+4. Sealing uses a pending-ID loop: newly discovered configuration IDs are processed in later passes.
+5. Once sealing completes, the result is frozen into static storage (`Configurator.configurations`) for runtime queries.
+
+Important current behavior:
+
+- Multiple instances under a configuration ID are all executed when that ID is processed.
+- If execution appends a brand-new ID, it is picked up in a later pass of the same sealing operation.
+- If execution appends additional instances under an ID that was already processed, those new instances are not re-processed in the current pass model.
+
+Error model:
+
+- Each configuration execution wraps typed errors into `ConfigurationError`.
+- Sealing accumulates execution failures and returns them as `[ConfigurationError]`.
+- Callers can then pass the returned errors to `handleConfigurationErrors`, and execution continues according to that handling path.
+
+This design intentionally favors deterministic staged setup over open-ended re-execution loops.
+
+### Allocator Model (Maintainers)
+
+CPicoSDK allocator routing is currently configuration-driven and address-space based.
+
+Core pieces:
+
+- `Allocator` is itself a `Configuration` that registers function pointers/closures for `malloc`, `calloc`, `realloc`, `free`, and stats.
+- `AllocatorManager` owns a mutex-protected linked-list registry of allocators.
+- Address-space dispatch uses `Allocator.addressSpaceMask` to resolve which allocator owns a pointer.
+- SRAM allocator is always present as the built-in default.
+- The PSRAM backend uses [TLSF](https://github.com/espressif/tlsf) as its heap engine (`tlsf_create_with_pool`, `tlsf_malloc`, `tlsf_realloc`, `tlsf_free`) for low-overhead dynamic allocation in external RAM.
+- `PSRAMAllocator` implementation and QMI setup flow are a Swift reimplementation of [SparkFun's Pico](https://github.com/sparkfun/sparkfun-pico) memory allocation library.
+
+Registration flow:
+
+1. Feature configs (for example `PSRAMConfiguration`) create/register an `Allocator` during execution.
+2. `AllocatorManager.register` rejects overlapping masked address spaces.
+3. Allocators are used by wrapped allocation entrypoints (`__wrap_malloc`, `__wrap_calloc`, `__wrap_realloc`, `__wrap_free`).
+
+Dispatch behavior:
+
+- New allocations default to SRAM for plain malloc/calloc.
+- `realloc/free` choose allocator by pointer address.
+- High-level typed APIs (for example explicit `.psram` and `.psramIfAvailable` allocation modes) choose allocator policy before calling into the low-level wrappers.
+
+Recent allocator integration updates:
+
+- `free` now consistently resolves the owning allocator from the pointer address space before dispatching, so pointers allocated from PSRAM-backed allocators are released by the correct backend automatically.
+- `calloc` participates in the same allocator model, so zero-initialized allocations can be served by non-SRAM allocators when selected by higher-level allocation policy.
+- Together, this keeps allocation/deallocation symmetric across mixed memory spaces and avoids requiring callers to manually track allocator provenance.
+
+Unsafe mutable pointer ergonomics:
+
+- Because allocator selection is routed through CPicoSDK allocation wrappers, `UnsafeMutableRawPointer` and typed `UnsafeMutablePointer` families can use allocation APIs with memory-space intents (`.psram`, `.psramIfAvailable`) without changing deallocation call sites.
+- This gives consumers a seamless experience: choose memory space at allocation time, then use normal pointer deallocation paths while backend routing remains correct.
+
+Concurrency and safety notes:
+
+- Allocation wrappers use explicit locking/exception-level-aware reentrancy rules to mirror Pico SDK expectations.
+- PSRAM allocator initialization remains guarded by a mutex-backed singleton path.
 
 ### The `env.json` File: Configuration as Data
 
@@ -640,6 +740,8 @@ This project builds upon the excellent work of:
 - The Raspberry Pi Pico SDK team
 - The pico-vscode extension developers
 - The Swift Embedded community
+- **TLSF** — Two-Level Segregated Fit allocator, BSD License, written by Matthew Conte (matt@baisoku.org). Used as the heap engine for PSRAM-backed dynamic memory allocation.
+- **sparkfun-pico** — MIT License, Copyright (c) 2024 SparkFun Electronics. The `PSRAMAllocator` QMI setup and PSRAM initialization flow are heavily inspired by this library.
 
 ---
 
