@@ -6,7 +6,7 @@ import PSRAM // Optional, only needed if using PSRAM.
 @main
 struct App: EmbeddedAsyncApp {
     static func configure(with configurator: inout Configurator) {
-        /// Enable only when the target hardware includes a PSRAM chip and PSRAM support is required.
+        // Enable only when the target hardware includes a PSRAM chip and PSRAM support is required.
         configurator.configure(PSRAMConfiguration())
     }
 
