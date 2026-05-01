@@ -47,6 +47,7 @@ public struct Allocator: Configuration, @unchecked Sendable { // TODO: Check how
     let addressSpace: UInt32
     let stackLimit: UInt
     let malloc: (Int) -> UnsafeMutableRawPointer?
+    let alignedMalloc: (Int, Int) -> UnsafeMutableRawPointer?
     let calloc: (Int, Int) -> UnsafeMutableRawPointer?
     let realloc: (UnsafeMutableRawPointer?, Int) -> UnsafeMutableRawPointer?
     let free: (UnsafeMutableRawPointer?) -> Void
@@ -57,6 +58,7 @@ public struct Allocator: Configuration, @unchecked Sendable { // TODO: Check how
         addressSpace: UInt32,
         stackLimit: UInt,
         malloc: @escaping (Int) -> UnsafeMutableRawPointer?,
+        alignedMalloc: @escaping (Int, Int) -> UnsafeMutableRawPointer?,
         calloc: @escaping (Int, Int) -> UnsafeMutableRawPointer?,
         realloc: @escaping (UnsafeMutableRawPointer?, Int) -> UnsafeMutableRawPointer?,
         free: @escaping (UnsafeMutableRawPointer?) -> Void,
@@ -66,6 +68,7 @@ public struct Allocator: Configuration, @unchecked Sendable { // TODO: Check how
         self.addressSpace = addressSpace
         self.stackLimit = stackLimit
         self.malloc = malloc
+        self.alignedMalloc = alignedMalloc
         self.calloc = calloc
         self.realloc = realloc
         self.free = free
@@ -180,6 +183,9 @@ final class AllocatorManager: @unchecked Sendable {
 
 // MARK: - SRAM allocator
 
+@_extern(c, "memalign")
+func memalign(_ alignment: Int, _ size: Int) -> UnsafeMutableRawPointer?
+
 @_extern(c, "__real_malloc")
 func real_malloc(_ size: Int) -> UnsafeMutableRawPointer?
 
@@ -203,6 +209,7 @@ extension Allocator {
             addressSpace: sramAddressSpace,
             stackLimit: sramStackLimit,
             malloc: real_malloc,
+            alignedMalloc: memalign,
             calloc: real_calloc,
             realloc: real_realloc,
             free: real_free,
@@ -518,9 +525,8 @@ extension UnsafeMutableRawPointer {
     /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
     ///     to `alignment`.
     public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawPointer? {
-        let _ = alignment
         guard let allocator = AllocatorManager.shared.allocator(for: memory) else { return nil }
-        return allocator.malloc(byteCount)
+        return allocator.alignedMalloc(alignment, byteCount)
     }
 
     /// Allocates uninitialized memory with the specified size and alignment in the 
@@ -639,9 +645,8 @@ extension UnsafeMutableRawBufferPointer {
     /// - Returns: A buffer pointer to a newly allocated region of memory aligned 
     ///     to `alignment`.
     public static func allocate(byteCount: Int, alignment: Int, in memory: MemoryType) -> UnsafeMutableRawBufferPointer? {
-        let _ = alignment
         guard let allocator = AllocatorManager.shared.allocator(for: memory) else { return nil }
-        guard let ptr = allocator.malloc(byteCount) else { return nil }
+        guard let ptr = allocator.alignedMalloc(alignment, byteCount) else { return nil }
         return UnsafeMutableRawBufferPointer(start: ptr, count: byteCount)
     }
 

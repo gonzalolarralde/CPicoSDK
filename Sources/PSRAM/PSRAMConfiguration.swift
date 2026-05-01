@@ -22,6 +22,7 @@ public struct PSRAMConfiguration: Configuration {
             addressSpace: UInt32(truncatingIfNeeded: UInt(bitPattern: allocator.psramBase)),
             stackLimit: UInt(bitPattern: allocator.psramBase) + UInt(allocator.psramSize),
             malloc: { size in allocator.malloc(size) },
+            alignedMalloc: { alignment, size in allocator.memalign(alignment, size) },
             calloc: { num, size in allocator.calloc(num, size) },
             realloc: { ptr, size in allocator.realloc(ptr, size) },
             free: { ptr in allocator.free(ptr) },

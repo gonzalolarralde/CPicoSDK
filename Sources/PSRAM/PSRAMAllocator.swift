@@ -409,6 +409,10 @@ final class PSRAMAllocator: @unchecked Sendable { // TODO: Consider adding prope
         tlsf_malloc(heap, size)
     }
 
+    func memalign(_ alignment: Int, _ size: Int) -> UnsafeMutableRawPointer? {
+        tlsf_memalign(heap, alignment, size)
+    }
+
     func free(_ ptr: UnsafeMutableRawPointer?) {
         tlsf_free(heap, ptr)
     }
