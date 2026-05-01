@@ -94,7 +94,6 @@ public protocol Configuration: ~Copyable {
     typealias ID = String
     associatedtype ExecutionError: Swift.Error & CustomStringConvertible = Never
     static var id: ID { get }
-    static var dependencies: [Configuration.ID] { get }
     func executeConfiguration(with configurator: inout Configurator) throws(ExecutionError)
 }
 
@@ -103,7 +102,6 @@ extension Configuration {
         return error.underlyingError.load(as: ExecutionError.self)
     }
 
-    public static var dependencies: [Configuration.ID] { [] }
     public func executeConfiguration(with configurator: inout Configurator) throws(ExecutionError) {
         // Default implementation does nothing, this can be used by configurations that don't need to derive other configurations.
     }
@@ -135,7 +133,6 @@ struct AnyConfiguration {
     }
     
     let id: Configuration.ID
-    let dependencies: [Configuration.ID]
     let executeConfiguration: (UnsafeWeaklyTypedContainer, inout Configurator) throws(ConfigurationError) -> Void
     let erasedConfiguration: UnsafeWeaklyTypedContainer
 
@@ -148,7 +145,6 @@ struct AnyConfiguration {
 
     init<C: Configuration>(configuration: sending C) {
         self.id = C.id
-        self.dependencies = C.dependencies
         self.executeConfiguration = { (erasedConfiguration, configurator) throws(ConfigurationError) in 
             try ConfigurationError.wrapError(for: C.id) { () throws(C.ExecutionError) -> Void in
                 let configuration = erasedConfiguration.load(as: C.self)!
