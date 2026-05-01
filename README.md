@@ -307,7 +307,8 @@ Important current behavior:
 Error model:
 
 - Each configuration execution wraps typed errors into `ConfigurationError`.
-- Sealing accumulates and throws `configurationExecutionsFailed` when any execution fails.
+- Sealing accumulates execution failures and returns them as `[ConfigurationError]`.
+- Callers can then pass the returned errors to `handleConfigurationErrors`, and execution continues according to that handling path.
 
 This design intentionally favors deterministic staged setup over open-ended re-execution loops.
 
