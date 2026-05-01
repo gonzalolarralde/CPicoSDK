@@ -1,13 +1,13 @@
 import CPicoSDK
 import CPicoConcurrency
 import Synchronization
-import PSRAM
+import PSRAM // Optional, only needed if using PSRAM.
 
 @main
 struct App: EmbeddedAsyncApp {
     static func configure(with configurator: inout Configurator) {
-        /// Enable only if the hardware includes a PSRAM chip. 
-        // configurator.configure(PSRAMConfiguration())
+        /// Enable only when the target hardware includes a PSRAM chip and PSRAM support is required.
+        configurator.configure(PSRAMConfiguration())
     }
 
     static func setup() async {
