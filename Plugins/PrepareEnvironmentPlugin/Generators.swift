@@ -70,12 +70,24 @@ extension PrepareEnvironmentPlugin {
         }
 
         if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
-           let swiftVersion = newEnvVars["SWIFT_VERSION"] {
+           let swiftVersion = newEnvVars["SWIFT_VERSION"] 
+        {
             let fallbackPath = embeddedSwiftRuntimeVendorPath
                 .appending("/\(swiftVersion)/usr/lib/swift/embedded")
-            if FileManager.default.fileExists(atPath: fallbackPath) {
-                newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] = fallbackPath
+
+            if !FileManager.default.fileExists(atPath: fallbackPath) {
+                // Concurrency runtime needs to be included in the package. If this swift version is meant to be 
+                // used in distribution this needs to be fixed before shipping, otherwise Linux users won't have
+                // access to the Concurrency runtime.
+
+                #if os(Linux)
+                print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: No embedded Swift runtime found at \(fallbackPath). Swift doesn't ship the Concurrency runtime binaries for embedded targets on Linux, please extract the Concurrency runtime from another toolchain if you intend use concurrency.\u{001B}[0m")
+                #else
+                print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: No embedded Swift runtime found at \(fallbackPath). (This warning is only relevant to CPicoSDK maintainers, ignore otherwise)\u{001B}[0m")
+                #endif
             }
+
+            newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] = fallbackPath
         }
 
         // Show some information about given vars first
@@ -354,7 +366,7 @@ extension PrepareEnvironmentPlugin {
                         "interface/cmsis-dap.cfg",
                         "target/rp2350.cfg"
                     ],
-                    "svdFile": "\(envVars["SDK_PATH"]!)/src/rp2350/hardware_regs/RP2350.svd",
+                    "svdFile": "\(envVars["PICO_SDK_PATH"]!)/src/rp2350/hardware_regs/RP2350.svd",
                     "runToEntryPoint": "main",
                     // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
                     // also works fine for flash binaries
