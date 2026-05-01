@@ -1,5 +1,5 @@
 {
-  "originHash" : "16b2187082f0ff13f15002d0bca29888c4b9af470053be9486b21aa7189340a8",
+  "originHash" : "cdb82c62627de510e19ce875246e5ca9deafd1dd010c9fb50d5fd37ac6f6e327",
   "pins" : [
     {
       "identity" : "picosdkdownloader",
@@ -17,15 +17,6 @@
       "state" : {
         "revision" : "626b5b7b2f45e1b0b1c6f4a309296d1d21d7311b",
         "version" : "1.7.1"
-      }
-    },
-    {
-      "identity" : "swift-atomics",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-atomics",
-      "state" : {
-        "revision" : "b601256eab081c0f92f059e12818ac1d4f178ff7",
-        "version" : "1.3.0"
       }
     }
   ],

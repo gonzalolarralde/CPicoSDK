@@ -1,5 +1,6 @@
 import CPicoSDK
 import CPicoConcurrency
+import Synchronization
 
 @main
 struct App: EmbeddedAsyncApp {
@@ -8,7 +9,7 @@ struct App: EmbeddedAsyncApp {
         status_led_init()
 
         // Checking atomics
-        let atomicBool = ManagedAtomic<Bool>(false)
+        let atomicBool = Atomic<Bool>(false)
         print("Atomic exchange: old=\(atomicBool.exchange(true, ordering: .sequentiallyConsistent)) new=\(atomicBool.load(ordering: .sequentiallyConsistent))")
 
         print("Scheduling 1 second wait...")
