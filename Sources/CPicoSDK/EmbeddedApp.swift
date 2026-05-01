@@ -16,12 +16,10 @@
 public struct Configurator: ~Copyable { // TODO: Make ~Escapable
     public enum Error: Swift.Error, CustomStringConvertible {
         case configurationWasAlreadySealed
-        case configurationExecutionsFailed([(Configuration.ID, ConfigurationError)])
 
         public var description: String {
             switch self {
             case .configurationWasAlreadySealed: "Configuration was already sealed, can't modify it anymore."
-            case .configurationExecutionsFailed(let errors): "Configuration executions failed: \n\(errors.map { "\($0.0): \($0.1)" }.joined(separator: "\n"))"
             }
         }
     }
