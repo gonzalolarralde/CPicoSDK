@@ -31,6 +31,8 @@ project("${PROJECT_NAME}" C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+include(embed_resources.cmake)
+
 # Add executable. Default name is the project name, version 0.1
 
 add_executable("${PROJECT_NAME}")
@@ -81,6 +83,12 @@ target_compile_options("${PROJECT_NAME}" PRIVATE
 
 target_link_options("${PROJECT_NAME}" PRIVATE
     -Wl,--gc-sections
+)
+
+cpicosdk_embed_resources(
+    "${PROJECT_NAME}"
+    "${CPICOSDK_EMBEDDED_RESOURCE_NAMES}"
+    "${CPICOSDK_EMBEDDED_RESOURCE_PATHS}"
 )
 
 pico_add_extra_outputs("${PROJECT_NAME}")
