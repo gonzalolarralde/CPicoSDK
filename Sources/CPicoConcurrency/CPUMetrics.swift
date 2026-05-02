@@ -31,7 +31,7 @@ public struct CPUStats {
     public static func usageEvents(for core: CPUCore) -> AsyncStream<Self>? {
         #if CPUMetrics
             // TODO: Support per-core metrics.
-            cshimsRuntimeScheduler.cpuUsage.stream
+            cshimsRuntimeScheduler.cpuUsageStream()
         #else
             nil
         #endif

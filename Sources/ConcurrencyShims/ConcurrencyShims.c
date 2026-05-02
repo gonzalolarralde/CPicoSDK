@@ -21,6 +21,8 @@ typedef struct {
 } SwiftExecutorRef;
 
 extern void SWIFT_CC_SWIFT swift_job_run(void *job, void *executorFirst, void *executorSecond);
+extern uint64_t SWIFT_CC_SWIFT swift_task_getJobTaskId(void *job);
+extern void *SWIFT_CC_SWIFT swift_task_getCurrent(void);
 extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executor);
 
 extern int cshims_scheduler_poll_once(void);
@@ -29,6 +31,16 @@ extern void cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, v
 extern void cshims_scheduler_enqueue_delayed(uint64_t delayUs, void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_enqueue_deadline(uint64_t deadlineUs, void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_wait_for_work_forever(void);
+extern void cshims_scheduler_core1_boot(void);
+extern void cshims_scheduler_core1_seed(void);
+extern int cshims_scheduler_core1_loop_iteration(void);
+extern void multicore_reset_core1(void);
+extern void multicore_launch_core1_with_stack(void (*entry)(void), uint32_t *stack_bottom, size_t stack_size_bytes);
+extern void sleep_us(uint64_t us);
+
+#define CSHIMS_CORE1_STACK_WORDS 4096
+
+static uint32_t cshims_core1_stack[CSHIMS_CORE1_STACK_WORDS] __attribute__((aligned(8)));
 
 static SwiftExecutorRef cshims_generic_executor(void) {
     SwiftExecutorRef executor = {NULL, NULL};
@@ -47,6 +59,61 @@ void swift_createDefaultExecutors(void) {}
 
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond) {
     swift_job_run(job, executorFirst, executorSecond);
+}
+
+uint64_t cshims_job_task_id(void *job) {
+    if (job == NULL) {
+        return 0;
+    }
+    return swift_task_getJobTaskId(job);
+}
+
+void *cshims_job_async_task(void *job) {
+    if (job == NULL) {
+        return NULL;
+    }
+
+    const size_t flagsOffset = 4u * sizeof(void *);
+    uint32_t flags;
+    memcpy(&flags, (const char *)job + flagsOffset, sizeof(flags));
+
+    const uint32_t jobKindMask = 0xffu;
+    const uint32_t asyncTaskKind = 0u;
+    const uint32_t nullaryContinuationKind = 195u;
+    const uint32_t jobKind = flags & jobKindMask;
+    if (jobKind == asyncTaskKind) {
+        return job;
+    }
+    if (jobKind == nullaryContinuationKind) {
+        const size_t jobBaseWords = sizeof(void *) == 4u ? 10u : 8u;
+        const size_t continuationOffset = (jobBaseWords + 1u) * sizeof(void *);
+        void *continuation;
+        memcpy(&continuation, (const char *)job + continuationOffset, sizeof(continuation));
+        return continuation;
+    }
+    return NULL;
+}
+
+void *cshims_current_task(void) {
+    return swift_task_getCurrent();
+}
+
+static void cshims_scheduler_core1_entry(void) {
+    cshims_scheduler_core1_boot();
+    cshims_scheduler_core1_seed();
+    for (;;) {
+        if (!cshims_scheduler_core1_loop_iteration()) {
+            sleep_us(50);
+        }
+    }
+}
+
+void cshims_scheduler_launch_core1(void) {
+    multicore_reset_core1();
+    multicore_launch_core1_with_stack(
+        cshims_scheduler_core1_entry,
+        cshims_core1_stack,
+        sizeof(cshims_core1_stack));
 }
 
 uint32_t cshims_enter_critical(void) {

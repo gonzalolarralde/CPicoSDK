@@ -57,6 +57,8 @@ struct App: EmbeddedAsyncApp {
             try! await blinkLeds()
         }
 
+        startMulticoreSchedulerStress()
+
         // multicore_launch_core1(ledExample)
         // try! pioExample()
 
@@ -72,8 +74,59 @@ struct App: EmbeddedAsyncApp {
     }
 
     static func loop() async {
-        print("One second!")
+        enqueueRuntimeSchedulerMulticoreProbe()
+        let stats = runtimeSchedulerMulticoreStats()
+        print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
         try? await Task.sleep(ms: 1000)
+    }
+}
+
+// MARK: Scheduler Stress
+
+nonisolated(unsafe) var stressCore0Hits: UInt32 = 0
+nonisolated(unsafe) var stressCore1Hits: UInt32 = 0
+nonisolated(unsafe) var startStressWorkers = false
+
+func startMulticoreSchedulerStress() {
+    print("Starting multicore scheduler stress")
+    startRuntimeSchedulerMulticore()
+    for _ in 0..<16 {
+        enqueueRuntimeSchedulerMulticoreProbe()
+    }
+
+    // Keep the broader stress workers paused while validating whether the
+    // forced core1 seed task can run without racing other root tasks onto core1.
+    if startStressWorkers {
+        for id in UInt32(0)..<4 {
+            Task {
+                await schedulerStressWorker(id: id)
+            }
+        }
+    }
+}
+
+func schedulerStressWorker(id: UInt32) async {
+    var iteration: UInt32 = 0
+    var checksum: UInt32 = id &+ 1
+
+    while true {
+        for round in UInt32(0)..<250 {
+            checksum = checksum &* 1_664_525 &+ 1_013_904_223 &+ id &+ round
+        }
+
+        if iteration % 128 == 0 {
+            let core = get_core_num()
+            if core == 0 {
+                stressCore0Hits &+= 1
+                let stats = runtimeSchedulerMulticoreStats()
+                print("stress t=\(id) i=\(iteration) c=\(core) c0=\(stressCore0Hits) c1=\(stressCore1Hits) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) q1=\(stats.pushedCore1) p1=\(stats.poppedCore1) ta=\(stats.activeTasks) tn1=\(stats.newTaskCore1) tr1=\(stats.reuseCore1) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) n=\(stats.nullJobsDropped) k=\(checksum)")
+            } else {
+                stressCore1Hits &+= 1
+            }
+        }
+
+        try? await Task.sleep(ms: 5 + id)
+        iteration &+= 1
     }
 }
 
