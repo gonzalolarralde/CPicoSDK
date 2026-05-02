@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .library(name: "PSRAM", targets: ["PSRAM"]),
         .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
+        .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
     ],
@@ -112,6 +113,13 @@ let package = Package(
         ),
         .binaryTarget(name: "PIOASM", path: "Sources/PIOASM/PIOASM.artifactbundle"),
         .executableTarget(name: "pioasm-swift", path: "Sources/PIOASM/pioasm-swift"),
+
+        .plugin(
+            name: "AssetCompiler", 
+            capability: .buildTool,
+            dependencies: ["AssetCompilerTool"]
+        ),
+        .executableTarget(name: "AssetCompilerTool"),
 
         .plugin(
             name: "GenerateCPicoSDKPlugin",

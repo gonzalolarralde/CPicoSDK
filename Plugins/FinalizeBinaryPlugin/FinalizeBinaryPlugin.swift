@@ -13,6 +13,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         case multipleCombinationsFound(Set<String>)
         case invalidEmbeddedResourceName(String)
         case invalidEmbeddedResourcePath(String, URL)
+        case duplicateEmbeddedResourceName(String)
 
         var localizedDescription: String {
             switch self {
@@ -34,6 +35,8 @@ struct FinalizeBinaryPlugin: CommandPlugin {
                 return "Embedded resource name must not be empty or contain path/list separators, got: \(name)"
             case .invalidEmbeddedResourcePath(let name, let url):
                 return "Embedded resource '\(name)' must use an absolute file URL without CMake list separators, got: \(url)"
+            case .duplicateEmbeddedResourceName(let name):
+                return "Multiple embedded resources would be staged as '\(name)'"
             }
         }
     }
@@ -74,6 +77,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         let combination = try await getCombination(from: buildArtifact)
         let stdioOptions = await getStdioOptions(from: buildArtifact, combination: combination)
         let extraSwiftArchives = try await getExtraSwiftArchives(from: buildArtifact)
+        let embeddedResources = try getEmbeddedResources(from: libProduct)
 
         print("[CPicoSDK] Finalizing build for \(libProduct.name), combination: \(combination)...")
 
@@ -86,9 +90,25 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             outputDir: outputDir,
             buildArtifact: buildArtifact,
             productName: libProduct.name,
-            embeddedResources: [:],
+            embeddedResources: embeddedResources,
             clean: !incremental
         )
+    }
+
+    func getEmbeddedResources(from product: LibraryProduct) throws -> [String: URL] {
+        var embeddedResources: [String: URL] = [:]
+
+        for sourceModule in product.sourceModules {
+            for sourceFile in sourceModule.sourceFiles where sourceFile.url.pathExtension == "codeasset" {
+                let resourceName = sourceFile.url.lastPathComponent
+                guard embeddedResources[resourceName] == nil else {
+                    throw Error.duplicateEmbeddedResourceName(resourceName)
+                }
+                embeddedResources[resourceName] = sourceFile.url
+            }
+        }
+
+        return embeddedResources
     }
 
     func getStaticTrait(from buildArtifact: URL, traitName: String) async throws -> Bool {

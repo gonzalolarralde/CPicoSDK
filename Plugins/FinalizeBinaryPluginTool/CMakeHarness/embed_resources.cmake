@@ -26,9 +26,12 @@ function(cpicosdk_embed_resources TARGET_NAME RESOURCE_NAMES RESOURCE_PATHS)
             OUTPUT "${CPICOSDK_EMBEDDED_RESOURCE_OBJ}"
             COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/cpicosdk_embedded_resources"
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CPICOSDK_EMBEDDED_RESOURCE_INPUT}" "${CPICOSDK_EMBEDDED_RESOURCE_BIN}"
-            COMMAND "${CMAKE_OBJCOPY}" -I binary -O elf32-littlearm -B arm "${CPICOSDK_EMBEDDED_RESOURCE_BIN}" "${CPICOSDK_EMBEDDED_RESOURCE_OBJ}"
+            COMMAND "${CMAKE_OBJCOPY}" -I binary -O elf32-littlearm -B arm
+                "--rename-section" ".data=.rodata.cpicosdk_assets,alloc,load,readonly,data,contents"
+                "${CPICOSDK_EMBEDDED_RESOURCE_NAME}" "${CPICOSDK_EMBEDDED_RESOURCE_OBJ}"
             DEPENDS "${CPICOSDK_EMBEDDED_RESOURCE_INPUT}"
             COMMENT "Embedding ${CPICOSDK_EMBEDDED_RESOURCE_INPUT} into ${CPICOSDK_EMBEDDED_RESOURCE_OBJ}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cpicosdk_embedded_resources"
             VERBATIM
         )
         list(APPEND CPICOSDK_EMBEDDED_RESOURCE_OBJECTS "${CPICOSDK_EMBEDDED_RESOURCE_OBJ}")

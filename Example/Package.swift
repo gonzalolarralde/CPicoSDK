@@ -43,7 +43,10 @@ let package = Package(
                 .product(name: "CPicoConcurrency", package: "CPicoSDK"),
                 .product(name: "PSRAM", package: "CPicoSDK"), // Optional, only needed if using PSRAM.
             ],
-            plugins: [.plugin(name: "PIOASM", package: "CPicoSDK")]
+            plugins: [
+                .plugin(name: "PIOASM", package: "CPicoSDK"),
+                .plugin(name: "AssetCompiler", package: "CPicoSDK"),
+            ]
         ),
     ]
 )

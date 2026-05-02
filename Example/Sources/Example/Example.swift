@@ -43,6 +43,10 @@ struct App: EmbeddedAsyncApp {
         // can demonstrate automatic linking of libswiftUnicodeDataTables when needed.
         print("Composed/decomposed match: \("Cafe\u{301}".contains("é"))")
 
+        // Asset sample
+        print("Embedded asset bytes: \(Asset.sample.data.count) at 0x\(String(UInt(bitPattern: Asset.sample.data.baseAddress!), radix: 16))")
+        print("Embedded asset content: \(String(decoding: Asset.sample.data, as: UTF8.self))")
+
         print("Hello, world!")
 
         Foo.$bar.withValue("HelloWorld") {
