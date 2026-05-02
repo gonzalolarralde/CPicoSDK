@@ -53,6 +53,8 @@ struct App: EmbeddedAsyncApp {
             try! await blinkLeds()
         }
 
+        startMulticoreSchedulerStress()
+
         // multicore_launch_core1(ledExample)
         // try! pioExample()
 
@@ -68,8 +70,53 @@ struct App: EmbeddedAsyncApp {
     }
 
     static func loop() async {
-        print("One second!")
+        print("App loop core=\(get_core_num())")
         try? await Task.sleep(ms: 1000)
+    }
+}
+
+// MARK: Scheduler Stress
+
+nonisolated(unsafe) var stressCore0Hits: UInt32 = 0
+nonisolated(unsafe) var stressCore1Hits: UInt32 = 0
+
+func startMulticoreSchedulerStress() {
+    print("Starting multicore scheduler stress")
+    enableMulticoreSchedulerPoC()
+
+    for id in UInt32(0)..<4 {
+        Task {
+            await schedulerStressWorker(id: id)
+        }
+    }
+}
+
+func schedulerStressWorker(id: UInt32) async {
+    var iteration: UInt32 = 0
+    var checksum: UInt32 = id &+ 1
+
+    while true {
+        for round in UInt32(0)..<250 {
+            checksum = checksum &* 1_664_525 &+ 1_013_904_223 &+ id &+ round
+        }
+
+        if iteration % 128 == 0 {
+            let core = get_core_num()
+            if core == 0 {
+                stressCore0Hits &+= 1
+                print("stress t=\(id) i=\(iteration) c=\(core) c0=\(stressCore0Hits) c1=\(stressCore1Hits) j=\(schedulerCore1JobsRun()) o=\(schedulerCore1OverflowCount())")
+            } else {
+                stressCore1Hits &+= 1
+            }
+        }
+
+        if get_core_num() == 1 {
+            sleep_us(5_000 + UInt64(id) * 1_000)
+        } else {
+            try? await Task.sleep(ms: 5 + id)
+        }
+
+        iteration &+= 1
     }
 }
 

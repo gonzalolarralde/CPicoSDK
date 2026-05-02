@@ -1,7 +1,7 @@
+#include "pico.h"
 #include "ConcurrencyShims.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
@@ -29,6 +29,34 @@ extern void cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, v
 extern void cshims_scheduler_enqueue_delayed(uint64_t delayUs, void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_enqueue_deadline(uint64_t deadlineUs, void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_wait_for_work_forever(void);
+extern void multicore_reset_core1(void);
+extern void multicore_launch_core1(void (*entry)(void));
+extern void mutex_init(mutex_t *mtx);
+extern void mutex_enter_blocking(mutex_t *mtx);
+extern void mutex_exit(mutex_t *mtx);
+extern void sleep_us(uint64_t us);
+extern uint64_t time_us_64(void);
+
+#define CSHIMS_CORE1_JOB_CAPACITY 64
+
+typedef struct {
+    void *job;
+    void *executorFirst;
+    void *executorSecond;
+    uint64_t deadlineUs;
+} CShimsCore1Job;
+
+static CShimsCore1Job cshims_core1_jobs[CSHIMS_CORE1_JOB_CAPACITY];
+static mutex_t cshims_core1_jobs_mutex;
+static bool cshims_core1_jobs_initialized;
+static uint32_t cshims_core1_read_index;
+static uint32_t cshims_core1_write_index;
+static uint32_t cshims_core1_count;
+static volatile uint32_t cshims_core1_boots;
+static volatile uint32_t cshims_core1_runs;
+static volatile uint32_t cshims_core1_overflows;
+static mutex_t cshims_run_job_mutex;
+static bool cshims_run_job_mutex_initialized;
 
 static SwiftExecutorRef cshims_generic_executor(void) {
     SwiftExecutorRef executor = {NULL, NULL};
@@ -46,10 +74,122 @@ static bool cshims_executor_equal(SwiftExecutorRef lhs, SwiftExecutorRef rhs) {
 void swift_createDefaultExecutors(void) {}
 
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond) {
+    if (job == NULL) {
+        return;
+    }
+    if (get_core_num() == 1u) {
+        swift_job_run(job, executorFirst, executorSecond);
+        return;
+    }
+    if (!cshims_run_job_mutex_initialized) {
+        mutex_init(&cshims_run_job_mutex);
+        cshims_run_job_mutex_initialized = true;
+    }
+    mutex_enter_blocking(&cshims_run_job_mutex);
     swift_job_run(job, executorFirst, executorSecond);
+    mutex_exit(&cshims_run_job_mutex);
 }
 
-uint32_t cshims_enter_critical(void) {
+static void cshims_scheduler_core1_queue_init(void) {
+    if (!cshims_core1_jobs_initialized) {
+        mutex_init(&cshims_core1_jobs_mutex);
+        cshims_core1_jobs_initialized = true;
+    }
+}
+
+static bool cshims_scheduler_pop_core1(CShimsCore1Job *job) {
+    bool didPop = false;
+    mutex_enter_blocking(&cshims_core1_jobs_mutex);
+    if (cshims_core1_count > 0) {
+        CShimsCore1Job nextJob = cshims_core1_jobs[cshims_core1_read_index];
+        if (nextJob.deadlineUs == 0 || nextJob.deadlineUs <= time_us_64()) {
+            *job = nextJob;
+            cshims_core1_read_index = (cshims_core1_read_index + 1u) % CSHIMS_CORE1_JOB_CAPACITY;
+            cshims_core1_count -= 1u;
+            didPop = true;
+        }
+    }
+    mutex_exit(&cshims_core1_jobs_mutex);
+    return didPop;
+}
+
+static bool cshims_scheduler_enqueue_core1_at(
+    void *job,
+    void *executorFirst,
+    void *executorSecond,
+    uint64_t deadlineUs
+) {
+    cshims_scheduler_core1_queue_init();
+
+    bool didEnqueue = false;
+    mutex_enter_blocking(&cshims_core1_jobs_mutex);
+    if (cshims_core1_count < CSHIMS_CORE1_JOB_CAPACITY) {
+        cshims_core1_jobs[cshims_core1_write_index] = (CShimsCore1Job) {
+            .job = job,
+            .executorFirst = executorFirst,
+            .executorSecond = executorSecond,
+            .deadlineUs = deadlineUs,
+        };
+        cshims_core1_write_index = (cshims_core1_write_index + 1u) % CSHIMS_CORE1_JOB_CAPACITY;
+        cshims_core1_count += 1u;
+        didEnqueue = true;
+    } else {
+        cshims_core1_overflows += 1u;
+    }
+    mutex_exit(&cshims_core1_jobs_mutex);
+    return didEnqueue;
+}
+
+bool cshims_scheduler_enqueue_core1(void *job, void *executorFirst, void *executorSecond) {
+    if (job == NULL) {
+        return false;
+    }
+    return cshims_scheduler_enqueue_core1_at(job, executorFirst, executorSecond, 0);
+}
+
+static bool cshims_scheduler_enqueue_core1_after(
+    uint64_t delayUs,
+    void *job,
+    void *executorFirst,
+    void *executorSecond
+) {
+    uint64_t deadlineUs = time_us_64() + delayUs;
+    return cshims_scheduler_enqueue_core1_at(job, executorFirst, executorSecond, deadlineUs);
+}
+
+static void cshims_scheduler_core1_entry(void) {
+    cshims_core1_boots += 1u;
+
+    while (true) {
+        CShimsCore1Job job;
+        if (cshims_scheduler_pop_core1(&job)) {
+            cshims_core1_runs += 1u;
+            cshims_run_job_bridge(job.job, job.executorFirst, job.executorSecond);
+        } else {
+            sleep_us(50);
+        }
+    }
+}
+
+void cshims_scheduler_launch_core1(void) {
+    cshims_scheduler_core1_queue_init();
+    multicore_reset_core1();
+    multicore_launch_core1(cshims_scheduler_core1_entry);
+}
+
+uint32_t cshims_scheduler_core1_boot_count(void) {
+    return cshims_core1_boots;
+}
+
+uint32_t cshims_scheduler_core1_jobs_run(void) {
+    return cshims_core1_runs;
+}
+
+uint32_t cshims_scheduler_core1_overflow_count(void) {
+    return cshims_core1_overflows;
+}
+
+unsigned int cshims_enter_critical(void) {
 #if defined(__arm__) || defined(__thumb__)
     uint32_t status;
     __asm volatile(
@@ -64,7 +204,7 @@ uint32_t cshims_enter_critical(void) {
 #endif
 }
 
-void cshims_exit_critical(uint32_t state) {
+void cshims_exit_critical(unsigned int state) {
 #if defined(__arm__) || defined(__thumb__)
     __asm volatile("msr primask, %0\n" : : "r"(state) : "memory");
 #else
@@ -84,6 +224,9 @@ SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDelayImpl(uint64_t delay, void *
     uint64_t delayUs = delay / 1000u;
     if (delay > 0 && delayUs == 0) {
         delayUs = 1;
+    }
+    if (get_core_num() == 1u && cshims_scheduler_enqueue_core1_after(delayUs, job, NULL, NULL)) {
+        return;
     }
     cshims_scheduler_enqueue_delayed(delayUs, job, NULL, NULL);
 }
@@ -108,6 +251,9 @@ SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDeadlineImpl(
     (void)toleranceNsec;
     (void)clock;
 
+    if (get_core_num() == 1u && cshims_scheduler_enqueue_core1_at(job, NULL, NULL, deadlineUs)) {
+        return;
+    }
     cshims_scheduler_enqueue_deadline(deadlineUs, job, NULL, NULL);
 }
 
@@ -228,8 +374,6 @@ int memset_s(void *dest, size_t destSize, int ch, size_t count) {
     memset(dest, ch, count);
     return 0;
 }
-
-extern uint64_t time_us_64(void);
 
 int clock_gettime(clockid_t clockID, struct timespec *ts) {
     (void)clockID;

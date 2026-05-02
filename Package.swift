@@ -94,7 +94,12 @@ let package = Package(
                 .target(name: "CPicoSDK"),
             ]
         ),
-        .target(name: "ConcurrencyShims"),
+        .target(
+            name: "ConcurrencyShims",
+            dependencies: [
+                .target(name: "CShims"),
+            ]
+        ),
 
         .target(
             name: "PSRAM", 
