@@ -913,12 +913,15 @@ final class RuntimeSchedulerSystem {
             return 1
         }
 
-        if message.currentTaskAddress != 0,
+        if message.asyncTaskAddress == 0,
+           message.currentTaskAddress != 0,
            let currentIndex = taskTable.firstIndex(where: { $0.ownerToken == message.currentTaskAddress }) {
             return taskTable[currentIndex].ownerCore
         }
 
-        return enqueueCore
+        let core0Work = outstandingWork(on: 0)
+        let core1Work = outstandingWork(on: 1)
+        return core0Work <= core1Work ? 0 : 1
     }
 
     private func outstandingWork(on core: UInt8) -> UInt32 {
@@ -973,7 +976,7 @@ final class RuntimeSchedulerSystem {
         let core = UInt8(truncatingIfNeeded: get_core_num())
         var didRoute = false
 
-        for _ in 0..<4 {
+        for _ in 0..<schedulerInputQueueCapacity {
             var message = SchedulerMessage(kind: .immediate, ownerCore: 0, job: nil, executorFirst: nil, executorSecond: nil, timeUs: 0)
             guard queue_try_remove(&inputQueue, &message) else {
                 break
@@ -982,7 +985,7 @@ final class RuntimeSchedulerSystem {
             refreshMessageOwnerFromTable(&message)
             guard message.ownerCore == core else {
                 requeueDeferred(message, observedBy: core)
-                break
+                continue
             }
 
             if core == 1 {

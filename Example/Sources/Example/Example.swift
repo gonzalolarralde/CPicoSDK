@@ -1,5 +1,6 @@
 import CPicoSDK
 import CPicoConcurrency
+import ConcurrencyShims
 import Synchronization
 import PSRAM // Optional, only needed if using PSRAM.
 
@@ -52,6 +53,8 @@ struct App: EmbeddedAsyncApp {
         Foo.$bar.withValue("HelloWorld") {
             print("Task local value: \(Foo().getBar())")
         }
+
+        cshims_tls_probe_run()
 
         Task {
             try! await blinkLeds()

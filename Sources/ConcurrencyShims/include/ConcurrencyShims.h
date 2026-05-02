@@ -8,6 +8,7 @@ extern "C" {
 // Optional helper APIs for cooperative polling loops.
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond);
 void cshims_scheduler_launch_core1(void);
+void cshims_tls_probe_run(void);
 unsigned long long cshims_job_task_id(void *job);
 void *cshims_job_async_task(void *job);
 void *cshims_current_task(void);
