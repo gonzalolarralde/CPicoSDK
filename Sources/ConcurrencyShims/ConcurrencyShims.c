@@ -31,33 +31,8 @@ extern void SWIFT_CC_SWIFT swift_job_run(void *job, void *executorFirst, void *e
 extern uint64_t SWIFT_CC_SWIFT swift_task_getJobTaskId(void *job);
 extern void *SWIFT_CC_SWIFT swift_task_getCurrent(void);
 extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executor);
-extern void *SWIFT_CC_SWIFT __real_swift_task_getCurrent(void);
-extern void *SWIFT_CC_SWIFT __real_swift_task_alloc(size_t size);
-extern void SWIFT_CC_SWIFT __real_swift_task_dealloc(void *ptr);
-extern void SWIFT_CC_SWIFT __real_swift_task_dealloc_through(void *ptr);
-extern void *SWIFT_CC_SWIFT __real_swift_continuation_init(void *context, uint32_t flags);
-extern void SWIFT_CC_SWIFT __real_swift_continuation_resume(void *task);
-extern void SWIFT_CC_SWIFT __real_swift_task_enqueue(void *job, void *executorFirst, void *executorSecond);
-extern void SWIFT_CC_SWIFT __real_swift_job_run(void *job, void *executorFirst, void *executorSecond);
-#ifndef CSHIMS_WRAP_SWIFT_TASK_SWITCH
-#define CSHIMS_WRAP_SWIFT_TASK_SWITCH 0
-#endif
-#if CSHIMS_WRAP_SWIFT_TASK_SWITCH
-extern void SWIFT_CC_SWIFT_ASYNC __real_swift_task_switch(
-    void *resumeContext,
-    void *resumeFunction,
-    void *executorFirst,
-    void *executorSecond
-);
-#endif
 extern void *SWIFT_CC_SWIFT cshims_swift_task_set_current(void *task) __asm__("_ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE");
 extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
-extern void *SWIFT_CC_SWIFT __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(void *task);
-extern void *SWIFT_CC_SWIFT __real__ZN5swift24_swift_task_clearCurrentEv(void);
-extern void *__wrap__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void *task, size_t size);
-extern void __wrap__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(void *task, void *ptr);
-extern void *__real__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void *task, size_t size);
-extern void __real__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(void *task, void *ptr);
 extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
 extern void *__real_malloc(size_t size);
 extern void __real_free(void *ptr);
@@ -108,12 +83,35 @@ extern void sleep_us(uint64_t us);
 
 static uint32_t cshims_core1_stack[CSHIMS_CORE1_STACK_WORDS] __attribute__((aligned(8)));
 static uint32_t cshims_tls_probe_core1_stack[512] __attribute__((aligned(8)));
+extern char __StackBottom;
+extern char __StackTop;
 
 static volatile uint32_t cshims_tls_probe_done;
 static volatile uintptr_t cshims_tls_probe_core1_before;
 static volatile uintptr_t cshims_tls_probe_core1_after;
+static volatile uint32_t cshims_threading_probe_done;
+static volatile uintptr_t cshims_threading_probe_core1_thread_id;
+static volatile uint32_t cshims_threading_probe_core1_is_main;
+static volatile uintptr_t cshims_threading_probe_core1_slot0_before;
+static volatile uintptr_t cshims_threading_probe_core1_slot0_after;
+static volatile uintptr_t cshims_threading_probe_core1_slot1_before;
+static volatile uintptr_t cshims_threading_probe_core1_slot1_after;
+static volatile uintptr_t cshims_threading_probe_core1_stack_low;
+static volatile uintptr_t cshims_threading_probe_core1_stack_high;
 
-static void *cshims_current_tasks[2];
+static void cshims_core1_idle_pause(void) {
+#if defined(__arm__) || defined(__thumb__)
+    __asm volatile("yield");
+#else
+    __asm volatile("" ::: "memory");
+#endif
+}
+
+static void cshims_core1_idle_delay(unsigned int iterations) {
+    for (unsigned int i = 0; i < iterations; i++) {
+        cshims_core1_idle_pause();
+    }
+}
 
 static SwiftExecutorRef cshims_generic_executor(void) {
     SwiftExecutorRef executor = {NULL, NULL};
@@ -132,35 +130,309 @@ static unsigned int cshims_core_index(void) {
     return cshims_core_num() & 1u;
 }
 
-static void *cshims_get_current_task_for_core(void) {
-    return cshims_current_tasks[cshims_core_index()];
+#define CSHIMS_SWIFT_TLS_SLOT_COUNT 16u
+
+static void *cshims_swift_tls_slots[2][CSHIMS_SWIFT_TLS_SLOT_COUNT];
+
+uintptr_t swift_threading_defer_current_thread_id(void) {
+    return (uintptr_t)cshims_core_index() + 1u;
 }
 
-static void *cshims_set_current_task_for_core(void *task) {
-    unsigned int core = cshims_core_index();
-    void *old = cshims_current_tasks[core];
-    cshims_current_tasks[core] = task;
-    return old;
+bool swift_threading_defer_is_main_thread(void) {
+    return cshims_core_index() == 0u;
 }
 
-static void cshims_set_current_task_for_core_index(unsigned int core, void *task) {
-    cshims_current_tasks[core & 1u] = task;
+bool swift_threading_defer_current_stack_bounds(void **low, void **high) {
+    if (low == NULL || high == NULL) {
+        return false;
+    }
+
+    uintptr_t sp;
+#if defined(__arm__) || defined(__thumb__)
+    __asm volatile("mov %0, sp" : "=r"(sp));
+#else
+    sp = 0;
+#endif
+
+    uintptr_t core1Low = (uintptr_t)cshims_core1_stack;
+    uintptr_t core1High = core1Low + sizeof(cshims_core1_stack);
+    uintptr_t probeLow = (uintptr_t)cshims_tls_probe_core1_stack;
+    uintptr_t probeHigh = probeLow + sizeof(cshims_tls_probe_core1_stack);
+
+    if (sp >= core1Low && sp <= core1High) {
+        *low = (void *)core1Low;
+        *high = (void *)core1High;
+        return true;
+    }
+
+    if (sp >= probeLow && sp <= probeHigh) {
+        *low = (void *)probeLow;
+        *high = (void *)probeHigh;
+        return true;
+    }
+
+    if (cshims_core_index() == 0u) {
+        *low = &__StackBottom;
+        *high = &__StackTop;
+        return true;
+    }
+
+    return false;
 }
 
-void *SWIFT_CC_SWIFT __wrap_swift_task_getCurrent(void) {
-    return cshims_get_current_task_for_core();
+void swift_threading_defer_mutex_init(uintptr_t *handle, bool checked) {
+    (void)checked;
+    __atomic_store_n(handle, 0, __ATOMIC_RELAXED);
 }
 
-void *SWIFT_CC_SWIFT __wrap__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(void *task) {
-    void *old = cshims_set_current_task_for_core(task);
-    __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(task);
-    return old;
+void swift_threading_defer_mutex_destroy(uintptr_t *handle) {
+    (void)handle;
 }
 
-void *SWIFT_CC_SWIFT __wrap__ZN5swift24_swift_task_clearCurrentEv(void) {
-    void *old = cshims_set_current_task_for_core(NULL);
-    __real__ZN5swift24_swift_task_clearCurrentEv();
-    return old;
+void swift_threading_defer_mutex_lock(uintptr_t *handle) {
+    while (__atomic_exchange_n(handle, 1, __ATOMIC_ACQUIRE) != 0) {
+        cshims_core1_idle_pause();
+    }
+}
+
+void swift_threading_defer_mutex_unlock(uintptr_t *handle) {
+    __atomic_store_n(handle, 0, __ATOMIC_RELEASE);
+}
+
+bool swift_threading_defer_mutex_try_lock(uintptr_t *handle) {
+    uintptr_t expected = 0;
+    return __atomic_compare_exchange_n(handle, &expected, 1, false,
+                                       __ATOMIC_ACQUIRE, __ATOMIC_RELAXED);
+}
+
+enum {
+    CSHIMS_DEFER_RECURSIVE_LOCK = 0,
+    CSHIMS_DEFER_RECURSIVE_OWNER = 1,
+    CSHIMS_DEFER_RECURSIVE_COUNT = 2,
+    CSHIMS_DEFER_RECURSIVE_CHECKED = 3
+};
+
+void swift_threading_defer_recursive_mutex_init(uintptr_t *storage, bool checked) {
+    __atomic_store_n(&storage[CSHIMS_DEFER_RECURSIVE_LOCK], 0, __ATOMIC_RELAXED);
+    storage[CSHIMS_DEFER_RECURSIVE_OWNER] = 0;
+    storage[CSHIMS_DEFER_RECURSIVE_COUNT] = 0;
+    storage[CSHIMS_DEFER_RECURSIVE_CHECKED] = checked ? 1u : 0u;
+}
+
+void swift_threading_defer_recursive_mutex_destroy(uintptr_t *storage) {
+    (void)storage;
+}
+
+void swift_threading_defer_recursive_mutex_lock(uintptr_t *storage) {
+    uintptr_t current = swift_threading_defer_current_thread_id();
+    if (storage[CSHIMS_DEFER_RECURSIVE_COUNT] != 0 &&
+        storage[CSHIMS_DEFER_RECURSIVE_OWNER] == current) {
+        storage[CSHIMS_DEFER_RECURSIVE_COUNT] += 1;
+        return;
+    }
+
+    swift_threading_defer_mutex_lock(&storage[CSHIMS_DEFER_RECURSIVE_LOCK]);
+    storage[CSHIMS_DEFER_RECURSIVE_OWNER] = current;
+    storage[CSHIMS_DEFER_RECURSIVE_COUNT] = 1;
+}
+
+void swift_threading_defer_recursive_mutex_unlock(uintptr_t *storage) {
+    if (storage[CSHIMS_DEFER_RECURSIVE_COUNT] > 1) {
+        storage[CSHIMS_DEFER_RECURSIVE_COUNT] -= 1;
+        return;
+    }
+
+    storage[CSHIMS_DEFER_RECURSIVE_COUNT] = 0;
+    storage[CSHIMS_DEFER_RECURSIVE_OWNER] = 0;
+    swift_threading_defer_mutex_unlock(&storage[CSHIMS_DEFER_RECURSIVE_LOCK]);
+}
+
+void swift_threading_defer_cond_init(uintptr_t *handle) {
+    swift_threading_defer_mutex_init(handle, false);
+}
+
+void swift_threading_defer_cond_destroy(uintptr_t *handle) {
+    swift_threading_defer_mutex_destroy(handle);
+}
+
+void swift_threading_defer_cond_lock(uintptr_t *handle) {
+    swift_threading_defer_mutex_lock(handle);
+}
+
+void swift_threading_defer_cond_unlock(uintptr_t *handle) {
+    swift_threading_defer_mutex_unlock(handle);
+}
+
+void swift_threading_defer_cond_signal(uintptr_t *handle) {
+    (void)handle;
+}
+
+void swift_threading_defer_cond_broadcast(uintptr_t *handle) {
+    (void)handle;
+}
+
+void swift_threading_defer_cond_wait(uintptr_t *handle) {
+    swift_threading_defer_cond_unlock(handle);
+    cshims_core1_idle_pause();
+    swift_threading_defer_cond_lock(handle);
+}
+
+bool swift_threading_defer_cond_wait_for(uintptr_t *handle, uint64_t ns) {
+    (void)ns;
+    swift_threading_defer_cond_wait(handle);
+    return true;
+}
+
+bool swift_threading_defer_cond_wait_until(uintptr_t *handle, int64_t epochNs) {
+    (void)epochNs;
+    swift_threading_defer_cond_wait(handle);
+    return true;
+}
+
+void swift_threading_defer_once(uintptr_t *predicate, void (*fn)(void *), void *ctx) {
+    uintptr_t expected = 0;
+    if (__atomic_compare_exchange_n(predicate, &expected, 1, false,
+                                    __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+        fn(ctx);
+        __atomic_store_n(predicate, 2, __ATOMIC_RELEASE);
+        return;
+    }
+
+    while (__atomic_load_n(predicate, __ATOMIC_ACQUIRE) != 2) {
+        cshims_core1_idle_pause();
+    }
+}
+
+void *swift_threading_defer_tls_get(uintptr_t key) {
+    if (key >= CSHIMS_SWIFT_TLS_SLOT_COUNT) {
+        return NULL;
+    }
+
+    return cshims_swift_tls_slots[cshims_core_index()][key];
+}
+
+void swift_threading_defer_tls_set(uintptr_t key, void *value) {
+    if (key >= CSHIMS_SWIFT_TLS_SLOT_COUNT) {
+        return;
+    }
+
+    cshims_swift_tls_slots[cshims_core_index()][key] = value;
+}
+
+static void cshims_threading_defer_probe_core1_entry(void) {
+    void *low = NULL;
+    void *high = NULL;
+
+    cshims_threading_probe_core1_thread_id = swift_threading_defer_current_thread_id();
+    cshims_threading_probe_core1_is_main = swift_threading_defer_is_main_thread() ? 1u : 0u;
+    cshims_threading_probe_core1_slot0_before = (uintptr_t)swift_threading_defer_tls_get(0);
+    cshims_threading_probe_core1_slot1_before = (uintptr_t)swift_threading_defer_tls_get(1);
+    swift_threading_defer_tls_set(0, (void *)0xc1000100u);
+    swift_threading_defer_tls_set(1, (void *)0xc1000101u);
+    cshims_threading_probe_core1_slot0_after = (uintptr_t)swift_threading_defer_tls_get(0);
+    cshims_threading_probe_core1_slot1_after = (uintptr_t)swift_threading_defer_tls_get(1);
+    if (swift_threading_defer_current_stack_bounds(&low, &high)) {
+        cshims_threading_probe_core1_stack_low = (uintptr_t)low;
+        cshims_threading_probe_core1_stack_high = (uintptr_t)high;
+    }
+
+    cshims_threading_probe_done = 1;
+    for (;;) {
+        cshims_core1_idle_pause();
+    }
+}
+
+static void cshims_threading_defer_probe_once_body(void *context) {
+    uintptr_t *counter = (uintptr_t *)context;
+    *counter += 1;
+}
+
+void cshims_threading_defer_probe_run(void) {
+    void *low = NULL;
+    void *high = NULL;
+    uintptr_t mutex = 0;
+    uintptr_t recursive[4] = {0, 0, 0, 0};
+    uintptr_t oncePredicate = 0;
+    uintptr_t onceCounter = 0;
+
+    swift_threading_defer_tls_set(0, (void *)0xc0000100u);
+    swift_threading_defer_tls_set(1, (void *)0xc0000101u);
+    uintptr_t core0ThreadID = swift_threading_defer_current_thread_id();
+    uint32_t core0IsMain = swift_threading_defer_is_main_thread() ? 1u : 0u;
+    uintptr_t core0Slot0Before = (uintptr_t)swift_threading_defer_tls_get(0);
+    uintptr_t core0Slot1Before = (uintptr_t)swift_threading_defer_tls_get(1);
+    uint32_t core0HasStack = swift_threading_defer_current_stack_bounds(&low, &high) ? 1u : 0u;
+    uintptr_t core0StackLow = (uintptr_t)low;
+    uintptr_t core0StackHigh = (uintptr_t)high;
+
+    swift_threading_defer_mutex_init(&mutex, true);
+    bool mutexTry1 = swift_threading_defer_mutex_try_lock(&mutex);
+    bool mutexTry2 = swift_threading_defer_mutex_try_lock(&mutex);
+    swift_threading_defer_mutex_unlock(&mutex);
+    bool mutexTry3 = swift_threading_defer_mutex_try_lock(&mutex);
+    swift_threading_defer_mutex_unlock(&mutex);
+
+    swift_threading_defer_recursive_mutex_init(recursive, true);
+    swift_threading_defer_recursive_mutex_lock(recursive);
+    swift_threading_defer_recursive_mutex_lock(recursive);
+    swift_threading_defer_recursive_mutex_unlock(recursive);
+    swift_threading_defer_recursive_mutex_unlock(recursive);
+
+    swift_threading_defer_once(&oncePredicate, cshims_threading_defer_probe_once_body, &onceCounter);
+    swift_threading_defer_once(&oncePredicate, cshims_threading_defer_probe_once_body, &onceCounter);
+
+    cshims_threading_probe_done = 0;
+    cshims_threading_probe_core1_thread_id = 0;
+    cshims_threading_probe_core1_is_main = 0;
+    cshims_threading_probe_core1_slot0_before = 0;
+    cshims_threading_probe_core1_slot0_after = 0;
+    cshims_threading_probe_core1_slot1_before = 0;
+    cshims_threading_probe_core1_slot1_after = 0;
+    cshims_threading_probe_core1_stack_low = 0;
+    cshims_threading_probe_core1_stack_high = 0;
+
+    multicore_reset_core1();
+    multicore_launch_core1_with_stack(
+        cshims_threading_defer_probe_core1_entry,
+        cshims_tls_probe_core1_stack,
+        sizeof(cshims_tls_probe_core1_stack));
+
+    for (uint32_t i = 0; i < 100000u && !cshims_threading_probe_done; i++) {
+        sleep_us(10);
+    }
+
+    uintptr_t core0Slot0After = (uintptr_t)swift_threading_defer_tls_get(0);
+    uintptr_t core0Slot1After = (uintptr_t)swift_threading_defer_tls_get(1);
+    uint32_t tlsLeak0 = core0Slot0After == 0xc1000100u ? 1u : 0u;
+    uint32_t tlsLeak1 = core0Slot1After == 0xc1000101u ? 1u : 0u;
+
+    printf("deferprobe done=%lu tid0=%lu main0=%lu stack0=%lx/%lx hs0=%lu s0b=%lx s0a=%lx s1b=%lx s1a=%lx tid1=%lu main1=%lu stack1=%lx/%lx s10b=%lx s10a=%lx s11b=%lx s11a=%lx leak0=%lu leak1=%lu m=%u%u%u once=%lu\n",
+           (unsigned long)cshims_threading_probe_done,
+           (unsigned long)core0ThreadID,
+           (unsigned long)core0IsMain,
+           (unsigned long)core0StackLow,
+           (unsigned long)core0StackHigh,
+           (unsigned long)core0HasStack,
+           (unsigned long)core0Slot0Before,
+           (unsigned long)core0Slot0After,
+           (unsigned long)core0Slot1Before,
+           (unsigned long)core0Slot1After,
+           (unsigned long)cshims_threading_probe_core1_thread_id,
+           (unsigned long)cshims_threading_probe_core1_is_main,
+           (unsigned long)cshims_threading_probe_core1_stack_low,
+           (unsigned long)cshims_threading_probe_core1_stack_high,
+           (unsigned long)cshims_threading_probe_core1_slot0_before,
+           (unsigned long)cshims_threading_probe_core1_slot0_after,
+           (unsigned long)cshims_threading_probe_core1_slot1_before,
+           (unsigned long)cshims_threading_probe_core1_slot1_after,
+           (unsigned long)tlsLeak0,
+           (unsigned long)tlsLeak1,
+           mutexTry1 ? 1u : 0u,
+           mutexTry2 ? 1u : 0u,
+           mutexTry3 ? 1u : 0u,
+           (unsigned long)onceCounter);
+
+    multicore_reset_core1();
 }
 
 static void cshims_tls_probe_core1_entry(void) {
@@ -169,7 +441,7 @@ static void cshims_tls_probe_core1_entry(void) {
     cshims_tls_probe_core1_after = (uintptr_t)swift_task_getCurrent();
     cshims_tls_probe_done = 1;
     for (;;) {
-        sleep_us(1000);
+        cshims_core1_idle_pause();
     }
 }
 
@@ -178,8 +450,8 @@ void cshims_tls_probe_run(void) {
     cshims_tls_probe_core1_before = 0;
     cshims_tls_probe_core1_after = 0;
 
-    void *saved = cshims_set_current_task_for_core((void *)0xc0000000u);
-    __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE((void *)0xc0000000u);
+    void *saved = swift_task_getCurrent();
+    cshims_swift_task_set_current((void *)0xc0000000u);
     uintptr_t core0Before = (uintptr_t)swift_task_getCurrent();
 
     multicore_reset_core1();
@@ -202,9 +474,7 @@ void cshims_tls_probe_run(void) {
            (unsigned long)cshims_tls_probe_core1_after,
            core0After == 0xc1000001u ? 1u : 0u);
 
-    cshims_set_current_task_for_core(saved);
-    __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(saved);
-    cshims_set_current_task_for_core_index(1, NULL);
+    cshims_swift_task_set_current(saved);
     multicore_reset_core1();
 }
 
@@ -376,127 +646,16 @@ void *cshims_job_async_task(void *job) {
 }
 
 void *cshims_current_task(void) {
-    return cshims_get_current_task_for_core();
-}
-
-void *SWIFT_CC_SWIFT __wrap_swift_task_alloc(size_t size) {
-    void *task = cshims_get_current_task_for_core();
-#if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    void *ptr = cshims_swift_task_heap_alloc(size);
-#else
-    void *ptr = __real_swift_task_alloc(size);
-#endif
-    cshims_task_alloc_record_alloc(ptr, task, size, 'p');
-    return ptr;
-}
-
-void SWIFT_CC_SWIFT __wrap_swift_task_dealloc(void *ptr) {
-    void *task = cshims_get_current_task_for_core();
-    cshims_task_alloc_record_dealloc(ptr, task, 'p', false);
-#if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    cshims_swift_task_heap_free(ptr);
-#else
-    __real_swift_task_dealloc(ptr);
-#endif
-}
-
-void SWIFT_CC_SWIFT __wrap_swift_task_dealloc_through(void *ptr) {
-    void *task = cshims_get_current_task_for_core();
-    cshims_task_alloc_record_dealloc(ptr, task, 'p', true);
-#if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    cshims_swift_task_heap_free(ptr);
-#else
-    __real_swift_task_dealloc_through(ptr);
-#endif
-}
-
-void *__wrap__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void *task, size_t size) {
-#if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    void *ptr = cshims_swift_task_heap_alloc(size);
-#else
-    void *ptr = __real__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(task, size);
-#endif
-    cshims_task_alloc_record_alloc(ptr, task, size, 's');
-    return ptr;
-}
-
-void __wrap__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(void *task, void *ptr) {
-    cshims_task_alloc_record_dealloc(ptr, task, 's', false);
-#if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    cshims_swift_task_heap_free(ptr);
-#else
-    __real__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(task, ptr);
-#endif
-}
-
-void *SWIFT_CC_SWIFT __wrap_swift_continuation_init(void *context, uint32_t flags) {
-    void *before = cshims_get_current_task_for_core();
-    void *task = __real_swift_continuation_init(context, flags);
-#if CSHIMS_SWIFT_TASK_ALLOC_TRACE
-    printf("ci c=%u cur=%p task=%p ctx=%p fl=%lx\n",
-           cshims_core_num(), before, task, context, (unsigned long)flags);
-#endif
-    return task;
-}
-
-void SWIFT_CC_SWIFT __wrap_swift_continuation_resume(void *task) {
-#if CSHIMS_SWIFT_TASK_ALLOC_TRACE
-    printf("cr c=%u cur=%p task=%p\n", cshims_core_num(), cshims_get_current_task_for_core(), task);
-#endif
-    __real_swift_continuation_resume(task);
-}
-
-void SWIFT_CC_SWIFT __wrap_swift_task_enqueue(void *job, void *executorFirst, void *executorSecond) {
-#if CSHIMS_SWIFT_TASK_ALLOC_TRACE
-    printf("enq c=%u cur=%p job=%p ex=%p/%p jt=%p\n",
-           cshims_core_num(), cshims_get_current_task_for_core(),
-           job, executorFirst, executorSecond, cshims_job_async_task(job));
-#endif
-    cshims_scheduler_enqueue_immediate(job, executorFirst, executorSecond);
-}
-
-#if CSHIMS_WRAP_SWIFT_TASK_SWITCH
-void SWIFT_CC_SWIFT_ASYNC __wrap_swift_task_switch(
-    void *resumeContext,
-    void *resumeFunction,
-    void *executorFirst,
-    void *executorSecond
-) {
-    void *task = cshims_get_current_task_for_core();
-    if (task != NULL) {
-        __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(task);
-    }
-    __real_swift_task_switch(resumeContext, resumeFunction, executorFirst, executorSecond);
-}
-#endif
-
-void SWIFT_CC_SWIFT __wrap_swift_job_run(void *job, void *executorFirst, void *executorSecond) {
-    void *jobTask = cshims_job_async_task(job);
-    void *oldTask = cshims_get_current_task_for_core();
-    if (jobTask != NULL) {
-        cshims_set_current_task_for_core(jobTask);
-    }
-#if CSHIMS_SWIFT_TASK_ALLOC_TRACE
-    printf("jr c=%u cur=%p real=%p job=%p jt=%p\n",
-           cshims_core_num(), cshims_get_current_task_for_core(), __real_swift_task_getCurrent(), job, jobTask);
-#endif
-    __real_swift_job_run(job, executorFirst, executorSecond);
-#if CSHIMS_SWIFT_TASK_ALLOC_TRACE
-    printf("jx c=%u cur=%p real=%p job=%p jt=%p\n",
-           cshims_core_num(), cshims_get_current_task_for_core(), __real_swift_task_getCurrent(), job, jobTask);
-#endif
-    if (jobTask != NULL) {
-        cshims_set_current_task_for_core(oldTask);
-    }
+    return swift_task_getCurrent();
 }
 
 static void cshims_scheduler_core1_entry(void) {
-    cshims_set_current_task_for_core(NULL);
+    cshims_swift_task_clear_current();
     cshims_scheduler_core1_boot();
     cshims_scheduler_core1_seed();
     for (;;) {
         if (!cshims_scheduler_core1_loop_iteration()) {
-            sleep_us(50);
+            cshims_core1_idle_delay(256);
         }
     }
 }

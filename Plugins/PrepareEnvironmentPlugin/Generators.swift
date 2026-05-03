@@ -69,6 +69,10 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
         }
 
+        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] == nil {
+            newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] = "0"
+        }
+
         if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
            let swiftVersion = newEnvVars["SWIFT_VERSION"] 
         {
@@ -180,11 +184,16 @@ extension PrepareEnvironmentPlugin {
     // MARK: - toolset.json
 
     private func embeddedFallbackSwiftCompilerFlags(envVars: [String: String]) -> [String] {
-        #if os(Linux)
-        if let fallbackPath = envVars["SWIFT_EMBEDDED_FALLBACK_PATH"], !fallbackPath.isEmpty {
+        guard envVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] == "1" else {
+            return []
+        }
+
+        if let fallbackPath = envVars["SWIFT_EMBEDDED_FALLBACK_PATH"],
+           !fallbackPath.isEmpty,
+           FileManager.default.fileExists(atPath: fallbackPath)
+        {
             return ["-I", fallbackPath]
         }
-        #endif
 
         return []
     }

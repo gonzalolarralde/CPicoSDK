@@ -55,6 +55,7 @@ struct App: EmbeddedAsyncApp {
         }
 
         cshims_tls_probe_run()
+        cshims_threading_defer_probe_run()
 
         // Keep this pass focused on scheduler/core1 task execution. The LED
         // task uses Task.yield(), which exercises a separate embedded runtime
@@ -64,17 +65,29 @@ struct App: EmbeddedAsyncApp {
             print("CPU Usage metrics not enabled.")
         }
 
-        startMulticoreSchedulerStress()
+        if enableMulticoreSchedulerStress {
+            startMulticoreSchedulerStress()
+        } else {
+            print("Skipping multicore scheduler stress")
+        }
 
         // multicore_launch_core1(ledExample)
         // try! pioExample()
     }
 
     static func loop() async {
-        enqueueRuntimeSchedulerMulticoreProbe()
+        if enableMulticoreSchedulerStress {
+            enqueueRuntimeSchedulerMulticoreProbe()
+        }
         let now = time_us_64()
         if now &- lastAppStatsPrintUs >= 1_000_000 {
             lastAppStatsPrintUs = now
+            guard enableMulticoreSchedulerStress else {
+                singleCoreLoopHits &+= 1
+                print("singlecore c=\(get_core_num()) i=\(singleCoreLoopHits)")
+                await Task.yield()
+                return
+            }
             let stats = runtimeSchedulerMulticoreStats()
             #if CPUMetrics
             let cpu0 = runtimeSchedulerCPUUsageSnapshot(for: .core0)
@@ -105,6 +118,8 @@ nonisolated(unsafe) var stressCore0Hits: UInt32 = 0
 nonisolated(unsafe) var stressCore1Hits: UInt32 = 0
 nonisolated(unsafe) var startStressWorkers = false
 nonisolated(unsafe) var lastAppStatsPrintUs: UInt64 = 0
+nonisolated(unsafe) var enableMulticoreSchedulerStress = true
+nonisolated(unsafe) var singleCoreLoopHits: UInt32 = 0
 
 func startMulticoreSchedulerStress() {
     print("Starting multicore scheduler stress")

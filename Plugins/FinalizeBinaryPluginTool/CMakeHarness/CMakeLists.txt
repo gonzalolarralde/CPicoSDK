@@ -49,18 +49,6 @@ target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=malloc")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=calloc")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=realloc")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=free")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_alloc")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_dealloc")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_dealloc_through")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_getCurrent")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=_ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=_ZN5swift24_swift_task_clearCurrentEv")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_enqueue")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_continuation_init")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_continuation_resume")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_job_run")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=_ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj")
-target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=_ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv")
 
 target_compile_definitions("${PROJECT_NAME}" PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
