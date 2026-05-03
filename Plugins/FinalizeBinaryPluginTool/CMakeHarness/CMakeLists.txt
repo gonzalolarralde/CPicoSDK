@@ -55,6 +55,7 @@ target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_dealloc_
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_getCurrent")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=_ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=_ZN5swift24_swift_task_clearCurrentEv")
+target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_task_enqueue")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_continuation_init")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_continuation_resume")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=swift_job_run")

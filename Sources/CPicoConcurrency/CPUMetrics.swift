@@ -1,7 +1,7 @@
 import ConcurrencyShims
 import CPicoSDK
 
-public enum CPUCore: UInt8 {
+public enum CPUCore: UInt8, Sendable {
     case core0 = 0
     case core1 = 1
 }
@@ -19,7 +19,7 @@ public enum CPUCore: UInt8 {
 /// third-party libraries that also wrap IRQ handlers. If you experience issues,
 /// you can disable CPU monitoring and the IRQ wrapping by undefining the `CPUMetrics`
 /// flag in your build configuration.
-public struct CPUStats {
+public struct CPUStats: Sendable {
     public static var enabled: Bool {
         #if CPUMetrics
             true
@@ -30,22 +30,23 @@ public struct CPUStats {
 
     public static func usageEvents(for core: CPUCore) -> AsyncStream<Self>? {
         #if CPUMetrics
-            // TODO: Support per-core metrics.
-            cshimsRuntimeScheduler.cpuUsageStream()
+            cshimsRuntimeScheduler.cpuUsageStream(for: core)
         #else
             nil
         #endif
     }
 
     public let timestamp: UInt64
-    public let core: CPUCore = .core0 // TODO: Support per-core metrics.
+    public let core: CPUCore
     public let taskUsageTime: UInt64
     public let interruptUsageTime: UInt64
     public let idleUsageTime: UInt64
     public let totalTime: UInt64
     public let interruptEvents: UInt64
 
-    public let memoryStats: [MemoryType: MemoryStats] = MemoryStats.stats
+    public var memoryStats: [MemoryType: MemoryStats] {
+        MemoryStats.stats
+    }
 
     public var taskUsagePercent: Double {
         totalTime > 0 ? Double(taskUsageTime) / Double(totalTime) * 100 : 0
@@ -174,6 +175,7 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 
     private static let windowUs: UInt64 = 1_000_000
 
+    private let core: CPUCore
     private let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(1))
     var stream: AsyncStream<CPUStats> { streamPair.stream }
 
@@ -184,13 +186,15 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     private var interruptUs: UInt64 = 0
     private var idleUs: UInt64 = 0
     private var interruptEvents: UInt64 = 0
+    private var latestReport: CPUStats?
 
     private var taskIsActive = false
     private var interruptDepth: UInt = 0
     
     private let mutex: UnsafeMutablePointer<mutex_t> = .allocate(capacity: 1)
 
-    init() {
+    init(core: CPUCore) {
+        self.core = core
         mutex_init(mutex)
     }
 
@@ -269,13 +273,15 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 
         let totalUs = taskUs &+ interruptUs &+ idleUs
         let report = CPUStats(
-            timestamp: nowUs, 
+            timestamp: nowUs,
+            core: core,
             taskUsageTime: taskUs, 
             interruptUsageTime: interruptUs, 
             idleUsageTime: idleUs, 
             totalTime: totalUs, 
             interruptEvents: interruptEvents
         )
+        latestReport = report
 
         streamPair.continuation.yield(report)
 
@@ -305,6 +311,19 @@ struct RuntimeCPUUsageMeter: ~Copyable {
         } else {
             idleUs &+= elapsedUs
         }
+    }
+
+    @_transparent
+    mutating func latest() -> CPUStats? {
+        guard mutex_try_enter(mutex, nil) else {
+            return nil
+        }
+
+        defer {
+            mutex_exit(mutex)
+        }
+
+        return latestReport
     }
 }
 

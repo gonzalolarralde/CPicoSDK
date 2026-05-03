@@ -42,7 +42,7 @@ private struct SchedulerMessage {
         self.taskID = job.map { cshims_job_task_id($0) } ?? 0
         self.asyncTaskAddress = job.map { UInt32(truncatingIfNeeded: UInt(bitPattern: cshims_job_async_task($0))) } ?? 0
         self.currentTaskAddress = UInt32(truncatingIfNeeded: UInt(bitPattern: cshims_current_task()))
-        self.ownerToken = asyncTaskAddress != 0 ? asyncTaskAddress : currentTaskAddress
+        self.ownerToken = asyncTaskAddress
         self.jobAddress = job.map { UInt32(truncatingIfNeeded: UInt(bitPattern: $0)) } ?? 0
     }
 }
@@ -263,16 +263,21 @@ final class ScheduledBlock {
 }
 
 final class RuntimeScheduler {
+    private let core: CPUCore
     fileprivate var context = async_context_poll_t()
     private let slots: UnsafeMutablePointer<JobSlot>
     private var didRunJob = false
     fileprivate private(set) var activeSlotCount: UInt32 = 0
     private var didInitializeContext = false
 #if CPUMetrics
-    private(set) var cpuUsage = RuntimeCPUUsageMeter()
+    private(set) var cpuUsage: RuntimeCPUUsageMeter
 #endif
 
-    init(initializeContext: Bool) {
+    init(core: CPUCore, initializeContext: Bool) {
+        self.core = core
+#if CPUMetrics
+        cpuUsage = RuntimeCPUUsageMeter(core: core)
+#endif
         slots = .allocate(capacity: JobSlot.maxJobSlots)
 
         for index in 0..<JobSlot.maxJobSlots {
@@ -401,19 +406,16 @@ final class RuntimeScheduler {
     func pollOnce() -> Int32 {
         initializeAsyncContext()
     #if CPUMetrics
-        let shouldRecordCPUUsage = get_core_num() == 0
-        if shouldRecordCPUUsage {
+        if core == .core0 {
             RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-            cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
         }
+        cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
     #endif
         didRunJob = false
         async_context_poll(&context.core)
     #if CPUMetrics
-        if shouldRecordCPUUsage {
-            cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
-            cpuUsage.reportIfNeeded()
-        }
+        cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
+        cpuUsage.reportIfNeeded()
     #endif
         return didRunJob ? 1 : 0
     }
@@ -430,18 +432,17 @@ final class RuntimeScheduler {
     func waitForever() {
         initializeAsyncContext()
 #if CPUMetrics
-        let shouldRecordCPUUsage = get_core_num() == 0
-        if shouldRecordCPUUsage {
+        if core == .core0 {
             RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-            cpuUsage.sample()
         }
+        cpuUsage.sample()
 #endif
         async_context_wait_for_work_until(&context.core, make_timeout_time_us(1000))
 #if CPUMetrics
-        if shouldRecordCPUUsage {
+        if core == .core0 {
             RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-            cpuUsage.sample()
         }
+        cpuUsage.sample()
 #endif
     }
 
@@ -456,6 +457,10 @@ final class RuntimeScheduler {
 
     func cpuUsageStream() -> AsyncStream<CPUStats> {
         cpuUsage.stream
+    }
+
+    func latestCPUUsage() -> CPUStats? {
+        cpuUsage.latest()
     }
 #endif
 
@@ -493,7 +498,9 @@ final class RuntimeScheduler {
         let executorFirst = slot.pointee.executorFirst
         let executorSecond = slot.pointee.executorSecond
 
-        releaseSlot(slot)
+        defer {
+            releaseSlot(slot)
+        }
         didRunJob = true
         guard let job else {
             cshimsRuntimeScheduler.recordNullJobDrop()
@@ -569,8 +576,8 @@ final class RuntimeScheduler {
 final class RuntimeSchedulerSystem {
     private var inputQueue = queue_t()
     private var didInitializeQueue = false
-    private let core0Scheduler = RuntimeScheduler(initializeContext: true)
-    private let core1Scheduler = RuntimeScheduler(initializeContext: false)
+    private let core0Scheduler = RuntimeScheduler(core: .core0, initializeContext: true)
+    private let core1Scheduler = RuntimeScheduler(core: .core1, initializeContext: false)
     private var counters = RuntimeSchedulerCounters()
     private var lock = mutex_t()
     private var didLaunchCore1 = false
@@ -767,15 +774,19 @@ final class RuntimeSchedulerSystem {
 
 #if CPUMetrics
     func recordExternalEvent(_ event: RuntimeCPUUsageMeter.Event) {
-        core0Scheduler.recordExternalEvent(event)
+        schedulerForCurrentCore().recordExternalEvent(event)
     }
 
     func sampleCPUUsage() {
-        core0Scheduler.sampleCPUUsage()
+        schedulerForCurrentCore().sampleCPUUsage()
     }
 
-    func cpuUsageStream() -> AsyncStream<CPUStats> {
-        core0Scheduler.cpuUsageStream()
+    func cpuUsageStream(for core: CPUCore) -> AsyncStream<CPUStats> {
+        scheduler(forCore: core.rawValue).cpuUsageStream()
+    }
+
+    func latestCPUUsage(for core: CPUCore) -> CPUStats? {
+        scheduler(forCore: core.rawValue).latestCPUUsage()
     }
 #endif
 
@@ -820,6 +831,10 @@ final class RuntimeSchedulerSystem {
     }
 
     private func ownerCoreForEnqueuedJob(_ message: SchedulerMessage) -> UInt8 {
+        guard message.asyncTaskAddress != 0 else {
+            return 0
+        }
+
         guard message.ownerToken != 0 else {
             return UInt8(truncatingIfNeeded: get_core_num())
         }
@@ -906,7 +921,7 @@ final class RuntimeSchedulerSystem {
             return 0
         }
 
-        if message.currentTaskAddress == 0, pendingCore1SeedOwnerForces != 0 {
+        if pendingCore1SeedOwnerForces != 0, message.currentTaskAddress == 0 || enqueueCore == 1 {
             pendingCore1SeedOwnerForces &-= 1
             counters.pendingCore1SeedOwnerForces = UInt32(pendingCore1SeedOwnerForces)
             counters.forcedCore1SeedOwners &+= 1
@@ -1166,11 +1181,15 @@ public func enqueueRuntimeSchedulerMulticoreProbe() {
     cshimsRuntimeScheduler.enqueueProbe()
 }
 
+#if CPUMetrics
+public func runtimeSchedulerCPUUsageSnapshot(for core: CPUCore) -> CPUStats? {
+    cshimsRuntimeScheduler.latestCPUUsage(for: core)
+}
+#endif
+
 private func core1SeedWorker() async {
-    while true {
-        cshimsRuntimeScheduler.recordCore1SeedRun()
-        try? await Task.sleep(ms: 17)
-    }
+    cshimsRuntimeScheduler.recordCore1SeedRun()
+    cshimsRuntimeScheduler.createCore1SeedTask()
 }
 
 @_cdecl("cshims_scheduler_scheduled_block_worker")

@@ -10,9 +10,15 @@
 
 #if defined(__clang__)
 #define SWIFT_CC_SWIFT __attribute__((swiftcall))
+#if __has_attribute(swiftasynccall)
+#define SWIFT_CC_SWIFT_ASYNC __attribute__((swiftasynccall))
+#else
+#define SWIFT_CC_SWIFT_ASYNC __attribute__((swiftcall))
+#endif
 #define SWIFT_NORETURN __attribute__((noreturn))
 #else
 #define SWIFT_CC_SWIFT
+#define SWIFT_CC_SWIFT_ASYNC
 #define SWIFT_NORETURN
 #endif
 
@@ -31,7 +37,19 @@ extern void SWIFT_CC_SWIFT __real_swift_task_dealloc(void *ptr);
 extern void SWIFT_CC_SWIFT __real_swift_task_dealloc_through(void *ptr);
 extern void *SWIFT_CC_SWIFT __real_swift_continuation_init(void *context, uint32_t flags);
 extern void SWIFT_CC_SWIFT __real_swift_continuation_resume(void *task);
+extern void SWIFT_CC_SWIFT __real_swift_task_enqueue(void *job, void *executorFirst, void *executorSecond);
 extern void SWIFT_CC_SWIFT __real_swift_job_run(void *job, void *executorFirst, void *executorSecond);
+#ifndef CSHIMS_WRAP_SWIFT_TASK_SWITCH
+#define CSHIMS_WRAP_SWIFT_TASK_SWITCH 0
+#endif
+#if CSHIMS_WRAP_SWIFT_TASK_SWITCH
+extern void SWIFT_CC_SWIFT_ASYNC __real_swift_task_switch(
+    void *resumeContext,
+    void *resumeFunction,
+    void *executorFirst,
+    void *executorSecond
+);
+#endif
 extern void *SWIFT_CC_SWIFT cshims_swift_task_set_current(void *task) __asm__("_ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE");
 extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
 extern void *SWIFT_CC_SWIFT __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(void *task);
@@ -40,8 +58,35 @@ extern void *__wrap__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void 
 extern void __wrap__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(void *task, void *ptr);
 extern void *__real__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void *task, size_t size);
 extern void __real__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(void *task, void *ptr);
+extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
 extern void *__real_malloc(size_t size);
 extern void __real_free(void *ptr);
+
+static volatile uint32_t cshims_heap_lock_word = 0;
+
+static void cshims_heap_lock(void) {
+    while (__atomic_exchange_n(&cshims_heap_lock_word, 1, __ATOMIC_ACQUIRE) != 0) {
+        __asm volatile("nop");
+    }
+}
+
+static void cshims_heap_unlock(void) {
+    __atomic_store_n(&cshims_heap_lock_word, 0, __ATOMIC_RELEASE);
+}
+
+static void *cshims_swift_task_heap_alloc(size_t size) {
+    cshims_heap_lock();
+    void *ptr = __real_malloc(size);
+    cshims_heap_unlock();
+    return ptr;
+}
+
+static void cshims_swift_task_heap_free(void *ptr) {
+    cshims_heap_lock();
+    __real_free(ptr);
+    cshims_heap_unlock();
+}
+
 static unsigned int cshims_core_num(void) {
     return *(volatile uint32_t *)0xd0000000u;
 }
@@ -164,11 +209,11 @@ void cshims_tls_probe_run(void) {
 }
 
 #ifndef CSHIMS_SWIFT_TASK_ALLOC_TRACE
-#define CSHIMS_SWIFT_TASK_ALLOC_TRACE 1
+#define CSHIMS_SWIFT_TASK_ALLOC_TRACE 0
 #endif
 
 #ifndef CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-#define CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP 0
+#define CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP 1
 #endif
 
 #define CSHIMS_TASK_ALLOC_TRACK_COUNT 192u
@@ -319,24 +364,14 @@ void *cshims_job_async_task(void *job) {
         return NULL;
     }
 
-    const size_t flagsOffset = 4u * sizeof(void *);
-    uint32_t flags;
-    memcpy(&flags, (const char *)job + flagsOffset, sizeof(flags));
+    void *metadata;
+    memcpy(&metadata, job, sizeof(metadata));
 
-    const uint32_t jobKindMask = 0xffu;
-    const uint32_t asyncTaskKind = 0u;
-    const uint32_t nullaryContinuationKind = 195u;
-    const uint32_t jobKind = flags & jobKindMask;
-    if (jobKind == asyncTaskKind) {
+    const void *taskMetadata = cshims_swift_task_heap_metadata_ptr;
+    if (metadata == taskMetadata) {
         return job;
     }
-    if (jobKind == nullaryContinuationKind) {
-        const size_t jobBaseWords = sizeof(void *) == 4u ? 10u : 8u;
-        const size_t continuationOffset = (jobBaseWords + 1u) * sizeof(void *);
-        void *continuation;
-        memcpy(&continuation, (const char *)job + continuationOffset, sizeof(continuation));
-        return continuation;
-    }
+
     return NULL;
 }
 
@@ -347,7 +382,7 @@ void *cshims_current_task(void) {
 void *SWIFT_CC_SWIFT __wrap_swift_task_alloc(size_t size) {
     void *task = cshims_get_current_task_for_core();
 #if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    void *ptr = __real_malloc(size);
+    void *ptr = cshims_swift_task_heap_alloc(size);
 #else
     void *ptr = __real_swift_task_alloc(size);
 #endif
@@ -359,7 +394,7 @@ void SWIFT_CC_SWIFT __wrap_swift_task_dealloc(void *ptr) {
     void *task = cshims_get_current_task_for_core();
     cshims_task_alloc_record_dealloc(ptr, task, 'p', false);
 #if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    __real_free(ptr);
+    cshims_swift_task_heap_free(ptr);
 #else
     __real_swift_task_dealloc(ptr);
 #endif
@@ -369,7 +404,7 @@ void SWIFT_CC_SWIFT __wrap_swift_task_dealloc_through(void *ptr) {
     void *task = cshims_get_current_task_for_core();
     cshims_task_alloc_record_dealloc(ptr, task, 'p', true);
 #if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    __real_free(ptr);
+    cshims_swift_task_heap_free(ptr);
 #else
     __real_swift_task_dealloc_through(ptr);
 #endif
@@ -377,7 +412,7 @@ void SWIFT_CC_SWIFT __wrap_swift_task_dealloc_through(void *ptr) {
 
 void *__wrap__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void *task, size_t size) {
 #if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    void *ptr = __real_malloc(size);
+    void *ptr = cshims_swift_task_heap_alloc(size);
 #else
     void *ptr = __real__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(task, size);
 #endif
@@ -388,7 +423,7 @@ void *__wrap__ZN5swift26_swift_task_alloc_specificEPNS_9AsyncTaskEj(void *task, 
 void __wrap__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(void *task, void *ptr) {
     cshims_task_alloc_record_dealloc(ptr, task, 's', false);
 #if CSHIMS_SWIFT_TASK_ALLOC_USE_HEAP
-    __real_free(ptr);
+    cshims_swift_task_heap_free(ptr);
 #else
     __real__ZN5swift28_swift_task_dealloc_specificEPNS_9AsyncTaskEPv(task, ptr);
 #endif
@@ -410,6 +445,30 @@ void SWIFT_CC_SWIFT __wrap_swift_continuation_resume(void *task) {
 #endif
     __real_swift_continuation_resume(task);
 }
+
+void SWIFT_CC_SWIFT __wrap_swift_task_enqueue(void *job, void *executorFirst, void *executorSecond) {
+#if CSHIMS_SWIFT_TASK_ALLOC_TRACE
+    printf("enq c=%u cur=%p job=%p ex=%p/%p jt=%p\n",
+           cshims_core_num(), cshims_get_current_task_for_core(),
+           job, executorFirst, executorSecond, cshims_job_async_task(job));
+#endif
+    cshims_scheduler_enqueue_immediate(job, executorFirst, executorSecond);
+}
+
+#if CSHIMS_WRAP_SWIFT_TASK_SWITCH
+void SWIFT_CC_SWIFT_ASYNC __wrap_swift_task_switch(
+    void *resumeContext,
+    void *resumeFunction,
+    void *executorFirst,
+    void *executorSecond
+) {
+    void *task = cshims_get_current_task_for_core();
+    if (task != NULL) {
+        __real__ZN5swift22_swift_task_setCurrentEPNS_9AsyncTaskE(task);
+    }
+    __real_swift_task_switch(resumeContext, resumeFunction, executorFirst, executorSecond);
+}
+#endif
 
 void SWIFT_CC_SWIFT __wrap_swift_job_run(void *job, void *executorFirst, void *executorSecond) {
     void *jobTask = cshims_job_async_task(job);

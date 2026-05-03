@@ -37,7 +37,7 @@ struct App: EmbeddedAsyncApp {
         }
 
         print("Scheduling 1 second alarm...")
-        try? await Task.sleep(ms: 1000)
+        sleep_ms(1000)
         print("One second!")
 
         // Keep one Unicode-aware string operation in the example so the finalizer
@@ -56,31 +56,46 @@ struct App: EmbeddedAsyncApp {
 
         cshims_tls_probe_run()
 
-        Task {
-            try! await blinkLeds()
+        // Keep this pass focused on scheduler/core1 task execution. The LED
+        // task uses Task.yield(), which exercises a separate embedded runtime
+        // current-task/TLS failure path.
+
+        if !CPUStats.enabled {
+            print("CPU Usage metrics not enabled.")
         }
 
         startMulticoreSchedulerStress()
 
         // multicore_launch_core1(ledExample)
         // try! pioExample()
-
-        if let cpuStats = CPUStats.usageEvents(for: .core0) {
-            Task {
-                for await report in cpuStats {
-                    report.print()
-                }
-            }
-        } else {
-            print("CPU Usage metrics not enabled.")
-        }
     }
 
     static func loop() async {
         enqueueRuntimeSchedulerMulticoreProbe()
-        let stats = runtimeSchedulerMulticoreStats()
-        print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
-        try? await Task.sleep(ms: 1000)
+        let now = time_us_64()
+        if now &- lastAppStatsPrintUs >= 1_000_000 {
+            lastAppStatsPrintUs = now
+            let stats = runtimeSchedulerMulticoreStats()
+            #if CPUMetrics
+            let cpu0 = runtimeSchedulerCPUUsageSnapshot(for: .core0)
+            let cpu1 = runtimeSchedulerCPUUsageSnapshot(for: .core1)
+            let c0t = cpu0.map { UInt32($0.taskUsagePercent) } ?? 0
+            let c0i = cpu0.map { UInt32($0.interruptUsagePercent) } ?? 0
+            let c0d = cpu0.map { UInt32($0.idleUsagePercent) } ?? 0
+            let c1t = cpu1.map { UInt32($0.taskUsagePercent) } ?? 0
+            let c1i = cpu1.map { UInt32($0.interruptUsagePercent) } ?? 0
+            let c1d = cpu1.map { UInt32($0.idleUsagePercent) } ?? 0
+            #else
+            let c0t: UInt32 = 0
+            let c0i: UInt32 = 0
+            let c0d: UInt32 = 0
+            let c1t: UInt32 = 0
+            let c1i: UInt32 = 0
+            let c1d: UInt32 = 0
+            #endif
+            print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) cpu0=\(c0t)/\(c0i)/\(c0d) cpu1=\(c1t)/\(c1i)/\(c1d) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
+        }
+        await Task.yield()
     }
 }
 
@@ -89,6 +104,7 @@ struct App: EmbeddedAsyncApp {
 nonisolated(unsafe) var stressCore0Hits: UInt32 = 0
 nonisolated(unsafe) var stressCore1Hits: UInt32 = 0
 nonisolated(unsafe) var startStressWorkers = false
+nonisolated(unsafe) var lastAppStatsPrintUs: UInt64 = 0
 
 func startMulticoreSchedulerStress() {
     print("Starting multicore scheduler stress")
@@ -128,7 +144,7 @@ func schedulerStressWorker(id: UInt32) async {
             }
         }
 
-        try? await Task.sleep(ms: 5 + id)
+        await Task.yield()
         iteration &+= 1
     }
 }
@@ -142,6 +158,18 @@ func blinkLeds() async throws(CancellationError) {
         status_led_set_state(last_state)
         last_state = !last_state
         try await Task.sleep(ms: 100)
+    }
+}
+
+func blinkLedsWithBlockingSleep() {
+    Task {
+        var lastState = false
+        while true {
+            status_led_set_state(lastState)
+            lastState = !lastState
+            sleep_ms(100)
+            await Task.yield()
+        }
     }
 }
 
