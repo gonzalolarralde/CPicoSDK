@@ -11,6 +11,9 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         case cmakeBuildFailed
         case noCombinationFound
         case multipleCombinationsFound(Set<String>)
+        case invalidEmbeddedResourceName(String)
+        case invalidEmbeddedResourcePath(String, URL)
+        case duplicateEmbeddedResourceName(String)
 
         var localizedDescription: String {
             switch self {
@@ -28,6 +31,12 @@ struct FinalizeBinaryPlugin: CommandPlugin {
                 return "No combination found in the build artifact"
             case .multipleCombinationsFound(let combinations):
                 return "Multiple combinations found in the build artifact: \(combinations)"
+            case .invalidEmbeddedResourceName(let name):
+                return "Embedded resource name must not be empty or contain path/list separators, got: \(name)"
+            case .invalidEmbeddedResourcePath(let name, let url):
+                return "Embedded resource '\(name)' must use an absolute file URL without CMake list separators, got: \(url)"
+            case .duplicateEmbeddedResourceName(let name):
+                return "Multiple embedded resources would be staged as '\(name)'"
             }
         }
     }
@@ -68,6 +77,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         let combination = try await getCombination(from: buildArtifact)
         let stdioOptions = await getStdioOptions(from: buildArtifact, combination: combination)
         let extraSwiftArchives = try await getExtraSwiftArchives(from: buildArtifact)
+        let embeddedResources = try getEmbeddedResources(from: libProduct)
 
         print("[CPicoSDK] Finalizing build for \(libProduct.name), combination: \(combination)...")
 
@@ -80,8 +90,25 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             outputDir: outputDir,
             buildArtifact: buildArtifact,
             productName: libProduct.name,
+            embeddedResources: embeddedResources,
             clean: !incremental
         )
+    }
+
+    func getEmbeddedResources(from product: LibraryProduct) throws -> [String: URL] {
+        var embeddedResources: [String: URL] = [:]
+
+        for sourceModule in product.sourceModules {
+            for sourceFile in sourceModule.sourceFiles where sourceFile.url.pathExtension == "codeasset" {
+                let resourceName = sourceFile.url.lastPathComponent
+                guard embeddedResources[resourceName] == nil else {
+                    throw Error.duplicateEmbeddedResourceName(resourceName)
+                }
+                embeddedResources[resourceName] = sourceFile.url
+            }
+        }
+
+        return embeddedResources
     }
 
     func getStaticTrait(from buildArtifact: URL, traitName: String) async throws -> Bool {
@@ -235,7 +262,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             .path
     }
 
-    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, clean: Bool) async throws {
+    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
@@ -254,6 +281,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
         print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
         let importedLibs = try Env.importedLibs(combination: combination)
+        let embeddedResourceArguments = try makeEmbeddedResourceCMakeArguments(embeddedResources)
 
         print("[CPicoSDK] Imported libraries: \(importedLibs)")
         if !extraSwiftArchives.isEmpty {
@@ -290,7 +318,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             "-DSTDIO_UART=\(stdioOptions.uart ? "1" : "0")",
             "-DSTDIO_USB=\(stdioOptions.usb ? "1" : "0")",
             "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",
-        ]
+        ] + embeddedResourceArguments
 
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
 
@@ -322,6 +350,33 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         await printArtifactStats(outputDir: outputDir, productName: productName)
 
         print("[CPicoSDK] 🎉 Finalization completed successfully! 🎉")
+    }
+
+    private func makeEmbeddedResourceCMakeArguments(_ embeddedResources: [String: URL]) throws -> [String] {
+        var names: [String] = []
+        var paths: [String] = []
+
+        for name in embeddedResources.keys.sorted() {
+            guard !name.isEmpty, !name.contains("/"), !name.contains("\\"), !name.contains(";") else {
+                throw Error.invalidEmbeddedResourceName(name)
+            }
+
+            let resourceURL = try embeddedResources[name].expected
+            guard resourceURL.isFileURL, resourceURL.path.hasPrefix("/") else {
+                throw Error.invalidEmbeddedResourcePath(name, resourceURL)
+            }
+            guard !resourceURL.path.contains(";") else {
+                throw Error.invalidEmbeddedResourcePath(name, resourceURL)
+            }
+
+            names.append(name)
+            paths.append(resourceURL.path)
+        }
+
+        return [
+            "-DCPICOSDK_EMBEDDED_RESOURCE_NAMES=\(names.joined(separator: ";"))",
+            "-DCPICOSDK_EMBEDDED_RESOURCE_PATHS=\(paths.joined(separator: ";"))",
+        ]
     }
 
     private func printArtifactStats(outputDir: URL, productName: String) async {
