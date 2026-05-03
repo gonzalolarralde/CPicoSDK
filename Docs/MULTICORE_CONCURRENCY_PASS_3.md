@@ -192,6 +192,39 @@ The proof is still provisional:
   concurrency state for embedded RP2350, or rebuild the Swift embedded runtime
   with a threading backend that maps `SWIFT_THREAD_LOCAL_TYPE` correctly.
 
+## 2026-05-03 Device Update
+
+The later PoC moved the scheduler transport from one shared FIFO with
+wrong-owner requeueing to one Pico SDK `queue_t` per owner core. Task ownership
+is still selected centrally, but accepted work is pushed directly to the owning
+core's queue. That removed the high `d0`/`d1` deferral counts seen with the
+shared queue.
+
+Two other fixes were needed before the run was stable:
+
+- `NullaryContinuationJob` ownership uses the continuation pointer at job
+  offset 40. Disassembly of `NullaryContinuationJob::process` showed the
+  runtime loads the continuation with `ldr.w r10, [r0,#40]`.
+- The linked newlib `__malloc_lock`/`__malloc_unlock` symbols were no-op stubs.
+  Swift `malloc` wrappers serialized ordinary wrapped calls, but direct libc
+  allocation paths could still mutate the heap concurrently. A strong C
+  recursive per-core implementation of those lock symbols fixed the observed
+  `_free_r` hardfault during concurrent `Task.yield()` continuations.
+
+A 120-second serial capture after those changes completed without a hardfault:
+
+```text
+app c=0 q=1380886 q0=678188 q1=702698 p0=678188 p1=702696
+d0=0 d1=0 r0=678188 r1=702556 seed10=0 seed11=351278
+ta=2 to0=1 to1=1 full=0 null=0
+```
+
+This is stronger than the earlier pass-3 result: both cores sustained Swift
+`Task.yield()` work, the owner queues did not report wrong-core deferrals, and
+the queue did not fill. The broader stress worker set was still disabled for
+this run, so the next validation step is to re-enable additional stress tasks
+and keep watching allocator, queue, and ownership counters.
+
 ## Practical Conclusion
 
 Task migration is a desired end goal and is not ruled out by this pass. The

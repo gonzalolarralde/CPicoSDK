@@ -37,6 +37,75 @@ extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskH
 extern void *__real_malloc(size_t size);
 extern void __real_free(void *ptr);
 
+struct _reent;
+
+static volatile uint32_t cshims_malloc_lock_word = 0;
+static volatile uint32_t cshims_malloc_lock_owner = 0;
+static volatile uint32_t cshims_malloc_lock_depth[2] = {0, 0};
+static volatile uint32_t cshims_malloc_lock_irq_state[2] = {0, 0};
+
+static unsigned int cshims_core_num(void);
+
+static uint32_t cshims_save_and_disable_interrupts(void) {
+#if defined(__arm__) || defined(__thumb__)
+    uint32_t state;
+    __asm volatile("mrs %0, primask\ncpsid i" : "=r"(state) :: "memory");
+    return state;
+#else
+    return 0;
+#endif
+}
+
+static void cshims_restore_interrupts(uint32_t state) {
+#if defined(__arm__) || defined(__thumb__)
+    __asm volatile("msr primask, %0" :: "r"(state) : "memory");
+#else
+    (void)state;
+#endif
+}
+
+void __malloc_lock(struct _reent *reent) {
+    (void)reent;
+    unsigned int core = cshims_core_num() & 1u;
+    uint32_t owner = core + 1u;
+
+    if (__atomic_load_n(&cshims_malloc_lock_owner, __ATOMIC_RELAXED) == owner) {
+        cshims_malloc_lock_depth[core]++;
+        return;
+    }
+
+    uint32_t irq_state = cshims_save_and_disable_interrupts();
+    while (__atomic_exchange_n(&cshims_malloc_lock_word, 1u, __ATOMIC_ACQUIRE) != 0u) {
+        __asm volatile("nop");
+    }
+
+    cshims_malloc_lock_irq_state[core] = irq_state;
+    cshims_malloc_lock_depth[core] = 1u;
+    __atomic_store_n(&cshims_malloc_lock_owner, owner, __ATOMIC_RELEASE);
+}
+
+void __malloc_unlock(struct _reent *reent) {
+    (void)reent;
+    unsigned int core = cshims_core_num() & 1u;
+    uint32_t owner = core + 1u;
+
+    if (__atomic_load_n(&cshims_malloc_lock_owner, __ATOMIC_RELAXED) != owner) {
+        return;
+    }
+
+    uint32_t depth = cshims_malloc_lock_depth[core];
+    if (depth > 1u) {
+        cshims_malloc_lock_depth[core] = depth - 1u;
+        return;
+    }
+
+    uint32_t irq_state = cshims_malloc_lock_irq_state[core];
+    cshims_malloc_lock_depth[core] = 0u;
+    __atomic_store_n(&cshims_malloc_lock_owner, 0u, __ATOMIC_RELEASE);
+    __atomic_store_n(&cshims_malloc_lock_word, 0u, __ATOMIC_RELEASE);
+    cshims_restore_interrupts(irq_state);
+}
+
 static volatile uint32_t cshims_heap_lock_word = 0;
 
 static void cshims_heap_lock(void) {
@@ -79,7 +148,7 @@ extern void multicore_reset_core1(void);
 extern void multicore_launch_core1_with_stack(void (*entry)(void), uint32_t *stack_bottom, size_t stack_size_bytes);
 extern void sleep_us(uint64_t us);
 
-#define CSHIMS_CORE1_STACK_WORDS 4096
+#define CSHIMS_CORE1_STACK_WORDS 8192
 
 static uint32_t cshims_core1_stack[CSHIMS_CORE1_STACK_WORDS] __attribute__((aligned(8)));
 static uint32_t cshims_tls_probe_core1_stack[512] __attribute__((aligned(8)));
@@ -640,6 +709,35 @@ void *cshims_job_async_task(void *job) {
     const void *taskMetadata = cshims_swift_task_heap_metadata_ptr;
     if (metadata == taskMetadata) {
         return job;
+    }
+
+    return NULL;
+}
+
+void *cshims_job_owner_task(void *job) {
+    void *asyncTask = cshims_job_async_task(job);
+    if (asyncTask != NULL) {
+        return asyncTask;
+    }
+
+    if (job == NULL) {
+        return NULL;
+    }
+
+    enum {
+        cshims_job_flags_offset = 16,
+        cshims_job_size = 40,
+        cshims_nullary_continuation_offset = cshims_job_size,
+        cshims_job_kind_mask = 0xff,
+        cshims_job_kind_nullary_continuation = 195
+    };
+
+    uint32_t flags;
+    memcpy(&flags, (const char *)job + cshims_job_flags_offset, sizeof(flags));
+    if ((flags & cshims_job_kind_mask) == cshims_job_kind_nullary_continuation) {
+        void *continuation;
+        memcpy(&continuation, (const char *)job + cshims_nullary_continuation_offset, sizeof(continuation));
+        return continuation;
     }
 
     return NULL;

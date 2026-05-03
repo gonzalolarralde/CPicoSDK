@@ -76,9 +76,6 @@ struct App: EmbeddedAsyncApp {
     }
 
     static func loop() async {
-        if enableMulticoreSchedulerStress {
-            enqueueRuntimeSchedulerMulticoreProbe()
-        }
         let now = time_us_64()
         if now &- lastAppStatsPrintUs >= 1_000_000 {
             lastAppStatsPrintUs = now
@@ -88,6 +85,7 @@ struct App: EmbeddedAsyncApp {
                 await Task.yield()
                 return
             }
+            enqueueRuntimeSchedulerMulticoreProbe()
             let stats = runtimeSchedulerMulticoreStats()
             #if CPUMetrics
             let cpu0 = runtimeSchedulerCPUUsageSnapshot(for: .core0)

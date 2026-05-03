@@ -4,6 +4,7 @@ import CPicoSDK
 private let cshimsMaxJobSlots = 64
 private let schedulerInputQueueCapacity: UInt32 = 128
 private let schedulerTaskTableCapacity = 64
+private let schedulerTaskIdleGraceUs: UInt64 = 100_000
 
 private enum SchedulerMessageKind: UInt8 {
     case immediate = 0
@@ -42,8 +43,8 @@ private struct SchedulerMessage {
         self.taskID = job.map { cshims_job_task_id($0) } ?? 0
         self.asyncTaskAddress = job.map { UInt32(truncatingIfNeeded: UInt(bitPattern: cshims_job_async_task($0))) } ?? 0
         self.currentTaskAddress = UInt32(truncatingIfNeeded: UInt(bitPattern: cshims_current_task()))
-        self.ownerToken = asyncTaskAddress
         self.jobAddress = job.map { UInt32(truncatingIfNeeded: UInt(bitPattern: $0)) } ?? 0
+        self.ownerToken = job.map { UInt32(truncatingIfNeeded: UInt(bitPattern: cshims_job_owner_task($0))) } ?? 0
     }
 }
 
@@ -574,7 +575,8 @@ final class RuntimeScheduler {
 }
 
 final class RuntimeSchedulerSystem {
-    private var inputQueue = queue_t()
+    private var core0Queue = queue_t()
+    private var core1Queue = queue_t()
     private var didInitializeQueue = false
     private let core0Scheduler = RuntimeScheduler(core: .core0, initializeContext: true)
     private let core1Scheduler = RuntimeScheduler(core: .core1, initializeContext: false)
@@ -804,7 +806,12 @@ final class RuntimeSchedulerSystem {
         }
 
         queue_init(
-            &inputQueue,
+            &core0Queue,
+            UInt32(MemoryLayout<SchedulerMessage>.stride),
+            schedulerInputQueueCapacity
+        )
+        queue_init(
+            &core1Queue,
             UInt32(MemoryLayout<SchedulerMessage>.stride),
             schedulerInputQueueCapacity
         )
@@ -831,18 +838,19 @@ final class RuntimeSchedulerSystem {
     }
 
     private func ownerCoreForEnqueuedJob(_ message: SchedulerMessage) -> UInt8 {
-        guard message.asyncTaskAddress != 0 else {
-            return 0
-        }
-
         guard message.ownerToken != 0 else {
             return UInt8(truncatingIfNeeded: get_core_num())
         }
 
         return withLock {
             let enqueueCore = UInt8(truncatingIfNeeded: get_core_num())
+            let now = time_us_64()
             let index = entryIndexForEnqueue(ownerToken: message.ownerToken)
             let wasActive = taskTable[index].isActive
+            let reuseIdleOwner = !taskTable[index].isEmpty
+                && !wasActive
+                && taskTable[index].idleSince != 0
+                && now &- taskTable[index].idleSince <= schedulerTaskIdleGraceUs
 
             if taskTable[index].isEmpty {
                 taskTable[index].ownerToken = message.ownerToken
@@ -857,10 +865,19 @@ final class RuntimeSchedulerSystem {
             } else if !wasActive {
                 taskTable[index].taskID = message.taskID
                 taskTable[index].idleSince = 0
-                if taskTable[index].ownerCore == 1 {
-                    counters.reuseCore1 &+= 1
+                if reuseIdleOwner {
+                    if taskTable[index].ownerCore == 1 {
+                        counters.reuseCore1 &+= 1
+                    } else {
+                        counters.reuseCore0 &+= 1
+                    }
                 } else {
-                    counters.reuseCore0 &+= 1
+                    taskTable[index].ownerCore = chooseOwnerCore(message: message, enqueueCore: enqueueCore)
+                    if taskTable[index].ownerCore == 1 {
+                        counters.newTaskCore1 &+= 1
+                    } else {
+                        counters.newTaskCore0 &+= 1
+                    }
                 }
             } else if taskTable[index].ownerCore == 1 {
                 counters.reuseCore1 &+= 1
@@ -928,8 +945,7 @@ final class RuntimeSchedulerSystem {
             return 1
         }
 
-        if message.asyncTaskAddress == 0,
-           message.currentTaskAddress != 0,
+        if message.currentTaskAddress != 0,
            let currentIndex = taskTable.firstIndex(where: { $0.ownerToken == message.currentTaskAddress }) {
             return taskTable[currentIndex].ownerCore
         }
@@ -951,12 +967,18 @@ final class RuntimeSchedulerSystem {
     private func push(_ message: SchedulerMessage) {
         initializeQueue()
         var mutableMessage = message
-        guard queue_try_add(&inputQueue, &mutableMessage) else {
+        let didPush: Bool
+        if message.ownerCore == 1 {
+            didPush = queue_try_add(&core1Queue, &mutableMessage)
+        } else {
+            didPush = queue_try_add(&core0Queue, &mutableMessage)
+        }
+        guard didPush else {
             undoAcceptedJob(message)
             withLock {
                 counters.queueFull &+= 1
             }
-            fatalError("[CPicoConcurrency] scheduler input queue full")
+            fatalError("[CPicoConcurrency] scheduler owner queue full")
         }
 
         withLock {
@@ -993,14 +1015,22 @@ final class RuntimeSchedulerSystem {
 
         for _ in 0..<schedulerInputQueueCapacity {
             var message = SchedulerMessage(kind: .immediate, ownerCore: 0, job: nil, executorFirst: nil, executorSecond: nil, timeUs: 0)
-            guard queue_try_remove(&inputQueue, &message) else {
+            let didPop: Bool
+            if core == 1 {
+                didPop = queue_try_remove(&core1Queue, &message)
+            } else {
+                didPop = queue_try_remove(&core0Queue, &message)
+            }
+            guard didPop else {
                 break
             }
 
             refreshMessageOwnerFromTable(&message)
             guard message.ownerCore == core else {
-                requeueDeferred(message, observedBy: core)
-                continue
+                withLock {
+                    counters.activeEvictBlocked &+= 1
+                }
+                fatalError("[CPicoConcurrency] scheduler owner queue delivered wrong-core job")
             }
 
             if core == 1 {
@@ -1027,25 +1057,6 @@ final class RuntimeSchedulerSystem {
         }
 
         return didRoute
-    }
-
-    private func requeueDeferred(_ message: SchedulerMessage, observedBy core: UInt8) {
-        var mutableMessage = message
-        guard queue_try_add(&inputQueue, &mutableMessage) else {
-            undoAcceptedJob(message)
-            withLock {
-                counters.queueFull &+= 1
-            }
-            fatalError("[CPicoConcurrency] scheduler input queue full while deferring owner-mismatched job")
-        }
-
-        withLock {
-            if core == 1 {
-                counters.deferredCore1 &+= 1
-            } else {
-                counters.deferredCore0 &+= 1
-            }
-        }
     }
 
     private func refreshMessageOwnerFromTable(_ message: inout SchedulerMessage) {
@@ -1098,7 +1109,7 @@ final class RuntimeSchedulerSystem {
             if taskTable[index].runningCount > 0 {
                 taskTable[index].runningCount &-= 1
             }
-            if pendingCore1SeedMigrationOwner == ownerToken, taskTable[index].runningCount == 0 {
+            if pendingCore1SeedMigrationOwner == ownerToken, !taskTable[index].isActive {
                 taskTable[index].ownerCore = 1
                 pendingCore1SeedMigrationOwner = 0
                 counters.core1SeedMigrations &+= 1
@@ -1106,8 +1117,10 @@ final class RuntimeSchedulerSystem {
             if !taskTable[index].isActive {
                 taskTable[index].idleSince = time_us_64()
                 counters.taskIdle &+= 1
+                recordCore1LastTaskIfNeeded(taskID: taskID, jobAddress: 0, entry: taskTable[index])
+            } else {
+                recordCore1LastTaskIfNeeded(taskID: taskID, jobAddress: 0, entry: taskTable[index])
             }
-            recordCore1LastTaskIfNeeded(taskID: taskID, jobAddress: 0, entry: taskTable[index])
             refreshTaskOwnershipCounters()
         }
     }
@@ -1136,11 +1149,11 @@ final class RuntimeSchedulerSystem {
         for entry in taskTable where !entry.isEmpty {
             if entry.isActive {
                 active &+= 1
-            }
-            if entry.ownerCore == 1 {
-                owned1 &+= 1
-            } else {
-                owned0 &+= 1
+                if entry.ownerCore == 1 {
+                    owned1 &+= 1
+                } else {
+                    owned0 &+= 1
+                }
             }
         }
         counters.activeTasks = active
@@ -1188,8 +1201,10 @@ public func runtimeSchedulerCPUUsageSnapshot(for core: CPUCore) -> CPUStats? {
 #endif
 
 private func core1SeedWorker() async {
-    cshimsRuntimeScheduler.recordCore1SeedRun()
-    cshimsRuntimeScheduler.createCore1SeedTask()
+    while true {
+        cshimsRuntimeScheduler.recordCore1SeedRun()
+        await Task.yield()
+    }
 }
 
 @_cdecl("cshims_scheduler_scheduled_block_worker")

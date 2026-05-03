@@ -226,61 +226,64 @@ private nonisolated(unsafe) let mallocMutex: UnsafeMutablePointer<mutex_t> = {
     mutex_init(ptr)
     return ptr
 }()
-private nonisolated(unsafe) var mallocMutexExceptionLevelPlusOneCore0: UInt8 = 0
-private nonisolated(unsafe) var mallocMutexExceptionLevelPlusOneCore1: UInt8 = 0
+private nonisolated(unsafe) var mallocMutexDepthCore0: UInt16 = 0
+private nonisolated(unsafe) var mallocMutexDepthCore1: UInt16 = 0
 
 private struct MallocLockState {
     let doLock: Bool
-    let outer: Bool
     let core: UInt32
+    let irqState: UInt32
 }
 
 @inline(__always)
-private func getExceptionLevelPlusOne(forCore core: UInt32) -> UInt8 {
-    core == 0 ? mallocMutexExceptionLevelPlusOneCore0 : mallocMutexExceptionLevelPlusOneCore1
+private func getMallocLockDepth(forCore core: UInt32) -> UInt16 {
+    core == 0 ? mallocMutexDepthCore0 : mallocMutexDepthCore1
 }
 
 @inline(__always)
-private func setExceptionLevelPlusOne(forCore core: UInt32, _ value: UInt8) {
+private func setMallocLockDepth(forCore core: UInt32, _ value: UInt16) {
     if core == 0 {
-        mallocMutexExceptionLevelPlusOneCore0 = value
+        mallocMutexDepthCore0 = value
     } else {
-        mallocMutexExceptionLevelPlusOneCore1 = value
+        mallocMutexDepthCore1 = value
     }
 }
 
 @inline(__always)
 private func mallocEnter(outer: Bool) -> MallocLockState {
-    let exception = Int(__get_current_exception())
+    _ = outer
+    let irqState = save_and_disable_interrupts()
     let core = get_core_num()
-    let exceptionLevelPlusOne = UInt8(truncatingIfNeeded: exception + 1)
-    let existingLevel = getExceptionLevelPlusOne(forCore: core)
+    let depth = getMallocLockDepth(forCore: core)
+    let doLock = depth == 0
 
-    // Match Pico SDK behavior: only re-lock inner calls when exception nesting changed.
-    let doLock = outer || exceptionLevelPlusOne != existingLevel
     if doLock {
         mutex_enter_blocking(mallocMutex)
-        if outer {
-            setExceptionLevelPlusOne(forCore: core, exceptionLevelPlusOne)
-        }
     }
+    setMallocLockDepth(forCore: core, depth &+ 1)
 
-    return .init(doLock: doLock, outer: outer, core: core)
+    return .init(doLock: doLock, core: core, irqState: irqState)
 }
 
 @inline(__always)
 private func mallocExit(_ state: MallocLockState) {
-    if state.outer {
-        setExceptionLevelPlusOne(forCore: state.core, 0)
-    }
+    let depth = getMallocLockDepth(forCore: state.core)
+    setMallocLockDepth(forCore: state.core, depth > 0 ? depth - 1 : 0)
     if state.doLock {
         mutex_exit(mallocMutex)
     }
+    restore_interrupts(state.irqState)
 }
 
 @inline(__always)
 private func mallocPanic(memoryType: MemoryType) -> Never {
-    fatalError("[CPicoSDK] \(memoryType.rawValue) Out of memory")
+    switch memoryType {
+    case .sram:
+        puts("[CPicoSDK] SRAM out of memory")
+    case .psram:
+        puts("[CPicoSDK] PSRAM out of memory")
+    }
+    fatalError("[CPicoSDK] out of memory")
 }
 
 @inline(__always)
@@ -296,7 +299,14 @@ private func checkAlloc(_ mem: UnsafeMutableRawPointer?, _ size: Int, allocator:
 
 @inline(__always)
 private func debugAllocFailure(_ fn: StaticString, _ size: Int, memoryType: MemoryType) {
-    print("[CPicoSDK] \(fn) failed to allocate \(size) bytes in \(memoryType.rawValue) allocator.")
+    _ = fn
+    _ = size
+    switch memoryType {
+    case .sram:
+        puts("[CPicoSDK] allocation failed in SRAM allocator")
+    case .psram:
+        puts("[CPicoSDK] allocation failed in PSRAM allocator")
+    }
 }
 
 @_cdecl("__wrap_malloc")

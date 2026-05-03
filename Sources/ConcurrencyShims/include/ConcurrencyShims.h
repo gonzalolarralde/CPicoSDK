@@ -40,6 +40,7 @@ void cshims_tls_probe_run(void);
 void cshims_threading_defer_probe_run(void);
 unsigned long long cshims_job_task_id(void *job);
 void *cshims_job_async_task(void *job);
+void *cshims_job_owner_task(void *job);
 void *cshims_current_task(void);
 unsigned int cshims_enter_critical(void);
 void cshims_exit_critical(unsigned int state);

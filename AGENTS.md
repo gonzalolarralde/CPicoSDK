@@ -383,6 +383,20 @@ design notes, experiments, and failure analysis in `docs/`.
   `freed pointer was not the last allocation` once stress jobs began running on
   core1. Treat this as evidence that task-id serialization alone is not enough
   for arbitrary core0-created Swift work on core1.
+- If multicore stress hardfaults in `_free_r` with another core blocked in the
+  Swift `malloc` wrapper mutex, check the linked newlib `__malloc_lock` and
+  `__malloc_unlock` symbols. In this workspace they initially disassembled to
+  no-op `bx lr` stubs, so direct libc allocation paths could corrupt the heap
+  even though `__wrap_malloc`/`__wrap_free` had a Swift-side mutex. A strong
+  C implementation of `__malloc_lock`/`__malloc_unlock` with a recursive
+  per-core spin lock fixed the observed `_free_r` hardfault in a 120-second
+  multicore `Task.yield()` soak.
+- In pass-3 multicore stress, a direct owner-queue transport for core0/core1
+  removed the shared-FIFO wrong-owner churn. Healthy logs showed
+  `d0=0 d1=0`, both `r0` and `r1` increasing, and `full=0 null=0`.
+- Per-loop diagnostic probes can fill the scheduler queue and hide the real
+  runtime signal. Throttle probes to periodic stats snapshots; the symptom was
+  `scheduler owner queue full` from `enqueueRuntimeSchedulerMulticoreProbe()`.
 - Avoid `try!` inside long-running device stress tasks. A task like
   `Task { try! await blinkLeds() }` can hardfault through
   `swift_unexpectedErrorTyped` if cancellation or corruption reaches the error
