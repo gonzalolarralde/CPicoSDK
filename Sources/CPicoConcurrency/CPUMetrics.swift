@@ -165,8 +165,8 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     }
 
     enum Event {
-        case enterTask(name: String)
-        case exitTask(name: String)
+        case enterTask
+        case exitTask
         case enterInterrupt(interrupt: UInt)
         case exitInterrupt(interrupt: UInt)
     }

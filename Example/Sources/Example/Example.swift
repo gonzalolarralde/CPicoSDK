@@ -76,6 +76,7 @@ struct App: EmbeddedAsyncApp {
     }
 
     static func loop() async {
+        schedulerHotSpin(rounds: 5_000)
         let now = time_us_64()
         if now &- lastAppStatsPrintUs >= 1_000_000 {
             lastAppStatsPrintUs = now
@@ -90,12 +91,16 @@ struct App: EmbeddedAsyncApp {
             #if CPUMetrics
             let cpu0 = runtimeSchedulerCPUUsageSnapshot(for: .core0)
             let cpu1 = runtimeSchedulerCPUUsageSnapshot(for: .core1)
-            let c0t = cpu0.map { UInt32($0.taskUsagePercent) } ?? 0
-            let c0i = cpu0.map { UInt32($0.interruptUsagePercent) } ?? 0
-            let c0d = cpu0.map { UInt32($0.idleUsagePercent) } ?? 0
-            let c1t = cpu1.map { UInt32($0.taskUsagePercent) } ?? 0
-            let c1i = cpu1.map { UInt32($0.interruptUsagePercent) } ?? 0
-            let c1d = cpu1.map { UInt32($0.idleUsagePercent) } ?? 0
+            let c0t = cpu0.map { cpuPercent(part: $0.taskUsageTime, total: $0.totalTime) } ?? 0
+            let c0i = cpu0.map { cpuPercent(part: $0.interruptUsageTime, total: $0.totalTime) } ?? 0
+            let c0d = cpu0.map { cpuPercent(part: $0.idleUsageTime, total: $0.totalTime) } ?? 0
+            let c1t = cpu1.map { cpuPercent(part: $0.taskUsageTime, total: $0.totalTime) } ?? 0
+            let c1i = cpu1.map { cpuPercent(part: $0.interruptUsageTime, total: $0.totalTime) } ?? 0
+            let c1d = cpu1.map { cpuPercent(part: $0.idleUsageTime, total: $0.totalTime) } ?? 0
+            let c0u = cpu0.map { UInt32(truncatingIfNeeded: $0.totalTime) } ?? 0
+            let c1u = cpu1.map { UInt32(truncatingIfNeeded: $0.totalTime) } ?? 0
+            let c0e = cpu0.map { UInt32(truncatingIfNeeded: $0.interruptEvents) } ?? 0
+            let c1e = cpu1.map { UInt32(truncatingIfNeeded: $0.interruptEvents) } ?? 0
             #else
             let c0t: UInt32 = 0
             let c0i: UInt32 = 0
@@ -103,8 +108,12 @@ struct App: EmbeddedAsyncApp {
             let c1t: UInt32 = 0
             let c1i: UInt32 = 0
             let c1d: UInt32 = 0
+            let c0u: UInt32 = 0
+            let c1u: UInt32 = 0
+            let c0e: UInt32 = 0
+            let c1e: UInt32 = 0
             #endif
-            print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) cpu0=\(c0t)/\(c0i)/\(c0d) cpu1=\(c1t)/\(c1i)/\(c1d) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
+            print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) cpu0=\(c0t)/\(c0i)/\(c0d) cpu1=\(c1t)/\(c1i)/\(c1d) cu0=\(c0u) cu1=\(c1u) ce0=\(c0e) ce1=\(c1e) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) aff=\(stats.affinityEnforced) afx=\(stats.affinityCrossCore) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
         }
         await Task.yield()
     }
@@ -112,12 +121,20 @@ struct App: EmbeddedAsyncApp {
 
 // MARK: Scheduler Stress
 
+func cpuPercent(part: UInt64, total: UInt64) -> UInt32 {
+    guard total != 0 else {
+        return 0
+    }
+    return UInt32((part &* 100) / total)
+}
+
 nonisolated(unsafe) var stressCore0Hits: UInt32 = 0
 nonisolated(unsafe) var stressCore1Hits: UInt32 = 0
-nonisolated(unsafe) var startStressWorkers = false
+nonisolated(unsafe) var startStressWorkers = true
 nonisolated(unsafe) var lastAppStatsPrintUs: UInt64 = 0
 nonisolated(unsafe) var enableMulticoreSchedulerStress = true
 nonisolated(unsafe) var singleCoreLoopHits: UInt32 = 0
+nonisolated(unsafe) var schedulerHotSpinSink: UInt32 = 0
 
 func startMulticoreSchedulerStress() {
     print("Starting multicore scheduler stress")
@@ -142,16 +159,17 @@ func schedulerStressWorker(id: UInt32) async {
     var checksum: UInt32 = id &+ 1
 
     while true {
-        for round in UInt32(0)..<250 {
+        for round in UInt32(0)..<400_000 {
             checksum = checksum &* 1_664_525 &+ 1_013_904_223 &+ id &+ round
         }
+        schedulerHotSpinSink &+= checksum
 
-        if iteration % 128 == 0 {
+        if id == 0 && iteration % 65_536 == 0 {
             let core = get_core_num()
             if core == 0 {
                 stressCore0Hits &+= 1
                 let stats = runtimeSchedulerMulticoreStats()
-                print("stress t=\(id) i=\(iteration) c=\(core) c0=\(stressCore0Hits) c1=\(stressCore1Hits) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) q1=\(stats.pushedCore1) p1=\(stats.poppedCore1) ta=\(stats.activeTasks) tn1=\(stats.newTaskCore1) tr1=\(stats.reuseCore1) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) n=\(stats.nullJobsDropped) k=\(checksum)")
+                print("stress t=\(id) i=\(iteration) c=\(core) c0=\(stressCore0Hits) c1=\(stressCore1Hits) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) q1=\(stats.pushedCore1) p1=\(stats.poppedCore1) ta=\(stats.activeTasks) tn1=\(stats.newTaskCore1) tr1=\(stats.reuseCore1) aff=\(stats.affinityEnforced) afx=\(stats.affinityCrossCore) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) n=\(stats.nullJobsDropped) k=\(checksum)")
             } else {
                 stressCore1Hits &+= 1
             }
@@ -160,6 +178,14 @@ func schedulerStressWorker(id: UInt32) async {
         await Task.yield()
         iteration &+= 1
     }
+}
+
+func schedulerHotSpin(rounds: UInt32) {
+    var value = schedulerHotSpinSink &+ 0x9E37_79B9
+    for round in UInt32(0)..<rounds {
+        value = value &* 1_664_525 &+ 1_013_904_223 &+ round
+    }
+    schedulerHotSpinSink = value
 }
 
 // MARK: LED Example

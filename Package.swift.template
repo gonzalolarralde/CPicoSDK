@@ -89,6 +89,9 @@ let package = Package(
             dependencies: [
                 .target(name: "ConcurrencyShims"),
                 .target(name: "CPicoSDK"),
+            ],
+            swiftSettings: [
+                .define("CPUMetrics", .when(traits: ["CPUMetrics"])),
             ]
         ),
         .target(name: "ConcurrencyShims"),

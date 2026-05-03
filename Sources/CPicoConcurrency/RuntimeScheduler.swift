@@ -4,7 +4,6 @@ import CPicoSDK
 private let cshimsMaxJobSlots = 64
 private let schedulerInputQueueCapacity: UInt32 = 128
 private let schedulerTaskTableCapacity = 64
-private let schedulerTaskIdleGraceUs: UInt64 = 100_000
 
 private enum SchedulerMessageKind: UInt8 {
     case immediate = 0
@@ -86,6 +85,8 @@ private struct RuntimeSchedulerCounters {
     var newTaskCore1: UInt32 = 0
     var reuseCore0: UInt32 = 0
     var reuseCore1: UInt32 = 0
+    var affinityEnforced: UInt32 = 0
+    var affinityCrossCore: UInt32 = 0
     var enqueueWhileRunning: UInt32 = 0
     var taskIdle: UInt32 = 0
     var taskEvicted: UInt32 = 0
@@ -132,6 +133,8 @@ public struct RuntimeSchedulerMulticoreStats {
     public let newTaskCore1: UInt32
     public let reuseCore0: UInt32
     public let reuseCore1: UInt32
+    public let affinityEnforced: UInt32
+    public let affinityCrossCore: UInt32
     public let enqueueWhileRunning: UInt32
     public let taskIdle: UInt32
     public let taskEvicted: UInt32
@@ -410,12 +413,12 @@ final class RuntimeScheduler {
         if core == .core0 {
             RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         }
-        cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
+        cpuUsage.record(event: .enterTask)
     #endif
         didRunJob = false
         async_context_poll(&context.core)
     #if CPUMetrics
-        cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
+        cpuUsage.record(event: .exitTask)
         cpuUsage.reportIfNeeded()
     #endif
         return didRunJob ? 1 : 0
@@ -586,6 +589,14 @@ final class RuntimeSchedulerSystem {
     private var pendingCore1SeedOwnerForces: UInt8 = 0
     private var pendingCore1SeedMigrationOwner: UInt32 = 0
     private var taskTable = Array(repeating: TaskTableEntry(), count: schedulerTaskTableCapacity)
+#if CPUMetrics
+    private var cpuWindowStartUsCore0: UInt64 = 0
+    private var cpuWindowStartUsCore1: UInt64 = 0
+    private var cpuTaskUsCore0: UInt64 = 0
+    private var cpuTaskUsCore1: UInt64 = 0
+    private var latestCPUCore0: CPUStats?
+    private var latestCPUCore1: CPUStats?
+#endif
 
     init() {
         mutex_init(&lock)
@@ -661,7 +672,13 @@ final class RuntimeSchedulerSystem {
         let ownerToken = slot.pointee.ownerToken
         let taskID = slot.pointee.taskID
         jobWillRun(ownerToken: ownerToken, taskID: taskID, on: core)
+    #if CPUMetrics
+        let startedAt = time_us_64()
+    #endif
         defer {
+        #if CPUMetrics
+            recordCPUJobRun(on: core, startedAt: startedAt, endedAt: time_us_64())
+        #endif
             jobDidRun(ownerToken: ownerToken, taskID: taskID, on: core)
         }
         scheduler(forCore: core).run(slot: slot)
@@ -715,12 +732,15 @@ final class RuntimeSchedulerSystem {
     }
 
     func createCore1SeedTask() {
+        let seedTaskCount: UInt8 = 3
         withLock {
-            pendingCore1SeedOwnerForces &+= 1
+            pendingCore1SeedOwnerForces &+= seedTaskCount
             counters.pendingCore1SeedOwnerForces = UInt32(pendingCore1SeedOwnerForces)
         }
-        Task {
-            await core1SeedWorker()
+        for _ in UInt8(0)..<seedTaskCount {
+            Task {
+                await core1SeedWorker()
+            }
         }
     }
 
@@ -752,6 +772,8 @@ final class RuntimeSchedulerSystem {
                 newTaskCore1: counters.newTaskCore1,
                 reuseCore0: counters.reuseCore0,
                 reuseCore1: counters.reuseCore1,
+                affinityEnforced: counters.affinityEnforced,
+                affinityCrossCore: counters.affinityCrossCore,
                 enqueueWhileRunning: counters.enqueueWhileRunning,
                 taskIdle: counters.taskIdle,
                 taskEvicted: counters.taskEvicted,
@@ -788,7 +810,14 @@ final class RuntimeSchedulerSystem {
     }
 
     func latestCPUUsage(for core: CPUCore) -> CPUStats? {
-        scheduler(forCore: core.rawValue).latestCPUUsage()
+        withLock {
+            switch core {
+            case .core0:
+                latestCPUCore0
+            case .core1:
+                latestCPUCore1
+            }
+        }
     }
 #endif
 
@@ -844,13 +873,8 @@ final class RuntimeSchedulerSystem {
 
         return withLock {
             let enqueueCore = UInt8(truncatingIfNeeded: get_core_num())
-            let now = time_us_64()
             let index = entryIndexForEnqueue(ownerToken: message.ownerToken)
             let wasActive = taskTable[index].isActive
-            let reuseIdleOwner = !taskTable[index].isEmpty
-                && !wasActive
-                && taskTable[index].idleSince != 0
-                && now &- taskTable[index].idleSince <= schedulerTaskIdleGraceUs
 
             if taskTable[index].isEmpty {
                 taskTable[index].ownerToken = message.ownerToken
@@ -865,24 +889,22 @@ final class RuntimeSchedulerSystem {
             } else if !wasActive {
                 taskTable[index].taskID = message.taskID
                 taskTable[index].idleSince = 0
-                if reuseIdleOwner {
-                    if taskTable[index].ownerCore == 1 {
-                        counters.reuseCore1 &+= 1
-                    } else {
-                        counters.reuseCore0 &+= 1
-                    }
+                taskTable[index].ownerCore = chooseOwnerCore(message: message, enqueueCore: enqueueCore)
+                if taskTable[index].ownerCore == 1 {
+                    counters.newTaskCore1 &+= 1
                 } else {
-                    taskTable[index].ownerCore = chooseOwnerCore(message: message, enqueueCore: enqueueCore)
-                    if taskTable[index].ownerCore == 1 {
-                        counters.newTaskCore1 &+= 1
-                    } else {
-                        counters.newTaskCore0 &+= 1
-                    }
+                    counters.newTaskCore0 &+= 1
                 }
-            } else if taskTable[index].ownerCore == 1 {
-                counters.reuseCore1 &+= 1
             } else {
-                counters.reuseCore0 &+= 1
+                counters.affinityEnforced &+= 1
+                if taskTable[index].ownerCore != enqueueCore {
+                    counters.affinityCrossCore &+= 1
+                }
+                if taskTable[index].ownerCore == 1 {
+                    counters.reuseCore1 &+= 1
+                } else {
+                    counters.reuseCore0 &+= 1
+                }
             }
 
             if taskTable[index].runningCount != 0 {
@@ -938,16 +960,11 @@ final class RuntimeSchedulerSystem {
             return 0
         }
 
-        if pendingCore1SeedOwnerForces != 0, message.currentTaskAddress == 0 || enqueueCore == 1 {
+        if pendingCore1SeedOwnerForces != 0 && (message.currentTaskAddress == 0 || enqueueCore == 1) {
             pendingCore1SeedOwnerForces &-= 1
             counters.pendingCore1SeedOwnerForces = UInt32(pendingCore1SeedOwnerForces)
             counters.forcedCore1SeedOwners &+= 1
             return 1
-        }
-
-        if message.currentTaskAddress != 0,
-           let currentIndex = taskTable.firstIndex(where: { $0.ownerToken == message.currentTaskAddress }) {
-            return taskTable[currentIndex].ownerCore
         }
 
         let core0Work = outstandingWork(on: 0)
@@ -1125,6 +1142,66 @@ final class RuntimeSchedulerSystem {
         }
     }
 
+#if CPUMetrics
+    private func recordCPUJobRun(on core: UInt8, startedAt: UInt64, endedAt: UInt64) {
+        let elapsed = endedAt &- startedAt
+        withLock {
+            if core == 1 {
+                recordCPUJobRunLocked(
+                    core: .core1,
+                    now: endedAt,
+                    elapsed: elapsed,
+                    windowStart: &cpuWindowStartUsCore1,
+                    taskUs: &cpuTaskUsCore1,
+                    latest: &latestCPUCore1
+                )
+            } else {
+                recordCPUJobRunLocked(
+                    core: .core0,
+                    now: endedAt,
+                    elapsed: elapsed,
+                    windowStart: &cpuWindowStartUsCore0,
+                    taskUs: &cpuTaskUsCore0,
+                    latest: &latestCPUCore0
+                )
+            }
+        }
+    }
+
+    private func recordCPUJobRunLocked(
+        core: CPUCore,
+        now: UInt64,
+        elapsed: UInt64,
+        windowStart: inout UInt64,
+        taskUs: inout UInt64,
+        latest: inout CPUStats?
+    ) {
+        if windowStart == 0 {
+            windowStart = now
+        }
+
+        taskUs &+= elapsed
+
+        let totalUs = now &- windowStart
+        guard totalUs >= 1_000_000 else {
+            return
+        }
+
+        let clampedTaskUs = min(taskUs, totalUs)
+        latest = CPUStats(
+            timestamp: now,
+            core: core,
+            taskUsageTime: clampedTaskUs,
+            interruptUsageTime: 0,
+            idleUsageTime: totalUs &- clampedTaskUs,
+            totalTime: totalUs,
+            interruptEvents: 0
+        )
+        windowStart = now
+        taskUs = 0
+    }
+#endif
+
     private func recordCore1LastTaskIfNeeded(message: SchedulerMessage, entry: TaskTableEntry) {
         recordCore1LastTaskIfNeeded(taskID: message.taskID, jobAddress: message.jobAddress, entry: entry)
     }
@@ -1177,6 +1254,7 @@ final class RuntimeSchedulerSystem {
 }
 
 nonisolated(unsafe) var cshimsRuntimeScheduler = RuntimeSchedulerSystem()
+nonisolated(unsafe) private var core1SeedSpinSink: UInt32 = 0
 
 @_spi(Internal) public func callWithAsyncContext(_ body: (UnsafeMutableRawPointer) -> Void) {
     cshimsRuntimeScheduler.callWithCurrentAsyncContext(body)
@@ -1203,6 +1281,11 @@ public func runtimeSchedulerCPUUsageSnapshot(for core: CPUCore) -> CPUStats? {
 private func core1SeedWorker() async {
     while true {
         cshimsRuntimeScheduler.recordCore1SeedRun()
+        var value = core1SeedSpinSink &+ 0x9E37_79B9
+        for round in UInt32(0)..<20_000 {
+            value = value &* 1_664_525 &+ 1_013_904_223 &+ round
+        }
+        core1SeedSpinSink = value
         await Task.yield()
     }
 }
