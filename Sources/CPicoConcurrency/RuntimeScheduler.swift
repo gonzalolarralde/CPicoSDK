@@ -639,16 +639,18 @@ final class RuntimeSchedulerSystem {
 
     init() {
         mutex_init(&lock)
-        initializeQueue()
     }
 
     func startMulticore() {
         guard !didLaunchCore1 else {
             return
         }
+        initializeQueue()
         core1Scheduler.initializeAsyncContext()
         didLaunchCore1 = true
-        cshims_scheduler_launch_core1()
+        if !cshims_scheduler_launch_core1() {
+            didLaunchCore1 = false
+        }
     }
 
     @discardableResult
@@ -907,6 +909,34 @@ final class RuntimeSchedulerSystem {
         executorFirst: UnsafeMutableRawPointer?,
         executorSecond: UnsafeMutableRawPointer?
     ) {
+        guard didLaunchCore1 else {
+            switch kind {
+            case .immediate:
+                core0Scheduler.enqueueImmediate(
+                    job: job,
+                    executorFirst: executorFirst,
+                    executorSecond: executorSecond
+                )
+            case .delayed:
+                core0Scheduler.enqueueDelayed(
+                    delayUs: timeUs,
+                    job: job,
+                    executorFirst: executorFirst,
+                    executorSecond: executorSecond
+                )
+            case .deadline:
+                core0Scheduler.enqueueDeadline(
+                    deadlineUs: timeUs,
+                    job: job,
+                    executorFirst: executorFirst,
+                    executorSecond: executorSecond
+                )
+            case .probe:
+                break
+            }
+            return
+        }
+
         var message = SchedulerMessage(
             kind: kind,
             ownerCore: 0,
@@ -1080,6 +1110,10 @@ final class RuntimeSchedulerSystem {
     }
 
     private func drainInputMessages(into scheduler: RuntimeScheduler) -> Bool {
+        guard didInitializeQueue else {
+            return false
+        }
+
         let core = UInt8(truncatingIfNeeded: get_core_num())
         var didRoute = false
 

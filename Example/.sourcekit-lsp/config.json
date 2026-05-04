@@ -5,9 +5,7 @@
         "toolsets": ["/Users/gonzalo/src/CPicoSDK/Example/toolset.json"],
         "swiftCompilerFlags": [
                       "-enable-experimental-feature",
-                      "Embedded",
-                      "-I",
-                      "\/Users\/gonzalo\/src\/CPicoSDK\/Vendor\/EmbeddedSwiftRuntime\/main-snapshot-2026-05-02\/usr\/lib\/swift\/embedded"
+                      "Embedded"
                     ]
     }
 }

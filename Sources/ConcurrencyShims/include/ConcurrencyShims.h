@@ -35,7 +35,7 @@ void swift_threading_defer_tls_set(uintptr_t key, void *value);
 
 // Optional helper APIs for cooperative polling loops.
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond);
-void cshims_scheduler_launch_core1(void);
+bool cshims_scheduler_launch_core1(void);
 void cshims_tls_probe_run(void);
 void cshims_threading_defer_probe_run(void);
 unsigned long long cshims_job_task_id(void *job);

@@ -37,6 +37,7 @@ public struct CPUStats: Sendable {
     }
 
     public static func print(includeMemoryStats: Bool = true) {
+        #if CPUMetrics
         for core in [CPUCore.core0, CPUCore.core1] {
             if let latest = cshimsRuntimeScheduler.latestCPUUsage(for: core) {
                 Swift::print("[CPicoConcurrency] \(latest.description)")
@@ -44,6 +45,9 @@ public struct CPUStats: Sendable {
                 Swift::print("[CPicoConcurrency] No CPU usage data available for core \(core.rawValue).")
             }
         }
+        #else
+        Swift::print("[CPicoConcurrency] CPU usage metrics not enabled.")
+        #endif
         
         if includeMemoryStats {
             MemoryStats.print()

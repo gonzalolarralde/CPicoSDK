@@ -12,8 +12,6 @@
                       "-isystem",
                       "-Xcc",
                       "\/Users\/gonzalo\/src\/CPicoSDK\/Example\/.build\/plugins\/PrepareEnvironmentPlugin\/outputs\/generated\/newlib_overlay",
-                      "-I",
-                      "\/Users\/gonzalo\/src\/CPicoSDK\/Vendor\/EmbeddedSwiftRuntime\/main-snapshot-2026-05-02\/usr\/lib\/swift\/embedded",
                       "-wmo"
                     ]
     },

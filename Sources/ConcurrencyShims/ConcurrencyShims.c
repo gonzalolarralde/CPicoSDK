@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #if defined(__clang__)
@@ -150,7 +151,7 @@ extern void sleep_us(uint64_t us);
 
 #define CSHIMS_CORE1_STACK_WORDS 8192
 
-static uint32_t cshims_core1_stack[CSHIMS_CORE1_STACK_WORDS] __attribute__((aligned(8)));
+static uint32_t *cshims_core1_stack;
 static uint32_t cshims_tls_probe_core1_stack[512] __attribute__((aligned(8)));
 extern char __StackBottom;
 extern char __StackTop;
@@ -224,11 +225,11 @@ bool swift_threading_defer_current_stack_bounds(void **low, void **high) {
 #endif
 
     uintptr_t core1Low = (uintptr_t)cshims_core1_stack;
-    uintptr_t core1High = core1Low + sizeof(cshims_core1_stack);
+    uintptr_t core1High = core1Low + (CSHIMS_CORE1_STACK_WORDS * sizeof(uint32_t));
     uintptr_t probeLow = (uintptr_t)cshims_tls_probe_core1_stack;
     uintptr_t probeHigh = probeLow + sizeof(cshims_tls_probe_core1_stack);
 
-    if (sp >= core1Low && sp <= core1High) {
+    if (cshims_core1_stack != NULL && sp >= core1Low && sp <= core1High) {
         *low = (void *)core1Low;
         *high = (void *)core1High;
         return true;
@@ -758,12 +759,21 @@ static void cshims_scheduler_core1_entry(void) {
     }
 }
 
-void cshims_scheduler_launch_core1(void) {
+bool cshims_scheduler_launch_core1(void) {
+    if (cshims_core1_stack == NULL) {
+        cshims_core1_stack = (uint32_t *)malloc(CSHIMS_CORE1_STACK_WORDS * sizeof(uint32_t));
+        if (cshims_core1_stack == NULL) {
+            printf("[CPicoConcurrency] failed to allocate core1 stack\n");
+            return false;
+        }
+    }
+
     multicore_reset_core1();
     multicore_launch_core1_with_stack(
         cshims_scheduler_core1_entry,
         cshims_core1_stack,
-        sizeof(cshims_core1_stack));
+        CSHIMS_CORE1_STACK_WORDS * sizeof(uint32_t));
+    return true;
 }
 
 uint32_t cshims_enter_critical(void) {

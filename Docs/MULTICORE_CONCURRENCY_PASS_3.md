@@ -192,6 +192,36 @@ The proof is still provisional:
   concurrency state for embedded RP2350, or rebuild the Swift embedded runtime
   with a threading backend that maps `SWIFT_THREAD_LOCAL_TYPE` correctly.
 
+## Multicore Startup Contract
+
+Multicore scheduling is opt-in. Linking `CPicoConcurrency` does not launch
+core1 by itself.
+
+If an application never calls:
+
+```swift
+startRuntimeSchedulerMulticore()
+```
+
+the runtime scheduler is expected to behave as a single-core scheduler:
+
+- core1 is not launched;
+- new scheduler jobs are assigned to core0;
+- core1-owned queues are not drained;
+- core1 counters, CPU snapshots, and `CPUStats.usageEvents(for: .core1)` should
+  be silent or stale rather than proof of a failure;
+- normal Swift concurrency work should continue to run on core0.
+
+Applications that want core1 Swift job execution must call
+`startRuntimeSchedulerMulticore()` after basic runtime/platform setup and before
+expecting core1 work to appear. The Example target does this inside
+`startMulticoreSchedulerStress()`, so other projects need to make the call
+explicitly in their own startup path.
+
+The scheduler's load policy also gates core1 assignment on this startup state.
+Before core1 is launched, `chooseOwnerCore` returns core0. This avoids accepting
+work onto a core1 queue that nobody can drain.
+
 ## 2026-05-03 Device Update
 
 The later PoC moved the scheduler transport from one shared FIFO with
