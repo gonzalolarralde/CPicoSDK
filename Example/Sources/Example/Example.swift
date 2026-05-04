@@ -101,6 +101,8 @@ struct App: EmbeddedAsyncApp {
             let c1u = cpu1.map { UInt32(truncatingIfNeeded: $0.totalTime) } ?? 0
             let c0e = cpu0.map { UInt32(truncatingIfNeeded: $0.interruptEvents) } ?? 0
             let c1e = cpu1.map { UInt32(truncatingIfNeeded: $0.interruptEvents) } ?? 0
+            let c0s = cpuStreamCore0Events
+            let c1s = cpuStreamCore1Events
             #else
             let c0t: UInt32 = 0
             let c0i: UInt32 = 0
@@ -112,8 +114,10 @@ struct App: EmbeddedAsyncApp {
             let c1u: UInt32 = 0
             let c0e: UInt32 = 0
             let c1e: UInt32 = 0
+            let c0s: UInt32 = 0
+            let c1s: UInt32 = 0
             #endif
-            print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) cpu0=\(c0t)/\(c0i)/\(c0d) cpu1=\(c1t)/\(c1i)/\(c1d) cu0=\(c0u) cu1=\(c1u) ce0=\(c0e) ce1=\(c1e) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) aff=\(stats.affinityEnforced) afx=\(stats.affinityCrossCore) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
+            print("app c=\(get_core_num()) q=\(stats.pushed) q0=\(stats.pushedCore0) q1=\(stats.pushedCore1) p0=\(stats.poppedCore0) p1=\(stats.poppedCore1) d0=\(stats.deferredCore0) d1=\(stats.deferredCore1) r0=\(stats.runCore0) r1=\(stats.runCore1) seed10=\(stats.core1SeedRunsOnCore0) seed11=\(stats.core1SeedRunsOnCore1) cpu0=\(c0t)/\(c0i)/\(c0d) cpu1=\(c1t)/\(c1i)/\(c1d) cu0=\(c0u) cu1=\(c1u) ce0=\(c0e) ce1=\(c1e) cs0=\(c0s) cs1=\(c1s) ta=\(stats.activeTasks) to0=\(stats.tasksOwnedCore0) to1=\(stats.tasksOwnedCore1) tn0=\(stats.newTaskCore0) tn1=\(stats.newTaskCore1) tr0=\(stats.reuseCore0) tr1=\(stats.reuseCore1) aff=\(stats.affinityEnforced) afx=\(stats.affinityCrossCore) tw=\(stats.enqueueWhileRunning) ti=\(stats.taskIdle) te=\(stats.taskEvicted) tb=\(stats.activeEvictBlocked) tid1=\(stats.lastCore1TaskIDLow) tok1=\(String(stats.lastCore1OwnerToken, radix: 16)) tq1=\(stats.lastCore1QueuedCount) trn1=\(stats.lastCore1RunningCount) job1=\(String(stats.lastCore1JobAddress, radix: 16)) st=\(String(stats.lastSeedTaskAddress, radix: 16)) so=\(stats.lastSeedOwnerCore) sm=\(stats.core1SeedMigrations) ec=\(stats.lastEnqueueCore) ea=\(stats.lastEnqueueHadAsyncTask) ecur=\(stats.lastEnqueueHadCurrentTask) eo=\(stats.lastSelectedOwnerCore) f1=\(stats.forcedCore1SeedOwners) fp=\(stats.pendingCore1SeedOwnerForces) b1=\(stats.core1Boots) probe1=\(stats.core1Probes) full=\(stats.queueFull) null=\(stats.nullJobsDropped)")
         }
         await Task.yield()
     }
@@ -135,10 +139,13 @@ nonisolated(unsafe) var lastAppStatsPrintUs: UInt64 = 0
 nonisolated(unsafe) var enableMulticoreSchedulerStress = true
 nonisolated(unsafe) var singleCoreLoopHits: UInt32 = 0
 nonisolated(unsafe) var schedulerHotSpinSink: UInt32 = 0
+nonisolated(unsafe) var cpuStreamCore0Events: UInt32 = 0
+nonisolated(unsafe) var cpuStreamCore1Events: UInt32 = 0
 
 func startMulticoreSchedulerStress() {
     print("Starting multicore scheduler stress")
     startRuntimeSchedulerMulticore()
+    startCPUStatsStreamMonitor()
     for _ in 0..<16 {
         enqueueRuntimeSchedulerMulticoreProbe()
     }
@@ -152,6 +159,27 @@ func startMulticoreSchedulerStress() {
             }
         }
     }
+}
+
+func startCPUStatsStreamMonitor() {
+    #if CPUMetrics
+    Task {
+        guard let events = CPUStats.usageEvents(for: .core0) else {
+            return
+        }
+        for await _ in events {
+            cpuStreamCore0Events &+= 1
+        }
+    }
+    Task {
+        guard let events = CPUStats.usageEvents(for: .core1) else {
+            return
+        }
+        for await _ in events {
+            cpuStreamCore1Events &+= 1
+        }
+    }
+    #endif
 }
 
 func schedulerStressWorker(id: UInt32) async {

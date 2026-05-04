@@ -107,6 +107,43 @@ private struct RuntimeSchedulerCounters {
     var core1SeedMigrations: UInt32 = 0
 }
 
+#if CPUMetrics
+private let cpuUsageStreamSubscriberCapacity = 4
+
+private struct CPUUsageStreamSubscribers {
+    var continuations: [AsyncStream<CPUStats>.Continuation?] = Array(
+        repeating: nil,
+        count: cpuUsageStreamSubscriberCapacity
+    )
+
+    mutating func add(_ continuation: AsyncStream<CPUStats>.Continuation) -> Int? {
+        for index in 0..<continuations.count where continuations[index] == nil {
+            continuations[index] = continuation
+            return index
+        }
+        return nil
+    }
+
+    mutating func remove(at index: Int) {
+        guard index >= 0 && index < continuations.count else {
+            return
+        }
+        continuations[index] = nil
+    }
+
+    func activeContinuations() -> [AsyncStream<CPUStats>.Continuation] {
+        var active: [AsyncStream<CPUStats>.Continuation] = []
+        active.reserveCapacity(continuations.count)
+        for continuation in continuations {
+            if let continuation {
+                active.append(continuation)
+            }
+        }
+        return active
+    }
+}
+#endif
+
 public struct RuntimeSchedulerMulticoreStats {
     public let pushed: UInt32
     public let pushedCore0: UInt32
@@ -596,6 +633,8 @@ final class RuntimeSchedulerSystem {
     private var cpuTaskUsCore1: UInt64 = 0
     private var latestCPUCore0: CPUStats?
     private var latestCPUCore1: CPUStats?
+    private var cpuSubscribersCore0 = CPUUsageStreamSubscribers()
+    private var cpuSubscribersCore1 = CPUUsageStreamSubscribers()
 #endif
 
     init() {
@@ -806,7 +845,21 @@ final class RuntimeSchedulerSystem {
     }
 
     func cpuUsageStream(for core: CPUCore) -> AsyncStream<CPUStats> {
-        scheduler(forCore: core.rawValue).cpuUsageStream()
+        AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            let slot = withLock {
+                switch core {
+                case .core0:
+                    cpuSubscribersCore0.add(continuation)
+                case .core1:
+                    cpuSubscribersCore1.add(continuation)
+                }
+            }
+            guard let slot else {
+                continuation.finish()
+                return
+            }
+            _ = slot
+        }
     }
 
     func latestCPUUsage(for core: CPUCore) -> CPUStats? {
@@ -1145,9 +1198,10 @@ final class RuntimeSchedulerSystem {
 #if CPUMetrics
     private func recordCPUJobRun(on core: UInt8, startedAt: UInt64, endedAt: UInt64) {
         let elapsed = endedAt &- startedAt
+        var report: CPUStats?
         withLock {
             if core == 1 {
-                recordCPUJobRunLocked(
+                report = recordCPUJobRunLocked(
                     core: .core1,
                     now: endedAt,
                     elapsed: elapsed,
@@ -1156,7 +1210,7 @@ final class RuntimeSchedulerSystem {
                     latest: &latestCPUCore1
                 )
             } else {
-                recordCPUJobRunLocked(
+                report = recordCPUJobRunLocked(
                     core: .core0,
                     now: endedAt,
                     elapsed: elapsed,
@@ -1165,6 +1219,19 @@ final class RuntimeSchedulerSystem {
                     latest: &latestCPUCore0
                 )
             }
+        }
+        guard let report else {
+            return
+        }
+        let continuations = withLock {
+            if core == 1 {
+                cpuSubscribersCore1.activeContinuations()
+            } else {
+                cpuSubscribersCore0.activeContinuations()
+            }
+        }
+        for continuation in continuations {
+            continuation.yield(report)
         }
     }
 
@@ -1175,7 +1242,7 @@ final class RuntimeSchedulerSystem {
         windowStart: inout UInt64,
         taskUs: inout UInt64,
         latest: inout CPUStats?
-    ) {
+    ) -> CPUStats? {
         if windowStart == 0 {
             windowStart = now
         }
@@ -1184,11 +1251,11 @@ final class RuntimeSchedulerSystem {
 
         let totalUs = now &- windowStart
         guard totalUs >= 1_000_000 else {
-            return
+            return nil
         }
 
         let clampedTaskUs = min(taskUs, totalUs)
-        latest = CPUStats(
+        let report = CPUStats(
             timestamp: now,
             core: core,
             taskUsageTime: clampedTaskUs,
@@ -1197,8 +1264,10 @@ final class RuntimeSchedulerSystem {
             totalTime: totalUs,
             interruptEvents: 0
         )
+        latest = report
         windowStart = now
         taskUs = 0
+        return report
     }
 #endif
 
