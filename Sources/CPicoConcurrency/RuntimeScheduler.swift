@@ -446,6 +446,9 @@ final class RuntimeScheduler {
     @discardableResult
     func pollOnce() -> Int32 {
         initializeAsyncContext()
+        guard canPollOnCurrentCore else {
+            return 0
+        }
     #if CPUMetrics
         if core == .core0 {
             RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
@@ -457,8 +460,12 @@ final class RuntimeScheduler {
     #if CPUMetrics
         cpuUsage.record(event: .exitTask)
         cpuUsage.reportIfNeeded()
-    #endif
+        #endif
         return didRunJob ? 1 : 0
+    }
+
+    private var canPollOnCurrentCore: Bool {
+        __get_current_exception() == 0 && async_context_core_num(&context.core) == get_core_num()
     }
 
     func drain() {
@@ -472,6 +479,9 @@ final class RuntimeScheduler {
 
     func waitForever() {
         initializeAsyncContext()
+        guard canPollOnCurrentCore else {
+            return
+        }
 #if CPUMetrics
         if core == .core0 {
             RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
@@ -655,9 +665,13 @@ final class RuntimeSchedulerSystem {
 
     @discardableResult
     func pollOnce() -> Int32 {
+        guard __get_current_exception() == 0 else {
+            return 0
+        }
         let scheduler = schedulerForCurrentCore()
         let didRouteMessage = drainInputMessages(into: scheduler)
         let didPollWork = (didRouteMessage || scheduler.hasScheduledWork || get_core_num() == 0) && scheduler.pollOnce() != 0
+        RuntimeTightLoop.run()
         return (didRouteMessage || didPollWork) ? 1 : 0
     }
 
@@ -667,6 +681,10 @@ final class RuntimeSchedulerSystem {
     }
 
     func waitForever() {
+        guard __get_current_exception() == 0 else {
+            return
+        }
+        RuntimeTightLoop.run()
         schedulerForCurrentCore().waitForever()
     }
 

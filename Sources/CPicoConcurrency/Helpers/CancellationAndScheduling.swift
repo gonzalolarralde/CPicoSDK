@@ -4,6 +4,44 @@ import ConcurrencyShims
 
 public typealias CancellationError = _Concurrency.CancellationError
 
+public enum RuntimeTightLoop {
+    public typealias Handler = () -> Void
+
+    nonisolated(unsafe) private static var handler: Handler?
+    nonisolated(unsafe) private static var isRunningCore0 = false
+    nonisolated(unsafe) private static var isRunningCore1 = false
+
+    public static func install(_ handler: @escaping Handler) {
+        Self.handler = handler
+    }
+
+    public static func clear() {
+        handler = nil
+    }
+
+    @_spi(Internal) public static func run() {
+        guard let handler else {
+            return
+        }
+
+        if get_core_num() == 1 {
+            guard !isRunningCore1 else {
+                return
+            }
+            isRunningCore1 = true
+            handler()
+            isRunningCore1 = false
+        } else {
+            guard !isRunningCore0 else {
+                return
+            }
+            isRunningCore0 = true
+            handler()
+            isRunningCore0 = false
+        }
+    }
+}
+
 extension Task where Success == Never, Failure == Never {
     /// Function to be called in tight loops to allow the concurrency system to make progress. 
     /// This is only needed if you're doing a busy wait in a non-async context, if you're in 
@@ -29,6 +67,7 @@ public protocol EmbeddedAsyncApp {
     static func configure(with configurator: inout Configurator)
     static func handleConfigurationErrors(_ errors: [ConfigurationError])
 
+    static func tightLoop()
     static func setup() async
     static func loop() async
 }
@@ -45,7 +84,7 @@ public extension EmbeddedAsyncApp {
             self.handleConfigurationErrors(errors)
         }
 
-        // TODO: Add WatchDog support here, and maybe a way to setup lwip callbacks in tightLoop.
+        RuntimeTightLoop.install(self.tightLoop)
 
         await setup()
         while true {
@@ -62,5 +101,8 @@ public extension EmbeddedAsyncApp {
         for error in errors {
             print("[CPicoSDK] Configuration error in \(error.configurationID): \(error.description)")
         }
+    }
+
+    static func tightLoop() {
     }
 }
