@@ -18,11 +18,20 @@ enum PicoSDKHeaderFixer {
             withTemplate: "$1u"
         )
 
+        let hardwareEntrypointAccessors = Set(
+            extractHardwareEntrypoints(content: normalizedUnsignedContent)
+                .map(\.accessor)
+        )
+        let availableHardwareAliasTargets = hardwareEntrypointAccessors.union(
+            extractIndexedHardwareAliasAccessors(content: normalizedUnsignedContent)
+        )
+
         let rewrittenHardwareEntrypointsContent = rewriteHardwareEntrypoints(
             content: normalizedUnsignedContent
         )
         let rewrittenHardwareAliasesContent = rewriteHardwareAliases(
-            content: rewrittenHardwareEntrypointsContent
+            content: rewrittenHardwareEntrypointsContent,
+            availableHardwareAliasTargets: availableHardwareAliasTargets
         )
 
         return "#pragma GCC system_header\n" +
@@ -72,13 +81,28 @@ enum PicoSDKHeaderFixer {
             .joined(separator: "\n")
     }
 
-    static func rewriteHardwareAliases(content: String) -> String {
-        let entrypointAccessors = Set(extractHardwareEntrypoints(content: content).map(\.accessor))
+    static func extractIndexedHardwareAliasAccessors(content: String) -> Set<String> {
+        let defineRegex = try! NSRegularExpression(
+            pattern: #"^\s*#define\s+([A-Za-z_][A-Za-z0-9_]*)\s+\(?\s*&\s*[A-Za-z_][A-Za-z0-9_]*\s*\[\s*[0-9]+\s*\]\s*\)?\s*$"#,
+            options: [.anchorsMatchLines]
+        )
 
-        return content
+        let fullRange = NSRange(content.startIndex..., in: content)
+
+        return Set(defineRegex.matches(in: content, range: fullRange).compactMap { match in
+            guard let accessorRange = Range(match.range(at: 1), in: content) else {
+                return nil
+            }
+
+            return String(content[accessorRange])
+        })
+    }
+
+    static func rewriteHardwareAliases(content: String, availableHardwareAliasTargets: Set<String>) -> String {
+        content
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map { line in
-                rewriteHardwareAliasLine(String(line), entrypointAccessors: entrypointAccessors)
+                rewriteHardwareAliasLine(String(line), availableHardwareAliasTargets: availableHardwareAliasTargets)
             }
             .joined(separator: "\n")
     }
@@ -110,7 +134,7 @@ enum PicoSDKHeaderFixer {
         return "\(indentation)static \(type) * const \(accessor) = (\(type) *)\(addressExpression); // ORIGINAL: \(line.trimmingCharacters(in: .whitespacesAndNewlines))"
     }
 
-    private static func rewriteHardwareAliasLine(_ line: String, entrypointAccessors: Set<String>) -> String {
+    private static func rewriteHardwareAliasLine(_ line: String, availableHardwareAliasTargets: Set<String>) -> String {
         let defineRegex = try! NSRegularExpression(
             pattern: #"^(\s*)#define\s+([A-Za-z_][A-Za-z0-9_]*)\s+(.+?)\s*$"#
         )
@@ -131,19 +155,19 @@ enum PicoSDKHeaderFixer {
         if shouldWarnAboutUnresolvedHardwareAlias(
             accessor: accessor,
             expression: expression,
-            entrypointAccessors: entrypointAccessors
+            availableHardwareAliasTargets: availableHardwareAliasTargets
         ) {
             print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: Not rewriting hardware alias '\(accessor)' because it references '\(expression)', which was not found as a hardware entrypoint in the generated header.\u{001B}[0m")
         }
 
-        guard shouldRewriteHardwareAlias(accessor: accessor, expression: expression, entrypointAccessors: entrypointAccessors) else {
+        guard shouldRewriteHardwareAlias(accessor: accessor, expression: expression, availableHardwareAliasTargets: availableHardwareAliasTargets) else {
             return line
         }
 
         return "\(indentation)static __typeof__(\(expression)) const \(accessor) = \(expression); // ORIGINAL: \(line.trimmingCharacters(in: .whitespacesAndNewlines))"
     }
 
-    private static func shouldRewriteHardwareAlias(accessor: String, expression: String, entrypointAccessors: Set<String>) -> Bool {
+    private static func shouldRewriteHardwareAlias(accessor: String, expression: String, availableHardwareAliasTargets: Set<String>) -> Bool {
         let identifierRegex = try! NSRegularExpression(
             pattern: #"^[A-Za-z_][A-Za-z0-9_]*$"#
         )
@@ -154,7 +178,7 @@ enum PicoSDKHeaderFixer {
         let expressionRange = NSRange(expression.startIndex..., in: expression)
         if identifierRegex.firstMatch(in: expression, range: expressionRange) != nil {
             return (accessor.hasSuffix("_hw") || expression.hasSuffix("_hw"))
-                && entrypointAccessors.contains(expression)
+                && availableHardwareAliasTargets.contains(expression)
         }
         if indexedAliasRegex.firstMatch(in: expression, range: expressionRange) != nil {
             return accessor.hasSuffix("_hw") || expression.contains("_hw_array")
@@ -163,7 +187,7 @@ enum PicoSDKHeaderFixer {
         return false
     }
 
-    private static func shouldWarnAboutUnresolvedHardwareAlias(accessor: String, expression: String, entrypointAccessors: Set<String>) -> Bool {
+    private static func shouldWarnAboutUnresolvedHardwareAlias(accessor: String, expression: String, availableHardwareAliasTargets: Set<String>) -> Bool {
         let identifierRegex = try! NSRegularExpression(
             pattern: #"^[A-Za-z_][A-Za-z0-9_]*$"#
         )
@@ -177,6 +201,6 @@ enum PicoSDKHeaderFixer {
             return false
         }
 
-        return !entrypointAccessors.contains(expression)
+        return !availableHardwareAliasTargets.contains(expression)
     }
 }

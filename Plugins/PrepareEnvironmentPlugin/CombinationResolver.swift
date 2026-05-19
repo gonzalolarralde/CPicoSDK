@@ -17,7 +17,10 @@ extension PrepareEnvironmentPlugin {
             return selectedBoard
         }
 
-        let dependencyTraits = await self.resolveCPicoSDKDependencyTraits(context: context)
+        guard let dependencyTraits = await self.resolveCPicoSDKDependencyTraits(context: context) else {
+            return self.resolveDefaultCombination(packageEnv: packageEnv)
+        }
+
         let boardTraits = Env.boardDefiningTraits(from: dependencyTraits)
 
         guard !boardTraits.isEmpty else {
@@ -43,7 +46,21 @@ extension PrepareEnvironmentPlugin {
         return match
     }
 
-    private func resolveCPicoSDKDependencyTraits(context: PackagePlugin.PluginContext) async -> [String] {
+    private func resolveDefaultCombination(packageEnv: Env) -> String {
+        guard let defaultCombination = packageEnv.vars["BOARD"] else {
+            fatalError("[CPicoSDK] Could not find CPicoSDK dependency traits and env.json does not define a default BOARD. Set BOARD=<combination> to override.")
+        }
+
+        guard packageEnv.combinations[defaultCombination] != nil else {
+            let available = packageEnv.combinations.keys.sorted().joined(separator: ", ")
+            fatalError("[CPicoSDK] Default BOARD '\(defaultCombination)' is not a known combination. Available combinations: \(available)")
+        }
+
+        print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: Could not find CPicoSDK dependency traits. Falling back to default env.json BOARD: \(defaultCombination).\u{001B}[0m")
+        return defaultCombination
+    }
+
+    private func resolveCPicoSDKDependencyTraits(context: PackagePlugin.PluginContext) async -> [String]? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         let scratchPath = context.pluginWorkDirectoryURL
@@ -91,7 +108,7 @@ extension PrepareEnvironmentPlugin {
             fatalError("[CPicoSDK] Failed to parse 'swift package dump-package' output: \(error)")
         }
 
-        fatalError("[CPicoSDK] Could not find CPicoSDK dependency traits in 'swift package dump-package' output. Set BOARD=<combination> to override.")
+        return nil
     }
 
     private func cpicoSDKTraits(fromDumpDependency dependency: [String: Any]) -> [String]? {
