@@ -58,8 +58,9 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         guard let cPicoSDKPackageEnv = try? Env(from: cPicoSDKEnvVarsPath) else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK default env values. Make sure this package depends on CPicoSDK or provide the path using --cpicosdk-envs-path. [path=\(cPicoSDKEnvVarsPath)]")
         }
+        cPicoSDKPackageEnv.validateCombinations()
 
-        let consolidatedEnvVars = self.generateEnvVars(
+        let consolidatedEnvVars = await self.generateEnvVars(
             given: givenEnvVars, 
             packageEnv: cPicoSDKPackageEnv,
             context: context,

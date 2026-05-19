@@ -17343,7 +17343,7 @@ typedef struct {
 } m0plus_hw_t;
 static m0plus_hw_t * const ppb_hw = (m0plus_hw_t *)PPB_BASE; // ORIGINAL: #define ppb_hw ((m0plus_hw_t *)PPB_BASE)
 _Static_assert(sizeof (m0plus_hw_t) == 0xeda4, "");
-static __typeof__(m0plus_hw) const arm_cpu_hw = m0plus_hw; // ORIGINAL: #define arm_cpu_hw m0plus_hw
+#define arm_cpu_hw m0plus_hw
 #define _HARDWARE_STRUCTS_NVIC_H 
 typedef struct {
    

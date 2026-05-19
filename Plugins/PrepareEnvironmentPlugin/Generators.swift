@@ -10,7 +10,7 @@ extension PrepareEnvironmentPlugin {
         context: PackagePlugin.PluginContext,
         libraryProductName: String?,
         embeddedSwiftRuntimeVendorPath: String
-    ) -> [String: String] {
+    ) async -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
@@ -20,7 +20,20 @@ extension PrepareEnvironmentPlugin {
         var newEnvVars: [String: String] = givenEnvVars
         
         // Then merges in global vars from env.json
-        newEnvVars.merge(packageEnv.vars, uniquingKeysWith: { old, _ in old })
+        newEnvVars.merge(
+            packageEnv.vars.filter { key, _ in key != "BOARD" },
+            uniquingKeysWith: { old, _ in old }
+        )
+
+        let selectedCombinationName = await self.resolveSelectedCombination(
+            givenEnvVars: givenEnvVars,
+            packageEnv: packageEnv,
+            context: context
+        )
+
+        let selectedCombinationVars = packageEnv.combinations[selectedCombinationName]!.vars
+            .filter { !givenEnvVars.keys.contains($0.key) }
+        newEnvVars.merge(selectedCombinationVars, uniquingKeysWith: { _, new in new })
 
         // Some basic checks
         guard let buildType = BuildType(rawValue: newEnvVars["BUILD_TYPE"] ?? "") else {
@@ -67,12 +80,6 @@ extension PrepareEnvironmentPlugin {
         
         if newEnvVars["RELEVANT_ENV_VARS"] == nil {
             newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
-        }
-
-        if let selectedBoard = newEnvVars["BOARD"], let selectedCombination = packageEnv.combinations[selectedBoard] {
-            let selectedCombinationVars = selectedCombination.vars
-                .filter { !givenEnvVars.keys.contains($0.key) }
-            newEnvVars.merge(selectedCombinationVars, uniquingKeysWith: { _, new in new })
         }
 
         if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,

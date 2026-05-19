@@ -73,10 +73,12 @@ enum PicoSDKHeaderFixer {
     }
 
     static func rewriteHardwareAliases(content: String) -> String {
-        content
+        let entrypointAccessors = Set(extractHardwareEntrypoints(content: content).map(\.accessor))
+
+        return content
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map { line in
-                rewriteHardwareAliasLine(String(line))
+                rewriteHardwareAliasLine(String(line), entrypointAccessors: entrypointAccessors)
             }
             .joined(separator: "\n")
     }
@@ -108,7 +110,7 @@ enum PicoSDKHeaderFixer {
         return "\(indentation)static \(type) * const \(accessor) = (\(type) *)\(addressExpression); // ORIGINAL: \(line.trimmingCharacters(in: .whitespacesAndNewlines))"
     }
 
-    private static func rewriteHardwareAliasLine(_ line: String) -> String {
+    private static func rewriteHardwareAliasLine(_ line: String, entrypointAccessors: Set<String>) -> String {
         let defineRegex = try! NSRegularExpression(
             pattern: #"^(\s*)#define\s+([A-Za-z_][A-Za-z0-9_]*)\s+(.+?)\s*$"#
         )
@@ -126,14 +128,14 @@ enum PicoSDKHeaderFixer {
         let accessor = String(line[accessorRange])
         let expression = String(line[expressionRange]).trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard shouldRewriteHardwareAlias(accessor: accessor, expression: expression) else {
+        guard shouldRewriteHardwareAlias(accessor: accessor, expression: expression, entrypointAccessors: entrypointAccessors) else {
             return line
         }
 
         return "\(indentation)static __typeof__(\(expression)) const \(accessor) = \(expression); // ORIGINAL: \(line.trimmingCharacters(in: .whitespacesAndNewlines))"
     }
 
-    private static func shouldRewriteHardwareAlias(accessor: String, expression: String) -> Bool {
+    private static func shouldRewriteHardwareAlias(accessor: String, expression: String, entrypointAccessors: Set<String>) -> Bool {
         let identifierRegex = try! NSRegularExpression(
             pattern: #"^[A-Za-z_][A-Za-z0-9_]*$"#
         )
@@ -143,7 +145,8 @@ enum PicoSDKHeaderFixer {
 
         let expressionRange = NSRange(expression.startIndex..., in: expression)
         if identifierRegex.firstMatch(in: expression, range: expressionRange) != nil {
-            return accessor.hasSuffix("_hw") || expression.hasSuffix("_hw")
+            return (accessor.hasSuffix("_hw") || expression.hasSuffix("_hw"))
+                && entrypointAccessors.contains(expression)
         }
         if indexedAliasRegex.firstMatch(in: expression, range: expressionRange) != nil {
             return accessor.hasSuffix("_hw") || expression.contains("_hw_array")
