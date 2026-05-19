@@ -128,6 +128,14 @@ enum PicoSDKHeaderFixer {
         let accessor = String(line[accessorRange])
         let expression = String(line[expressionRange]).trimmingCharacters(in: .whitespacesAndNewlines)
 
+        if shouldWarnAboutUnresolvedHardwareAlias(
+            accessor: accessor,
+            expression: expression,
+            entrypointAccessors: entrypointAccessors
+        ) {
+            print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: Not rewriting hardware alias '\(accessor)' because it references '\(expression)', which was not found as a hardware entrypoint in the generated header.\u{001B}[0m")
+        }
+
         guard shouldRewriteHardwareAlias(accessor: accessor, expression: expression, entrypointAccessors: entrypointAccessors) else {
             return line
         }
@@ -153,5 +161,22 @@ enum PicoSDKHeaderFixer {
         }
 
         return false
+    }
+
+    private static func shouldWarnAboutUnresolvedHardwareAlias(accessor: String, expression: String, entrypointAccessors: Set<String>) -> Bool {
+        let identifierRegex = try! NSRegularExpression(
+            pattern: #"^[A-Za-z_][A-Za-z0-9_]*$"#
+        )
+
+        let expressionRange = NSRange(expression.startIndex..., in: expression)
+        guard identifierRegex.firstMatch(in: expression, range: expressionRange) != nil else {
+            return false
+        }
+
+        guard accessor.hasSuffix("_hw") || expression.hasSuffix("_hw") else {
+            return false
+        }
+
+        return !entrypointAccessors.contains(expression)
     }
 }
