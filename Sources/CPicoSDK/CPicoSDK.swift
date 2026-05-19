@@ -30,7 +30,12 @@
     #endif
 #endif
 
-#if Platform_RP2040 && Variant_RP2040 && Radio_CYW43439
+#if Platform_RP2040 && Variant_RP2040 && Radio_None
+    @_cdecl("_cpicosdk_combination_pico")
+    func cpicosdk_combination_pico_marker() {}
+
+    @_exported import _CPicoSDK_pico
+#elseif Platform_RP2040 && Variant_RP2040 && Radio_CYW43439
     @_cdecl("_cpicosdk_combination_pico_w")
     func cpicosdk_combination_pico_w_marker() {}
 
