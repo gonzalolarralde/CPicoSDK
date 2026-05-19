@@ -8,3 +8,5 @@ DerivedData/
 .netrc
 Package.resolved
 .env_prep
+.vscode
+.sourcekit-lsp
