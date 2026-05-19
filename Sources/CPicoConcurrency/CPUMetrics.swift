@@ -333,9 +333,7 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 
     @_transparent
     mutating func latest() -> CPUStats? {
-        guard mutex_try_enter(mutex, nil) else {
-            return nil
-        }
+        mutex_enter_blocking(mutex)
 
         defer {
             mutex_exit(mutex)

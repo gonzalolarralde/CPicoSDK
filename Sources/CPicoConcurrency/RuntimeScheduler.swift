@@ -504,6 +504,7 @@ final class RuntimeScheduler {
 
     func sampleCPUUsage() {
         cpuUsage.sample()
+        cpuUsage.reportIfNeeded()
     }
 
     func cpuUsageStream() -> AsyncStream<CPUStats> {
@@ -672,6 +673,9 @@ final class RuntimeSchedulerSystem {
         let didRouteMessage = drainInputMessages(into: scheduler)
         let didPollWork = (didRouteMessage || scheduler.hasScheduledWork || get_core_num() == 0) && scheduler.pollOnce() != 0
         RuntimeTightLoop.run()
+    #if CPUMetrics
+        scheduler.sampleCPUUsage()
+    #endif
         return (didRouteMessage || didPollWork) ? 1 : 0
     }
 
@@ -865,25 +869,15 @@ final class RuntimeSchedulerSystem {
     }
 
     func cpuUsageStream(for core: CPUCore) -> AsyncStream<CPUStats> {
-        AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-            let slot = withLock {
-                switch core {
-                case .core0:
-                    cpuSubscribersCore0.add(continuation)
-                case .core1:
-                    cpuSubscribersCore1.add(continuation)
-                }
-            }
-            guard let slot else {
-                continuation.finish()
-                return
-            }
-            _ = slot
-        }
+        scheduler(forCore: core.rawValue).cpuUsageStream()
     }
 
     func latestCPUUsage(for core: CPUCore) -> CPUStats? {
-        withLock {
+        if let latest = scheduler(forCore: core.rawValue).latestCPUUsage() {
+            return latest
+        }
+
+        return withLock {
             switch core {
             case .core0:
                 latestCPUCore0
