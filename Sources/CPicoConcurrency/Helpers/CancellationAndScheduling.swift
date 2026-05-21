@@ -1,3 +1,7 @@
+#if Platform_RP2040
+    #error("Platform_RP2040 does not support Concurrency yet.")
+#endif
+
 import _Concurrency
 import ConcurrencyShims
 @_spi(Internal) import CPicoSDK
