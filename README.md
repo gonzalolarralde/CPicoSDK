@@ -145,7 +145,8 @@ This project is built with the intention of **streamlining the developer experie
 
 ### Current Status
 
-- ✅ **Fully supported**: Pico W (RP2040 + CYW43439), Pico 2 (RP2350A), Pico 2 W (RP2350A + CYW43439), Pimoroni Pico Plus 2 (RP2350B), Pimoroni Pico Plus 2 W (RP2350B + CYW43439)
+- ✅ **Fully supported**: Pico 2 (RP2350A), Pico 2 W (RP2350A + CYW43439), Pimoroni Pico Plus 2 (RP2350B), Pimoroni Pico Plus 2 W (RP2350B + CYW43439)
+- ⚠️ **Limited support**: Pico (RP2040), Pico W (RP2040 + CYW43439) - Concurrency is not available for this platform.
 - 🚧 **In progress**: More RP2xxx boards and configuration combinations are actively being developed
 - 🔍 **Debugging**: Currently using `cortex-debug` in VSCode, following the proven pico-vscode approach.  LLDB support is being worked on but requires additional development time.
 
@@ -155,6 +156,7 @@ This matrix is temporary while we work on a more generic approach that ties trai
 
 | Board | Combination | Platform Trait | Variant Trait | Radio Trait |
 | --- | --- | --- | --- | --- |
+| Pico | `pico` | `Platform_RP2040` | `Variant_RP2040` | `Radio_None` |
 | Pico W | `pico_w` | `Platform_RP2040` | `Variant_RP2040` | `Radio_CYW43439` |
 | Pico 2 | `pico2` | `Platform_RP2350` | `Variant_RP2350A` | `Radio_None` |
 | Pico 2 W | `pico2_w` | `Platform_RP2350` | `Variant_RP2350A` | `Radio_CYW43439` |
@@ -622,6 +624,8 @@ The current state is best described as:
 
 The Linux fallback is intentionally versioned by `SWIFT_VERSION`. The build only uses a vendored runtime directory when the active Swift snapshot has a matching directory name, which avoids silently mixing concurrency runtime files from different toolchains.
 
+Concurrency support for RP2040 is not available yet.
+
 The Example is expected to keep representing an important behavioral constraint:
 
 - a tight `while true { ... }` loop still needs some kind of yielding or scheduler pumping so non-awaiting code does not lock the CPU
@@ -728,7 +732,7 @@ See `TODO.md` for detailed tasks, including:
 ### Contributing
 
 Contributions are welcome! Key areas of interest: 
-- 🎯 Adding support for more RP2xxx boards (Pico, Pico W, Pico 2, etc.)
+- ~🎯 Adding support for more RP2xxx boards (Pico, Pico W, Pico 2, etc.)~ Done! Thanks @BastianKusserow
 - 🐛 Improving LLDB integration for debugging
 - ⚡ Optimizing the header generation process
 - 🧪 Adding test coverage
