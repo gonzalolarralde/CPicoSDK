@@ -9,8 +9,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/gonzalolarralde/CPicoSDK",
-            exact: "2.2.7",
+            path: "../",
             traits: [
                 .init(name: "BootStage2_W25Q080"),
                 .init(name: "StdIO_Automatic"),
@@ -53,7 +52,7 @@ let package = Package(
             name: "Example",
             dependencies: [
                 .product(name: "CPicoSDK", package: "CPicoSDK"),
-                .product(name: "CPicoConcurrency", package: "CPicoSDK"),
+                .product(name: "CPicoConcurrency", package: "CPicoSDK"), // Disable if using Platform_RP2040, as it does not support Concurrency yet.
                 .product(name: "PSRAM", package: "CPicoSDK"), // Optional, only needed if using PSRAM.
             ],
             plugins: [.plugin(name: "PIOASM", package: "CPicoSDK")]

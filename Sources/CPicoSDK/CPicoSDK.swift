@@ -100,21 +100,21 @@
 
 #if Platform_RP2040
     // RP2040's pio_program_t doesn't have the used_gpio_ranges field, so we need to provide a custom initializer.
-     @inlinable
-     public func pio_program(
-         instructions: UnsafePointer<UInt16>,
-         length: Int,
-         origin: Int,
-         pio_version: UInt8,
-         used_gpio_ranges: Int = 0
-     ) -> pio_program_t {
-         return pio_program_t(
-             instructions: instructions,
-             length: UInt8(length),
-             origin: Int8(origin),
-             pio_version: pio_version
-         )
-     }
+    @inlinable
+    public func pio_program(
+        instructions: UnsafePointer<UInt16>,
+        length: Int,
+        origin: Int,
+        pio_version: UInt8,
+        used_gpio_ranges: Int = 0
+    ) -> pio_program_t {
+        return pio_program_t(
+            instructions: instructions,
+            length: UInt8(length),
+            origin: Int8(origin),
+            pio_version: pio_version
+        )
+    }
 #endif
 
 @_spi(Internal) public func setupPicoSDK() {
