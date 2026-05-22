@@ -32,6 +32,7 @@ struct Env: Codable, Hashable {
         "NINJA_PATH",
         "SWIFTLY_PATH",
         "SWIFT_EMBEDDED_FALLBACK_PATH",
+        "SWIFT_EMBEDDED_FALLBACK_MODULES",
         "TOOLSET_PATH",
         "SDK_PATH",
         "LD_PATH",

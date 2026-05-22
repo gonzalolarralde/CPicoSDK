@@ -181,21 +181,22 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
 
         func appendEmbeddedArchive(_ archiveName: String, reason: String) {
+            if let fallbackRoot = Env.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
+                let fallbackArchivePath = URL(filePath: fallbackRoot, directoryHint: .isDirectory)
+                    .appending(path: "\(platformTriple)/\(archiveName)")
+                if FileManager.default.fileExists(atPath: fallbackArchivePath.path) {
+                    extraArchives.append(fallbackArchivePath.path)
+                    print("[CPicoSDK] Linking vendored Swift embedded archive (\(reason)): \(fallbackArchivePath.path)")
+                    return
+                }
+            }
+
             let archivePath = URL(filePath: toolchainPath, directoryHint: .isDirectory)
                 .appending(path: "usr/lib/swift/embedded/\(platformTriple)/\(archiveName)")
 
             if FileManager.default.fileExists(atPath: archivePath.path) {
                 extraArchives.append(archivePath.path)
                 print("[CPicoSDK] Linking extra Swift embedded archive (\(reason)): \(archivePath.path)")
-            } else if let fallbackRoot = Env.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
-                let fallbackArchivePath = URL(filePath: fallbackRoot, directoryHint: .isDirectory)
-                    .appending(path: "\(platformTriple)/\(archiveName)")
-                if FileManager.default.fileExists(atPath: fallbackArchivePath.path) {
-                    extraArchives.append(fallbackArchivePath.path)
-                    print("[CPicoSDK] Linking vendored Swift embedded archive (\(reason)): \(fallbackArchivePath.path)")
-                } else {
-                    print("[CPicoSDK] Warning: \(reason) detected, but embedded archive was not found at \(archivePath.path) or vendored fallback \(fallbackArchivePath.path)")
-                }
             } else {
                 print("[CPicoSDK] Warning: \(reason) detected, but embedded archive was not found at \(archivePath.path)")
             }
