@@ -11,6 +11,12 @@
 #define SWIFT_PICO_COND_MAX_WAITERS INT16_MAX
 #define SWIFT_PICO_SIO_CPUID ((volatile uint32_t *)0xd0000000u)
 
+#if defined(__GNUC__) || defined(__clang__)
+#define SWIFT_PICO_WEAK __attribute__((weak))
+#else
+#define SWIFT_PICO_WEAK
+#endif
+
 typedef void pico_mutex_t;
 typedef void pico_recursive_mutex_t;
 typedef void pico_semaphore_t;
@@ -31,6 +37,11 @@ extern bool sem_try_acquire(pico_semaphore_t *sem);
 extern bool sem_release(pico_semaphore_t *sem);
 
 extern uint64_t time_us_64(void);
+
+extern char __StackBottom SWIFT_PICO_WEAK;
+extern char __StackTop SWIFT_PICO_WEAK;
+extern char __StackOneBottom SWIFT_PICO_WEAK;
+extern char __StackOneTop SWIFT_PICO_WEAK;
 
 typedef struct {
     uintptr_t words[SWIFT_PICO_SYNC_WORDS];
@@ -108,6 +119,51 @@ static uint32_t swift_pico_core_index(void) {
 #endif
 }
 
+static uintptr_t swift_pico_stack_pointer(void) {
+#if defined(__arm__) || defined(__thumb__)
+    uintptr_t sp;
+    __asm__ volatile("mov %0, sp" : "=r"(sp));
+    return sp;
+#else
+    return 0;
+#endif
+}
+
+static bool swift_pico_stack_bounds_from_symbols(
+    char *bottom,
+    char *top,
+    void **low,
+    void **high
+) {
+    if (bottom == NULL || top == NULL || bottom >= top) {
+        return false;
+    }
+
+    *low = bottom;
+    *high = top;
+    return true;
+}
+
+static bool swift_pico_stack_bounds_if_contains_sp(
+    char *bottom,
+    char *top,
+    uintptr_t sp,
+    void **low,
+    void **high
+) {
+    if (bottom == NULL || top == NULL || bottom >= top) {
+        return false;
+    }
+
+    if (sp >= (uintptr_t)bottom && sp <= (uintptr_t)top) {
+        *low = bottom;
+        *high = top;
+        return true;
+    }
+
+    return false;
+}
+
 static uint32_t swift_pico_timeout_us_from_ns(uint64_t ns) {
     uint64_t us = ns / 1000u;
     if ((ns % 1000u) != 0) {
@@ -155,13 +211,25 @@ bool swift_threading_defer_is_main_thread(void) {
 }
 
 bool swift_threading_defer_current_stack_bounds(void **low, void **high) {
-    if (low != NULL) {
-        *low = NULL;
+    if (low == NULL || high == NULL) {
+        return false;
     }
-    if (high != NULL) {
-        *high = NULL;
+
+    *low = NULL;
+    *high = NULL;
+
+    uintptr_t sp = swift_pico_stack_pointer();
+    if (swift_pico_stack_bounds_if_contains_sp(&__StackBottom, &__StackTop, sp, low, high)) {
+        return true;
     }
-    return false;
+    if (swift_pico_stack_bounds_if_contains_sp(&__StackOneBottom, &__StackOneTop, sp, low, high)) {
+        return true;
+    }
+
+    if (swift_pico_core_index() == 0u) {
+        return swift_pico_stack_bounds_from_symbols(&__StackBottom, &__StackTop, low, high);
+    }
+    return swift_pico_stack_bounds_from_symbols(&__StackOneBottom, &__StackOneTop, low, high);
 }
 
 void swift_threading_defer_mutex_init(uintptr_t *handle, bool checked) {
