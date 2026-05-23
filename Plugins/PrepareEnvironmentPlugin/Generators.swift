@@ -10,7 +10,7 @@ extension PrepareEnvironmentPlugin {
         context: PackagePlugin.PluginContext,
         libraryProductName: String?,
         embeddedSwiftRuntimeVendorPath: String
-    ) -> [String: String] {
+    ) async -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
@@ -20,7 +20,20 @@ extension PrepareEnvironmentPlugin {
         var newEnvVars: [String: String] = givenEnvVars
         
         // Then merges in global vars from env.json
-        newEnvVars.merge(packageEnv.vars, uniquingKeysWith: { old, _ in old })
+        newEnvVars.merge(
+            packageEnv.vars.filter { key, _ in key != "BOARD" },
+            uniquingKeysWith: { old, _ in old }
+        )
+
+        let selectedCombinationName = await self.resolveSelectedCombination(
+            givenEnvVars: givenEnvVars,
+            packageEnv: packageEnv,
+            context: context
+        )
+
+        let selectedCombinationVars = packageEnv.combinations[selectedCombinationName]!.vars
+            .filter { !givenEnvVars.keys.contains($0.key) }
+        newEnvVars.merge(selectedCombinationVars, uniquingKeysWith: { _, new in new })
 
         // Some basic checks
         guard let buildType = BuildType(rawValue: newEnvVars["BUILD_TYPE"] ?? "") else {
@@ -361,12 +374,12 @@ extension PrepareEnvironmentPlugin {
                     "servertype": "openocd",
                     "serverpath": "\(envVars["OPENOCD_PATH"]!)/openocd.exe",
                     "gdbPath": "\(envVars["GDB_PATH"]!)",
-                    "device": "RP2350",
+                    "device": "\(envVars["OPENOCD_DEVICE"]!)",
                     "configFiles": [
                         "interface/cmsis-dap.cfg",
-                        "target/rp2350.cfg"
+                        "\(envVars["OPENOCD_TARGET"]!)"
                     ],
-                    "svdFile": "\(envVars["PICO_SDK_PATH"]!)/src/rp2350/hardware_regs/RP2350.svd",
+                    "svdFile": "\(envVars["SVD_FILE"]!)",
                     "runToEntryPoint": "main",
                     // Fix for no_flash binaries, where monitor reset halt doesn't do what is expected
                     // also works fine for flash binaries

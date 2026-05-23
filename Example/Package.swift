@@ -12,10 +12,12 @@ let package = Package(
             url: "https://github.com/gonzalolarralde/CPicoSDK",
             exact: "2.2.7",
             traits: [
-                .init(name: "Platform_RP2350"),
                 .init(name: "BootStage2_W25Q080"),
                 .init(name: "StdIO_Automatic"),
                 .init(name: "CPUMetrics"),
+
+                // MARK: - RP2350
+                .init(name: "Platform_RP2350"),
 
                 // - Pico 2
                 .init(name: "Variant_RP2350A"),
@@ -31,6 +33,17 @@ let package = Package(
 
                 // - Pimoroni Pico Plus 2 W
                 // .init(name: "Variant_RP2350B"),
+                // .init(name: "Radio_CYW43439"),
+
+                // MARK: - RP2040
+                // .init(name: "Platform_RP2040"),
+
+                // - Pico
+                // .init(name: "Variant_RP2040"),
+                // .init(name: "Radio_None"),
+
+                // - Pico W
+                // .init(name: "Variant_RP2040"),
                 // .init(name: "Radio_CYW43439"),
             ]
         ),

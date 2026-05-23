@@ -20,11 +20,13 @@ let package = Package(
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
 
         // TODO: The generator needs to define traits. This needs to be implemented.
+        .trait(name: "Platform_RP2040"),
         .trait(name: "Platform_RP2350"),
         .trait(name: "Platform_RP2350_arm_s"),
         .trait(name: "Platform_RP2350_riscv"),
         .trait(name: "Platform_Host"),
 
+        .trait(name: "Variant_RP2040"),
         .trait(name: "Variant_RP2350A"),
         .trait(name: "Variant_RP2350B"),
 
@@ -49,8 +51,10 @@ let package = Package(
     ],
     targets: [
         // GENERATOR MARK: TARGETS
+        .target(name: "_CPicoSDK_pico"),
         .target(name: "_CPicoSDK_pico2"),
         .target(name: "_CPicoSDK_pico2_w"),
+        .target(name: "_CPicoSDK_pico_w"),
         .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350"),
         .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350"),
 
@@ -62,8 +66,10 @@ let package = Package(
                 .target(name: "CShims"),
 
                 // GENERATOR MARK: TARGET DEPENDENCIES
+                .target(name: "_CPicoSDK_pico", condition: .when(traits: ["Platform_RP2040", "Variant_RP2040", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
+                .target(name: "_CPicoSDK_pico_w", condition: .when(traits: ["Platform_RP2040", "Variant_RP2040", "Radio_CYW43439"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_None"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ],
@@ -77,8 +83,10 @@ let package = Package(
             name: "CShims",
             dependencies: [
                 // GENERATOR MARK: TARGET DEPENDENCIES
+                .target(name: "_CPicoSDK_pico", condition: .when(traits: ["Platform_RP2040", "Variant_RP2040", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2", condition: .when(traits: ["Variant_RP2350A", "Radio_None"])),
                 .target(name: "_CPicoSDK_pico2_w", condition: .when(traits: ["Variant_RP2350A", "Radio_CYW43439"])),
+                .target(name: "_CPicoSDK_pico_w", condition: .when(traits: ["Platform_RP2040", "Variant_RP2040", "Radio_CYW43439"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_None"])),
                 .target(name: "_CPicoSDK_pimoroni_pico_plus2_w_rp2350", condition: .when(traits: ["Variant_RP2350B", "Radio_CYW43439"])),
             ]
@@ -89,15 +97,6 @@ let package = Package(
         .target(name: "TLSF"),
 
         .target(
-            name: "CPicoConcurrency",
-            dependencies: [
-                .target(name: "ConcurrencyShims"),
-                .target(name: "CPicoSDK"),
-            ]
-        ),
-        .target(name: "ConcurrencyShims"),
-
-        .target(
             name: "PSRAM", 
             dependencies: [
                 .target(name: "CShims"),
@@ -105,6 +104,15 @@ let package = Package(
                 .target(name: "TLSF")
             ]
         ),
+
+        .target(
+            name: "CPicoConcurrency",
+            dependencies: [
+                .target(name: "ConcurrencyShims"),
+                .target(name: "CPicoSDK"),
+            ]
+        ),
+        .target(name: "ConcurrencyShims"),
 
         .plugin(
             name: "PIOASMPlugin", 

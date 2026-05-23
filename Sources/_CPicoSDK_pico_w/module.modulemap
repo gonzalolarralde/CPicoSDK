@@ -1,0 +1,4 @@
+module _CPicoSDK_pico_w [system] {
+    umbrella header "include/CPicoSDK_pico_w.h"
+    export *
+}

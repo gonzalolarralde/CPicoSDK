@@ -1,24 +1,46 @@
 @_exported import ARMClib
 
-#if (Platform_RP2350 && (Platform_RP2350_arm_s || Platform_RP2350_riscv || Platform_Host))
+#if (Platform_RP2040 && (Platform_RP2350 || Platform_RP2350_arm_s || Platform_RP2350_riscv || Platform_Host))
     #error("Only one Platform can be selected at a time.")
-#elseif (Platform_RP2350_arm_s && (Platform_RP2350_riscv || Platform_Host))
+#elseif (Platform_RP2350 && (Platform_RP2350_arm_s || Platform_RP2350_riscv || Platform_Host))
     #error("Only one Platform can be selected at a time.")
-#elseif (Platform_RP2350_riscv && Platform_Host)
+#elseif (Platform_RP2350_arm_s && (Platform_RP2350_riscv || Platform_Host || Platform_RP2040))
     #error("Only one Platform can be selected at a time.")
-#elseif !Platform_RP2350 && !Platform_RP2350_arm_s && !Platform_RP2350_riscv && !Platform_Host
+#elseif (Platform_RP2350_riscv && (Platform_Host || Platform_RP2040))
+    #error("Only one Platform can be selected at a time.")
+#elseif !Platform_RP2040 && !Platform_RP2350 && !Platform_RP2350_arm_s && !Platform_RP2350_riscv && !Platform_Host
     #error("At least one Platform needs to be selected.")
 #endif
 
+#if Platform_RP2040
+    #if !Variant_RP2040
+        #error("Platform_RP2040 requires Variant_RP2040.")
+    #elseif Variant_RP2350A || Variant_RP2350B
+        #error("Platform_RP2040 cannot be combined with RP2350 variants.")
+    #endif
+#endif
+
 #if (Platform_RP2350 || Platform_RP2350_arm_s || Platform_RP2350_riscv)
-    #if (Variant_RP2350A && Variant_RP2350B)
+    #if Variant_RP2040
+        #error("RP2350 platforms cannot be combined with Variant_RP2040.")
+    #elseif (Variant_RP2350A && Variant_RP2350B)
         #error("Only one Variant can be selected at a time.")
     #elseif !Variant_RP2350A && !Variant_RP2350B
         #error("At least one Variant needs to be selected.")
     #endif
 #endif
 
-#if Variant_RP2350A && Radio_None
+#if Platform_RP2040 && Variant_RP2040 && Radio_None
+    @_cdecl("_cpicosdk_combination_pico")
+    func cpicosdk_combination_pico_marker() {}
+
+    @_exported import _CPicoSDK_pico
+#elseif Platform_RP2040 && Variant_RP2040 && Radio_CYW43439
+    @_cdecl("_cpicosdk_combination_pico_w")
+    func cpicosdk_combination_pico_w_marker() {}
+
+    @_exported import _CPicoSDK_pico_w
+#elseif Variant_RP2350A && Radio_None
     @_cdecl("_cpicosdk_combination_pico2")
     func cpicosdk_combination_pico2_marker() {}
 
@@ -75,6 +97,25 @@
 
 // TODO: Implement trait generation.
 // GENERATOR MARK: TRAIT DEFINITIONS
+
+#if Platform_RP2040
+    // RP2040's pio_program_t doesn't have the used_gpio_ranges field, so we need to provide a custom initializer.
+     @inlinable
+     public func pio_program(
+         instructions: UnsafePointer<UInt16>,
+         length: Int,
+         origin: Int,
+         pio_version: UInt8,
+         used_gpio_ranges: Int = 0
+     ) -> pio_program_t {
+         return pio_program_t(
+             instructions: instructions,
+             length: UInt8(length),
+             origin: Int8(origin),
+             pio_version: pio_version
+         )
+     }
+#endif
 
 @_spi(Internal) public func setupPicoSDK() {
     stdio_init_all()

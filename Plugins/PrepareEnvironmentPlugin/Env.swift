@@ -40,6 +40,10 @@ struct Env: Codable, Hashable {
         "RSYNC_PATH",
         "IMPORTED_LIBS",
         "IMPORTED_LIBS_MORE",
+        "ARCH_PREPROCESSOR_DEFINE",
+        "OPENOCD_TARGET",
+        "OPENOCD_DEVICE",
+        "SVD_FILE",
         "SWIFTPM_TRIPLE",
         "BUILD_TYPE",
         "SWIFT_BUILD_TYPE",
@@ -50,6 +54,18 @@ struct Env: Codable, Hashable {
     let vars: [String: String]
     let combinations: [String: Combination]
 
+    static let boardDefiningTraitPrefixes = [
+        "Platform_",
+        "Variant_",
+        "Radio_",
+    ]
+
+    static func boardDefiningTraits(from traits: some Sequence<String>) -> Set<String> {
+        Set(traits.filter { trait in
+            boardDefiningTraitPrefixes.contains { trait.hasPrefix($0) }
+        })
+    }
+
     init(from file: String) throws {
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: file),
@@ -59,6 +75,23 @@ struct Env: Codable, Hashable {
             self = envs
         } else {
             throw Error.fileNotFound(file)
+        }
+    }
+
+    func validateCombinations() {
+        var boardTraitSets: [Set<String>: String] = [:]
+
+        for (name, combination) in combinations {
+            let boardTraits = Self.boardDefiningTraits(from: combination.traits)
+            if boardTraits.isEmpty {
+                fatalError("[CPicoSDK] Combination \(name) does not define any board-selection traits.")
+            }
+
+            if let existing = boardTraitSets[boardTraits] {
+                fatalError("[CPicoSDK] Combinations \(existing) and \(name) use the same board-selection traits: \(boardTraits.sorted().joined(separator: ", "))")
+            }
+
+            boardTraitSets[boardTraits] = name
         }
     }
 }

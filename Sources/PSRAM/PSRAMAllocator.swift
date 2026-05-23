@@ -1,4 +1,8 @@
-#if Variant_RP2350A && Radio_None
+#if Platform_RP2040 && Variant_RP2040 && Radio_None
+    import _CPicoSDK_pico
+#elseif Platform_RP2040 && Variant_RP2040 && Radio_CYW43439
+    import _CPicoSDK_pico_w
+#elseif Variant_RP2350A && Radio_None
     import _CPicoSDK_pico2
 #elseif Variant_RP2350A && Radio_CYW43439
     import _CPicoSDK_pico2_w
@@ -20,6 +24,7 @@ public enum AllocatorError: Swift.Error, CustomStringConvertible {
     case heapInitializationFailed
     case configurationMissing
     case notInitialized
+    case unsupportedPlatform
     case allocatorRegistrationFailed(String)
 
     public var description: String {
@@ -28,6 +33,7 @@ public enum AllocatorError: Swift.Error, CustomStringConvertible {
         case .heapInitializationFailed: return "Failed to initialize heap. The provided PSRAM memory might be faulty."
         case .configurationMissing: return "PSRAM configuration is missing. Please provide a `PSRAMConfiguration` in your `configure` block."
         case .notInitialized: return "PSRAMAllocator was not initialized yet."
+        case .unsupportedPlatform: return "PSRAM is only supported on RP2350 targets with QMI/XIP PSRAM support."
         case .allocatorRegistrationFailed(let error): return "Failed to register allocator: \(error)"
         }
     }
@@ -38,6 +44,27 @@ public enum AllocatorError: Swift.Error, CustomStringConvertible {
 /// algorithm.
 /// 
 /// This implementation is heavily based on https://github.com/sparkfun/sparkfun-pico
+#if Platform_RP2040
+final class PSRAMAllocator: @unchecked Sendable {
+    typealias Error = AllocatorError
+
+    static func shared(initialize: Bool = true, configuration: PSRAMConfiguration? = nil) throws(Error) -> PSRAMAllocator {
+        throw Error.unsupportedPlatform
+    }
+
+    let psramBase = UnsafeMutableRawPointer(bitPattern: 0x1100_0000)!
+    let psramSize = 0
+
+    var totalMemory: Int { 0 }
+    var usedMemory: Int { 0 }
+
+    func malloc(_ size: Int) -> UnsafeMutableRawPointer? { nil }
+    func memalign(_ alignment: Int, _ size: Int) -> UnsafeMutableRawPointer? { nil }
+    func free(_ ptr: UnsafeMutableRawPointer?) {}
+    func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? { nil }
+    func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? { nil }
+}
+#else
 final class PSRAMAllocator: @unchecked Sendable { // TODO: Consider adding proper synchronization, right now relies on mallocEnter and mallocExit.
     typealias Error = AllocatorError
     private static let instance: Mutex<PSRAMAllocator?> = .init(nil)
@@ -467,3 +494,4 @@ final class PSRAMAllocator: @unchecked Sendable { // TODO: Consider adding prope
         return total
     }
 }
+#endif

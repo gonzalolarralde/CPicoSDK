@@ -1,3 +1,7 @@
+#if Platform_RP2040
+    #error("Platform_RP2040 does not support Concurrency yet.")
+#endif
+
 @_exported import _Concurrency
 
 // This is for a future exploration.
