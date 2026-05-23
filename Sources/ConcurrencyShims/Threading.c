@@ -61,18 +61,12 @@ static void *swift_pico_tls[SWIFT_PICO_MAX_CORES][SWIFT_PICO_TLS_KEYS];
 
 static void swift_pico_trap(void) {
     for (;;) {
-#if defined(__arm__) || defined(__thumb__)
         __asm__ volatile("bkpt #0");
-#endif
     }
 }
 
 static void swift_pico_wait_hint(void) {
-#if defined(__arm__) || defined(__thumb__)
     __asm__ volatile("wfe" ::: "memory");
-#else
-    __asm__ volatile("" ::: "memory");
-#endif
 }
 
 static SwiftPicoMutex *swift_pico_alloc_mutex(void) {
@@ -112,21 +106,13 @@ static SwiftPicoCondition *swift_pico_get_condition(uintptr_t *handle) {
 }
 
 static uint32_t swift_pico_core_index(void) {
-#if defined(__arm__) || defined(__thumb__)
     return *SWIFT_PICO_SIO_CPUID & 1u;
-#else
-    return 0;
-#endif
 }
 
 static uintptr_t swift_pico_stack_pointer(void) {
-#if defined(__arm__) || defined(__thumb__)
     uintptr_t sp;
     __asm__ volatile("mov %0, sp" : "=r"(sp));
     return sp;
-#else
-    return 0;
-#endif
 }
 
 static bool swift_pico_stack_bounds_from_symbols(
@@ -395,12 +381,10 @@ void swift_threading_defer_once(uintptr_t *predicate, void (*fn)(void *), void *
             running,
             false,
             __ATOMIC_ACQ_REL,
-            __ATOMIC_ACQUIRE)) {
+        __ATOMIC_ACQUIRE)) {
         fn(ctx);
         __atomic_store_n(predicate, done, __ATOMIC_RELEASE);
-#if defined(__arm__) || defined(__thumb__)
         __asm__ volatile("sev" ::: "memory");
-#endif
         return;
     }
 

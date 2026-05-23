@@ -1,4 +1,5 @@
 import ConcurrencyShims
+import CPicoSDK
 
 /// Stable identifier for one physical Pico CPU core.
 ///
@@ -11,11 +12,11 @@ enum CoreID: UInt8, CaseIterable, Hashable {
 
     /// Returns the core currently running this code.
     ///
-    /// This is currently stubbed to core0 while the multicore pass is being
-    /// wired. Once core1 is launched, this should become the single wrapper
-    /// around Pico's current-core primitive.
+    /// This is the single Swift wrapper around Pico's current-core primitive.
+    /// Scheduler placement, executor dispatch, and C worker callbacks all use
+    /// this value to select the matching per-core storage.
     static var current: CoreID {
-        .core0
+        CoreID(rawValue: UInt8(get_core_num() & 1)) ?? .core0
     }
 
     /// Index used for fixed per-core storage.
@@ -49,8 +50,10 @@ struct TaskIdentity: Hashable {
     /// Returning nil means the scheduler cannot safely associate the job with a
     /// logical task. In that case placement falls back to non-affine policy.
     static func resolve(job: UnsafeMutableRawPointer?) -> TaskIdentity? {
-        _ = job
-        return nil
+        guard let owner = cshims_job_owner_task(job) else {
+            return nil
+        }
+        return TaskIdentity(rawValue: UInt(bitPattern: owner))
     }
 }
 
@@ -131,11 +134,24 @@ struct AffinityEntry {
 /// calls back before and after `swift_job_run`, and the table preserves the
 /// invariant that an active task identity runs on only one core.
 struct AffinityTable {
+    private static let maxEntries = 64
+    private var entries: [AffinityEntry] = []
+
     /// Returns the active owner for an identity, or nil if the identity is idle,
     /// unknown, or not tracked.
     mutating func owner(for identity: TaskIdentity?) -> CoreID? {
-        _ = identity
-        return nil
+        guard let identity else {
+            return nil
+        }
+
+        return withCritical {
+            guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
+                return nil
+            }
+
+            let entry = entries[index]
+            return entry.queuedCount > 0 || entry.runningCount > 0 ? entry.ownerCore : nil
+        }
     }
 
     /// Records that a job has been accepted for the selected owner core.
@@ -143,9 +159,48 @@ struct AffinityTable {
     /// This happens before the envelope is pushed to a core inbox so later jobs
     /// for the same active identity reuse the same owner.
     mutating func markAccepted(identity: TaskIdentity?, ownerCore: CoreID, nowUs: UInt64) {
-        _ = identity
-        _ = ownerCore
-        _ = nowUs
+        guard let identity else {
+            return
+        }
+
+        withCritical {
+            if let index = entries.firstIndex(where: { $0.identity == identity }) {
+                let isActive = entries[index].queuedCount > 0 || entries[index].runningCount > 0
+                assert(
+                    !isActive || entries[index].ownerCore == ownerCore,
+                    "[CPicoConcurrency] active task affinity owner changed"
+                )
+                assert(
+                    entries[index].queuedCount < UInt16.max,
+                    "[CPicoConcurrency] task affinity queued count overflow"
+                )
+
+                if !isActive {
+                    entries[index].ownerCore = ownerCore
+                }
+                entries[index].queuedCount += 1
+                entries[index].idleSinceUs = nowUs
+                return
+            }
+
+            if entries.count >= Self.maxEntries {
+                if let idleIndex = entries.firstIndex(where: { $0.queuedCount == 0 && $0.runningCount == 0 }) {
+                    entries.remove(at: idleIndex)
+                } else {
+                    assert(false, "[CPicoConcurrency] task affinity table full of active entries")
+                }
+            }
+
+            entries.append(
+                AffinityEntry(
+                    identity: identity,
+                    ownerCore: ownerCore,
+                    queuedCount: 1,
+                    runningCount: 0,
+                    idleSinceUs: nowUs
+                )
+            )
+        }
     }
 
     /// Moves one accepted job from queued to running state.
@@ -153,23 +208,72 @@ struct AffinityTable {
     /// `CoreExecutor` calls this immediately before invoking `swift_job_run`.
     /// A complete implementation should verify that `core` is the active owner.
     mutating func markStarting(identity: TaskIdentity?, core: CoreID) {
-        _ = identity
-        _ = core
+        guard let identity else {
+            return
+        }
+
+        withCritical {
+            guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
+                fatalError(
+                    "[CPicoConcurrency] missing affinity entry while starting job; every affine job must be accepted before it can run"
+                )
+            }
+
+            assert(entries[index].ownerCore == core, "[CPicoConcurrency] task affinity owner/core mismatch")
+            assert(entries[index].queuedCount > 0, "[CPicoConcurrency] task affinity starting without queued work")
+            assert(entries[index].runningCount < UInt8.max, "[CPicoConcurrency] task affinity running count overflow")
+
+            entries[index].queuedCount -= 1
+            entries[index].runningCount += 1
+        }
     }
 
     /// Marks one running job as finished and records idle time when no work
     /// remains for the identity.
     mutating func markFinished(identity: TaskIdentity?, core: CoreID, nowUs: UInt64) {
-        _ = identity
-        _ = core
-        _ = nowUs
+        guard let identity else {
+            return
+        }
+
+        withCritical {
+            guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
+                fatalError(
+                    "[CPicoConcurrency] missing affinity entry while finishing job; a running affine job lost its accepted entry"
+                )
+            }
+
+            assert(entries[index].ownerCore == core, "[CPicoConcurrency] task affinity finish owner/core mismatch")
+            assert(entries[index].runningCount > 0, "[CPicoConcurrency] task affinity finishing without running work")
+
+            entries[index].runningCount -= 1
+            if entries[index].queuedCount == 0 && entries[index].runningCount == 0 {
+                entries[index].idleSinceUs = nowUs
+            }
+        }
     }
 
     /// Rolls back an accepted job if transport or scheduling fails after
     /// ownership has already been recorded.
     mutating func rollbackAccepted(identity: TaskIdentity?, ownerCore: CoreID) {
-        _ = identity
-        _ = ownerCore
+        guard let identity else {
+            return
+        }
+
+        withCritical {
+            guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
+                fatalError(
+                    "[CPicoConcurrency] missing affinity entry while rolling back accepted job; rollback can only happen after ownership was recorded"
+                )
+            }
+
+            assert(entries[index].ownerCore == ownerCore, "[CPicoConcurrency] task affinity rollback owner mismatch")
+            assert(entries[index].queuedCount > 0, "[CPicoConcurrency] task affinity rollback without queued work")
+
+            entries[index].queuedCount -= 1
+            if entries[index].queuedCount == 0 && entries[index].runningCount == 0 {
+                entries[index].idleSinceUs = 0
+            }
+        }
     }
 }
 

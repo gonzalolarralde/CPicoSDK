@@ -1,17 +1,20 @@
+import ConcurrencyShims
+import CPicoSDK
+
 /// Owns the core1 launch sequence.
 ///
 /// This is behavior, not scheduler state. Keeping it outside `SchedulerTypes`
-/// prevents the data model from collecting platform startup details such as
-/// stack selection, runtime state clearing, and Pico multicore launch calls.
+/// prevents the data model from collecting platform startup details.
 enum MulticoreLauncher {
     /// Starts core1 and returns whether multicore scheduling is available.
     ///
-    /// The implementation is still a placeholder while the entity graph is
-    /// being wired. A complete version should launch core1 with an explicit
-    /// stack and arrange for it to call `cshims_scheduler_core_loop_iteration`.
-    static func start(system: SchedulerSystem) -> Bool {
-        _ = system
-        return false
+    /// Pico owns the default core1 stack through its `.stack1` section and the
+    /// linker-provided `__StackOne*` symbols. That keeps stack-bounds reporting
+    /// aligned with `swift_threading_defer_current_stack_bounds`.
+    static func start() -> Bool {
+        multicore_reset_core1()
+        multicore_launch_core1(cshims_scheduler_core1_entry)
+        return true
     }
 }
 
@@ -23,6 +26,27 @@ enum MulticoreLauncher {
 enum PlatformRuntimeIsolation {
     /// Prepares Swift runtime state before a core starts running scheduler work.
     static func prepareCoreForSwiftRuntime(_ core: CoreID) {
-        _ = core
+        guard core == CoreID.current else {
+            return
+        }
+
+        cshims_swift_task_clear_current()
+    }
+}
+
+/// Entry point passed to Pico's core1 launcher.
+///
+/// Core1 clears inherited Swift runtime state, then runs the same scheduler
+/// iteration used by core0 drain/donate hooks. Idle iterations call Pico's
+/// tight-loop hook so the target remains friendly to SDK-level idle handling.
+@_cdecl("cshims_scheduler_core1_entry")
+func cshims_scheduler_core1_entry() {
+    PlatformRuntimeIsolation.prepareCoreForSwiftRuntime(CoreID.current)
+    while true {
+        if cshimsRuntimeScheduler.coreLoopIteration() == 0 {
+            for _ in 0..<256 {
+                tight_loop_contents()
+            }
+        }
     }
 }

@@ -25,6 +25,17 @@ final class CoreInbox {
         }
     }
 
+    /// Number of envelopes waiting in transport for this executor.
+    ///
+    /// Placement uses this as one part of the per-core load estimate. It is a
+    /// snapshot only; producers may enqueue more work immediately after it is
+    /// read.
+    var count: UInt32 {
+        withCritical {
+            UInt32(pending.count)
+        }
+    }
+
     /// Removes the oldest envelope for the owning executor.
     ///
     /// Only the matching `CoreExecutor` should pop from this queue. That keeps
@@ -160,6 +171,22 @@ private final class JobSlotPool {
         }
     }
 
+    /// Number of slots currently reserved for scheduled or running jobs.
+    ///
+    /// This lets placement see work that has already left the transport inbox
+    /// but has not completed execution yet.
+    var allocatedCount: UInt32 {
+        withCritical {
+            var count: UInt32 = 0
+            for index in 0..<JobSlot.maxJobSlots {
+                if slots.advanced(by: index).pointee.state != .free {
+                    count += 1
+                }
+            }
+            return count
+        }
+    }
+
     private func findFreeSlot() -> UnsafeMutablePointer<JobSlot>? {
         for index in 0..<JobSlot.maxJobSlots {
             let slot = slots.advanced(by: index)
@@ -222,6 +249,15 @@ final class CoreExecutor {
     /// inbox.
     func enqueue(_ envelope: JobEnvelope) {
         inbox.push(envelope)
+    }
+
+    /// Snapshot of pending work owned by this executor.
+    ///
+    /// The value combines queued envelopes, deferred closure work, and reserved
+    /// async-context slots. `PlacementPolicy` uses it to choose a core for new
+    /// task identities without knowing executor internals.
+    var outstandingWork: UInt32 {
+        inbox.count + deferredWork.count + slotPool.allocatedCount
     }
 
     /// Moves all queued envelopes from transport into async-context scheduling.
@@ -323,10 +359,10 @@ final class CoreExecutor {
             return
         }
 
-        slotPool.release(slot)
         scheduler.jobWillRun(envelope: envelope, core: core)
         cshims_run_job_bridge(envelope.job, envelope.executorFirst, envelope.executorSecond)
         scheduler.jobDidRun(envelope: envelope, core: core)
+        slotPool.release(slot)
     }
 }
 

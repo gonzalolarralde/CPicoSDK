@@ -15,7 +15,7 @@ final class SchedulerSystem {
     ]
     private var affinityTable = AffinityTable()
     private var multicoreEnabled = false
-    private var didRunJob = false
+    private var didRunJobByCore: [2 of Bool] = [false, false]
 #if CPUMetrics
     private(set) var cpuUsage = RuntimeCPUUsageMeter()
 #endif
@@ -99,14 +99,14 @@ final class SchedulerSystem {
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
     #endif
-        didRunJob = false
+        didRunJobByCore[core.index] = false
         executor(for: core).drainInbox()
         executor(for: core).pollAsyncContext()
     #if CPUMetrics
         cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
         cpuUsage.reportIfNeeded()
     #endif
-        return didRunJob ? 1 : 0
+        return didRunJobByCore[core.index] ? 1 : 0
     }
 
     /// Polls repeatedly until one iteration reports no completed runtime job.
@@ -144,14 +144,13 @@ final class SchedulerSystem {
     /// Starts multicore scheduling if the platform launcher can bring up core1.
     ///
     /// Runtime isolation setup happens before launch. Placement only starts
-    /// returning core1 after `MulticoreLauncher` reports success.
+    /// returning core1 after `startCore1` reports success.
     func startMulticore() {
         guard !multicoreEnabled else {
             return
         }
 
-        PlatformRuntimeIsolation.prepareCoreForSwiftRuntime(.core1)
-        multicoreEnabled = MulticoreLauncher.start(system: self)
+        multicoreEnabled = startCore1()
     }
 
     @discardableResult
@@ -207,7 +206,7 @@ final class SchedulerSystem {
     /// verify that the current core is still the owner.
     func jobWillRun(envelope: JobEnvelope, core: CoreID) {
         affinityTable.markStarting(identity: envelope.identity, core: core)
-        didRunJob = true
+        didRunJobByCore[core.index] = true
     }
 
     /// Marks a job as finished.
@@ -287,12 +286,11 @@ final class SchedulerSystem {
 
     /// Returns the amount of pending/running work used by placement policy.
     ///
-    /// This is currently a stub while the first-pass entity graph is being wired.
-    /// Later it should aggregate inbox depth, scheduled slots, and affinity
-    /// counts for the requested core.
+    /// This aggregates executor-owned transport, deferred work, and scheduled
+    /// slot state. It is intentionally a load estimate, not a correctness
+    /// counter; affinity state remains owned by `AffinityTable`.
     private func outstandingWork(for core: CoreID) -> UInt32 {
-        _ = core
-        return 0
+        executor(for: core).outstandingWork
     }
 
     /// Gives legacy helpers access to the core0 async context pointer.

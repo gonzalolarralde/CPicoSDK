@@ -68,6 +68,7 @@ final class DeferredWorkItem {
 struct DeferredWorkQueue {
     private var head: UnsafeMutableRawPointer?
     private var tail: UnsafeMutableRawPointer?
+    private var itemCount: UInt32 = 0
 
     mutating func push(_ item: DeferredWorkItem) -> Bool {
         withCritical {
@@ -86,6 +87,7 @@ struct DeferredWorkQueue {
                 head = rawItem
             }
             tail = rawItem
+            itemCount += 1
             return true
         }
     }
@@ -103,7 +105,15 @@ struct DeferredWorkQueue {
             }
             item.next = nil
             item.enqueued = false
+            itemCount -= 1
             return item
+        }
+    }
+
+    /// Snapshot of preallocated deferred items waiting to execute.
+    var count: UInt32 {
+        withCritical {
+            itemCount
         }
     }
 }

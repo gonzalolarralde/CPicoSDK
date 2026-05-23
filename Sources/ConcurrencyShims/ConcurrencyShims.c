@@ -22,6 +22,8 @@ typedef struct {
 
 extern void SWIFT_CC_SWIFT swift_job_run(void *job, void *executorFirst, void *executorSecond);
 extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executor);
+extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current_runtime(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
+extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
 
 extern int cshims_scheduler_poll_once(void);
 extern void cshims_scheduler_drain(void);
@@ -49,8 +51,42 @@ void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond)
     swift_job_run(job, executorFirst, executorSecond);
 }
 
+void cshims_swift_task_clear_current(void) {
+    cshims_swift_task_clear_current_runtime();
+}
+
+void *cshims_job_owner_task(void *job) {
+    if (job == NULL) {
+        return NULL;
+    }
+
+    enum {
+        cshims_job_flags_offset = 16,
+        cshims_job_size = 40,
+        cshims_nullary_continuation_offset = cshims_job_size,
+        cshims_job_kind_mask = 0xff,
+        cshims_job_kind_nullary_continuation = 195
+    };
+
+    void *metadata;
+    memcpy(&metadata, job, sizeof(metadata));
+
+    if (metadata == cshims_swift_task_heap_metadata_ptr) {
+        return job;
+    }
+
+    uint32_t flags;
+    memcpy(&flags, (const char *)job + cshims_job_flags_offset, sizeof(flags));
+    if ((flags & cshims_job_kind_mask) == cshims_job_kind_nullary_continuation) {
+        void *continuation;
+        memcpy(&continuation, (const char *)job + cshims_nullary_continuation_offset, sizeof(continuation));
+        return continuation;
+    }
+
+    return NULL;
+}
+
 uint32_t cshims_enter_critical(void) {
-#if defined(__arm__) || defined(__thumb__)
     uint32_t status;
     __asm volatile(
         "mrs %0, primask\n"
@@ -59,17 +95,10 @@ uint32_t cshims_enter_critical(void) {
         :
         : "memory");
     return status;
-#else
-    return 0;
-#endif
 }
 
 void cshims_exit_critical(uint32_t state) {
-#if defined(__arm__) || defined(__thumb__)
     __asm volatile("msr primask, %0\n" : : "r"(state) : "memory");
-#else
-    (void)state;
-#endif
 }
 
 SWIFT_CC_SWIFT void swift_task_enqueueGlobalImpl(void *job) {
