@@ -457,6 +457,12 @@ design notes, experiments, and failure analysis in `docs/`.
   child task's first owner core. To prove the current async task can migrate
   without touching scheduler internals, run the observed sleep loop inline in
   the test task while background pressure tasks are active.
+- A multicore `AsyncStream` producer/consumer stress can fail as a missing
+  device run-end marker before a clean assertion is emitted. Keep that probe
+  isolated or disabled while debugging; first confirm simpler current-task,
+  actor-executor, sleep-cancellation, and task-lifetime tests still pass so the
+  failure points at continuation stream traffic rather than a general scheduler
+  outage.
 
 ### Serial And RTT Logging
 
