@@ -10,7 +10,6 @@ import Darwin
 @main
 struct TestInDeviceTool {
     static func main() throws {
-        configureUnbufferedOutput()
         let rawArguments = CommandLine.arguments
         let arguments = rawArguments.count > 1 ? Array(rawArguments[1...]) : []
         let options = try Options.parse(arguments)
@@ -403,10 +402,6 @@ func logFunctionDurations(_ durations: [DeviceFunctionDuration]) {
     }
 }
 
-func configureUnbufferedOutput() {
-    setbuf(stdout, nil)
-}
-
 func log(_ message: String) {
     ImmediateLogger.shared.write(message)
 }
@@ -433,12 +428,12 @@ final class ImmediateLogger: @unchecked Sendable {
     }
 
     func write(_ message: String, terminator: String = "\n") {
-        if let tty, let data = "\(message)\(terminator)".data(using: .utf8) {
+        let data = Data("\(message)\(terminator)".utf8)
+        if let tty {
             tty.write(data)
             return
         }
-        print(message, terminator: terminator)
-        fflush(stdout)
+        FileHandle.standardOutput.write(data)
     }
 }
 
