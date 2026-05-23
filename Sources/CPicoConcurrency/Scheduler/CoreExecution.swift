@@ -213,10 +213,16 @@ final class CoreExecutor {
     private var deferredWork = DeferredWorkQueue()
     private var deferredWorkWorker: async_when_pending_worker_t
     private let slotPool = JobSlotPool()
+#if CPUMetrics
+    private var cpuUsage: RuntimeCPUUsageMeter
+#endif
 
     init(core: CoreID) {
         self.core = core
         self.inbox = CoreInbox(core: core)
+#if CPUMetrics
+        self.cpuUsage = RuntimeCPUUsageMeter(core: core)
+#endif
         self.deferredWorkWorker = async_when_pending_worker_t(
             next: nil,
             do_work: cshims_scheduler_deferred_work_worker,
@@ -240,6 +246,39 @@ final class CoreExecutor {
                 fatalError("[CPicoConcurrency] failed to register deferred work worker with async_context")
             }
         }
+    }
+
+#if CPUMetrics
+    /// Stream of usage reports produced by this executor's core-local meter.
+    ///
+    /// The public `CPUStats.usageEvents(for:)` API reaches this through
+    /// `SchedulerSystem`, but the meter itself lives here because executor work
+    /// is what the report is measuring.
+    var cpuUsageEvents: AsyncStream<CPUStats> {
+        cpuUsage.stream
+    }
+
+    /// Records an interrupt transition observed by this executor's core.
+    func recordInterruptCPUUsage(event: RuntimeCPUUsageMeter.Event) {
+        cpuUsage.record(event: event)
+    }
+#endif
+
+    /// Runs one scheduler iteration for this executor's core.
+    ///
+    /// The scheduler selects the executor; the executor owns the actual loop
+    /// mechanics and metrics for its core.
+    func pollOnce() {
+    #if CPUMetrics
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
+    #endif
+        drainInbox()
+        pollAsyncContext()
+    #if CPUMetrics
+        cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
+        cpuUsage.reportIfNeeded()
+    #endif
     }
 
     /// Accepts an already-placed envelope for this core.
@@ -344,7 +383,15 @@ final class CoreExecutor {
     /// The current timeout is effectively forever; higher-level run loops decide
     /// when to call this versus doing a short idle/yield delay.
     func waitForWork() {
+    #if CPUMetrics
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cpuUsage.sample()
+    #endif
         async_context_wait_for_work_until(&context.core, UInt64.max)
+    #if CPUMetrics
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cpuUsage.sample()
+    #endif
     }
 
     /// Runs the Swift job stored in a fired slot.

@@ -16,9 +16,6 @@ final class SchedulerSystem {
     private var affinityTable = AffinityTable()
     private var multicoreEnabled = false
     private var didRunJobByCore: [2 of Bool] = [false, false]
-#if CPUMetrics
-    private(set) var cpuUsage = RuntimeCPUUsageMeter()
-#endif
 
     /// Enqueues a Swift runtime job that should run as soon as its destination
     /// core polls.
@@ -95,17 +92,9 @@ final class SchedulerSystem {
     /// core's async context, and returns whether a Swift runtime job ran. This
     /// method is the place where transport and execution meet.
     func pollOnce(on core: CoreID) -> Int32 {
-    #if CPUMetrics
-        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-        cpuUsage.record(event: .enterTask(name: "runtimeScheduler.pollOnce"))
-    #endif
+        let executor = executor(for: core)
         didRunJobByCore[core.index] = false
-        executor(for: core).drainInbox()
-        executor(for: core).pollAsyncContext()
-    #if CPUMetrics
-        cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
-        cpuUsage.reportIfNeeded()
-    #endif
+        executor.pollOnce()
         return didRunJobByCore[core.index] ? 1 : 0
     }
 
@@ -118,33 +107,17 @@ final class SchedulerSystem {
         }
     }
 
-    /// Waits indefinitely for work on the current core.
-    ///
-    /// Kept as a runtime-hook-shaped wrapper around `waitForWork()`.
-    func waitForever() {
-        waitForWork()
-    }
-
     /// Blocks the current core's executor until its async context has work.
     ///
     /// `SchedulerSystem` chooses the current executor; the executor performs the
     /// actual Pico wait. CPU metrics sampling wraps the wait when enabled.
     func waitForWork() {
-#if CPUMetrics
-        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-        cpuUsage.sample()
-#endif
         executor(for: CoreID.current).waitForWork()
-#if CPUMetrics
-        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-        cpuUsage.sample()
-#endif
     }
 
-    /// Starts multicore scheduling if the platform launcher can bring up core1.
+    /// Starts multicore scheduling if the platform can bring up core1.
     ///
-    /// Runtime isolation setup happens before launch. Placement only starts
-    /// returning core1 after `startCore1` reports success.
+    /// Placement only starts returning core1 after `startCore1` reports success.
     func startMulticore() {
         guard !multicoreEnabled else {
             return
@@ -153,22 +126,16 @@ final class SchedulerSystem {
         multicoreEnabled = startCore1()
     }
 
-    @discardableResult
-    /// Runs one iteration of the loop used by the future core1 C entrypoint.
-    ///
-    /// Keeping this C-callable shape lets startup/stack-sensitive code remain in
-    /// C while the scheduler logic stays in Swift.
-    func coreLoopIteration() -> Int32 {
-        pollOnce(on: CoreID.current)
-    }
-
 #if CPUMetrics
-    func recordExternalEvent(_ event: RuntimeCPUUsageMeter.Event) {
-        cpuUsage.record(event: event)
+    func cpuUsageEvents(for core: CPUCore) -> AsyncStream<CPUStats> {
+        executors[Int(core.rawValue)].cpuUsageEvents
     }
 
-    func sampleCPUUsage() {
-        cpuUsage.sample()
+    func recordInterruptCPUUsage(_ event: RuntimeCPUUsageMeter.Event, coreIndex: UInt) {
+        guard coreIndex < 2 else {
+            fatalError("[CPicoConcurrency] CPU metrics received invalid core index \(coreIndex)")
+        }
+        executors[Int(coreIndex)].recordInterruptCPUUsage(event: event)
     }
 #endif
 
@@ -372,13 +339,7 @@ func cshims_scheduler_enqueue_deadline(
 /// C shim entrypoint for donating the current core until work arrives.
 @_cdecl("cshims_scheduler_wait_for_work_forever")
 func cshims_scheduler_wait_for_work_forever() {
-    cshimsRuntimeScheduler.waitForever()
-}
-
-/// C shim entrypoint for a single core run-loop iteration.
-@_cdecl("cshims_scheduler_core_loop_iteration")
-func cshims_scheduler_core_loop_iteration() -> Int32 {
-    cshimsRuntimeScheduler.coreLoopIteration()
+    cshimsRuntimeScheduler.waitForWork()
 }
 
 /// C shim entrypoint that requests core1 launch.

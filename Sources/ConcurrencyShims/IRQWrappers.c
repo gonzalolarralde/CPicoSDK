@@ -2,16 +2,25 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern void _cpicosdk_record_runtime_scheduler_enter_interrupt(uintptr_t interrupt);
-extern void _cpicosdk_record_runtime_scheduler_exit_interrupt(uintptr_t interrupt);
-extern void _cpicosdk_sample_runtime_scheduler_cpu_usage(void);
+extern void _cpicosdk_record_runtime_scheduler_enter_interrupt(uintptr_t core, uintptr_t interrupt);
+extern void _cpicosdk_record_runtime_scheduler_exit_interrupt(uintptr_t core, uintptr_t interrupt);
 
 typedef void (*cshims_irq_handler_fn_t)(void);
 
-static cshims_irq_handler_fn_t cshims_irq_wrapper_originals[64] = {0};
+enum {
+    CSHIMS_CORE_COUNT = 2,
+    CSHIMS_IRQ_WRAPPER_COUNT = 64,
+};
+
+static cshims_irq_handler_fn_t cshims_irq_wrapper_originals[CSHIMS_CORE_COUNT][CSHIMS_IRQ_WRAPPER_COUNT] = {{0}};
+
+static unsigned int cshims_current_core(void) {
+    volatile uint32_t *const sio_cpuid = (volatile uint32_t *)0xD0000000u;
+    return *sio_cpuid & 1u;
+}
 
 static cshims_irq_handler_fn_t *cshims_get_irq_vector_table(void) {
-    // ARMv8-M VTOR register (SCB->VTOR).
+    // Current core's ARMv8-M VTOR register (SCB->VTOR).
     volatile uintptr_t *const vtor = (volatile uintptr_t *)0xE000ED08u;
     uintptr_t table = *vtor;
     if ((table & 0xF0000000u) != 0x20000000u) {
@@ -22,16 +31,14 @@ static cshims_irq_handler_fn_t *cshims_get_irq_vector_table(void) {
 }
 
 void cshims_set_irq_wrapper_original(unsigned int irq, void (*handler)(void)) {
-    const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
-    if (irq >= count) {
+    if (irq >= CSHIMS_IRQ_WRAPPER_COUNT) {
         return;
     }
-    cshims_irq_wrapper_originals[irq] = handler;
+    cshims_irq_wrapper_originals[cshims_current_core()][irq] = handler;
 }
 
 void (*cshims_get_irq_vtor_handler(unsigned int irq))(void) {
-    const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
-    if (irq >= count) {
+    if (irq >= CSHIMS_IRQ_WRAPPER_COUNT) {
         return NULL;
     }
 
@@ -43,8 +50,7 @@ void (*cshims_get_irq_vtor_handler(unsigned int irq))(void) {
 }
 
 void cshims_set_irq_vtor_handler(unsigned int irq, void (*handler)(void)) {
-    const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
-    if (irq >= count) {
+    if (irq >= CSHIMS_IRQ_WRAPPER_COUNT) {
         return;
     }
 
@@ -56,19 +62,19 @@ void cshims_set_irq_vtor_handler(unsigned int irq, void (*handler)(void)) {
 }
 
 static void cshims_irq_wrapper_dispatch(uint32_t irq) {
-    const size_t count = sizeof(cshims_irq_wrapper_originals) / sizeof(cshims_irq_wrapper_originals[0]);
-    if (irq >= count) {
+    if (irq >= CSHIMS_IRQ_WRAPPER_COUNT) {
         return;
     }
 
-    _cpicosdk_record_runtime_scheduler_enter_interrupt(irq);
+    const unsigned int core = cshims_current_core();
+    _cpicosdk_record_runtime_scheduler_enter_interrupt(core, irq);
 
-    cshims_irq_handler_fn_t original = cshims_irq_wrapper_originals[irq];
+    cshims_irq_handler_fn_t original = cshims_irq_wrapper_originals[core][irq];
     if (original != NULL) {
         original();
     }
 
-    _cpicosdk_record_runtime_scheduler_exit_interrupt(irq);
+    _cpicosdk_record_runtime_scheduler_exit_interrupt(core, irq);
 }
 
 #define CSHIMS_DEFINE_IRQ_WRAPPER(N) \

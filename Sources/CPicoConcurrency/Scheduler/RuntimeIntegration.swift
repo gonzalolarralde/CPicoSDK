@@ -1,21 +1,15 @@
 import ConcurrencyShims
 import CPicoSDK
 
-/// Owns the core1 launch sequence.
+/// Starts core1 and returns whether multicore scheduling is available.
 ///
-/// This is behavior, not scheduler state. Keeping it outside `SchedulerTypes`
-/// prevents the data model from collecting platform startup details.
-enum MulticoreLauncher {
-    /// Starts core1 and returns whether multicore scheduling is available.
-    ///
-    /// Pico owns the default core1 stack through its `.stack1` section and the
-    /// linker-provided `__StackOne*` symbols. That keeps stack-bounds reporting
-    /// aligned with `swift_threading_defer_current_stack_bounds`.
-    static func start() -> Bool {
-        multicore_reset_core1()
-        multicore_launch_core1(cshims_scheduler_core1_entry)
-        return true
-    }
+/// Pico owns the default core1 stack through its `.stack1` section and the
+/// linker-provided `__StackOne*` symbols. That keeps stack-bounds reporting
+/// aligned with `swift_threading_defer_current_stack_bounds`.
+func startCore1() -> Bool {
+    multicore_reset_core1()
+    multicore_launch_core1(cshims_scheduler_core1_entry)
+    return true
 }
 
 /// Boundary for Swift runtime state that must be isolated per core.
@@ -43,7 +37,7 @@ enum PlatformRuntimeIsolation {
 func cshims_scheduler_core1_entry() {
     PlatformRuntimeIsolation.prepareCoreForSwiftRuntime(CoreID.current)
     while true {
-        if cshimsRuntimeScheduler.coreLoopIteration() == 0 {
+        if cshimsRuntimeScheduler.pollOnce() == 0 {
             for _ in 0..<256 {
                 tight_loop_contents()
             }
