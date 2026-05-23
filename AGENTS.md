@@ -10,6 +10,41 @@ wiring, or another specific category that fits the issue. Keep the tip concrete:
 include the symptom, the command or code pattern that helped, and any known
 limitation. Keep feature-specific investigation notes in `docs/`.
 
+## Root Device Test Harness
+
+The repo-root device test harness is the main exception to the `Example/`
+working-directory rule. Its contributor documentation lives in
+`README.md` under `Device Test Harness`, and test sources live under
+`Tests/Device/**/*.swift`.
+
+List available device tests from the repo root:
+
+```sh
+swift package --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
+```
+
+Check that device tests generate, compile, and link without programming
+hardware:
+
+```sh
+swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
+```
+
+Run the physical-device suite from the repo root only after confirming with the
+user that a compatible board and CMSIS-DAP/OpenOCD probe are connected and that
+it is OK to program the board:
+
+```sh
+swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
+```
+
+For focused checks, prefer `--filter <TestName>` before running all tests. Run
+`--build-only` often when adding tests or changing device-facing CPicoSDK
+behavior, traits, concurrency support, generated package wiring, finalization,
+or linking. Run the physical tests occasionally when changing OpenOCD/RTT
+capture or the harness itself. For documentation-only changes, do not program
+the device unless the user asks for it.
+
 ## Build
 
 Do not run a repo-root `./build`. Build the example like this:
@@ -344,6 +379,11 @@ design notes, experiments, and failure analysis in `docs/`.
   the generated package inputs and `env.json` are unchanged, and skip
   finalization when the generated static library is older than the existing
   ELF. The next flash can reuse the last ELF safely in that no-change case.
+- The root `test-in-device` harness is documented in `README.md` under
+  `Device Test Harness`. Use `--list` for a no-flash discovery check and
+  `--build-only` for the frequent compile/link check. Ask the user before
+  running non-`--build-only` device tests because they program the connected
+  board through OpenOCD.
 - Async embedded tests that use `try await Task.sleep(...)` can fail at link
   time with an undefined `Swift.CancellationError : Swift.Error` witness table
   (`$eScEs5ErrorsWP`). Use a non-throwing await point such as
