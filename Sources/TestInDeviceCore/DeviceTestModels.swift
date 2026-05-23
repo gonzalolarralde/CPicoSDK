@@ -8,6 +8,7 @@ public enum DeviceTestHarnessError: Error, CustomStringConvertible, Equatable {
     case asyncTestRequiresConcurrency(String)
     case processFailed(command: String, status: Int32, output: String)
     case missingTool(String)
+    case missingArtifact(String)
 
     public var description: String {
         switch self {
@@ -25,6 +26,8 @@ public enum DeviceTestHarnessError: Error, CustomStringConvertible, Equatable {
             return "command failed with status \(status): \(command)\n\(output)"
         case .missingTool(let name):
             return "required tool not found: \(name)"
+        case .missingArtifact(let name):
+            return "required build artifact not found: \(name)"
         }
     }
 }

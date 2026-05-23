@@ -831,7 +831,7 @@ The harness generates one ephemeral SwiftPM package per test in the plugin work
 directory, builds it against the local CPicoSDK checkout, programs the device
 with OpenOCD, captures RTT output, and evaluates controller-side expectations.
 Result lines report build, program, host run/capture time, device-reported time,
-firmware size, and per-function pass/fail status.
+UF2 firmware size, and per-function pass/fail status.
 
 If a test file contains any `async` top-level test function, the harness
 automatically uses the async runner and links `CPicoConcurrency`; sync functions

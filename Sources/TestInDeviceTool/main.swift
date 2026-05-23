@@ -148,15 +148,15 @@ struct DeviceHarnessRunner {
                     outputRoot: generatedRoot
                 )
                 let buildStartedAt = Date()
-                let elfURL = try build(generated: generated)
+                let firmware = try build(generated: generated)
                 let buildElapsed = Date().timeIntervalSince(buildStartedAt)
-                let firmwareSize = firmwareSizeKilobytes(elfURL)
+                let firmwareSize = firmwareSizeLabel(url: firmware.uf2URL)
                 if options.buildOnly {
-                    logLine(" (build=\(formatDuration(buildElapsed))) - \(formatElapsed(since: startedAt)) - \(firmwareSize) BUILT \(elfURL.path)")
+                    logLine(" (build=\(formatDuration(buildElapsed))) - \(formatElapsed(since: startedAt)) - \(firmwareSize) BUILT \(firmware.uf2URL.path)")
                     continue
                 }
                 let runResult = try runOnDevice(
-                    elfURL: elfURL,
+                    elfURL: firmware.elfURL,
                     packageDirectory: generated.packageDirectory,
                     timeoutMilliseconds: test.metadata.timeoutMilliseconds
                 )
@@ -182,7 +182,7 @@ struct DeviceHarnessRunner {
         return allPassed
     }
 
-    private func build(generated: GeneratedPackage) throws -> URL {
+    private func build(generated: GeneratedPackage) throws -> BuiltFirmware {
         let script = """
         set -euo pipefail
         cd \(shellQuote(generated.packageDirectory.path))
@@ -234,9 +234,28 @@ struct DeviceHarnessRunner {
         let foundELF = result.output.split(whereSeparator: \.isNewline).map(String.init).last { $0.hasSuffix(".elf") }
         if let foundELF {
             let path = foundELF.hasPrefix("/") ? foundELF : generated.packageDirectory.appendingPathComponent(foundELF).path
-            return URL(fileURLWithPath: path)
+            let elfURL = URL(fileURLWithPath: path)
+            return BuiltFirmware(elfURL: elfURL, uf2URL: try findUF2(for: elfURL, generated: generated))
         }
-        return generated.elfURL
+        return BuiltFirmware(
+            elfURL: generated.elfURL,
+            uf2URL: try findUF2(for: generated.elfURL, generated: generated)
+        )
+    }
+
+    private func findUF2(for elfURL: URL, generated: GeneratedPackage) throws -> URL {
+        let siblingUF2 = elfURL.deletingPathExtension().appendingPathExtension("uf2")
+        if isRegularFile(siblingUF2) {
+            return siblingUF2
+        }
+        let buildDirectory = generated.packageDirectory.appendingPathComponent(".build", isDirectory: true)
+        if let uf2URL = findFirstOptional(
+            under: buildDirectory,
+            matching: { $0.lastPathComponent == "\(generated.productName).uf2" && isRegularFile($0) }
+        ) {
+            return uf2URL
+        }
+        throw DeviceTestHarnessError.missingArtifact("\(generated.productName).uf2 under \(buildDirectory.path)")
     }
 
     private func runOnDevice(elfURL: URL, packageDirectory: URL, timeoutMilliseconds: Int) throws -> DeviceRunResult {
@@ -386,6 +405,10 @@ func formatDeviceMilliseconds(_ milliseconds: Int?) -> String {
     return "\(milliseconds)ms"
 }
 
+func firmwareSizeLabel(url: URL) -> String {
+    "(uf2=\(firmwareSizeKilobytes(url)))"
+}
+
 func firmwareSizeKilobytes(_ url: URL) -> String {
     guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
           let bytes = attributes[.size] as? NSNumber else {
@@ -441,6 +464,11 @@ struct DeviceRunResult {
     var transcript: DeviceTranscript
     var burnElapsed: TimeInterval
     var captureElapsed: TimeInterval
+}
+
+struct BuiltFirmware {
+    var elfURL: URL
+    var uf2URL: URL
 }
 
 struct ProcessResult {
