@@ -9,6 +9,7 @@
 #define SWIFT_PICO_TLS_KEYS 16u
 #define SWIFT_PICO_MAX_CORES 2u
 #define SWIFT_PICO_COND_MAX_WAITERS INT16_MAX
+#define SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES (16u * 1024u)
 #define SWIFT_PICO_SIO_CPUID ((volatile uint32_t *)0xd0000000u)
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -20,6 +21,12 @@
 typedef void pico_mutex_t;
 typedef void pico_recursive_mutex_t;
 typedef void pico_semaphore_t;
+
+typedef struct {
+    void *spin_lock;
+    int8_t owner;
+    uint8_t enter_count;
+} SwiftPicoRecursiveMutexStorage;
 
 extern void mutex_init(pico_mutex_t *mtx);
 extern void mutex_enter_blocking(pico_mutex_t *mtx);
@@ -58,6 +65,24 @@ typedef struct {
 } SwiftPicoCondition;
 
 static void *swift_pico_tls[SWIFT_PICO_MAX_CORES][SWIFT_PICO_TLS_KEYS];
+static uint32_t swift_pico_scheduler_core1_stack[SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES / sizeof(uint32_t)]
+    __attribute__((aligned(16)));
+
+void *cshims_scheduler_core1_stack_bottom(void) {
+    return swift_pico_scheduler_core1_stack;
+}
+
+uint32_t cshims_scheduler_core1_stack_size_bytes(void) {
+    return SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES;
+}
+
+static char *swift_pico_scheduler_core1_stack_bottom(void) {
+    return (char *)swift_pico_scheduler_core1_stack;
+}
+
+static char *swift_pico_scheduler_core1_stack_top(void) {
+    return (char *)swift_pico_scheduler_core1_stack + SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES;
+}
 
 static void swift_pico_trap(void) {
     for (;;) {
@@ -211,9 +236,24 @@ bool swift_threading_defer_current_stack_bounds(void **low, void **high) {
     if (swift_pico_stack_bounds_if_contains_sp(&__StackOneBottom, &__StackOneTop, sp, low, high)) {
         return true;
     }
+    if (swift_pico_stack_bounds_if_contains_sp(
+            swift_pico_scheduler_core1_stack_bottom(),
+            swift_pico_scheduler_core1_stack_top(),
+            sp,
+            low,
+            high)) {
+        return true;
+    }
 
     if (swift_pico_core_index() == 0u) {
         return swift_pico_stack_bounds_from_symbols(&__StackBottom, &__StackTop, low, high);
+    }
+    if (swift_pico_stack_bounds_from_symbols(
+            swift_pico_scheduler_core1_stack_bottom(),
+            swift_pico_scheduler_core1_stack_top(),
+            low,
+            high)) {
+        return true;
     }
     return swift_pico_stack_bounds_from_symbols(&__StackOneBottom, &__StackOneTop, low, high);
 }
@@ -262,16 +302,36 @@ void swift_threading_defer_recursive_mutex_init(uintptr_t *storage, bool checked
 
 void swift_threading_defer_recursive_mutex_destroy(uintptr_t *storage) {
     if (storage != NULL) {
-        memset(storage, 0, sizeof(uintptr_t) * 4u);
+        memset(storage, 0, sizeof(pico_recursive_mutex_t));
     }
 }
 
+static pico_recursive_mutex_t *swift_pico_get_or_init_recursive_mutex(uintptr_t *storage) {
+    if (storage == NULL) {
+        return NULL;
+    }
+
+    pico_recursive_mutex_t *mutex = (pico_recursive_mutex_t *)storage;
+    SwiftPicoRecursiveMutexStorage *typedStorage = (SwiftPicoRecursiveMutexStorage *)storage;
+    if (typedStorage->spin_lock == NULL) {
+        recursive_mutex_init(mutex);
+    }
+    return mutex;
+}
+
 void swift_threading_defer_recursive_mutex_lock(uintptr_t *storage) {
-    recursive_mutex_enter_blocking((pico_recursive_mutex_t *)storage);
+    pico_recursive_mutex_t *mutex = swift_pico_get_or_init_recursive_mutex(storage);
+    if (mutex != NULL) {
+        recursive_mutex_enter_blocking(mutex);
+    }
 }
 
 void swift_threading_defer_recursive_mutex_unlock(uintptr_t *storage) {
-    recursive_mutex_exit((pico_recursive_mutex_t *)storage);
+    pico_recursive_mutex_t *mutex = (pico_recursive_mutex_t *)storage;
+    SwiftPicoRecursiveMutexStorage *typedStorage = (SwiftPicoRecursiveMutexStorage *)storage;
+    if (mutex != NULL && typedStorage->spin_lock != NULL) {
+        recursive_mutex_exit(mutex);
+    }
 }
 
 void swift_threading_defer_cond_init(uintptr_t *handle) {

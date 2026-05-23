@@ -6,34 +6,34 @@ import CPicoSDK
 /// `SchedulerSystem` chooses a destination core and pushes a `JobEnvelope` into
 /// that core's executor. The executor owns this inbox and drains it only from
 /// the matching core run loop before converting envelopes into async-context
-/// workers. The inbox does not decide priority or placement.
+/// workers. Pico's queue provides the cross-core synchronization; the inbox does
+/// not decide priority or placement.
 final class CoreInbox {
+    private static let capacity: UInt32 = 128
+
     let core: CoreID
-    private var pending: [JobEnvelope] = []
+    private var queue = queue_t()
 
     init(core: CoreID) {
         self.core = core
+        queue_init(
+            &queue,
+            UInt32(MemoryLayout<JobEnvelope>.stride),
+            Self.capacity
+        )
+    }
+
+    deinit {
+        queue_free(&queue)
     }
 
     /// Adds an envelope selected for this core.
     ///
-    /// Producers may be on either core or in an IRQ-adjacent path, so the append
-    /// is wrapped in the scheduler critical primitive.
-    func push(_ envelope: JobEnvelope) {
-        withCritical {
-            pending.append(envelope)
-        }
-    }
-
-    /// Number of envelopes waiting in transport for this executor.
-    ///
-    /// Placement uses this as one part of the per-core load estimate. It is a
-    /// snapshot only; producers may enqueue more work immediately after it is
-    /// read.
-    var count: UInt32 {
-        withCritical {
-            UInt32(pending.count)
-        }
+    /// Producers may be on either core. `queue_t` serializes producer/consumer
+    /// access without requiring a separate scheduler lock.
+    func push(_ envelope: JobEnvelope) -> Bool {
+        var mutableEnvelope = envelope
+        return queue_try_add(&queue, &mutableEnvelope)
     }
 
     /// Removes the oldest envelope for the owning executor.
@@ -42,12 +42,18 @@ final class CoreInbox {
     /// transport ownership simple: a core drains its own inbox and schedules its
     /// own async-context workers.
     func pop() -> JobEnvelope? {
-        withCritical {
-            guard !pending.isEmpty else {
-                return nil
-            }
-            return pending.removeFirst()
+        var envelope = JobEnvelope(
+            kind: .immediate,
+            job: nil,
+            executorFirst: nil,
+            executorSecond: nil,
+            timeUs: 0,
+            identity: nil
+        )
+        guard queue_try_remove(&queue, &envelope) else {
+            return nil
         }
+        return envelope
     }
 }
 
@@ -88,9 +94,11 @@ struct JobSlot {
 /// borrowing a prepared slot.
 private final class JobSlotPool {
     private let slots: UnsafeMutablePointer<JobSlot>
+    private var lock = mutex_t()
 
     init() {
         slots = .allocate(capacity: JobSlot.maxJobSlots)
+        mutex_init(&lock)
     }
 
     deinit {
@@ -154,7 +162,7 @@ private final class JobSlotPool {
     /// would violate scheduler correctness. A later implementation can add
     /// backpressure or a larger pool if needed.
     func allocate() -> UnsafeMutablePointer<JobSlot> {
-        if let slot = withCritical(findFreeSlot) {
+        if let slot = withLock(findFreeSlot) {
             slot.pointee.pendingWorker.work_pending = false
             slot.pointee.delayedWorker.next = nil
             slot.pointee.delayedWorker.next_time = 0
@@ -166,25 +174,17 @@ private final class JobSlotPool {
 
     /// Returns a slot to the pool after execution or scheduling failure.
     func release(_ slot: UnsafeMutablePointer<JobSlot>) {
-        withCritical {
+        withLock {
             slot.pointee.free()
         }
     }
 
-    /// Number of slots currently reserved for scheduled or running jobs.
-    ///
-    /// This lets placement see work that has already left the transport inbox
-    /// but has not completed execution yet.
-    var allocatedCount: UInt32 {
-        withCritical {
-            var count: UInt32 = 0
-            for index in 0..<JobSlot.maxJobSlots {
-                if slots.advanced(by: index).pointee.state != .free {
-                    count += 1
-                }
-            }
-            return count
+    private func withLock<T>(_ body: () -> T) -> T {
+        mutex_enter_blocking(&lock)
+        defer {
+            mutex_exit(&lock)
         }
+        return body()
     }
 
     private func findFreeSlot() -> UnsafeMutablePointer<JobSlot>? {
@@ -286,17 +286,8 @@ final class CoreExecutor {
     /// This is the transport boundary from `SchedulerSystem` into the executor.
     /// The envelope remains FIFO queued until this core's run loop drains the
     /// inbox.
-    func enqueue(_ envelope: JobEnvelope) {
+    func enqueue(_ envelope: JobEnvelope) -> Bool {
         inbox.push(envelope)
-    }
-
-    /// Snapshot of pending work owned by this executor.
-    ///
-    /// The value combines queued envelopes, deferred closure work, and reserved
-    /// async-context slots. `PlacementPolicy` uses it to choose a core for new
-    /// task identities without knowing executor internals.
-    var outstandingWork: UInt32 {
-        inbox.count + deferredWork.count + slotPool.allocatedCount
     }
 
     /// Moves all queued envelopes from transport into async-context scheduling.
@@ -380,14 +371,15 @@ final class CoreExecutor {
 
     /// Blocks until this executor's async context has work or a timeout wakes it.
     ///
-    /// The current timeout is effectively forever; higher-level run loops decide
-    /// when to call this versus doing a short idle/yield delay.
+    /// A short timeout lets the current core notice work that another core
+    /// pushed into this executor's inbox without also signaling this async
+    /// context.
     func waitForWork() {
     #if CPUMetrics
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         cpuUsage.sample()
     #endif
-        async_context_wait_for_work_until(&context.core, UInt64.max)
+        async_context_wait_for_work_until(&context.core, make_timeout_time_us(1_000))
     #if CPUMetrics
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
         cpuUsage.sample()

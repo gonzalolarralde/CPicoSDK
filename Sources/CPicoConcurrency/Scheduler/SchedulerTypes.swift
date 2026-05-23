@@ -94,7 +94,7 @@ enum PlacementPolicy {
     ///
     /// Multicore-disabled systems always use core0. Unknown identities stay on
     /// the enqueueing core. Known identities without an active owner go to the
-    /// less-loaded core, with ties currently falling back to core0.
+    /// less-loaded core, with ties staying on the enqueueing core.
     static func chooseCore(for input: PlacementInput, existingOwner: CoreID?) -> CoreID {
         if !input.multicoreEnabled {
             return .core0
@@ -110,6 +110,9 @@ enum PlacementPolicy {
 
         let core0Work = input.outstandingWorkByCore(.core0)
         let core1Work = input.outstandingWorkByCore(.core1)
+        if core0Work == core1Work {
+            return input.enqueueCore
+        }
         return core1Work < core0Work ? .core1 : .core0
     }
 }
@@ -127,30 +130,58 @@ struct AffinityEntry {
     var idleSinceUs: UInt64
 }
 
+struct AffinityState {
+    let ownerCore: CoreID
+    let queuedCount: UInt16
+    let runningCount: UInt8
+
+    var isActive: Bool {
+        queuedCount > 0 || runningCount > 0
+    }
+}
+
 /// Tracks temporary task-to-core ownership.
 ///
 /// This table is the only scheduler entity that should own queued/running
 /// counters. `SchedulerSystem` marks acceptance before enqueueing, `CoreExecutor`
 /// calls back before and after `swift_job_run`, and the table preserves the
 /// invariant that an active task identity runs on only one core.
-struct AffinityTable {
+final class AffinityTable {
     private static let maxEntries = 64
     private var entries: [AffinityEntry] = []
+    private var lock = mutex_t()
+
+    init() {
+        entries.reserveCapacity(Self.maxEntries)
+        mutex_init(&lock)
+    }
 
     /// Returns the active owner for an identity, or nil if the identity is idle,
     /// unknown, or not tracked.
-    mutating func owner(for identity: TaskIdentity?) -> CoreID? {
+    func owner(for identity: TaskIdentity?) -> CoreID? {
+        guard let state = state(for: identity), state.isActive else {
+            return nil
+        }
+        return state.ownerCore
+    }
+
+    /// Returns the full active/idle state for an identity.
+    func state(for identity: TaskIdentity?) -> AffinityState? {
         guard let identity else {
             return nil
         }
 
-        return withCritical {
+        return withLock {
             guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
                 return nil
             }
 
             let entry = entries[index]
-            return entry.queuedCount > 0 || entry.runningCount > 0 ? entry.ownerCore : nil
+            return AffinityState(
+                ownerCore: entry.ownerCore,
+                queuedCount: entry.queuedCount,
+                runningCount: entry.runningCount
+            )
         }
     }
 
@@ -158,12 +189,12 @@ struct AffinityTable {
     ///
     /// This happens before the envelope is pushed to a core inbox so later jobs
     /// for the same active identity reuse the same owner.
-    mutating func markAccepted(identity: TaskIdentity?, ownerCore: CoreID, nowUs: UInt64) {
+    func markAccepted(identity: TaskIdentity?, ownerCore: CoreID, nowUs: UInt64) {
         guard let identity else {
             return
         }
 
-        withCritical {
+        withLock {
             if let index = entries.firstIndex(where: { $0.identity == identity }) {
                 let isActive = entries[index].queuedCount > 0 || entries[index].runningCount > 0
                 assert(
@@ -207,12 +238,12 @@ struct AffinityTable {
     ///
     /// `CoreExecutor` calls this immediately before invoking `swift_job_run`.
     /// A complete implementation should verify that `core` is the active owner.
-    mutating func markStarting(identity: TaskIdentity?, core: CoreID) {
+    func markStarting(identity: TaskIdentity?, core: CoreID) {
         guard let identity else {
             return
         }
 
-        withCritical {
+        withLock {
             guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
                 fatalError(
                     "[CPicoConcurrency] missing affinity entry while starting job; every affine job must be accepted before it can run"
@@ -230,12 +261,13 @@ struct AffinityTable {
 
     /// Marks one running job as finished and records idle time when no work
     /// remains for the identity.
-    mutating func markFinished(identity: TaskIdentity?, core: CoreID, nowUs: UInt64) {
+    @discardableResult
+    func markFinished(identity: TaskIdentity?, core: CoreID, nowUs: UInt64) -> Bool {
         guard let identity else {
-            return
+            return false
         }
 
-        withCritical {
+        return withLock {
             guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
                 fatalError(
                     "[CPicoConcurrency] missing affinity entry while finishing job; a running affine job lost its accepted entry"
@@ -248,18 +280,20 @@ struct AffinityTable {
             entries[index].runningCount -= 1
             if entries[index].queuedCount == 0 && entries[index].runningCount == 0 {
                 entries[index].idleSinceUs = nowUs
+                return true
             }
+            return false
         }
     }
 
     /// Rolls back an accepted job if transport or scheduling fails after
     /// ownership has already been recorded.
-    mutating func rollbackAccepted(identity: TaskIdentity?, ownerCore: CoreID) {
+    func rollbackAccepted(identity: TaskIdentity?, ownerCore: CoreID) {
         guard let identity else {
             return
         }
 
-        withCritical {
+        withLock {
             guard let index = entries.firstIndex(where: { $0.identity == identity }) else {
                 fatalError(
                     "[CPicoConcurrency] missing affinity entry while rolling back accepted job; rollback can only happen after ownership was recorded"
@@ -274,6 +308,28 @@ struct AffinityTable {
                 entries[index].idleSinceUs = 0
             }
         }
+    }
+
+    /// Returns accepted queued/running work for identities currently owned by a
+    /// core. This is the scheduler's placement load signal; transport queues are
+    /// deliberately not queried from the enqueue path.
+    func outstandingWork(on core: CoreID) -> UInt32 {
+        withLock {
+            var total: UInt32 = 0
+            for entry in entries where entry.ownerCore == core {
+                total &+= UInt32(entry.queuedCount)
+                total &+= UInt32(entry.runningCount)
+            }
+            return total
+        }
+    }
+
+    private func withLock<T>(_ body: () -> T) -> T {
+        mutex_enter_blocking(&lock)
+        defer {
+            mutex_exit(&lock)
+        }
+        return body()
     }
 }
 

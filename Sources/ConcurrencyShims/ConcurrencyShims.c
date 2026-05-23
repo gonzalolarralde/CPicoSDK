@@ -25,6 +25,77 @@ extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executo
 extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current_runtime(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
 extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
 
+struct _reent;
+
+static volatile uint32_t cshims_malloc_lock_word = 0;
+static volatile uint32_t cshims_malloc_lock_owner = 0;
+static volatile uint32_t cshims_malloc_lock_depth[2] = {0, 0};
+static volatile uint32_t cshims_malloc_lock_irq_state[2] = {0, 0};
+
+static unsigned int cshims_core_num(void) {
+    return *(volatile uint32_t *)0xd0000000u;
+}
+
+static uint32_t cshims_malloc_save_and_disable_interrupts(void) {
+#if defined(__arm__) || defined(__thumb__)
+    uint32_t state;
+    __asm volatile("mrs %0, primask\ncpsid i" : "=r"(state) :: "memory");
+    return state;
+#else
+    return 0;
+#endif
+}
+
+static void cshims_malloc_restore_interrupts(uint32_t state) {
+#if defined(__arm__) || defined(__thumb__)
+    __asm volatile("msr primask, %0" :: "r"(state) : "memory");
+#else
+    (void)state;
+#endif
+}
+
+void __malloc_lock(struct _reent *reent) {
+    (void)reent;
+    unsigned int core = cshims_core_num() & 1u;
+    uint32_t owner = core + 1u;
+
+    if (__atomic_load_n(&cshims_malloc_lock_owner, __ATOMIC_RELAXED) == owner) {
+        cshims_malloc_lock_depth[core]++;
+        return;
+    }
+
+    uint32_t irq_state = cshims_malloc_save_and_disable_interrupts();
+    while (__atomic_exchange_n(&cshims_malloc_lock_word, 1u, __ATOMIC_ACQUIRE) != 0u) {
+        __asm volatile("nop");
+    }
+
+    cshims_malloc_lock_irq_state[core] = irq_state;
+    cshims_malloc_lock_depth[core] = 1u;
+    __atomic_store_n(&cshims_malloc_lock_owner, owner, __ATOMIC_RELEASE);
+}
+
+void __malloc_unlock(struct _reent *reent) {
+    (void)reent;
+    unsigned int core = cshims_core_num() & 1u;
+    uint32_t owner = core + 1u;
+
+    if (__atomic_load_n(&cshims_malloc_lock_owner, __ATOMIC_RELAXED) != owner) {
+        return;
+    }
+
+    uint32_t depth = cshims_malloc_lock_depth[core];
+    if (depth > 1u) {
+        cshims_malloc_lock_depth[core] = depth - 1u;
+        return;
+    }
+
+    uint32_t irq_state = cshims_malloc_lock_irq_state[core];
+    cshims_malloc_lock_depth[core] = 0u;
+    __atomic_store_n(&cshims_malloc_lock_owner, 0u, __ATOMIC_RELEASE);
+    __atomic_store_n(&cshims_malloc_lock_word, 0u, __ATOMIC_RELEASE);
+    cshims_malloc_restore_interrupts(irq_state);
+}
+
 extern int cshims_scheduler_poll_once(void);
 extern void cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_enqueue_delayed(uint64_t delayUs, void *job, void *executorFirst, void *executorSecond);

@@ -407,6 +407,11 @@ design notes, experiments, and failure analysis in `docs/`.
   chaining on core1. It reproduced `freed pointer was not the last allocation`,
   so the current safe PoC should keep the sleep-based seed and treat sustained
   core1 Swift execution as blocked by the Swift task allocator/runtime edge.
+- `Task.yield()` is not a clean same-task migration probe. The continuation can
+  be enqueued while the task is still marked running, so active affinity should
+  keep it on the same owner. To test non-overlapping migration of one async
+  function, suspend with an explicit continuation and resume it later from
+  worker tasks on either core.
 - A pass-3 suspension-boundary migration probe moved the sleep-based seed
   `AsyncTask` from core0 to core1 after its first core0 run returned. Serial
   showed `seed11=2`, matching seed/current owner tokens, then reproduced
@@ -434,6 +439,11 @@ design notes, experiments, and failure analysis in `docs/`.
 - In pass-3 multicore stress, a direct owner-queue transport for core0/core1
   removed the shared-FIFO wrong-owner churn. Healthy logs showed
   `d0=0 d1=0`, both `r0` and `r1` increasing, and `full=0 null=0`.
+- Do not compute scheduler placement load by calling `queue_get_level` on
+  owner queues from the enqueue path. A device hang showed core0 stuck in
+  `spin_lock_unsafe_blocking` inside `queue_get_level` while core1 was polling;
+  use accepted affinity `queuedCount`/`runningCount` as the placement load
+  signal and leave `queue_t` as transport only.
 - Per-loop diagnostic probes can fill the scheduler queue and hide the real
   runtime signal. Throttle probes to periodic stats snapshots; the symptom was
   `scheduler owner queue full` from `enqueueRuntimeSchedulerMulticoreProbe()`.
@@ -442,6 +452,11 @@ design notes, experiments, and failure analysis in `docs/`.
   `swift_unexpectedErrorTyped` if cancellation or corruption reaches the error
   path; use `try?` or explicit error handling so the stress signal is not hidden
   by the forced-error trap.
+- For alarm-backed same-task migration tests, observing a spawned child task can
+  produce a false negative where all `Task.sleep(us:)` resumptions occur on the
+  child task's first owner core. To prove the current async task can migrate
+  without touching scheduler internals, run the observed sleep loop inline in
+  the test task while background pressure tasks are active.
 
 ### Serial And RTT Logging
 

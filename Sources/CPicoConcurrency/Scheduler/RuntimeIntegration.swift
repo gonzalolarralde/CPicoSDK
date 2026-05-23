@@ -1,14 +1,23 @@
 import ConcurrencyShims
 import CPicoSDK
 
+func launchSchedulerCore1() {
+    let stack = cshims_scheduler_core1_stack_bottom().assumingMemoryBound(to: UInt32.self)
+    let stackSizeBytes = Int(cshims_scheduler_core1_stack_size_bytes())
+    multicore_launch_core1_with_stack(
+        cshims_scheduler_core1_entry,
+        stack,
+        stackSizeBytes
+    )
+}
+
 /// Starts core1 and returns whether multicore scheduling is available.
 ///
-/// Pico owns the default core1 stack through its `.stack1` section and the
-/// linker-provided `__StackOne*` symbols. That keeps stack-bounds reporting
-/// aligned with `swift_threading_defer_current_stack_bounds`.
+/// Swift scheduler work needs more stack than Pico's default core1 launch path
+/// provides, so the scheduler owns a larger persistent stack.
 func startCore1() -> Bool {
     multicore_reset_core1()
-    multicore_launch_core1(cshims_scheduler_core1_entry)
+    launchSchedulerCore1()
     return true
 }
 

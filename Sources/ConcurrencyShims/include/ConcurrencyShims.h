@@ -37,6 +37,8 @@ void swift_threading_defer_tls_set(uintptr_t key, void *value);
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond);
 void *cshims_job_owner_task(void *job);
 void cshims_swift_task_clear_current(void);
+void *cshims_scheduler_core1_stack_bottom(void);
+uint32_t cshims_scheduler_core1_stack_size_bytes(void);
 unsigned int cshims_enter_critical(void);
 void cshims_exit_critical(unsigned int state);
 

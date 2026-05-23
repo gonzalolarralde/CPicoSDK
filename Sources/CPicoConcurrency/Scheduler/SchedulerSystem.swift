@@ -117,7 +117,7 @@ final class SchedulerSystem {
         }
 
         multicore_reset_core1()
-        multicore_launch_core1(cshims_scheduler_core1_entry)
+        launchSchedulerCore1()
         multicoreEnabled = true
     }
 
@@ -195,7 +195,8 @@ final class SchedulerSystem {
 
         let identity = TaskIdentity.resolve(job: job)
         let enqueueCore = CoreID.current
-        let existingOwner = affinityTable.owner(for: identity)
+        let affinityState = affinityTable.state(for: identity)
+        let existingOwner = affinityState?.isActive == true ? affinityState?.ownerCore : nil
         let ownerCore = PlacementPolicy.chooseCore(
             for: PlacementInput(
                 identity: identity,
@@ -224,7 +225,10 @@ final class SchedulerSystem {
     /// If the destination is the current core, the executor drains immediately
     /// so the job can become async-context work without waiting for a later poll.
     private func schedule(_ envelope: JobEnvelope, on core: CoreID) {
-        executor(for: core).enqueue(envelope)
+        guard executor(for: core).enqueue(envelope) else {
+            affinityTable.rollbackAccepted(identity: envelope.identity, ownerCore: core)
+            fatalError("[CPicoConcurrency] scheduler core inbox full")
+        }
         if core == CoreID.current {
             executor(for: core).drainInbox()
         }
@@ -250,11 +254,10 @@ final class SchedulerSystem {
 
     /// Returns the amount of pending/running work used by placement policy.
     ///
-    /// This aggregates executor-owned transport, deferred work, and scheduled
-    /// slot state. It is intentionally a load estimate, not a correctness
-    /// counter; affinity state remains owned by `AffinityTable`.
+    /// This uses accepted affinity ownership rather than probing executor
+    /// transport queues while another core may be draining them.
     private func outstandingWork(for core: CoreID) -> UInt32 {
-        executor(for: core).outstandingWork
+        affinityTable.outstandingWork(on: core)
     }
 
     /// Gives legacy helpers access to the core0 async context pointer.
