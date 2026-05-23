@@ -59,6 +59,17 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+  build-device-tests:
+    name: Device Test Firmware Build
+    needs: prepare-deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-pico-env
+      - name: Build device test firmware
+        run: |
+          swiftly run swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
+
   build-example:
     name: Example Build
     needs: prepare-deps
