@@ -37,6 +37,8 @@ void swift_threading_defer_tls_set(uintptr_t key, void *value);
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond);
 unsigned int cshims_enter_critical(void);
 void cshims_exit_critical(unsigned int state);
+int cshims_scheduler_core_loop_iteration(void);
+void cshims_scheduler_start_multicore(void);
 
 typedef void (*cshims_irq_handler_t)(void);
 cshims_irq_handler_t cshims_get_irq_wrapper(unsigned int irq);

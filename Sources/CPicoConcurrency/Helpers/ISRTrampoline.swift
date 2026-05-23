@@ -69,8 +69,8 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
         trampoline.signal(criticalData: criticalSection(trampoline.value))
     }
 
-    /// Preallocated work schedule to avoid allocations in the ISR path.
-    nonisolated(unsafe) private let scheduledWork: ScheduledBlock
+    /// Preallocated async-context work item to avoid allocations in the ISR path.
+    nonisolated(unsafe) private let postISRWorkItem: AsyncContextWorkItem
     nonisolated(unsafe) private var signaled = false
     private let value: UserData
     nonisolated(unsafe) private let criticalData: UnsafeMutablePointer<CriticalData?> = .allocate(capacity: 1)
@@ -79,11 +79,11 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     private init(value: sending UserData, postISR: @Sendable @escaping @isolated(any) (sending CriticalData) async -> Void) {
         self.value = value
         self.postISR = postISR
-        self.scheduledWork = ScheduledBlock()
+        self.postISRWorkItem = AsyncContextWorkItem()
         self.criticalData.pointee = nil
 
         let rawSelf: UnsafeMutableRawPointer = Unmanaged.passUnretained(self).toOpaque()
-        scheduledWork.configure {
+        postISRWorkItem.configure {
             Task {
                 await self.run()
             }
@@ -91,7 +91,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
             Unmanaged<ISRTrampoline<UserData, CriticalData>>.fromOpaque(rawSelf).release()
         }
 
-        cshimsRuntimeScheduler.register(scheduledWork)
+        cshimsRuntimeScheduler.executor(for: .core0).register(postISRWorkItem)
     }
 
     nonisolated private func signal(criticalData: sending CriticalData) {
@@ -103,7 +103,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
         self.signaled = true
         self.criticalData.deinitialize(count: 1)
         self.criticalData.initialize(to: criticalData)
-        scheduledWork.signal()
+        postISRWorkItem.signal()
     }
 
     private func run() async {
@@ -123,7 +123,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     /// Cancels the trampoline, preventing the post-ISR handler from being called if the trampoline is still pending, and freeing resources. 
     /// If the trampoline has already been signaled, this has no effect.
     public func cancel() {
-        scheduledWork.cancel()
+        postISRWorkItem.cancel()
     }
 
     deinit {
