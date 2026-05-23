@@ -11,10 +11,12 @@ let package = Package(
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .library(name: "PSRAM", targets: ["PSRAM"]),
+        .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
         .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
         .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
     ],
     traits: [
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
@@ -129,6 +131,16 @@ let package = Package(
         ),
         .executableTarget(name: "AssetCompilerTool"),
 
+        .target(name: "TestInDeviceCore"),
+        .executableTarget(
+            name: "TestInDeviceTool",
+            dependencies: ["TestInDeviceCore"]
+        ),
+        .testTarget(
+            name: "TestInDeviceCoreTests",
+            dependencies: ["TestInDeviceCore"]
+        ),
+
         .plugin(
             name: "GenerateCPicoSDKPlugin",
             capability: .command(
@@ -159,6 +171,17 @@ let package = Package(
                     .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
                 ]
             )
+        ),
+        .plugin(
+            name: "TestInDevicePlugin",
+            capability: .command(
+                intent: .custom(verb: "test-in-device", description: "Builds and runs Tests/Device on a connected RP2xxx board"),
+                permissions: [
+                    .writeToPackageDirectory(reason: "Generates ephemeral embedded test packages and build artifacts."),
+                    .allowNetworkConnections(scope: .all(), reason: "May need to download CPicoSDK tool dependencies and connects to local OpenOCD RTT ports.")
+                ]
+            ),
+            dependencies: ["TestInDeviceTool"]
         ),
     ]
 )
