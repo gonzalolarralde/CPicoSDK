@@ -173,13 +173,23 @@ final class SchedulerSystem {
     }
 #endif
 
-    /// Schedules a one-shot closure on the core0 async context.
+    /// Schedules a one-shot closure as deferred scheduler work.
     ///
-    /// This supports `executeLater` and similar callback work. It deliberately
-    /// bypasses runtime job placement because the closure is not a Swift runtime
-    /// job envelope.
+    /// This helper allocates and is not ISR-safe. ISR paths should preallocate a
+    /// `DeferredWorkItem` and call `enqueueDeferred`.
     func schedule(_ block: @escaping () -> Void) {
-        executor(for: .core0).schedule(block)
+        let core = selectDeferredWorkCore(preferredCore: nil)
+        executor(for: core).schedule(block)
+    }
+
+    /// Enqueues a preallocated deferred work item.
+    ///
+    /// Deferred work is not a Swift runtime job and has no task identity. The
+    /// scheduler still picks a core for transport, then the selected executor's
+    /// single wake worker pumps the item outside ISR context.
+    func enqueueDeferred(_ item: DeferredWorkItem, preferredCore: CoreID? = nil) {
+        let core = selectDeferredWorkCore(preferredCore: preferredCore)
+        executor(for: core).enqueueDeferred(item)
     }
 
     /// Runs a fired job slot on the current core's executor.
@@ -257,12 +267,21 @@ final class SchedulerSystem {
         }
     }
 
-    /// Returns the executor that owns a core's inbox and async context.
+    /// Chooses a destination core for deferred non-job work.
     ///
-    /// This is available to low-level helpers that need to bind directly to a
-    /// concrete executor, such as pre-registering an async-context work item.
-    /// Normal Swift runtime jobs should still enter through `enqueue...`.
-    func executor(for core: CoreID) -> CoreExecutor {
+    /// This intentionally does not use task affinity. Deferred work is a
+    /// platform escape hatch; if it creates a Swift `Task`, that task will return
+    /// through normal runtime enqueue hooks and use the job placement path.
+    private func selectDeferredWorkCore(preferredCore: CoreID?) -> CoreID {
+        if !multicoreEnabled {
+            return .core0
+        }
+
+        return preferredCore ?? CoreID.current
+    }
+
+    /// Returns the executor that owns a core's inbox and async context.
+    private func executor(for core: CoreID) -> CoreExecutor {
         executors[core.index]
     }
 

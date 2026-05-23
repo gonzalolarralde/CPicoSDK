@@ -172,101 +172,6 @@ private final class JobSlotPool {
     }
 }
 
-/// Swift closure bridge onto a Pico async context.
-///
-/// This is separate from `JobEnvelope` because it is not a Swift runtime job and
-/// it does not run through affinity or `swift_job_run`. `ISRTrampoline` uses a
-/// preallocated work item to bounce post-ISR work onto core0's async context
-/// without allocating in the ISR path; `executeLater` uses a one-shot item for
-/// simpler closure scheduling.
-final class AsyncContextWorkItem {
-    private var block: (() -> Void)?
-    private var finalizer: (() -> Void)?
-    private var context: UnsafeMutablePointer<async_context_t>?
-    private var pendingWorker: async_when_pending_worker_t
-    private var didFinish = false
-
-    init(block: (() -> Void)? = nil, finalizer: (() -> Void)? = nil) {
-        self.block = block
-        self.finalizer = finalizer
-        self.context = nil
-        self.pendingWorker = async_when_pending_worker_t(
-            next: nil,
-            do_work: cshims_scheduler_async_context_work_item_worker,
-            work_pending: false,
-            user_data: nil
-        )
-    }
-
-    /// Installs the closure to run and an optional finalizer for ownership
-    /// cleanup after execution or cancellation.
-    func configure(block: @escaping () -> Void, finalizer: (() -> Void)? = nil) {
-        self.block = block
-        self.finalizer = finalizer
-    }
-
-    /// Registers the backing Pico pending worker on an async context.
-    ///
-    /// The work item must be attached before `signal()` can make it runnable.
-    /// The worker's `user_data` points back to this object so the C callback can
-    /// recover and execute the Swift closure.
-    func attach(to context: UnsafeMutablePointer<async_context_t>) -> Bool {
-        self.context = context
-        pendingWorker.user_data = Unmanaged.passUnretained(self).toOpaque()
-        return async_context_add_when_pending_worker(context, &pendingWorker)
-    }
-
-    /// Marks this work item pending on its attached async context.
-    func signal() {
-        guard let context else { return }
-        async_context_set_work_pending(context, &pendingWorker)
-    }
-
-    /// Runs the stored closure and finishes the work item.
-    ///
-    /// Pico invokes this indirectly through
-    /// `cshims_scheduler_async_context_work_item_worker`.
-    func execute() {
-        block?()
-        finish()
-    }
-
-    /// Finishes the work item without running the closure.
-    func cancel() {
-        finish()
-    }
-
-    private func finish() {
-        let markedAsFinished = withCritical { () -> Bool in
-            guard !self.didFinish else {
-                return false
-            }
-            self.didFinish = true
-            return true
-        }
-
-        guard markedAsFinished else {
-            return
-        }
-
-        block = nil
-        removeWorker()
-
-        let finalizer = self.finalizer
-        self.finalizer = nil
-        finalizer?()
-    }
-
-    private func removeWorker() {
-        guard let context else {
-            return
-        }
-
-        _ = async_context_remove_when_pending_worker(context, &pendingWorker)
-        self.context = nil
-    }
-}
-
 /// Executor for one core.
 ///
 /// A core executor owns the core's transport inbox, async_context_poll_t, and
@@ -278,11 +183,19 @@ final class CoreExecutor {
     let core: CoreID
     var context = async_context_poll_t()
     private let inbox: CoreInbox
+    private var deferredWork = DeferredWorkQueue()
+    private var deferredWorkWorker: async_when_pending_worker_t
     private let slotPool = JobSlotPool()
 
     init(core: CoreID) {
         self.core = core
         self.inbox = CoreInbox(core: core)
+        self.deferredWorkWorker = async_when_pending_worker_t(
+            next: nil,
+            do_work: cshims_scheduler_deferred_work_worker,
+            work_pending: false,
+            user_data: nil
+        )
 
         slotPool.initializeSlots(
             pendingWorker: cshims_scheduler_pending_worker,
@@ -295,6 +208,10 @@ final class CoreExecutor {
 
         withUnsafeMutablePointer(to: &context.core) { context in
             slotPool.registerPendingWorkers(on: context)
+            deferredWorkWorker.user_data = Unmanaged.passUnretained(self).toOpaque()
+            guard async_context_add_when_pending_worker(context, &deferredWorkWorker) else {
+                fatalError("[CPicoConcurrency] failed to register deferred work worker with async_context")
+            }
         }
     }
 
@@ -347,29 +264,34 @@ final class CoreExecutor {
         }
     }
 
-    /// Schedules a one-shot Swift closure on this executor's async context.
+    /// Schedules a one-shot Swift closure as deferred work on this executor.
     ///
-    /// This is for local callback work such as `executeLater`, not for Swift
-    /// runtime jobs. Runtime jobs should enter through `enqueue(_:)`.
+    /// This helper allocates and is not ISR-safe. ISR paths should preallocate a
+    /// `DeferredWorkItem` and call `SchedulerSystem.enqueueDeferred`.
     func schedule(_ block: @escaping () -> Void) {
-        let workItem = AsyncContextWorkItem()
-        _ = Unmanaged.passRetained(workItem)
-        workItem.configure(block: block) {
-            Unmanaged.passUnretained(workItem).release()
+        let item = DeferredWorkItem()
+        _ = Unmanaged.passRetained(item)
+        item.configure(block: block) {
+            Unmanaged.passUnretained(item).release()
         }
 
-        register(workItem)
-        workItem.signal()
+        enqueueDeferred(item)
     }
 
-    /// Registers a reusable async-context work item on this executor.
+    /// Enqueues a preallocated deferred work item and wakes this executor.
     ///
-    /// `ISRTrampoline` uses this to pre-register the worker before an interrupt
-    /// later calls `signal()`.
-    func register(_ workItem: AsyncContextWorkItem) {
-        guard workItem.attach(to: &context.core) else {
-            workItem.cancel()
-            fatalError("[CPicoConcurrency] failed to register async_context work item")
+    /// The enqueue path does not allocate and is suitable for ISR handoff when
+    /// the item and its closure were prepared ahead of time.
+    func enqueueDeferred(_ item: DeferredWorkItem) {
+        if deferredWork.push(item) {
+            async_context_set_work_pending(&context.core, &deferredWorkWorker)
+        }
+    }
+
+    /// Runs all deferred work currently queued for this executor.
+    func drainDeferredWork() {
+        while let item = deferredWork.pop() {
+            item.execute()
         }
     }
 
@@ -408,13 +330,12 @@ final class CoreExecutor {
     }
 }
 
-/// Pico pending-worker callback for `AsyncContextWorkItem`.
+/// Pico pending-worker callback for deferred work.
 ///
-/// The callback recovers the Swift object from `user_data`, keeps it retained
-/// while executing, and lets the work item handle finalization/cancellation
-/// semantics.
-@_cdecl("cshims_scheduler_async_context_work_item_worker")
-func cshims_scheduler_async_context_work_item_worker(
+/// Each executor registers one wake worker. Signaled deferred items are held in
+/// the executor's allocation-free queue; the worker only pumps that queue.
+@_cdecl("cshims_scheduler_deferred_work_worker")
+func cshims_scheduler_deferred_work_worker(
     _ context: UnsafeMutablePointer<async_context_t>?,
     _ worker: UnsafeMutablePointer<async_when_pending_worker_t>?
 ) {
@@ -422,10 +343,8 @@ func cshims_scheduler_async_context_work_item_worker(
     guard let worker, let userData = worker.pointee.user_data else {
         return
     }
-    let workItem = Unmanaged<AsyncContextWorkItem>.fromOpaque(userData).takeUnretainedValue()
-    _ = Unmanaged.passRetained(workItem)
-    workItem.execute()
-    Unmanaged.passUnretained(workItem).release()
+    let executor = Unmanaged<CoreExecutor>.fromOpaque(userData).takeUnretainedValue()
+    executor.drainDeferredWork()
 }
 
 /// Pico pending-worker callback for immediate Swift runtime jobs.
