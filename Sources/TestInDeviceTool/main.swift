@@ -29,6 +29,7 @@ struct Options {
     var listOnly: Bool
     var buildOnly: Bool
     var adapterSpeed: Int
+    var target: DeviceTestTarget
 
     static func parse(_ arguments: [String]) throws -> Options {
         var packageDirectory: URL?
@@ -38,6 +39,7 @@ struct Options {
         var listOnly = false
         var buildOnly = false
         var adapterSpeed = 5_000
+        var target = DeviceTestTarget.rp2350
         var index = arguments.startIndex
 
         func takeValue(for option: String) throws -> String {
@@ -66,6 +68,8 @@ struct Options {
                 buildOnly = true
             case "--adapter-speed":
                 adapterSpeed = Int(try takeValue(for: argument)) ?? adapterSpeed
+            case "--target", "--device":
+                target = try DeviceTestTarget(argument: try takeValue(for: argument))
             case "--allow-writing-to-package-directory", "--disable-sandbox":
                 break
             case "--allow-network-connections":
@@ -90,12 +94,13 @@ struct Options {
             filter: filter,
             listOnly: listOnly,
             buildOnly: buildOnly,
-            adapterSpeed: adapterSpeed
+            adapterSpeed: adapterSpeed,
+            target: target
         )
     }
 
     static let help = """
-    Usage: swift package test-in-device [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
+    Usage: swift package test-in-device [--target rp2350|rp2040] [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
 
     Tests are discovered under Tests/Device/**/*.swift. Each file must start with a //% metadata block.
     """
@@ -145,7 +150,8 @@ struct DeviceHarnessRunner {
                 let generated = try DevicePackageGenerator.generate(
                     source: test,
                     cpicoSDKPath: options.cpicoSDKPath,
-                    outputRoot: generatedRoot
+                    outputRoot: generatedRoot,
+                    target: options.target
                 )
                 let buildStartedAt = Date()
                 let firmware = try build(generated: generated)
@@ -187,6 +193,7 @@ struct DeviceHarnessRunner {
         set -euo pipefail
         cd \(shellQuote(generated.packageDirectory.path))
         export BUILD_TYPE="RelWithDebInfo"
+        export BOARD="\(options.target.board)"
         export BUILD_SCRIPT_VERSION=1
         export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"
         export GENERATED_INPUTS_CHANGED="\(generated.inputsChanged ? "1" : "0")"
@@ -267,7 +274,8 @@ struct DeviceHarnessRunner {
             paths: paths,
             elfURL: elfURL,
             ports: ports,
-            adapterSpeed: options.adapterSpeed
+            adapterSpeed: options.adapterSpeed,
+            target: options.target
         )
 
         let openOCDPipe = Pipe()

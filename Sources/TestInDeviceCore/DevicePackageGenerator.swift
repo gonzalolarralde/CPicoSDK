@@ -6,16 +6,19 @@ public enum DevicePackageGenerator {
     public static func generate(
         source: DeviceTestSource,
         cpicoSDKPath: URL,
-        outputRoot: URL
+        outputRoot: URL,
+        target: DeviceTestTarget = .rp2350
     ) throws -> GeneratedPackage {
         let safeName = sanitize(source.metadata.name)
-        let packageDirectory = outputRoot.appendingPathComponent(safeName, isDirectory: true)
+        let packageDirectory = outputRoot
+            .appendingPathComponent(target.rawValue, isDirectory: true)
+            .appendingPathComponent(safeName, isDirectory: true)
         let sourcesDirectory = packageDirectory.appendingPathComponent("Sources/\(productName)", isDirectory: true)
         try FileManager.default.createDirectory(at: packageDirectory, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: sourcesDirectory, withIntermediateDirectories: true)
 
         let manifestChanged = try FileManager.default.writeIfChanged(
-            packageManifest(for: source, cpicoSDKPath: cpicoSDKPath),
+            packageManifest(for: source, cpicoSDKPath: cpicoSDKPath, target: target),
             to: packageDirectory.appendingPathComponent("Package.swift")
         )
         let sourceChanged = try FileManager.default.writeIfChanged(
@@ -27,7 +30,7 @@ public enum DevicePackageGenerator {
             to: sourcesDirectory.appendingPathComponent("Runner.swift")
         )
 
-        let elfURL = packageDirectory.appendingPathComponent(".build/armv7em-none-none-eabi/release/\(productName).elf")
+        let elfURL = packageDirectory.appendingPathComponent(".build/\(target.swiftPMTriple)/release/\(productName).elf")
         return GeneratedPackage(
             packageDirectory: packageDirectory,
             elfURL: elfURL,
@@ -36,8 +39,12 @@ public enum DevicePackageGenerator {
         )
     }
 
-    public static func packageManifest(for source: DeviceTestSource, cpicoSDKPath: URL) -> String {
-        let traitLines = source.metadata.traits.resolvedTraits()
+    public static func packageManifest(
+        for source: DeviceTestSource,
+        cpicoSDKPath: URL,
+        target: DeviceTestTarget = .rp2350
+    ) -> String {
+        let traitLines = source.metadata.traits.resolvedTraits(defaultTraits: target.defaultTraits)
             .map { "                .init(name: \"\(escapeSwiftString($0))\")," }
             .joined(separator: "\n")
 

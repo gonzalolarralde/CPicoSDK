@@ -52,6 +52,8 @@ import Testing
 @Test func resolvesTraitsWithRTTDefaultAndOverrides() {
     let defaultTraits = TraitSelection(add: [], remove: []).resolvedTraits()
     #expect(defaultTraits.contains("StdIO_RTT"))
+    #expect(defaultTraits.contains("Platform_RP2350"))
+    #expect(defaultTraits.contains("Variant_RP2350A"))
 
     let uartTraits = TraitSelection(add: ["StdIO_UART"], remove: []).resolvedTraits()
     #expect(uartTraits.contains("StdIO_UART"))
@@ -59,6 +61,29 @@ import Testing
 
     let removedThenForced = TraitSelection(add: [], remove: ["StdIO_RTT"]).resolvedTraits()
     #expect(removedThenForced.contains("StdIO_RTT"))
+}
+
+@Test func resolvesRP2040TargetTraitsAndOpenOCDArguments() throws {
+    let target = try DeviceTestTarget(argument: "rp2040")
+    let traits = TraitSelection(add: [], remove: []).resolvedTraits(defaultTraits: target.defaultTraits)
+    #expect(target.board == "pico")
+    #expect(target.swiftPMTriple == "armv6m-none-none-eabi")
+    #expect(traits.contains("Platform_RP2040"))
+    #expect(traits.contains("Variant_RP2040"))
+    #expect(!traits.contains("Platform_RP2350"))
+    #expect(!traits.contains("Variant_RP2350A"))
+
+    let args = OpenOCDCommandBuilder.arguments(
+        paths: OpenOCDPaths(
+            executable: URL(fileURLWithPath: "/tools/openocd.exe"),
+            scriptsDirectory: URL(fileURLWithPath: "/tools/scripts"),
+            helpersScript: nil
+        ),
+        elfURL: URL(fileURLWithPath: "/tmp/DeviceTestApp.elf"),
+        target: target
+    )
+    #expect(args.contains("target/rp2040.cfg"))
+    #expect(args.contains(#"rtt setup 0x20000000 0x40000 "SEGGER RTT""#))
 }
 
 @Test func generatesPackageWithConcurrencyDependencyOnlyWhenRequested() throws {
@@ -73,10 +98,31 @@ import Testing
     let manifest = DevicePackageGenerator.packageManifest(for: source, cpicoSDKPath: URL(fileURLWithPath: "/repo/CPicoSDK"))
     #expect(manifest.contains(".product(name: \"CPicoConcurrency\""))
     #expect(manifest.contains("path: \"/repo/CPicoSDK\""))
+    #expect(manifest.contains(".init(name: \"Platform_RP2350\")"))
 
     let runner = DevicePackageGenerator.runnerSource(for: source)
     #expect(runner.contains("EmbeddedAsyncApp"))
     #expect(runner.contains("try await asyncTest()"))
+}
+
+@Test func generatesPackageForRP2040Target() throws {
+    let metadata = DeviceTestMetadata(name: "Sync", concurrency: false)
+    let source = DeviceTestSource(
+        fileURL: URL(fileURLWithPath: "/tmp/Sync.swift"),
+        source: "func syncTest() throws {}",
+        metadata: metadata,
+        functions: [DeviceTestFunction(name: "syncTest", isAsync: false, isThrowing: true)]
+    )
+
+    let manifest = DevicePackageGenerator.packageManifest(
+        for: source,
+        cpicoSDKPath: URL(fileURLWithPath: "/repo/CPicoSDK"),
+        target: .rp2040
+    )
+    #expect(manifest.contains(".init(name: \"Platform_RP2040\")"))
+    #expect(manifest.contains(".init(name: \"Variant_RP2040\")"))
+    #expect(!manifest.contains(".init(name: \"Platform_RP2350\")"))
+    #expect(!manifest.contains(".init(name: \"Variant_RP2350A\")"))
 }
 
 @Test func asyncFunctionsAutomaticallySelectConcurrency() throws {
@@ -176,7 +222,9 @@ import Testing
     )
 
     #expect(args.contains("adapter speed 1000"))
+    #expect(args.contains("target/rp2350.cfg"))
     #expect(args.contains("program /tmp/DeviceTestApp.elf verify"))
+    #expect(args.contains(#"rtt setup 0x20000000 0x80000 "SEGGER RTT""#))
     #expect(args.contains("reset run"))
     #expect(args.contains("rtt server start 4 0"))
     #expect(args.contains("/helpers/openocd-helpers.tcl"))

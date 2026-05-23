@@ -63,16 +63,10 @@ public struct TraitSelection: Equatable {
         self.remove = remove
     }
 
-    public static let defaultTraits = [
-        "BootStage2_W25Q080",
-        "StdIO_RTT",
-        "Platform_RP2350",
-        "Variant_RP2350A",
-        "Radio_None",
-    ]
+    public static let defaultTraits = DeviceTestTarget.rp2350.defaultTraits
 
-    public func resolvedTraits() -> [String] {
-        var result = Self.defaultTraits
+    public func resolvedTraits(defaultTraits: [String] = Self.defaultTraits) -> [String] {
+        var result = defaultTraits
         for removed in remove {
             result.removeAll { $0 == removed }
         }
@@ -80,12 +74,96 @@ public struct TraitSelection: Equatable {
             if added.hasPrefix("StdIO_") {
                 result.removeAll { $0.hasPrefix("StdIO_") }
             }
+            for prefix in DeviceTestTarget.boardDefiningTraitPrefixes where added.hasPrefix(prefix) {
+                result.removeAll { $0.hasPrefix(prefix) }
+            }
             result.append(added)
         }
         if !result.contains(where: { $0.hasPrefix("StdIO_") }) {
             result.append("StdIO_RTT")
         }
         return result
+    }
+}
+
+public enum DeviceTestTarget: String, CaseIterable, Equatable {
+    case rp2040
+    case rp2350
+
+    public static let boardDefiningTraitPrefixes = [
+        "Platform_",
+        "Variant_",
+        "Radio_",
+    ]
+
+    public init(argument: String) throws {
+        switch argument.lowercased() {
+        case "rp2040", "pico":
+            self = .rp2040
+        case "rp2350", "pico2":
+            self = .rp2350
+        default:
+            throw DeviceTestHarnessError.invalidMetadata(
+                "unknown device target '\(argument)'; expected rp2040 or rp2350"
+            )
+        }
+    }
+
+    public var board: String {
+        switch self {
+        case .rp2040:
+            return "pico"
+        case .rp2350:
+            return "pico2"
+        }
+    }
+
+    public var openOCDTargetConfig: String {
+        switch self {
+        case .rp2040:
+            return "target/rp2040.cfg"
+        case .rp2350:
+            return "target/rp2350.cfg"
+        }
+    }
+
+    public var rttMemorySize: UInt32 {
+        switch self {
+        case .rp2040:
+            return 0x40000
+        case .rp2350:
+            return 0x80000
+        }
+    }
+
+    public var swiftPMTriple: String {
+        switch self {
+        case .rp2040:
+            return "armv6m-none-none-eabi"
+        case .rp2350:
+            return "armv7em-none-none-eabi"
+        }
+    }
+
+    public var defaultTraits: [String] {
+        switch self {
+        case .rp2040:
+            return [
+                "BootStage2_W25Q080",
+                "StdIO_RTT",
+                "Platform_RP2040",
+                "Variant_RP2040",
+                "Radio_None",
+            ]
+        case .rp2350:
+            return [
+                "BootStage2_W25Q080",
+                "StdIO_RTT",
+                "Platform_RP2350",
+                "Variant_RP2350A",
+                "Radio_None",
+            ]
+        }
     }
 }
 
