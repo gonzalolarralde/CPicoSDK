@@ -26,7 +26,6 @@ extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current_runtime(void) __asm_
 extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
 
 extern int cshims_scheduler_poll_once(void);
-extern void cshims_scheduler_drain(void);
 extern void cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_enqueue_delayed(uint64_t delayUs, void *job, void *executorFirst, void *executorSecond);
 extern void cshims_scheduler_enqueue_deadline(uint64_t deadlineUs, void *job, void *executorFirst, void *executorSecond);

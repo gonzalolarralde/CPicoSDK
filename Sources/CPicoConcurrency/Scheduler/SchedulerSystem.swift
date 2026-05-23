@@ -98,15 +98,6 @@ final class SchedulerSystem {
         return didRunJobByCore[core.index] ? 1 : 0
     }
 
-    /// Polls repeatedly until one iteration reports no completed runtime job.
-    ///
-    /// Used by runtime drain hooks that want to make progress without blocking
-    /// forever.
-    func drain() {
-        while pollOnce() != 0 {
-        }
-    }
-
     /// Blocks the current core's executor until its async context has work.
     ///
     /// `SchedulerSystem` chooses the current executor; the executor performs the
@@ -115,15 +106,19 @@ final class SchedulerSystem {
         executor(for: CoreID.current).waitForWork()
     }
 
-    /// Starts multicore scheduling if the platform can bring up core1.
+    /// Starts core1 once scheduler work begins.
     ///
-    /// Placement only starts returning core1 after `startCore1` reports success.
+    /// This keeps the launch path in Swift while avoiding an unused C shim. It
+    /// also waits until after the global scheduler object is initialized, so
+    /// core1 can safely enter through `cshimsRuntimeScheduler`.
     func startMulticore() {
-        guard !multicoreEnabled else {
+        guard CoreID.current == .core0, !multicoreEnabled else {
             return
         }
 
-        multicoreEnabled = startCore1()
+        multicore_reset_core1()
+        multicore_launch_core1(cshims_scheduler_core1_entry)
+        multicoreEnabled = true
     }
 
 #if CPUMetrics
@@ -196,6 +191,8 @@ final class SchedulerSystem {
         executorFirst: UnsafeMutableRawPointer?,
         executorSecond: UnsafeMutableRawPointer?
     ) {
+        startMulticore()
+
         let identity = TaskIdentity.resolve(job: job)
         let enqueueCore = CoreID.current
         let existingOwner = affinityTable.owner(for: identity)
@@ -284,12 +281,6 @@ func cshims_scheduler_poll_once() -> Int32 {
     cshimsRuntimeScheduler.pollOnce()
 }
 
-/// C shim entrypoint for draining currently available scheduler work.
-@_cdecl("cshims_scheduler_drain")
-func cshims_scheduler_drain() {
-    cshimsRuntimeScheduler.drain()
-}
-
 /// C shim entrypoint used by Swift runtime global/main enqueue hooks.
 @_cdecl("cshims_scheduler_enqueue_immediate")
 func cshims_scheduler_enqueue_immediate(
@@ -340,10 +331,4 @@ func cshims_scheduler_enqueue_deadline(
 @_cdecl("cshims_scheduler_wait_for_work_forever")
 func cshims_scheduler_wait_for_work_forever() {
     cshimsRuntimeScheduler.waitForWork()
-}
-
-/// C shim entrypoint that requests core1 launch.
-@_cdecl("cshims_scheduler_start_multicore")
-func cshims_scheduler_start_multicore() {
-    cshimsRuntimeScheduler.startMulticore()
 }

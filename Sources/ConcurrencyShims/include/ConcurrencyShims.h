@@ -39,7 +39,6 @@ void *cshims_job_owner_task(void *job);
 void cshims_swift_task_clear_current(void);
 unsigned int cshims_enter_critical(void);
 void cshims_exit_critical(unsigned int state);
-void cshims_scheduler_start_multicore(void);
 
 typedef void (*cshims_irq_handler_t)(void);
 cshims_irq_handler_t cshims_get_irq_wrapper(unsigned int irq);
