@@ -769,6 +769,76 @@ CPicoSDK/
 3. Develop Swift code with full IDE support
 4. Flash and debug on hardware
 
+### Device Test Harness
+
+CPicoSDK includes a physical-device test harness for maintainer and contributor
+validation. Tests live under `Tests/Device/**/*.swift` and are run from the
+repository root with:
+
+```bash
+swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
+```
+
+The outer `--disable-sandbox` is required because the command talks to OpenOCD
+and a connected debug probe.
+
+Device tests are self-contained Swift files with a leading `//%` metadata block
+followed by top-level no-argument test functions:
+
+```swift
+//% -- test yaml
+//% name: HelloRTT
+//% timeout: 5s
+//% traits:
+//%   add: [StdIO_RTT]
+//% expect:
+//%   stdout:
+//%     equals: "hello\n"
+//%   durationMs:
+//%     min: 0
+//%     max: 5000
+//% -----------
+
+import CPicoSDK
+
+func helloRTT() throws {
+    print("hello")
+    try deviceExpect(1 + 1 == 2)
+}
+```
+
+Useful commands:
+
+```bash
+# List discovered device tests
+swift package --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
+
+# Generate and build all device-test firmware without flashing/running it
+swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
+
+# Run one test by name
+swift package --disable-sandbox test-in-device --filter HelloRTT --allow-writing-to-package-directory --allow-network-connections all
+
+# Generate and build one device-test firmware without flashing/running it
+swift package --disable-sandbox test-in-device --filter HelloRTT --build-only --allow-writing-to-package-directory --allow-network-connections all
+```
+
+Use `--build-only` when you want to verify that device tests still generate,
+compile, and link without programming hardware. Full device runs require a
+connected target and will program and reset it.
+
+The harness generates one ephemeral SwiftPM package per test in the plugin work
+directory, builds it against the local CPicoSDK checkout, programs the device
+with OpenOCD, captures RTT output, and evaluates controller-side expectations.
+Result lines report build, program, host run/capture time, device-reported time,
+UF2 firmware size, and per-function pass/fail status.
+
+If a test file contains any `async` top-level test function, the harness
+automatically uses the async runner and links `CPicoConcurrency`; sync functions
+in the same file still run normally. Swift Testing syntax (`import Testing`,
+`@Test`, `#expect`) is intentionally not supported by this embedded harness yet;
+use `deviceExpect(...)` for device-side assertions.
+
 ### Future Improvements
 
 See `TODO.md` for detailed tasks, including:

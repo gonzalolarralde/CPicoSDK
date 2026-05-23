@@ -10,6 +10,41 @@ wiring, or another specific category that fits the issue. Keep the tip concrete:
 include the symptom, the command or code pattern that helped, and any known
 limitation. Keep feature-specific investigation notes in `docs/`.
 
+## Root Device Test Harness
+
+The repo-root device test harness is the main exception to the `Example/`
+working-directory rule. Its contributor documentation lives in
+`README.md` under `Device Test Harness`, and test sources live under
+`Tests/Device/**/*.swift`.
+
+List available device tests from the repo root:
+
+```sh
+swift package --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
+```
+
+Check that device tests generate, compile, and link without programming
+hardware:
+
+```sh
+swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
+```
+
+Run the physical-device suite from the repo root only after confirming with the
+user that a compatible board and CMSIS-DAP/OpenOCD probe are connected and that
+it is OK to program the board:
+
+```sh
+swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
+```
+
+For focused checks, prefer `--filter <TestName>` before running all tests. Run
+`--build-only` often when adding tests or changing device-facing CPicoSDK
+behavior, traits, concurrency support, generated package wiring, finalization,
+or linking. Run the physical tests occasionally when changing OpenOCD/RTT
+capture or the harness itself. For documentation-only changes, do not program
+the device unless the user asks for it.
+
 ## Build
 
 Do not run a repo-root `./build`. Build the example like this:
@@ -290,6 +325,11 @@ design notes, experiments, and failure analysis in `docs/`.
 - Keep a persistent OpenOCD process running for repeated telnet/GDB operations.
   Use telnet port `50002` through `nc` for quick `reset run`, target-state, and
   RTT checks.
+- If OpenOCD exits with `Error: unable to find a matching CMSIS-DAP device`,
+  the harness reached the host debug layer but no compatible probe was visible.
+  If the same OpenOCD command works in a normal shell, rerun command-plugin
+  device tests as `swift package --disable-sandbox test-in-device ...`; the
+  SwiftPM plugin sandbox can hide USB debug probes from OpenOCD.
 - For one-shot reset commands, include `-c "init"` before `-c "reset run"`.
   Without `init`, OpenOCD can report `invalid command name "reset"`.
 - If ports are already bound by stale debug sessions, use
@@ -302,6 +342,11 @@ design notes, experiments, and failure analysis in `docs/`.
 
 - Check for `pyserial` with `python3 -m pip show pyserial`; install it with
   `python3 -m pip install pyserial` if needed.
+- For RTT capture, start the target first, wait for firmware to initialize
+  stdio, then run `rtt start`. Running `rtt start` before `stdio_init_all()`
+  can fail with `rtt: No control block found`; starting the host `nc` reader
+  before the RTT server is listening can also miss early boot output, so retry
+  the TCP connection or delay first device prints.
 - Start `miniterm` first, then reset the board from another shell to capture a
   clean boot log.
 - Serial output can contain stale or interleaved bytes after reset. Trust logs
@@ -317,3 +362,35 @@ design notes, experiments, and failure analysis in `docs/`.
   `Example/Package.swift` and run `swift package show-dependencies` from
   `Example/`. The example must depend on the local package path, not a released
   remote package.
+- After switching `Example/Package.swift` from the released CPicoSDK package to
+  a local path dependency, stale SwiftPM edit state can make resolution fail
+  with `dependencies unresolved: 'cpicosdk'`. Remove generated workspace state
+  with `rm -f Example/.build/workspace-state.json Example/.build/.lock` and
+  rerun `swift package plugin --list` from `Example/`.
+- For generated SwiftPM device-test packages, do not delete and recreate
+  `Sources/` or `Package.swift` on every run. Write files only when contents
+  change; otherwise SwiftPM and the CMake finalizer lose useful incremental
+  state and every device test looks like a cold build.
+- The finalizer defaults to a clean CMake build. For repeated generated device
+  test runs, call `finalize_rp2xxx_binary <Product> --incremental`; otherwise
+  the finalizer removes `CMakeHarness/build_<board>` and rebuilds native Pico
+  SDK objects every time.
+- For faster steady-state device tests, skip `prepare-rp2xxx-environment` when
+  the generated package inputs and `env.json` are unchanged, and skip
+  finalization when the generated static library is older than the existing
+  ELF. The next flash can reuse the last ELF safely in that no-change case.
+- The root `test-in-device` harness is documented in `README.md` under
+  `Device Test Harness`. Use `--list` for a no-flash discovery check and
+  `--build-only` for the frequent compile/link check. Ask the user before
+  running non-`--build-only` device tests because they program the connected
+  board through OpenOCD.
+- Async embedded tests that use `try await Task.sleep(...)` can fail at link
+  time with an undefined `Swift.CancellationError : Swift.Error` witness table
+  (`$eScEs5ErrorsWP`). Use a non-throwing await point such as
+  `await Task.yield()` when the goal is only to smoke-test async scheduling,
+  or investigate the embedded concurrency runtime link set before relying on
+  cancellation-aware sleeps.
+- Command-plugin child-process stdout can be buffered until the plugin command
+  exits. For long device runs, flush after each progress line and write directly
+  to `/dev/tty` when stdout is not a TTY, with normal stdout as the fallback for
+  redirected or CI runs.
