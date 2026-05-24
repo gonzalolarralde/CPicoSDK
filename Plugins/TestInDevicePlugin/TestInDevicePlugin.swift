@@ -14,6 +14,7 @@ struct TestInDevicePlugin: CommandPlugin {
             "--work-dir", context.pluginWorkDirectoryURL.path,
             "--cpicosdk-path", cpicoSDKPath.path,
         ] + arguments
+        process.environment = ProcessInfo.processInfo.environment
 
         try process.run()
         process.waitUntilExit()

@@ -29,6 +29,7 @@ struct Options {
     var listOnly: Bool
     var buildOnly: Bool
     var adapterSpeed: Int
+    var target: DeviceTestTarget
 
     static func parse(_ arguments: [String]) throws -> Options {
         var packageDirectory: URL?
@@ -38,6 +39,7 @@ struct Options {
         var listOnly = false
         var buildOnly = false
         var adapterSpeed = 5_000
+        var target = DeviceTestTarget.rp2350
         var index = arguments.startIndex
 
         func takeValue(for option: String) throws -> String {
@@ -66,6 +68,8 @@ struct Options {
                 buildOnly = true
             case "--adapter-speed":
                 adapterSpeed = Int(try takeValue(for: argument)) ?? adapterSpeed
+            case "--target", "--device":
+                target = try DeviceTestTarget(argument: try takeValue(for: argument))
             case "--allow-writing-to-package-directory", "--disable-sandbox":
                 break
             case "--allow-network-connections":
@@ -90,12 +94,13 @@ struct Options {
             filter: filter,
             listOnly: listOnly,
             buildOnly: buildOnly,
-            adapterSpeed: adapterSpeed
+            adapterSpeed: adapterSpeed,
+            target: target
         )
     }
 
     static let help = """
-    Usage: swift package test-in-device [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
+    Usage: swift package test-in-device [--target rp2350|rp2040] [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
 
     Tests are discovered under Tests/Device/**/*.swift. Each file must start with a //% metadata block.
     """
@@ -136,16 +141,27 @@ struct DeviceHarnessRunner {
         let generatedRoot = options.workDirectory
             .appendingPathComponent("GeneratedDeviceTests", isDirectory: true)
         try FileManager.default.createDirectory(at: generatedRoot, withIntermediateDirectories: true)
+        if let sharedBundle = try resolvedSharedPicoSDKBundlePath() {
+            log("[test-in-device] Using shared Pico SDK bundle: \(sharedBundle.path)")
+        } else {
+            log("[test-in-device] No prepared shared Pico SDK bundle found; generated packages will prepare dependencies independently.")
+        }
 
         var allPassed = true
         for (index, test) in tests.enumerated() {
             let startedAt = Date()
             logPartial("[test-in-device] \(index + 1)/\(tests.count) \(test.metadata.name)")
+            if test.metadata.concurrency && !options.target.supportsConcurrency {
+                logLine(" SKIP: target \(options.target.rawValue) does not support concurrency")
+                continue
+            }
             do {
                 let generated = try DevicePackageGenerator.generate(
                     source: test,
                     cpicoSDKPath: options.cpicoSDKPath,
-                    outputRoot: generatedRoot
+                    outputRoot: generatedRoot,
+                    target: options.target,
+                    packageDirectoryName: "Current"
                 )
                 let buildStartedAt = Date()
                 let firmware = try build(generated: generated)
@@ -183,13 +199,21 @@ struct DeviceHarnessRunner {
     }
 
     private func build(generated: GeneratedPackage) throws -> BuiltFirmware {
+        let sharedBundleExport = try sharedPicoSDKBundleExportScript()
         let script = """
         set -euo pipefail
         cd \(shellQuote(generated.packageDirectory.path))
         export BUILD_TYPE="RelWithDebInfo"
+        export BOARD="\(options.target.board)"
         export BUILD_SCRIPT_VERSION=1
+        \(sharedBundleExport)
         export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"
+        export PREPARATION_BUNDLE_STAMP="$PREPARATION_SCRIPT_PATH.pico-sdk-bundle-path"
         export GENERATED_INPUTS_CHANGED="\(generated.inputsChanged ? "1" : "0")"
+        PREPARATION_INPUTS_CHANGED="$GENERATED_INPUTS_CHANGED"
+        if [ ! -f "$PREPARATION_BUNDLE_STAMP" ] || [ "$(cat "$PREPARATION_BUNDLE_STAMP")" != "${PICO_SDK_BUNDLE_PATH:-}" ]; then
+          PREPARATION_INPUTS_CHANGED="1"
+        fi
         if command -v swiftly >/dev/null 2>&1; then
           export SWIFTLY_PATH="$(command -v swiftly)"
         elif [ -f "$HOME/.swiftly/bin/swiftly" ]; then
@@ -201,7 +225,7 @@ struct DeviceHarnessRunner {
           exit 1
         fi
 
-        if [ "$GENERATED_INPUTS_CHANGED" = "1" ] || [ ! -f "$PREPARATION_SCRIPT_PATH" ] || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) -nt "$PREPARATION_SCRIPT_PATH" ]; then
+        if [ "$PREPARATION_INPUTS_CHANGED" = "1" ] || [ ! -f "$PREPARATION_SCRIPT_PATH" ] || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) -nt "$PREPARATION_SCRIPT_PATH" ]; then
           "$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \\
             --cpicosdk-envs-path \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) \\
             --dump-prep-script "$PREPARATION_SCRIPT_PATH" \\
@@ -209,6 +233,7 @@ struct DeviceHarnessRunner {
             --allow-network-connections all \\
             --disable-vscode-settings \\
             --disable-sourcekit-lsp-settings
+          printf '%s' "${PICO_SDK_BUNDLE_PATH:-}" > "$PREPARATION_BUNDLE_STAMP"
         fi
         source "$PREPARATION_SCRIPT_PATH"
         "$SWIFTLY_PATH" install
@@ -258,6 +283,62 @@ struct DeviceHarnessRunner {
         throw DeviceTestHarnessError.missingArtifact("\(generated.productName).uf2 under \(buildDirectory.path)")
     }
 
+    private func sharedPicoSDKBundleExportScript() throws -> String {
+        if ProcessInfo.processInfo.environment["PICO_SDK_BUNDLE_PATH"] != nil {
+            return "export PICO_SDK_BUNDLE_PATH"
+        }
+        if let bundlePath = try resolvedSharedPicoSDKBundlePath() {
+            return "export PICO_SDK_BUNDLE_PATH=\(shellQuote(bundlePath.path))"
+        }
+        return ": PICO_SDK_BUNDLE_PATH intentionally unset"
+    }
+
+    private func resolvedSharedPicoSDKBundlePath() throws -> URL? {
+        if let provided = ProcessInfo.processInfo.environment["PICO_SDK_BUNDLE_PATH"], !provided.isEmpty {
+            return URL(fileURLWithPath: provided, isDirectory: true)
+        }
+        for candidate in sharedPicoSDKBundleCandidates() {
+            if try picoSDKBundleIsComplete(candidate) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    private func sharedPicoSDKBundleCandidates() -> [URL] {
+        [
+            options.packageDirectory
+                .appendingPathComponent(".build/plugins/PrepareEnvironmentPlugin/outputs/pico-sdk-bundle", isDirectory: true),
+            URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent(".pico-sdk", isDirectory: true),
+        ]
+    }
+
+    private func picoSDKBundleIsComplete(_ url: URL) throws -> Bool {
+        let vars = try cpicoSDKEnvVars()
+        let required = [
+            "sdk/\(vars["SDK_VERSION"] ?? "")",
+            "toolchain/\(vars["TOOLCHAIN_VERSION"] ?? "")",
+            "cmake/v\(vars["CMAKE_VERSION"] ?? "")",
+            "ninja/v\(vars["NINJA_VERSION"] ?? "")",
+            "picotool/\(vars["PICOTOOL_VERSION"] ?? "")",
+            "openocd/\(vars["OPENOCD_VERSION"] ?? "")",
+        ]
+        return required.allSatisfy { relativePath in
+            FileManager.default.fileExists(atPath: url.appendingPathComponent(relativePath).path)
+        }
+    }
+
+    private func cpicoSDKEnvVars() throws -> [String: String] {
+        let envURL = options.cpicoSDKPath.appendingPathComponent("env.json")
+        let data = try Data(contentsOf: envURL)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let vars = object["vars"] as? [String: String] else {
+            throw DeviceTestHarnessError.invalidMetadata("invalid env.json at \(envURL.path)")
+        }
+        return vars
+    }
+
     private func runOnDevice(elfURL: URL, packageDirectory: URL, timeoutMilliseconds: Int) throws -> DeviceRunResult {
         let paths = try discoverOpenOCDPaths(packageDirectory: packageDirectory)
         let ports = OpenOCDPorts()
@@ -267,7 +348,8 @@ struct DeviceHarnessRunner {
             paths: paths,
             elfURL: elfURL,
             ports: ports,
-            adapterSpeed: options.adapterSpeed
+            adapterSpeed: options.adapterSpeed,
+            target: options.target
         )
 
         let openOCDPipe = Pipe()
@@ -340,19 +422,54 @@ struct DeviceHarnessRunner {
     }
 
     private func discoverOpenOCDPaths(packageDirectory: URL) throws -> OpenOCDPaths {
-        let outputRoots = [
-            options.packageDirectory.appendingPathComponent(".build/plugins/PrepareEnvironmentPlugin/outputs", isDirectory: true),
-            packageDirectory.appendingPathComponent(".build/plugins/PrepareEnvironmentPlugin/outputs", isDirectory: true),
+        let environment = try preparedEnvironment(packageDirectory: packageDirectory)
+        let openOCDPath = try requiredEnvironmentValue("OPENOCD_PATH", in: environment)
+        let openOCDRoot = URL(fileURLWithPath: openOCDPath, isDirectory: true)
+        let executableCandidates = [
+            openOCDRoot.appendingPathComponent("openocd.exe"),
+            openOCDRoot.appendingPathComponent("openocd"),
         ]
-        let openocd = try findFirst(under: outputRoots, matching: {
-            ($0.lastPathComponent == "openocd.exe" || $0.lastPathComponent == "openocd") && isRegularFile($0)
-        })
-        let scripts = try findFirst(under: outputRoots, matching: { $0.path.contains("/openocd/") && $0.lastPathComponent == "scripts" })
+        guard let openocd = executableCandidates.first(where: { isRegularFile($0) }) else {
+            throw DeviceTestHarnessError.missingTool(executableCandidates.map(\.path).joined(separator: ", "))
+        }
+        let scripts = openOCDRoot.appendingPathComponent("scripts", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: scripts.path) else {
+            throw DeviceTestHarnessError.missingTool(scripts.path)
+        }
         let helper = findFirstOptional(
             under: URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".vscode/extensions", isDirectory: true),
             matching: { $0.lastPathComponent == "openocd-helpers.tcl" }
         )
         return OpenOCDPaths(executable: openocd, scriptsDirectory: scripts, helpersScript: helper)
+    }
+
+    private func preparedEnvironment(packageDirectory: URL) throws -> [String: String] {
+        let prepScript = packageDirectory.appendingPathComponent(".env_prep")
+        let script = """
+        set -euo pipefail
+        source \(shellQuote(prepScript.path))
+        /usr/bin/env -0
+        """
+        let result = try ProcessRunner.run("/bin/bash", arguments: ["-lc", script], workingDirectory: packageDirectory)
+        guard result.status == 0 else {
+            throw DeviceTestHarnessError.processFailed(command: "source \(prepScript.path)", status: result.status, output: result.output)
+        }
+        var environment: [String: String] = [:]
+        for assignment in result.output.split(separator: "\0", omittingEmptySubsequences: true).map(String.init) {
+            guard let equals = assignment.firstIndex(of: "=") else {
+                continue
+            }
+            let key = String(assignment[..<equals])
+            environment[key] = String(assignment[assignment.index(after: equals)...])
+        }
+        return environment
+    }
+
+    private func requiredEnvironmentValue(_ name: String, in environment: [String: String]) throws -> String {
+        guard let value = environment[name], !value.isEmpty else {
+            throw DeviceTestHarnessError.missingTool("environment value \(name)")
+        }
+        return value
     }
 
     private func findFirst(under roots: [URL], matching predicate: (URL) -> Bool) throws -> URL {

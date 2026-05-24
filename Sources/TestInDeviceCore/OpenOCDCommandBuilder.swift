@@ -32,7 +32,7 @@ public enum OpenOCDCommandBuilder {
         elfURL: URL,
         ports: OpenOCDPorts = OpenOCDPorts(),
         adapterSpeed: Int = 5_000,
-        targetConfig: String = "target/rp2350.cfg"
+        target: DeviceTestTarget = .rp2350
     ) -> [String] {
         var args = [
             "-c", "gdb_port \(ports.gdb)",
@@ -45,11 +45,11 @@ public enum OpenOCDCommandBuilder {
         }
         args += [
             "-f", "interface/cmsis-dap.cfg",
-            "-f", targetConfig,
+            "-f", target.openOCDTargetConfig,
             "-c", "adapter speed \(adapterSpeed)",
             "-c", "init",
             "-c", "program \(elfURL.path) verify",
-            "-c", #"rtt setup 0x20000000 0x80000 "SEGGER RTT""#,
+            "-c", #"rtt setup 0x20000000 \#(String(format: "0x%X", target.rttMemorySize)) "SEGGER RTT""#,
             "-c", "reset run",
             "-c", "sleep 500",
             "-c", "rtt start",
