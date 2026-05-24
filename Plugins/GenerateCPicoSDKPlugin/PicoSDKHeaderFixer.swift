@@ -7,6 +7,18 @@ enum PicoSDKHeaderFixer {
         addressExpression: String
     )
 
+    private struct FilteredDeclaration {
+        var symbol: String
+        var pattern: String
+    }
+
+    private static let filteredDeclarations = [
+        FilteredDeclaration(
+            symbol: "max_align_t",
+            pattern: #"(?m)^#define\s+_GCC_MAX_ALIGN_T\s*\n(?:typedef\s+)?struct\s*\{\s*\n\s*long\s+long\s+__max_align_ll\b[^\n]*\n\s*long\s+double\s+__max_align_ld\b[^\n]*\n\}\s*max_align_t\s*;\s*\n?"#
+        ),
+    ]
+
     static func fixHeader(content: String) -> String {
         let unsignedRegex = try! NSRegularExpression(
             pattern: #"_u\(\s*((?:0x)?[0-9a-fA-F]+)\s*\)"#
@@ -33,9 +45,24 @@ enum PicoSDKHeaderFixer {
             content: rewrittenHardwareEntrypointsContent,
             availableHardwareAliasTargets: availableHardwareAliasTargets
         )
+        let filteredContent = filterDeclarations(content: rewrittenHardwareAliasesContent)
 
         return "#pragma GCC system_header\n" +
-            rewrittenHardwareAliasesContent
+            filteredContent
+    }
+
+    static func filterDeclarations(content: String) -> String {
+        filteredDeclarations.reduce(content) { currentContent, declaration in
+            let regex = try! NSRegularExpression(
+                pattern: declaration.pattern,
+                options: []
+            )
+            return regex.stringByReplacingMatches(
+                in: currentContent,
+                range: NSRange(currentContent.startIndex..., in: currentContent),
+                withTemplate: ""
+            )
+        }
     }
 
     static func extractHardwareEntrypoints(content: String) -> [HardwareEntrypoint] {

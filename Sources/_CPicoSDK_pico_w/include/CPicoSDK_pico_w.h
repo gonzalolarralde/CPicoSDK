@@ -875,11 +875,6 @@ typedef unsigned int wchar_t;
 #undef __need_NULL
 #undef offsetof
 #define offsetof(TYPE,MEMBER) __builtin_offsetof (TYPE, MEMBER)
-#define _GCC_MAX_ALIGN_T 
-typedef struct {
-  long long __max_align_ll __attribute__((__aligned__(__alignof__(long long))));
-  long double __max_align_ld __attribute__((__aligned__(__alignof__(long double))));
-} max_align_t;
 typedef unsigned int uint;
 #define PICO_OPAQUE_ABSOLUTE_TIME_T 0
 typedef uint64_t absolute_time_t;
