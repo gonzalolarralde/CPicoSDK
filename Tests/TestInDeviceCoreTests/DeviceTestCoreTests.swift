@@ -105,6 +105,7 @@ import Testing
 
     let runner = DevicePackageGenerator.runnerSource(for: source)
     #expect(runner.contains("EmbeddedAsyncApp"))
+    #expect(runner.contains("deviceDiagnostic"))
     #expect(runner.contains("try await asyncTest()"))
 }
 
@@ -167,6 +168,22 @@ import Testing
     #expect(transcript.runPassed)
     #expect(transcript.durationMilliseconds == 2)
     #expect(transcript.stdout == "hello\n")
+}
+
+@Test func parsesDiagnosticsOutsideStdout() {
+    let raw = """
+    visible
+    __CPICOSDK_DEVICE_DIAGNOSTIC__|bench units=10 c0=5 c1=5
+    __CPICOSDK_DEVICE_TEST__|run-end|status=passed|durationMs=2
+    """
+
+    let transcript = DeviceResultParser.parse(raw)
+    #expect(transcript.sawRunEnd)
+    #expect(transcript.stdout == "visible\n")
+    #expect(transcript.diagnostics == ["bench units=10 c0=5 c1=5"])
+
+    let expectations = DeviceExpectations(stdout: StdoutExpectation(equals: "visible\n"))
+    #expect(DeviceResultParser.evaluate(transcript: transcript, expectations: expectations).passed)
 }
 
 @Test func waitsForCompleteRunEndAndParsesEmbeddedMarkers() {

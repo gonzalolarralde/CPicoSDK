@@ -182,10 +182,12 @@ struct DeviceHarnessRunner {
                 if evaluation.passed {
                     logLine("\(timing) PASS")
                     logFunctionDurations(transcript.functionDurations)
+                    logDiagnostics(transcript.diagnostics)
                 } else {
                     allPassed = false
                     logLine("\(timing) FAIL: \(evaluation.reason ?? "unknown failure")")
                     logFunctionDurations(transcript.functionDurations)
+                    logDiagnostics(transcript.diagnostics)
                     if !transcript.stdout.isEmpty {
                         log("[test-in-device] Captured stdout:\n\(transcript.stdout)")
                     }
@@ -196,6 +198,13 @@ struct DeviceHarnessRunner {
             }
         }
         return allPassed
+    }
+
+    private func logDiagnostics(_ diagnostics: [String]) {
+        guard !diagnostics.isEmpty else {
+            return
+        }
+        log("[test-in-device] Diagnostics:\n\(diagnostics.joined(separator: "\n"))\n")
     }
 
     private func build(generated: GeneratedPackage) throws -> BuiltFirmware {
