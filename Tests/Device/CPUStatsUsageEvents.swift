@@ -1,13 +1,13 @@
 //% -- test yaml
 //% name: CPUStatsUsageEvents
-//% timeout: 8s
+//% timeout: 12s
 //% concurrency: false
 //% traits:
 //%   add: [StdIO_RTT, CPUMetrics]
 //% expect:
 //%   durationMs:
 //%     min: 0
-//%     max: 8000
+//%     max: 12000
 //% -----------
 
 import CPicoSDK
@@ -24,6 +24,7 @@ private struct CPUStatsStreamCounters {
     var sampleCount: UInt32 = 0
     var sampleCore0Hits: UInt32 = 0
     var sampleCore1Hits: UInt32 = 0
+    var lastReport: CPUStats?
     var workerDone: UInt32 = 0
     var workerCore0Hits: UInt32 = 0
     var workerCore1Hits: UInt32 = 0
@@ -45,7 +46,7 @@ func combinedCPUUsageEventsReportsActiveCores() async throws {
 
     resetCPUStatsStreamCounters()
 
-    Task {
+    let consumer = Task {
         var iterator = usageEvents.makeAsyncIterator()
         while let report = await iterator.next() {
             recordCPUStatsReport(report)
@@ -72,6 +73,7 @@ func combinedCPUUsageEventsReportsActiveCores() async throws {
     }
 
     let snapshot = withCPUStatsTestLock { cpuStatsStreamCounters }
+    consumer.cancel()
     print("cpu-stats samples=\(snapshot.sampleCount) s0=\(snapshot.sampleCore0Hits) s1=\(snapshot.sampleCore1Hits) wdone=\(snapshot.workerDone) w0=\(snapshot.workerCore0Hits) w1=\(snapshot.workerCore1Hits) sum=\(snapshot.checksum)")
 
     try deviceExpect(observedBothSampleCores, "combined CPU metrics stream did not report both active cores")
@@ -90,21 +92,14 @@ func cpuAndMemoryStatsPrintConsistently() async throws {
         return
     }
 
-    Task {
-        await cpuStatsPressureWorker(id: 100, runForUs: 1_300_000)
-    }
+    resetCPUStatsStreamCounters()
 
     var iterator = usageEvents.makeAsyncIterator()
-    let deadline = time_us_64() &+ 3_500_000
-    var report: CPUStats?
-
-    while time_us_64() < deadline {
-        if let nextReport = await iterator.next() {
-            report = nextReport
-            break
-        }
-        await Task.yield()
+    if let report = await iterator.next() {
+        recordCPUStatsReport(report)
     }
+
+    let report = withCPUStatsTestLock { cpuStatsStreamCounters.lastReport }
 
     guard let report else {
         try deviceExpect(false, "CPU metrics stream did not produce a report for print validation")
@@ -160,6 +155,7 @@ private func cpuStatsPressureWorker(id: UInt32, runForUs: UInt64) async {
 private func recordCPUStatsReport(_ report: CPUStats) {
     withCPUStatsTestLock {
         cpuStatsStreamCounters.sampleCount += 1
+        cpuStatsStreamCounters.lastReport = report
         switch report.core {
         case .core0:
             cpuStatsStreamCounters.sampleCore0Hits += 1

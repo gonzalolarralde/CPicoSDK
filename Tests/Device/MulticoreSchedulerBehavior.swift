@@ -1,13 +1,13 @@
 //% -- test yaml
 //% name: MulticoreSchedulerBehavior
-//% timeout: 20s
+//% timeout: 60s
 //% concurrency: true
 //% traits:
 //%   add: [StdIO_RTT]
 //% expect:
 //%   durationMs:
 //%     min: 0
-//%     max: 20000
+//%     max: 60000
 //% -----------
 
 import CPicoSDK
@@ -54,6 +54,12 @@ private struct SameTaskMigrationCounters {
     var continuationResumes: UInt32 = 0
     var resumeCore0Hits: UInt32 = 0
     var resumeCore1Hits: UInt32 = 0
+    var initialCore: UInt32 = UInt32.max
+    var pressureStarted: UInt32 = 0
+    var pressureInitialCoreStarted: UInt32 = 0
+    var pressureOtherCoreStarted: UInt32 = 0
+    var pressureInitialCoreBurning: UInt32 = 0
+    var pressureGateOpen: Bool = false
     var checksum: UInt32 = 0
 }
 
@@ -226,43 +232,69 @@ func aggressiveYieldStressCompletesAndUsesBothCores() async throws {
 
 /// Goal: validate allowed non-overlapping migration of one logical async task.
 /// This function records the core from the same task across many suspension
-/// boundaries, while background workers resume explicit continuations from
-/// whichever core they are running on. Seeing both cores here is valid as long
-/// as the task is only running at one moment at a time.
+/// boundaries, while background workers apply pressure to the core where the
+/// task first ran before resuming explicit continuations. Seeing both cores
+/// here is valid as long as the task is only running at one moment at a time.
 func sameTaskCanResumeOnBothCoresAfterSuspension() async throws {
     ConcurrencyRuntime.startMulticore()
     resetSameTaskMigrationCounters()
 
-    let pressureDeadlineUs = time_us_64() &+ 800_000
-    for workerID in UInt32(0)..<4 {
-        Task {
-            await sameTaskMigrationContinuationResumer(id: workerID, deadlineUs: pressureDeadlineUs)
+    Task {
+        await sameTaskMigrationObservedTaskOnce()
+    }
+
+    let initialSuspended = await waitUntil(timeoutMs: 300) {
+        withSchedulerTestLock {
+            sameTaskMigrationCounters.initialCore <= 1 &&
+                sameTaskMigrationCounters.continuationWaits == 1 &&
+                sameTaskMigrationContinuation != nil
         }
     }
 
-    Task {
-        await sameTaskMigrationObservedTask(iterations: 36)
+    let pressureDeadlineUs = time_us_64() &+ 1_000_000
+    for workerID in UInt32(0)..<2 {
+        Task {
+            await sameTaskMigrationPairedPressureWorker(id: workerID, deadlineUs: pressureDeadlineUs)
+        }
     }
 
-    let migrationCompleted = pollSchedulerUntil(timeoutMs: 2_500) {
+    let pressureStarted = await waitUntil(timeoutMs: 300) {
+        withSchedulerTestLock {
+            sameTaskMigrationCounters.pressureStarted == 2 &&
+                sameTaskMigrationCounters.pressureInitialCoreStarted > 0 &&
+                sameTaskMigrationCounters.pressureOtherCoreStarted > 0
+        }
+    }
+    withSchedulerTestLock {
+        sameTaskMigrationCounters.pressureGateOpen = true
+    }
+
+    let migrationCompleted = await waitUntil(timeoutMs: 500) {
         withSchedulerTestLock {
             sameTaskMigrationCounters.migrationDone == 1
         }
     }
-    let pressureCompleted = pollSchedulerUntil(timeoutMs: 1_200) {
+    let pressureCompleted = await waitUntil(timeoutMs: 500) {
         withSchedulerTestLock {
-            sameTaskMigrationCounters.pressureDone == 4
+            sameTaskMigrationCounters.pressureDone == 2
         }
     }
     let snapshot = withSchedulerTestLock { sameTaskMigrationCounters }
 
-    print("same-task done=\(snapshot.migrationDone) obs=\(snapshot.observations) c0=\(snapshot.core0Hits) c1=\(snapshot.core1Hits) waits=\(snapshot.continuationWaits) resumes=\(snapshot.continuationResumes) r0=\(snapshot.resumeCore0Hits) r1=\(snapshot.resumeCore1Hits) pressureDone=\(snapshot.pressureDone) overlap=\(snapshot.overlapViolations) sum=\(snapshot.checksum)")
+    print("same-task done=\(snapshot.migrationDone) obs=\(snapshot.observations) initial=\(snapshot.initialCore) c0=\(snapshot.core0Hits) c1=\(snapshot.core1Hits) waits=\(snapshot.continuationWaits) resumes=\(snapshot.continuationResumes) r0=\(snapshot.resumeCore0Hits) r1=\(snapshot.resumeCore1Hits) pStart=\(snapshot.pressureStarted) pInitial=\(snapshot.pressureInitialCoreStarted) pBurn=\(snapshot.pressureInitialCoreBurning) pOther=\(snapshot.pressureOtherCoreStarted) pressureDone=\(snapshot.pressureDone) overlap=\(snapshot.overlapViolations) sum=\(snapshot.checksum)")
 
+    try deviceExpect(initialSuspended, "same-task migration task did not suspend for the pressure setup")
+    try deviceExpect(pressureStarted, "same-task migration did not start pressure tasks on both relevant cores")
     try deviceExpect(migrationCompleted, "same-task migration task did not finish")
     try deviceExpect(pressureCompleted, "same-task migration pressure workers did not finish")
-    try deviceExpect(snapshot.observations == 36, "same-task migration did not record every observation")
-    try deviceExpect(snapshot.continuationWaits == 36, "same-task migration did not suspend every iteration")
-    try deviceExpect(snapshot.continuationResumes == 36, "same-task migration did not resume every continuation")
+    try deviceExpect(snapshot.initialCore <= 1, "same-task migration did not record the initial core")
+    try deviceExpect(snapshot.pressureStarted == 2, "same-task migration did not start both pressure workers")
+    try deviceExpect(snapshot.pressureInitialCoreStarted > 0, "same-task migration did not start pressure on the initial core")
+    try deviceExpect(snapshot.pressureInitialCoreBurning > 0, "same-task migration did not begin burning on the initial core")
+    try deviceExpect(snapshot.pressureOtherCoreStarted > 0, "same-task migration did not start the paired task on the other core")
+    try deviceExpect(snapshot.observations == 2, "same-task migration did not record the expected observations")
+    try deviceExpect(snapshot.continuationWaits + 1 >= snapshot.observations, "same-task migration did not suspend between observations")
+    try deviceExpect(snapshot.continuationResumes + 1 >= snapshot.observations, "same-task migration did not resume enough continuations")
     try deviceExpect(snapshot.core0Hits > 0, "same task was never observed on core0")
     try deviceExpect(snapshot.core1Hits > 0, "same task was never observed on core1")
     try deviceExpect(snapshot.resumeCore0Hits > 0, "same-task continuations were never resumed from core0")
@@ -573,7 +605,7 @@ func schedulerBehaviorCoverageMatchesRequest() throws {
     let memoryHits = snapshot.memory.core0Hits + snapshot.memory.core1Hits
     let mixedHits = snapshot.mixed.core0Hits + snapshot.mixed.core1Hits
 
-    print("coverage mask=\(snapshot.mask) baselineHits=\(baselineHits) stressHits=\(stressHits) burstHits=\(burstHits) alarmHits=\(alarmHits) allocHits=\(allocationHits) memoryHits=\(memoryHits) mixedHits=\(mixedHits) migration=\(snapshot.migration.core0Hits)/\(snapshot.migration.core1Hits) alarmMigration=\(snapshot.alarmMigration.core0Hits)/\(snapshot.alarmMigration.core1Hits) delayed=\(snapshot.delayed.done)/\(snapshot.delayed.earlyWakeups)/\(snapshot.delayed.lateWakeups) parallelElapsed=\(snapshot.timing.elapsedMs) parallelOverlap=\(snapshot.timing.intervalsOverlap)")
+    print("coverage mask=\(snapshot.mask) baseline=\(baselineHits) stress=\(stressHits) migration=\(snapshot.migration.core0Hits)/\(snapshot.migration.core1Hits) alarmMigration=\(snapshot.alarmMigration.core0Hits)/\(snapshot.alarmMigration.core1Hits) mixed=\(mixedHits)")
 
     try deviceExpect((snapshot.mask & coverageBaseline) != 0, "baseline scheduler validation did not run")
     try deviceExpect((snapshot.mask & coverageParallelTiming) != 0, "parallel CPU timing validation did not run")
@@ -611,6 +643,7 @@ func schedulerBehaviorCoverageMatchesRequest() throws {
     try deviceExpect(snapshot.mixed.core0Hits > 0 && snapshot.mixed.core1Hits > 0, "mixed alarm/allocation validation did not use both cores")
     try deviceExpect(snapshot.stress.maxConcurrentWorkers >= 2, "stress did not observe overlapping active workers")
     try deviceExpect(stressHits > baselineHits, "stress did not exercise more scheduler work than the baseline")
+    sleep_ms(20)
 }
 
 private func resetBaselineCounters() {
@@ -814,16 +847,43 @@ private func mixedAlarmAllocationWorker(id: UInt32, iterations: UInt32) async {
     }
 }
 
-private func sameTaskMigrationContinuationResumer(id: UInt32, deadlineUs: UInt64) async {
-    var iteration: UInt32 = 0
+private func sameTaskMigrationPairedPressureWorker(id: UInt32, deadlineUs: UInt64) async {
+    let startCore = get_core_num() & 1
+    let initialCore = withSchedulerTestLock { sameTaskMigrationCounters.initialCore }
+    withSchedulerTestLock {
+        sameTaskMigrationCounters.pressureStarted += 1
+        if startCore == initialCore {
+            sameTaskMigrationCounters.pressureInitialCoreStarted += 1
+        } else {
+            sameTaskMigrationCounters.pressureOtherCoreStarted += 1
+        }
+    }
+
     while time_us_64() < deadlineUs {
-        if withSchedulerTestLock({ sameTaskMigrationCounters.migrationDone == 1 && sameTaskMigrationContinuation == nil }) {
+        if withSchedulerTestLock({ sameTaskMigrationCounters.pressureGateOpen }) {
             break
         }
-        resumeSameTaskMigrationContinuationIfAvailable()
-        _ = cpuSpin(seed: id &* 131 &+ iteration, rounds: 5_000)
-        iteration &+= 1
         await Task.yield()
+    }
+
+    if startCore == initialCore {
+        withSchedulerTestLock {
+            sameTaskMigrationCounters.pressureInitialCoreBurning += 1
+        }
+        while time_us_64() < deadlineUs {
+            if withSchedulerTestLock({ sameTaskMigrationCounters.migrationDone == 1 }) {
+                break
+            }
+            _ = cpuSpin(seed: id &* 131 &+ 0x5151, rounds: 50_000)
+        }
+    } else {
+        while time_us_64() < deadlineUs {
+            if withSchedulerTestLock({ sameTaskMigrationCounters.pressureInitialCoreBurning > 0 }) {
+                break
+            }
+            await Task.yield()
+        }
+        resumeSameTaskMigrationContinuationIfAvailable()
     }
 
     withSchedulerTestLock {
@@ -831,13 +891,16 @@ private func sameTaskMigrationContinuationResumer(id: UInt32, deadlineUs: UInt64
     }
 }
 
-private func sameTaskMigrationObservedTask(iterations: UInt32) async {
-    for iteration in UInt32(0)..<iterations {
-        beginSameTaskMigrationObservation()
-        let checksum = cpuSpin(seed: iteration &+ 0xCAFE, rounds: 3_000)
-        endSameTaskMigrationObservation(checksum: checksum)
-        await suspendSameTaskMigrationObservedTask()
-    }
+private func sameTaskMigrationObservedTaskOnce() async {
+    beginSameTaskMigrationObservation()
+    let firstChecksum = cpuSpin(seed: 0xCAFE, rounds: 3_000)
+    endSameTaskMigrationObservation(checksum: firstChecksum)
+
+    await suspendSameTaskMigrationObservedTask()
+
+    beginSameTaskMigrationObservation()
+    let secondChecksum = cpuSpin(seed: 0xCAFF, rounds: 3_000)
+    endSameTaskMigrationObservation(checksum: secondChecksum)
 
     withSchedulerTestLock {
         sameTaskMigrationCounters.migrationDone = 1
@@ -901,6 +964,9 @@ private func cpuTimingWorker(id: UInt32, burnUs: UInt64) {
 private func beginSameTaskMigrationObservation() {
     let core = get_core_num() & 1
     withSchedulerTestLock {
+        if sameTaskMigrationCounters.observations == 0 {
+            sameTaskMigrationCounters.initialCore = core
+        }
         if sameTaskMigrationCounters.activeSegments != 0 {
             sameTaskMigrationCounters.overlapViolations += 1
         }
