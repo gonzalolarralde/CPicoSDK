@@ -102,6 +102,7 @@ private nonisolated(unsafe) var shimStressCoverageMask: UInt32 = 0
 /// before the alarm deadline, and background workers must continue making
 /// both-core scheduler progress while the cancelled continuations are drained.
 func alarmSleepCancellationDoesNotBlockSchedulerProgress() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetSleepCancelCounters()
 
     let sleeperCount: UInt32 = 16
@@ -171,6 +172,7 @@ func alarmSleepCancellationDoesNotBlockSchedulerProgress() async throws {
 /// repeated yield and alarm-backed sleep suspension boundaries while pressure
 /// workers give the scheduler chances to resume this task on either core.
 func taskLocalAndCurrentTaskSurviveCrossCoreResumes() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetTaskLocalCounters()
 
     let expectedMarker: UInt32 = 0x51A7_EE11
@@ -270,6 +272,7 @@ private func asyncStreamProducerConsumerUsesSchedulerOnBothCores() async throws 
 /// and job execution path never runs the same actor executor concurrently while
 /// many tasks are targeting the same small actor set.
 func defaultActorExecutorStressDoesNotOverlapOnMultipleCores() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetActorStressCounters()
 
     let actors = [
@@ -323,6 +326,7 @@ func defaultActorExecutorStressDoesNotOverlapOnMultipleCores() async throws {
 /// it. Deinit counters and SRAM stats check that completed tasks are not being
 /// retained by the shim, transport queues, or per-core run loops.
 func capturedTaskObjectsReleaseAfterScheduledWorkCompletes() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetLifetimeCounters()
 
     let before = MemoryStats.sram

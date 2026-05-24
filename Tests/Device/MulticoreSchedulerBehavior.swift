@@ -119,6 +119,7 @@ private nonisolated(unsafe) var schedulerCoverageMask: UInt32 = 0
 /// complete, and their resumed work should be observed on both core0 and core1
 /// before any heavier timing or stress assumptions are trusted.
 func multicoreBaselineRunsWorkOnBothCores() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetBaselineCounters()
 
     for workerID in UInt32(0)..<6 {
@@ -147,6 +148,7 @@ func multicoreBaselineRunsWorkOnBothCores() async throws {
 /// on different cores, their execution intervals overlap, and the measured
 /// elapsed time is closer to one burn window than two.
 func cpuBoundWorkersOverlapAndWallClockLooksParallel() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetTimingCounters()
 
     let burnMs: UInt64 = 280
@@ -193,6 +195,7 @@ func cpuBoundWorkersOverlapAndWallClockLooksParallel() async throws {
 /// execution under load, and a rough sanity bound that one core is not doing
 /// almost all of the work.
 func aggressiveYieldStressCompletesAndUsesBothCores() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetStressCounters()
 
     for workerID in UInt32(0)..<12 {
@@ -227,6 +230,7 @@ func aggressiveYieldStressCompletesAndUsesBothCores() async throws {
 /// whichever core they are running on. Seeing both cores here is valid as long
 /// as the task is only running at one moment at a time.
 func sameTaskCanResumeOnBothCoresAfterSuspension() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetSameTaskMigrationCounters()
 
     let pressureDeadlineUs = time_us_64() &+ 800_000
@@ -272,6 +276,7 @@ func sameTaskCanResumeOnBothCoresAfterSuspension() async throws {
 /// record the core that handled the continuation. The alarm-backed path should
 /// complete without missing work and should produce resumed work on both cores.
 func alarmBackedSleepWorkersCompleteOnBothCores() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetAlarmSleepCounters()
 
     for workerID in UInt32(0)..<4 {
@@ -300,6 +305,7 @@ func alarmBackedSleepWorkersCompleteOnBothCores() async throws {
 /// stays below the fatal queue-capacity edge but creates enough simultaneous
 /// producers to catch lost work, bad cross-core transport, and severe imbalance.
 func burstQueuedWorkersCompleteWithoutDroppingWork() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetBurstCounters()
 
     for workerID in UInt32(0)..<48 {
@@ -330,6 +336,7 @@ func burstQueuedWorkersCompleteWithoutDroppingWork() async throws {
 /// completion. One task performs three sleeps with increasing durations and
 /// records whether any continuation resumed substantially early or late.
 func delayedSleepTimingLooksCoherent() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetDelayedSleepCounters()
 
     Task {
@@ -356,6 +363,7 @@ func delayedSleepTimingLooksCoherent() async throws {
 /// This exercises the newlib malloc lock and Swift wrapper interaction under
 /// concurrent task execution instead of only testing CPU-bound work.
 func allocationStressCompletesOnBothCores() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetAllocationCounters()
 
     for workerID in UInt32(0)..<8 {
@@ -389,6 +397,7 @@ func allocationStressCompletesOnBothCores() async throws {
 /// ISRTrampoline. The same logical task may move between cores after sleep
 /// boundaries, but it must never overlap with itself.
 func alarmBackedSameTaskMigrationEventuallyUsesBothCores() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetAlarmMigrationCounters()
 
     let pressureDeadlineUs = time_us_64() &+ 1_200_000
@@ -423,6 +432,7 @@ func alarmBackedSameTaskMigrationEventuallyUsesBothCores() async throws {
 /// across a suspension boundary, so free may happen after a later resume and
 /// potentially on a different core than allocation.
 func memoryPressureDoesNotGrowAfterConcurrentAllocations() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetMemoryPressureCounters()
 
     let before = MemoryStats.sram
@@ -478,6 +488,7 @@ func memoryPressureDoesNotGrowAfterConcurrentAllocations() async throws {
 /// when alarm-delivered continuations immediately put pressure on the allocator
 /// and scheduler transport.
 func mixedAlarmAllocationPressureCompletes() async throws {
+    ConcurrencyRuntime.startMulticore()
     resetMixedAlarmAllocationCounters()
 
     let before = MemoryStats.sram

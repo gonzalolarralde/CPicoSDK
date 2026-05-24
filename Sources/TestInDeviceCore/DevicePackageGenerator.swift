@@ -136,6 +136,10 @@ public enum DevicePackageGenerator {
 
             @main
             struct DeviceTestMain: EmbeddedAsyncApp {
+                static func configure(with configurator: inout Configurator) {
+                    configurator.core1Enabled = false
+                }
+
                 static func setup() async {
                     stdio_init_all()
                     sleep_ms(1000)

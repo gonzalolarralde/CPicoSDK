@@ -106,11 +106,11 @@ final class SchedulerSystem {
         executor(for: CoreID.current).waitForWork()
     }
 
-    /// Starts core1 once scheduler work begins.
+    /// Starts core1 for scheduler work.
     ///
-    /// This keeps the launch path in Swift while avoiding an unused C shim. It
-    /// also waits until after the global scheduler object is initialized, so
-    /// core1 can safely enter through `cshimsRuntimeScheduler`.
+    /// This is intentionally not called from enqueue paths. `EmbeddedAsyncApp`
+    /// starts multicore after configuration is sealed, and custom app entry
+    /// points can call `ConcurrencyRuntime.startMulticore()` directly.
     func startMulticore() {
         guard CoreID.current == .core0, !multicoreEnabled else {
             return
@@ -204,8 +204,6 @@ final class SchedulerSystem {
         executorFirst: UnsafeMutableRawPointer?,
         executorSecond: UnsafeMutableRawPointer?
     ) {
-        startMulticore()
-
         let identity = TaskIdentity.resolve(job: job)
         let enqueueCore = CoreID.current
         let affinityState = affinityTable.state(for: identity)

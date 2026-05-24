@@ -36,6 +36,8 @@ private nonisolated(unsafe) var cpuStatsStreamCounters = CPUStatsStreamCounters(
 /// `CPUStats.usageEvents()` should receive reports tagged with every active
 /// scheduler core, while keeping the existing per-sample `core` identity.
 func combinedCPUUsageEventsReportsActiveCores() async throws {
+    ConcurrencyRuntime.startMulticore()
+
     guard let usageEvents = CPUStats.usageEvents() else {
         try deviceExpect(false, "CPU metrics stream was not available with CPUMetrics enabled")
         return
