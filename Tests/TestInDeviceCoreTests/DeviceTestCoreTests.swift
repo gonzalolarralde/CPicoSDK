@@ -68,6 +68,7 @@ import Testing
     let traits = TraitSelection(add: [], remove: []).resolvedTraits(defaultTraits: target.defaultTraits)
     #expect(target.board == "pico")
     #expect(target.swiftPMTriple == "armv6m-none-none-eabi")
+    #expect(!target.supportsConcurrency)
     #expect(traits.contains("Platform_RP2040"))
     #expect(traits.contains("Variant_RP2040"))
     #expect(!traits.contains("Platform_RP2350"))
@@ -84,6 +85,8 @@ import Testing
     )
     #expect(args.contains("target/rp2040.cfg"))
     #expect(args.contains(#"rtt setup 0x20000000 0x40000 "SEGGER RTT""#))
+
+    #expect(DeviceTestTarget.rp2350.supportsConcurrency)
 }
 
 @Test func generatesPackageWithConcurrencyDependencyOnlyWhenRequested() throws {

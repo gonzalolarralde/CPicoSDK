@@ -65,7 +65,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-pico-env
+      - id: setup-pico-env
+        uses: ./.github/actions/setup-pico-env
+      - name: Verify Pico SDK bundle cache
+        run: |
+          echo "pico-cache-hit=${{ steps.setup-pico-env.outputs.pico-cache-hit }}"
+          echo "PICO_SDK_BUNDLE_PATH=$PICO_SDK_BUNDLE_PATH"
+          test -d "$PICO_SDK_BUNDLE_PATH/sdk/$(jq -r '.vars.SDK_VERSION' env.json)"
+          test -d "$PICO_SDK_BUNDLE_PATH/toolchain/$(jq -r '.vars.TOOLCHAIN_VERSION' env.json)"
+          test -d "$PICO_SDK_BUNDLE_PATH/cmake/v$(jq -r '.vars.CMAKE_VERSION' env.json)"
+          test -d "$PICO_SDK_BUNDLE_PATH/ninja/v$(jq -r '.vars.NINJA_VERSION' env.json)"
+          test -d "$PICO_SDK_BUNDLE_PATH/openocd/$(jq -r '.vars.OPENOCD_VERSION' env.json)"
       - name: Build device test firmware
         run: |
           swiftly run swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all

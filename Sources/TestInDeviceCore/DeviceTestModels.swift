@@ -145,6 +145,15 @@ public enum DeviceTestTarget: String, CaseIterable, Equatable {
         }
     }
 
+    public var supportsConcurrency: Bool {
+        switch self {
+        case .rp2040:
+            return false
+        case .rp2350:
+            return true
+        }
+    }
+
     public var defaultTraits: [String] {
         switch self {
         case .rp2040:

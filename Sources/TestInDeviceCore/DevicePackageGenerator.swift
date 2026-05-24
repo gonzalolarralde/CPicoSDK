@@ -7,9 +7,10 @@ public enum DevicePackageGenerator {
         source: DeviceTestSource,
         cpicoSDKPath: URL,
         outputRoot: URL,
-        target: DeviceTestTarget = .rp2350
+        target: DeviceTestTarget = .rp2350,
+        packageDirectoryName: String? = nil
     ) throws -> GeneratedPackage {
-        let safeName = sanitize(source.metadata.name)
+        let safeName = packageDirectoryName ?? sanitize(source.metadata.name)
         let packageDirectory = outputRoot
             .appendingPathComponent(target.rawValue, isDirectory: true)
             .appendingPathComponent(safeName, isDirectory: true)
