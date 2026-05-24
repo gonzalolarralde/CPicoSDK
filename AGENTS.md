@@ -463,6 +463,17 @@ design notes, experiments, and failure analysis in `docs/`.
   actor-executor, sleep-cancellation, and task-lifetime tests still pass so the
   failure points at continuation stream traffic rather than a general scheduler
   outage.
+- Do not add production API, SPI, or scheduler/executor pass-through plumbing
+  solely to make an internal retention detail testable. Symptom: a test wants
+  to prove a negative such as "this `AsyncStream` continuation is no longer
+  retained" and starts adding counters through layers like
+  `CPUStats -> SchedulerSystem -> CoreExecutor -> RuntimeCPUUsageMeter`. That is
+  too much reach for a test. Prefer public behavioral checks such as churn under
+  pressure, later streams still receiving reports, and memory staying bounded.
+  If exact lifecycle proof is truly required, first extract the owning component
+  into a separately testable unit instead of punching diagnostic holes through
+  production scheduler boundaries. It is acceptable to leave an internal detail
+  less directly tested when the alternative makes the architecture worse.
 
 ### Serial And RTT Logging
 
