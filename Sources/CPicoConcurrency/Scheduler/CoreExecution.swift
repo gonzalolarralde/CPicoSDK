@@ -254,8 +254,8 @@ final class CoreExecutor {
     /// The public `CPUStats.usageEvents(for:)` API reaches this through
     /// `SchedulerSystem`, but the meter itself lives here because executor work
     /// is what the report is measuring.
-    var cpuUsageEvents: AsyncStream<CPUStats> {
-        cpuUsage.stream
+    func cpuUsageEvents() -> AsyncStream<CPUStats> {
+        cpuUsage.makeStream()
     }
 
     /// Records an interrupt transition observed by this executor's core.

@@ -15,16 +15,16 @@ public enum CPUCore: UInt8, Sendable {
     }
 }
 
-/// Report containing CPU usage metrics for a given time window. The `usageEvents` 
-/// async stream provides periodic reports with the latest CPU usage data, which 
+/// Report containing CPU usage metrics for a given time window. The `usageEvents`
+/// async stream provides periodic reports with the latest CPU usage data, which
 /// can be used for monitoring or debugging purposes.
-/// 
+///
 /// WARNING: *THIS IS AN EXPERIMENTAL IMPLEMENTATION* Expect inaccurate readings,
 /// missing features, and potential performance issues. Use with caution.
-/// 
-/// WARNING: To count CPU usage accurately the IRQ handlers are wrapped with 
+///
+/// WARNING: To count CPU usage accurately the IRQ handlers are wrapped with
 /// a shim that accounts for their execution time in the CPU usage metrics.
-/// Expect potential performance degradations and unexpected interactions with 
+/// Expect potential performance degradations and unexpected interactions with
 /// third-party libraries that also wrap IRQ handlers. If you experience issues,
 /// you can disable CPU monitoring and the IRQ wrapping by undefining the `CPUMetrics`
 /// flag in your build configuration.
@@ -40,6 +40,14 @@ public struct CPUStats: Sendable {
     public static func usageEvents(for core: CPUCore) -> AsyncStream<Self>? {
         #if CPUMetrics
             cshimsRuntimeScheduler.cpuUsageEvents(for: core)
+        #else
+            nil
+        #endif
+    }
+
+    public static func usageEvents() -> AsyncStream<Self>? {
+        #if CPUMetrics
+            cshimsRuntimeScheduler.cpuUsageEvents()
         #else
             nil
         #endif
@@ -205,8 +213,7 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     private static let windowUs: UInt64 = 1_000_000
 
     private let core: CoreID
-    private let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(1))
-    var stream: AsyncStream<CPUStats> { streamPair.stream }
+    private var streamContinuations: [AsyncStream<CPUStats>.Continuation] = []
 
     private var windowStartUs: UInt64 = 0
     private var lastEventUs: UInt64 = 0
@@ -229,6 +236,14 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     deinit {
         mutex.deinitialize(count: 1)
         mutex.deallocate()
+    }
+
+    mutating func makeStream() -> AsyncStream<CPUStats> {
+        let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(1))
+        mutex_enter_blocking(mutex)
+        streamContinuations.append(streamPair.continuation)
+        mutex_exit(mutex)
+        return streamPair.stream
     }
 
     @_transparent
@@ -310,7 +325,9 @@ struct RuntimeCPUUsageMeter: ~Copyable {
             interruptEvents: interruptEvents
         )
 
-        streamPair.continuation.yield(report)
+        for continuation in streamContinuations {
+            continuation.yield(report)
+        }
 
         windowStartUs = nowUs
         lastEventUs = nowUs

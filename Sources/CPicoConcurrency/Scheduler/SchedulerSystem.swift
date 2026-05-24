@@ -123,7 +123,20 @@ final class SchedulerSystem {
 
 #if CPUMetrics
     func cpuUsageEvents(for core: CPUCore) -> AsyncStream<CPUStats> {
-        executors[Int(core.rawValue)].cpuUsageEvents
+        executors[Int(core.rawValue)].cpuUsageEvents()
+    }
+
+    func cpuUsageEvents() -> AsyncStream<CPUStats> {
+        let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(2))
+        for core in CoreID.allCases {
+            let coreStream = executors[core.index].cpuUsageEvents()
+            Task {
+                for await report in coreStream {
+                    streamPair.continuation.yield(report)
+                }
+            }
+        }
+        return streamPair.stream
     }
 
     func recordInterruptCPUUsage(_ event: RuntimeCPUUsageMeter.Event, coreIndex: UInt) {
