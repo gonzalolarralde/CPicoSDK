@@ -5,9 +5,15 @@ import PackageDescription
 // GENERATOR MARK: HEADER
 // THIS FILE IS GENERATED. DO NOT EDIT, OTHERWISE CHANGES WILL BE OVERWRITTEN. CHANGE Package.swift.template INSTEAD.
 
+// Native `swift test` should exercise host-safe harness code without building
+// embedded Pico targets, which require prepared board headers and toolsets.
+let hostOnlyTests = Context.environment["CPICOSDK_HOST_TESTS"] == "1"
+
 let package = Package(
     name: "CPicoSDK",
-    products: [
+    products: hostOnlyTests ? [
+        .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
+    ] : [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .library(name: "PSRAM", targets: ["PSRAM"]),
@@ -51,7 +57,13 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.4"),
     ],
-    targets: [
+    targets: hostOnlyTests ? [
+        .target(name: "TestInDeviceCore"),
+        .testTarget(
+            name: "TestInDeviceCoreTests",
+            dependencies: ["TestInDeviceCore"]
+        ),
+    ] : [
         // GENERATOR MARK: TARGETS
         .target(name: "_CPicoSDK_pico"),
         .target(name: "_CPicoSDK_pico2"),

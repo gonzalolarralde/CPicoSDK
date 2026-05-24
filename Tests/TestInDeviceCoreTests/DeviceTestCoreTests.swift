@@ -28,10 +28,36 @@ import Testing
     let metadata = try DeviceTestParser.parseMetadata(from: source, fallbackName: "Fallback")
     #expect(metadata.name == "HelloRTT")
     #expect(metadata.timeoutMilliseconds == 5_000)
+    #expect(metadata.buildType == .debug)
     #expect(metadata.concurrency == false)
     #expect(metadata.traits.add == ["StdIO_RTT", "CPUMetrics"])
     #expect(metadata.expectations.stdout?.equals == "hello\n")
     #expect(metadata.expectations.duration?.maxMilliseconds == 500)
+}
+
+@Test func defaultsBuildTypeToDebugAndParsesExplicitBuildTypes() throws {
+    let defaultMetadata = try DeviceTestParser.parseMetadata(from: """
+    //% -- test yaml
+    //% name: DefaultBuild
+    //% -----------
+    """, fallbackName: "Fallback")
+    #expect(defaultMetadata.buildType == .debug)
+
+    let releaseMetadata = try DeviceTestParser.parseMetadata(from: """
+    //% -- test yaml
+    //% name: ReleaseBuild
+    //% buildType: Release
+    //% -----------
+    """, fallbackName: "Fallback")
+    #expect(releaseMetadata.buildType == .release)
+
+    let aliasMetadata = try DeviceTestParser.parseMetadata(from: """
+    //% -- test yaml
+    //% name: AliasBuild
+    //% buildType: RelWithDebugInfo
+    //% -----------
+    """, fallbackName: "Fallback")
+    #expect(aliasMetadata.buildType == .releaseWithDebugInfo)
 }
 
 @Test func discoversTopLevelNoArgumentFunctions() {
@@ -105,6 +131,7 @@ import Testing
 
     let runner = DevicePackageGenerator.runnerSource(for: source)
     #expect(runner.contains("EmbeddedAsyncApp"))
+    #expect(runner.contains("deviceDiagnostic"))
     #expect(runner.contains("try await asyncTest()"))
 }
 
@@ -167,6 +194,22 @@ import Testing
     #expect(transcript.runPassed)
     #expect(transcript.durationMilliseconds == 2)
     #expect(transcript.stdout == "hello\n")
+}
+
+@Test func parsesDiagnosticsOutsideStdout() {
+    let raw = """
+    visible
+    __CPICOSDK_DEVICE_DIAGNOSTIC__|bench units=10 c0=5 c1=5
+    __CPICOSDK_DEVICE_TEST__|run-end|status=passed|durationMs=2
+    """
+
+    let transcript = DeviceResultParser.parse(raw)
+    #expect(transcript.sawRunEnd)
+    #expect(transcript.stdout == "visible\n")
+    #expect(transcript.diagnostics == ["bench units=10 c0=5 c1=5"])
+
+    let expectations = DeviceExpectations(stdout: StdoutExpectation(equals: "visible\n"))
+    #expect(DeviceResultParser.evaluate(transcript: transcript, expectations: expectations).passed)
 }
 
 @Test func waitsForCompleteRunEndAndParsesEmbeddedMarkers() {

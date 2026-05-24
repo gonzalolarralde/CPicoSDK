@@ -2,6 +2,7 @@ import Foundation
 
 public enum DeviceProtocol {
     public static let prefix = "__CPICOSDK_DEVICE_TEST__|"
+    public static let diagnosticPrefix = "__CPICOSDK_DEVICE_DIAGNOSTIC__|"
 }
 
 public struct DeviceProtocolEvent: Equatable {
@@ -17,6 +18,7 @@ public struct DeviceProtocolEvent: Equatable {
 public struct DeviceTranscript: Equatable {
     public var events: [DeviceProtocolEvent]
     public var stdout: String
+    public var diagnostics: [String]
     public var sawRunEnd: Bool
     public var runPassed: Bool
     public var durationMilliseconds: Int?
@@ -25,6 +27,7 @@ public struct DeviceTranscript: Equatable {
     public init(
         events: [DeviceProtocolEvent],
         stdout: String,
+        diagnostics: [String] = [],
         sawRunEnd: Bool,
         runPassed: Bool,
         durationMilliseconds: Int?,
@@ -32,6 +35,7 @@ public struct DeviceTranscript: Equatable {
     ) {
         self.events = events
         self.stdout = stdout
+        self.diagnostics = diagnostics
         self.sawRunEnd = sawRunEnd
         self.runPassed = runPassed
         self.durationMilliseconds = durationMilliseconds
@@ -43,6 +47,7 @@ public enum DeviceResultParser {
     public static func parse(_ rawOutput: String) -> DeviceTranscript {
         let normalized = rawOutput.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
         var stdout = ""
+        var diagnostics: [String] = []
         var events: [DeviceProtocolEvent] = []
         var sawRunEnd = false
         var runPassed = false
@@ -51,35 +56,43 @@ public enum DeviceResultParser {
 
         var cursor = normalized.startIndex
         while cursor < normalized.endIndex {
-            guard let prefixRange = normalized[cursor...].range(of: DeviceProtocol.prefix) else {
+            guard let marker = nextMarker(in: normalized, from: cursor) else {
                 stdout += String(normalized[cursor...])
                 break
             }
 
-            stdout += String(normalized[cursor..<prefixRange.lowerBound])
-            let payloadStart = prefixRange.upperBound
+            stdout += String(normalized[cursor..<marker.range.lowerBound])
+            let payloadStart = marker.range.upperBound
             let nextNewline = normalized[payloadStart...].firstIndex(of: "\n")
-            let nextPrefix = normalized[payloadStart...].range(of: DeviceProtocol.prefix)?.lowerBound
-            let payloadEnd = [nextNewline, nextPrefix].compactMap { $0 }.min() ?? normalized.endIndex
-            let event = parseEvent(String(normalized[payloadStart..<payloadEnd]))
-            if event.name == "run-end" {
-                if let status = event.fields["status"],
-                   let duration = event.fields["durationMs"].flatMap(Int.init) {
-                    sawRunEnd = true
-                    runPassed = status == "passed"
-                    durationMilliseconds = duration
+            let nextMarker = nextMarker(in: normalized, from: payloadStart)?.range.lowerBound
+            let payloadEnd = [nextNewline, nextMarker].compactMap { $0 }.min() ?? normalized.endIndex
+            let payload = String(normalized[payloadStart..<payloadEnd])
+
+            switch marker.kind {
+            case .event:
+                let event = parseEvent(payload)
+                if event.name == "run-end" {
+                    if let status = event.fields["status"],
+                       let duration = event.fields["durationMs"].flatMap(Int.init) {
+                        sawRunEnd = true
+                        runPassed = status == "passed"
+                        durationMilliseconds = duration
+                    }
+                } else if event.name == "test-end",
+                          let name = event.fields["name"],
+                          let status = event.fields["status"],
+                          let duration = event.fields["durationMs"].flatMap(Int.init) {
+                    functionDurations.append(DeviceFunctionDuration(
+                        name: name,
+                        durationMilliseconds: duration,
+                        passed: status == "passed"
+                    ))
                 }
-            } else if event.name == "test-end",
-                      let name = event.fields["name"],
-                      let status = event.fields["status"],
-                      let duration = event.fields["durationMs"].flatMap(Int.init) {
-                functionDurations.append(DeviceFunctionDuration(
-                    name: name,
-                    durationMilliseconds: duration,
-                    passed: status == "passed"
-                ))
+                events.append(event)
+            case .diagnostic:
+                diagnostics.append(payload)
             }
-            events.append(event)
+
             if payloadEnd < normalized.endIndex, normalized[payloadEnd] == "\n" {
                 cursor = normalized.index(after: payloadEnd)
             } else {
@@ -90,6 +103,7 @@ public enum DeviceResultParser {
         return DeviceTranscript(
             events: events,
             stdout: stdout,
+            diagnostics: diagnostics,
             sawRunEnd: sawRunEnd,
             runPassed: runPassed,
             durationMilliseconds: durationMilliseconds,
@@ -150,6 +164,31 @@ public enum DeviceResultParser {
             fields[key] = value
         }
         return DeviceProtocolEvent(name: name, fields: fields)
+    }
+
+    private enum MarkerKind {
+        case event
+        case diagnostic
+    }
+
+    private static func nextMarker(in string: String, from cursor: String.Index) -> (kind: MarkerKind, range: Range<String.Index>)? {
+        let searchRange = string[cursor...]
+        let eventRange = searchRange.range(of: DeviceProtocol.prefix)
+        let diagnosticRange = searchRange.range(of: DeviceProtocol.diagnosticPrefix)
+
+        switch (eventRange, diagnosticRange) {
+        case (nil, nil):
+            return nil
+        case (let eventRange?, nil):
+            return (.event, eventRange)
+        case (nil, let diagnosticRange?):
+            return (.diagnostic, diagnosticRange)
+        case (let eventRange?, let diagnosticRange?):
+            if eventRange.lowerBound <= diagnosticRange.lowerBound {
+                return (.event, eventRange)
+            }
+            return (.diagnostic, diagnosticRange)
+        }
     }
 
     private static func debug(_ string: String) -> String {

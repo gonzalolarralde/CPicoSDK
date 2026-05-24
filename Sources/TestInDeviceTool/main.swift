@@ -30,6 +30,7 @@ struct Options {
     var buildOnly: Bool
     var adapterSpeed: Int
     var target: DeviceTestTarget
+    var buildTypeOverride: DeviceBuildType?
 
     static func parse(_ arguments: [String]) throws -> Options {
         var packageDirectory: URL?
@@ -40,6 +41,7 @@ struct Options {
         var buildOnly = false
         var adapterSpeed = 5_000
         var target = DeviceTestTarget.rp2350
+        var buildTypeOverride: DeviceBuildType?
         var index = arguments.startIndex
 
         func takeValue(for option: String) throws -> String {
@@ -70,6 +72,8 @@ struct Options {
                 adapterSpeed = Int(try takeValue(for: argument)) ?? adapterSpeed
             case "--target", "--device":
                 target = try DeviceTestTarget(argument: try takeValue(for: argument))
+            case "--build-type":
+                buildTypeOverride = try DeviceBuildType(metadataValue: try takeValue(for: argument))
             case "--allow-writing-to-package-directory", "--disable-sandbox":
                 break
             case "--allow-network-connections":
@@ -95,12 +99,13 @@ struct Options {
             listOnly: listOnly,
             buildOnly: buildOnly,
             adapterSpeed: adapterSpeed,
-            target: target
+            target: target,
+            buildTypeOverride: buildTypeOverride
         )
     }
 
     static let help = """
-    Usage: swift package test-in-device [--target rp2350|rp2040] [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
+    Usage: swift package test-in-device [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
 
     Tests are discovered under Tests/Device/**/*.swift. Each file must start with a //% metadata block.
     """
@@ -122,6 +127,13 @@ struct DeviceHarnessRunner {
         }
 
         var tests = try files.map(DeviceTestParser.load(fileURL:))
+        if let buildTypeOverride = options.buildTypeOverride {
+            tests = tests.map { source in
+                var source = source
+                source.metadata.buildType = buildTypeOverride
+                return source
+            }
+        }
         if let filter = options.filter {
             tests = tests.filter { $0.metadata.name.contains(filter) || $0.fileURL.lastPathComponent.contains(filter) }
         }
@@ -164,7 +176,7 @@ struct DeviceHarnessRunner {
                     packageDirectoryName: "Current"
                 )
                 let buildStartedAt = Date()
-                let firmware = try build(generated: generated)
+                let firmware = try build(generated: generated, buildType: test.metadata.buildType)
                 let buildElapsed = Date().timeIntervalSince(buildStartedAt)
                 let firmwareSize = firmwareSizeLabel(url: firmware.uf2URL)
                 if options.buildOnly {
@@ -182,10 +194,12 @@ struct DeviceHarnessRunner {
                 if evaluation.passed {
                     logLine("\(timing) PASS")
                     logFunctionDurations(transcript.functionDurations)
+                    logDiagnostics(transcript.diagnostics)
                 } else {
                     allPassed = false
                     logLine("\(timing) FAIL: \(evaluation.reason ?? "unknown failure")")
                     logFunctionDurations(transcript.functionDurations)
+                    logDiagnostics(transcript.diagnostics)
                     if !transcript.stdout.isEmpty {
                         log("[test-in-device] Captured stdout:\n\(transcript.stdout)")
                     }
@@ -198,20 +212,31 @@ struct DeviceHarnessRunner {
         return allPassed
     }
 
-    private func build(generated: GeneratedPackage) throws -> BuiltFirmware {
+    private func logDiagnostics(_ diagnostics: [String]) {
+        guard !diagnostics.isEmpty else {
+            return
+        }
+        log("[test-in-device] Diagnostics:\n\(diagnostics.joined(separator: "\n"))\n")
+    }
+
+    private func build(generated: GeneratedPackage, buildType: DeviceBuildType) throws -> BuiltFirmware {
         let sharedBundleExport = try sharedPicoSDKBundleExportScript()
         let script = """
         set -euo pipefail
         cd \(shellQuote(generated.packageDirectory.path))
-        export BUILD_TYPE="RelWithDebInfo"
+        export BUILD_TYPE="\(buildType.rawValue)"
         export BOARD="\(options.target.board)"
         export BUILD_SCRIPT_VERSION=1
         \(sharedBundleExport)
         export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"
         export PREPARATION_BUNDLE_STAMP="$PREPARATION_SCRIPT_PATH.pico-sdk-bundle-path"
+        export PREPARATION_BUILD_TYPE_STAMP="$PREPARATION_SCRIPT_PATH.build-type"
         export GENERATED_INPUTS_CHANGED="\(generated.inputsChanged ? "1" : "0")"
         PREPARATION_INPUTS_CHANGED="$GENERATED_INPUTS_CHANGED"
         if [ ! -f "$PREPARATION_BUNDLE_STAMP" ] || [ "$(cat "$PREPARATION_BUNDLE_STAMP")" != "${PICO_SDK_BUNDLE_PATH:-}" ]; then
+          PREPARATION_INPUTS_CHANGED="1"
+        fi
+        if [ ! -f "$PREPARATION_BUILD_TYPE_STAMP" ] || [ "$(cat "$PREPARATION_BUILD_TYPE_STAMP")" != "$BUILD_TYPE" ]; then
           PREPARATION_INPUTS_CHANGED="1"
         fi
         if command -v swiftly >/dev/null 2>&1; then
@@ -234,6 +259,7 @@ struct DeviceHarnessRunner {
             --disable-vscode-settings \\
             --disable-sourcekit-lsp-settings
           printf '%s' "${PICO_SDK_BUNDLE_PATH:-}" > "$PREPARATION_BUNDLE_STAMP"
+          printf '%s' "$BUILD_TYPE" > "$PREPARATION_BUILD_TYPE_STAMP"
         fi
         source "$PREPARATION_SCRIPT_PATH"
         "$SWIFTLY_PATH" install

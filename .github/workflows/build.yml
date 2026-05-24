@@ -59,14 +59,26 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+  test-root:
+    name: Host Swift Tests
+    needs: prepare-deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-pico-env
+      - name: Run host Swift tests
+        run: |
+          CPICOSDK_HOST_TESTS=1 swiftly run swift test
+
   build-device-tests:
-    name: Device Test Firmware Build (${{ matrix.target }})
+    name: Device Test Firmware Build (${{ matrix.target }}, ${{ matrix.build_type }})
     needs: prepare-deps
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         target: [rp2350, rp2040]
+        build_type: [Debug, Release, RelWithDebInfo, MinSizeRel]
     steps:
       - uses: actions/checkout@v5
       - id: setup-pico-env
@@ -80,9 +92,9 @@ jobs:
           test -d "$PICO_SDK_BUNDLE_PATH/cmake/v$(jq -r '.vars.CMAKE_VERSION' env.json)"
           test -d "$PICO_SDK_BUNDLE_PATH/ninja/v$(jq -r '.vars.NINJA_VERSION' env.json)"
           test -d "$PICO_SDK_BUNDLE_PATH/openocd/$(jq -r '.vars.OPENOCD_VERSION' env.json)"
-      - name: Build ${{ matrix.target }} device test firmware
+      - name: Build ${{ matrix.target }} ${{ matrix.build_type }} device test firmware
         run: |
-          swiftly run swift package --disable-sandbox test-in-device --target "${{ matrix.target }}" --build-only --allow-writing-to-package-directory --allow-network-connections all
+          swiftly run swift package --disable-sandbox test-in-device --target "${{ matrix.target }}" --build-type "${{ matrix.build_type }}" --build-only --allow-writing-to-package-directory --allow-network-connections all
 
   build-example:
     name: Example Build

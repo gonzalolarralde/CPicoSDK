@@ -31,7 +31,7 @@ public enum DevicePackageGenerator {
             to: sourcesDirectory.appendingPathComponent("Runner.swift")
         )
 
-        let elfURL = packageDirectory.appendingPathComponent(".build/\(target.swiftPMTriple)/release/\(productName).elf")
+        let elfURL = packageDirectory.appendingPathComponent(".build/\(target.swiftPMTriple)/\(source.metadata.buildType.swiftConfiguration)/\(productName).elf")
         return GeneratedPackage(
             packageDirectory: packageDirectory,
             elfURL: elfURL,
@@ -114,6 +114,10 @@ public enum DevicePackageGenerator {
                 }
             }
 
+            public func deviceDiagnostic(_ message: String) {
+                print("__CPICOSDK_DEVICE_DIAGNOSTIC__|\\(message)")
+            }
+
             @discardableResult
             func __runDeviceTest(_ name: String, _ body: () async throws -> Void) async -> Bool {
                 print("__CPICOSDK_DEVICE_TEST__|test-start|name=\\(name)")
@@ -163,6 +167,10 @@ public enum DevicePackageGenerator {
                 if !condition() {
                     throw DeviceTestFailure(message)
                 }
+            }
+
+            public func deviceDiagnostic(_ message: String) {
+                print("__CPICOSDK_DEVICE_DIAGNOSTIC__|\\(message)")
             }
 
             @discardableResult
