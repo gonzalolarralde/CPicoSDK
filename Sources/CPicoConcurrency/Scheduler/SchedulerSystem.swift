@@ -1,5 +1,6 @@
 import ConcurrencyShims
 import CPicoSDK
+import Synchronization
 
 /// Top-level facade for embedded Swift concurrency scheduling.
 ///
@@ -16,6 +17,16 @@ final class SchedulerSystem {
     private var affinityTable = AffinityTable()
     private var multicoreEnabled = false
     private var didRunJobByCore: [2 of Bool] = [false, false]
+#if CPUMetrics
+    private struct CPUUsageSnapshotState {
+        var reports: [2 of CPUStats?] = [nil, nil]
+        var reportSequences: [2 of UInt64] = [0, 0]
+        var sequence: UInt64 = 0
+        var nextCoreIndex: Int = 0
+    }
+
+    private let cpuUsageSnapshots = Mutex(CPUUsageSnapshotState())
+#endif
 
     /// Enqueues a Swift runtime job that should run as soon as its destination
     /// core polls.
@@ -95,6 +106,11 @@ final class SchedulerSystem {
         let executor = executor(for: core)
         didRunJobByCore[core.index] = false
         executor.pollOnce()
+#if CPUMetrics
+        if core == .core0 {
+            collectCPUUsageReports()
+        }
+#endif
         return didRunJobByCore[core.index] ? 1 : 0
     }
 
@@ -123,20 +139,11 @@ final class SchedulerSystem {
 
 #if CPUMetrics
     func cpuUsageEvents(for core: CPUCore) -> AsyncStream<CPUStats> {
-        executors[Int(core.rawValue)].cpuUsageEvents()
+        makeCPUUsageStream(core: core)
     }
 
     func cpuUsageEvents() -> AsyncStream<CPUStats> {
-        let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(2))
-        for core in CoreID.allCases {
-            let coreStream = executors[core.index].cpuUsageEvents()
-            Task {
-                for await report in coreStream {
-                    streamPair.continuation.yield(report)
-                }
-            }
-        }
-        return streamPair.stream
+        makeCPUUsageStream(core: nil)
     }
 
     func recordInterruptCPUUsage(_ event: RuntimeCPUUsageMeter.Event, coreIndex: UInt) {
@@ -144,6 +151,60 @@ final class SchedulerSystem {
             fatalError("[CPicoConcurrency] CPU metrics received invalid core index \(coreIndex)")
         }
         executors[Int(coreIndex)].recordInterruptCPUUsage(event: event)
+    }
+
+    private func makeCPUUsageStream(core: CPUCore?) -> AsyncStream<CPUStats> {
+        var sequence: UInt64 = 0
+        return AsyncStream<CPUStats> {
+            guard let sample = await self.nextCPUUsageReport(core: core, after: sequence) else {
+                return nil
+            }
+            sequence = sample.sequence
+            return sample.report
+        }
+    }
+
+    private func nextCPUUsageReport(core: CPUCore?, after sequence: UInt64) async -> (report: CPUStats, sequence: UInt64)? {
+        while true {
+            if let report = latestCPUUsageReport(core: core, after: sequence) {
+                return report
+            }
+            await Task.yield()
+        }
+    }
+
+    private func latestCPUUsageReport(core: CPUCore?, after sequence: UInt64) -> (report: CPUStats, sequence: UInt64)? {
+        cpuUsageSnapshots.withLock { state in
+            if let core {
+                let index = Int(core.rawValue)
+                guard state.reportSequences[index] > sequence, let report = state.reports[index] else {
+                    return nil
+                }
+                return (report, state.reportSequences[index])
+            }
+
+            for offset in 0..<CoreID.allCases.count {
+                let index = (state.nextCoreIndex + offset) % CoreID.allCases.count
+                if state.reportSequences[index] > sequence, let report = state.reports[index] {
+                    state.nextCoreIndex = (index + 1) % CoreID.allCases.count
+                    return (report, state.reportSequences[index])
+                }
+            }
+
+            return nil
+        }
+    }
+
+    private func collectCPUUsageReports() {
+        for core in CoreID.allCases {
+            if let report = executors[core.index].cpuUsageReportIfNeeded() {
+                cpuUsageSnapshots.withLock { state in
+                    state.sequence &+= 1
+                    state.reports[core.index] = report
+                    state.reportSequences[core.index] = state.sequence
+                }
+            }
+        }
     }
 #endif
 

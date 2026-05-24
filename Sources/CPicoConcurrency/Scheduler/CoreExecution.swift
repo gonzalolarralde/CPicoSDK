@@ -249,18 +249,15 @@ final class CoreExecutor {
     }
 
 #if CPUMetrics
-    /// Stream of usage reports produced by this executor's core-local meter.
-    ///
-    /// The public `CPUStats.usageEvents(for:)` API reaches this through
-    /// `SchedulerSystem`, but the meter itself lives here because executor work
-    /// is what the report is measuring.
-    func cpuUsageEvents() -> AsyncStream<CPUStats> {
-        cpuUsage.makeStream()
-    }
-
     /// Records an interrupt transition observed by this executor's core.
     func recordInterruptCPUUsage(event: RuntimeCPUUsageMeter.Event) {
         cpuUsage.record(event: event)
+    }
+
+    /// Returns a completed CPU usage report when this executor's metering
+    /// window has elapsed.
+    func cpuUsageReportIfNeeded() -> CPUStats? {
+        cpuUsage.reportIfNeeded()
     }
 #endif
 
@@ -277,7 +274,6 @@ final class CoreExecutor {
         pollAsyncContext()
     #if CPUMetrics
         cpuUsage.record(event: .exitTask(name: "runtimeScheduler.pollOnce"))
-        cpuUsage.reportIfNeeded()
     #endif
     }
 

@@ -213,8 +213,6 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     private static let windowUs: UInt64 = 1_000_000
 
     private let core: CoreID
-    private var streamContinuations: [AsyncStream<CPUStats>.Continuation] = []
-
     private var windowStartUs: UInt64 = 0
     private var lastEventUs: UInt64 = 0
 
@@ -238,19 +236,10 @@ struct RuntimeCPUUsageMeter: ~Copyable {
         mutex.deallocate()
     }
 
-    mutating func makeStream() -> AsyncStream<CPUStats> {
-        let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(1))
-        mutex_enter_blocking(mutex)
-        streamContinuations.append(streamPair.continuation)
-        mutex_exit(mutex)
-        return streamPair.stream
-    }
-
     @_transparent
     mutating func record(event: Event) {
         guard mutex_try_enter(mutex, nil) else {
             // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
             return
         }
 
@@ -280,7 +269,6 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     mutating func sample() {
         guard mutex_try_enter(mutex, nil) else {
             // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
             return
         }
 
@@ -293,25 +281,22 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     }
 
     @_transparent
-    mutating func reportIfNeeded() {
+    mutating func reportIfNeeded() -> CPUStats? {
         guard mutex_try_enter(mutex, nil) else {
             // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
-            return
-        }
-
-        defer {
-            mutex_exit(mutex)
+            return nil
         }
 
         let nowUs = time_us_64()
 
         guard windowStartUs != 0 else {
-            return
+            mutex_exit(mutex)
+            return nil
         }
 
         guard nowUs &- windowStartUs >= Self.windowUs else {
-            return
+            mutex_exit(mutex)
+            return nil
         }
 
         let totalUs = taskUs &+ interruptUs &+ idleUs
@@ -325,16 +310,16 @@ struct RuntimeCPUUsageMeter: ~Copyable {
             interruptEvents: interruptEvents
         )
 
-        for continuation in streamContinuations {
-            continuation.yield(report)
-        }
-
         windowStartUs = nowUs
         lastEventUs = nowUs
         taskUs = 0
         interruptUs = 0
         idleUs = 0
         interruptEvents = 0
+
+        mutex_exit(mutex)
+
+        return report
     }
 
     @_transparent
