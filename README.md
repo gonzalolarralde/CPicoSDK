@@ -789,6 +789,7 @@ followed by top-level no-argument test functions:
 //% -- test yaml
 //% name: HelloRTT
 //% timeout: 5s
+//% buildType: RelWithDebInfo
 //% traits:
 //%   add: [StdIO_RTT]
 //% expect:
@@ -807,6 +808,10 @@ func helloRTT() throws {
 }
 ```
 
+`buildType` is optional and defaults to `Debug`. Supported values are `Debug`,
+`Release`, `RelWithDebInfo`, and `MinSizeRel`; benchmark-style tests should
+usually use `Release`.
+
 Useful commands:
 
 ```bash
@@ -821,13 +826,16 @@ swift package --disable-sandbox test-in-device --filter HelloRTT --allow-writing
 
 # Generate and build one device-test firmware without flashing/running it
 swift package --disable-sandbox test-in-device --filter HelloRTT --build-only --allow-writing-to-package-directory --allow-network-connections all
+
+# Override test metadata and build all device-test firmware as Release
+swift package --disable-sandbox test-in-device --build-type Release --build-only --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 Use `--build-only` when you want to verify that device tests still generate,
 compile, and link without programming hardware. Full device runs require a
 connected target and will program and reset it.
 
-The harness generates one ephemeral SwiftPM package per test in the plugin work
+The harness reuses a generated SwiftPM package per target in the plugin work
 directory, builds it against the local CPicoSDK checkout, programs the device
 with OpenOCD, captures RTT output, and evaluates controller-side expectations.
 Result lines report build, program, host run/capture time, device-reported time,

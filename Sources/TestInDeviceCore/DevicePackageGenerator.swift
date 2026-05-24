@@ -31,7 +31,7 @@ public enum DevicePackageGenerator {
             to: sourcesDirectory.appendingPathComponent("Runner.swift")
         )
 
-        let elfURL = packageDirectory.appendingPathComponent(".build/\(target.swiftPMTriple)/release/\(productName).elf")
+        let elfURL = packageDirectory.appendingPathComponent(".build/\(target.swiftPMTriple)/\(source.metadata.buildType.swiftConfiguration)/\(productName).elf")
         return GeneratedPackage(
             packageDirectory: packageDirectory,
             elfURL: elfURL,

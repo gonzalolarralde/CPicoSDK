@@ -35,6 +35,7 @@ public enum DeviceTestHarnessError: Error, CustomStringConvertible, Equatable {
 public struct DeviceTestMetadata: Equatable {
     public var name: String
     public var timeoutMilliseconds: Int
+    public var buildType: DeviceBuildType
     public var concurrency: Bool
     public var traits: TraitSelection
     public var expectations: DeviceExpectations
@@ -42,15 +43,50 @@ public struct DeviceTestMetadata: Equatable {
     public init(
         name: String,
         timeoutMilliseconds: Int = 5_000,
+        buildType: DeviceBuildType = .debug,
         concurrency: Bool = false,
         traits: TraitSelection = TraitSelection(),
         expectations: DeviceExpectations = DeviceExpectations()
     ) {
         self.name = name
         self.timeoutMilliseconds = timeoutMilliseconds
+        self.buildType = buildType
         self.concurrency = concurrency
         self.traits = traits
         self.expectations = expectations
+    }
+}
+
+public enum DeviceBuildType: String, CaseIterable, Equatable {
+    case debug = "Debug"
+    case release = "Release"
+    case releaseWithDebugInfo = "RelWithDebInfo"
+    case minimumSizeRelease = "MinSizeRel"
+
+    public init(metadataValue: String) throws {
+        switch metadataValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "debug":
+            self = .debug
+        case "release":
+            self = .release
+        case "relwithdebinfo", "relwithdebuginfo":
+            self = .releaseWithDebugInfo
+        case "minsizerel", "minimumsizerelease":
+            self = .minimumSizeRelease
+        default:
+            throw DeviceTestHarnessError.invalidMetadata(
+                "unknown buildType '\(metadataValue)'; expected Debug, Release, RelWithDebInfo, or MinSizeRel"
+            )
+        }
+    }
+
+    public var swiftConfiguration: String {
+        switch self {
+        case .debug:
+            return "debug"
+        case .release, .releaseWithDebugInfo, .minimumSizeRelease:
+            return "release"
+        }
     }
 }
 

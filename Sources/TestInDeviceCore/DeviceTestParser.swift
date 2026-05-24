@@ -70,6 +70,8 @@ public enum DeviceTestParser {
                     metadata.name = parseString(value)
                 } else if let value = scalarValue(line, key: "timeout") {
                     metadata.timeoutMilliseconds = try parseDurationMilliseconds(value)
+                } else if let value = scalarValue(line, key: "buildType") {
+                    metadata.buildType = try DeviceBuildType(metadataValue: parseString(value))
                 } else if let value = scalarValue(line, key: "concurrency") {
                     metadata.concurrency = try parseBool(value)
                 }

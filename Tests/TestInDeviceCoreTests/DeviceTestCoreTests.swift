@@ -28,10 +28,36 @@ import Testing
     let metadata = try DeviceTestParser.parseMetadata(from: source, fallbackName: "Fallback")
     #expect(metadata.name == "HelloRTT")
     #expect(metadata.timeoutMilliseconds == 5_000)
+    #expect(metadata.buildType == .debug)
     #expect(metadata.concurrency == false)
     #expect(metadata.traits.add == ["StdIO_RTT", "CPUMetrics"])
     #expect(metadata.expectations.stdout?.equals == "hello\n")
     #expect(metadata.expectations.duration?.maxMilliseconds == 500)
+}
+
+@Test func defaultsBuildTypeToDebugAndParsesExplicitBuildTypes() throws {
+    let defaultMetadata = try DeviceTestParser.parseMetadata(from: """
+    //% -- test yaml
+    //% name: DefaultBuild
+    //% -----------
+    """, fallbackName: "Fallback")
+    #expect(defaultMetadata.buildType == .debug)
+
+    let releaseMetadata = try DeviceTestParser.parseMetadata(from: """
+    //% -- test yaml
+    //% name: ReleaseBuild
+    //% buildType: Release
+    //% -----------
+    """, fallbackName: "Fallback")
+    #expect(releaseMetadata.buildType == .release)
+
+    let aliasMetadata = try DeviceTestParser.parseMetadata(from: """
+    //% -- test yaml
+    //% name: AliasBuild
+    //% buildType: RelWithDebugInfo
+    //% -----------
+    """, fallbackName: "Fallback")
+    #expect(aliasMetadata.buildType == .releaseWithDebugInfo)
 }
 
 @Test func discoversTopLevelNoArgumentFunctions() {
