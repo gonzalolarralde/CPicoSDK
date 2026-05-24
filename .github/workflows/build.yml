@@ -60,15 +60,15 @@ jobs:
           ./build.sh
 
   test-root:
-    name: Root Swift Tests
+    name: Host Swift Tests
     needs: prepare-deps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-pico-env
-      - name: Run Swift package tests
+      - name: Run host Swift tests
         run: |
-          swiftly run swift test
+          CPICOSDK_HOST_TESTS=1 swiftly run swift test
 
   build-device-tests:
     name: Device Test Firmware Build (${{ matrix.target }}, ${{ matrix.build_type }})
