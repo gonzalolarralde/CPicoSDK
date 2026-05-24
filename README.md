@@ -701,10 +701,21 @@ Reasons:
 Current implementation shape:
 
 - the toolchain-provided `libswift_Concurrency.a` is used
+- multicore concurrency depends on a Swift build/runtime that supports the
+  embedded threading hooks used by `ConcurrencyShims`
 - the low-level runtime hook exports remain in [Sources/ConcurrencyShims/ConcurrencyShims.c](Sources/ConcurrencyShims/ConcurrencyShims.c)
 - the scheduling backend now lives in [Sources/CPicoConcurrency/RuntimeScheduler.swift](Sources/CPicoConcurrency/RuntimeScheduler.swift)
 - that scheduler uses Pico SDK `async_context` rather than a handwritten queue loop
 - on Linux, the build can fall back to vendored embedded `_Concurrency` artifacts under [Vendor/EmbeddedSwiftRuntime](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime) when the toolchain packaging is incomplete
+
+Maintainer note: the concurrency path is not using an arbitrary stock embedded
+Swift runtime in isolation. Multicore scheduler support relies on a modified
+Swift build with embedded threading support, plus the matching shim symbols in
+`Sources/ConcurrencyShims`. If `SWIFT_VERSION` is changed in `env.json`, and
+concurrency support is expected to keep working, the replacement Swift snapshot
+must include the same threading/runtime support or an equivalent update to the
+shims and vendored fallback artifacts. A plain snapshot that can compile
+Embedded Swift code is not enough to prove multicore concurrency is supported.
 
 The current state is best described as:
 
