@@ -1,6 +1,7 @@
 //% -- test yaml
 //% name: SchedulerSingleCoreBenchmarks
 //% timeout: 8s
+//% buildType: Release
 //% concurrency: true
 //% traits:
 //%   add: [StdIO_RTT]
@@ -56,7 +57,13 @@ func singleCoreBusyWorkThroughputBaseline() async throws {
     let snapshot = withSingleCoreBenchmarkLock { singleCoreBenchmarkCounters }
     let unitsPerSecond = elapsedMs > 0 ? UInt64(snapshot.units) * 1_000 / elapsedMs : 0
 
-    print("bench-single-throughput workers=\(workerCount) units=\(snapshot.units) ups=\(unitsPerSecond) elapsed=\(elapsedMs) c0=\(snapshot.core0Hits) c1=\(snapshot.core1Hits) sum=\(snapshot.checksum)")
+    // Diagnostic fields: workers is the number of tasks, units is completed
+    // fixed-cost spin chunks, ups is units/sec, elapsed is wall time in ms,
+    // c0/c1 are observed execution-core hits, and sum prevents dead-code loss.
+    // score is units/sec, so higher is better.
+    deviceDiagnostic("bench-single-throughput")
+    deviceDiagnostic("  raw: workers=\(workerCount), units=\(snapshot.units), elapsedMs=\(elapsedMs), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  score workPerSecond=\(unitsPerSecond) (higher is better)")
 
     try deviceExpect(completed, "single-core benchmark workers did not complete")
     try deviceExpect(snapshot.done == workerCount, "single-core benchmark lost worker completions")
