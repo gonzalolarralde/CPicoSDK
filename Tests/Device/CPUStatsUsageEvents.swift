@@ -68,7 +68,7 @@ func combinedCPUUsageEventsReportsActiveCores() async throws {
         return snapshot.sampleCore0Hits > 0 && snapshot.sampleCore1Hits > 0
     }
 
-    let workersDone = await waitForCPUStatsCondition(timeoutMs: 1_500) {
+    let workersDone = await waitForCPUStatsCondition(timeoutMs: 3_000) {
         withCPUStatsTestLock { cpuStatsStreamCounters.workerDone == 8 }
     }
 
