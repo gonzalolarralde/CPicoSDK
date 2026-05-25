@@ -18,7 +18,7 @@
 
 /// The type of memory for an allocator. This is used to categorize allocators and
 /// provide information about the type of memory being allocated.
-public enum MemoryType: String {
+public enum MemoryType: String, Sendable {
     case sram = "SRAM"
     case psram = "PSRAM"
 }
@@ -360,7 +360,7 @@ private func sbrk(_ incr: Int) -> UnsafeMutableRawPointer?
 /// The `current` property provides a snapshot of the current memory stats,
 /// including how much memory is currently used, how much is freed but not 
 /// yet reused, and how much is untouched (never allocated).
-public struct MemoryStats {
+public struct MemoryStats: Sendable {
     public static var stats: [MemoryType: MemoryStats] {
         AllocatorManager.shared.allocators.reduce(into: [MemoryType: MemoryStats]()) { partial, allocator in
             partial[allocator.memoryType] = allocator.memStats()

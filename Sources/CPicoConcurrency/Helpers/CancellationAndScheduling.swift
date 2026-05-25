@@ -49,6 +49,10 @@ public extension EmbeddedAsyncApp {
             self.handleConfigurationErrors(errors)
         }
 
+        if configurator.core1Enabled {
+            ConcurrencyRuntime.startMulticore()
+        }
+
         // TODO: Add WatchDog support here, and maybe a way to setup lwip callbacks in tightLoop.
 
         await setup()

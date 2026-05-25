@@ -1,6 +1,12 @@
 import Foundation
 import PackagePlugin
 
+#if os(Linux)
+import Glibc
+#else
+import Darwin
+#endif
+
 @main
 struct TestInDevicePlugin: CommandPlugin {
     func performCommand(context: PluginContext, arguments: [String]) async throws {
@@ -17,7 +23,9 @@ struct TestInDevicePlugin: CommandPlugin {
         process.environment = ProcessInfo.processInfo.environment
 
         try process.run()
+        installCancellationForwarder(for: process)
         process.waitUntilExit()
+        clearCancellationForwarder()
 
         if process.terminationStatus != 0 {
             Diagnostics.error("test-in-device failed with exit code \(process.terminationStatus)")
@@ -39,4 +47,33 @@ struct TestInDevicePlugin: CommandPlugin {
 
 enum PluginError: Error {
     case toolFailed(Int32)
+}
+
+nonisolated(unsafe) private var pluginChildProcessID: pid_t = -1
+
+private func pluginCancellationSignalHandler(_ signal: Int32) {
+    let childProcessID = pluginChildProcessID
+    guard childProcessID > 0 else {
+        return
+    }
+    #if os(Linux)
+    _ = Glibc.kill(childProcessID, signal)
+    #else
+    _ = Darwin.kill(childProcessID, signal)
+    #endif
+}
+
+private func installCancellationForwarder(for process: Process) {
+    pluginChildProcessID = process.processIdentifier
+    #if os(Linux)
+    Glibc.signal(SIGINT, pluginCancellationSignalHandler)
+    Glibc.signal(SIGTERM, pluginCancellationSignalHandler)
+    #else
+    Darwin.signal(SIGINT, pluginCancellationSignalHandler)
+    Darwin.signal(SIGTERM, pluginCancellationSignalHandler)
+    #endif
+}
+
+private func clearCancellationForwarder() {
+    pluginChildProcessID = -1
 }

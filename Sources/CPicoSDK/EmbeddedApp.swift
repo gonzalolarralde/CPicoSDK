@@ -92,11 +92,18 @@ public struct Configurator: ~Copyable { // TODO: Make ~Escapable
     }
 }
 
-/// Configuration protocol. Types conforming to this protocol can be used to configure the 
+/// Uninhabited error type for configurations that cannot fail.
+public enum NoError: Swift.Error, CustomStringConvertible {
+    public var description: String {
+        switch self {}
+    }
+}
+
+/// Configuration protocol. Types conforming to this protocol can be used to configure the
 /// behavior of the SDK, its features and the hardware connected to it.
 public protocol Configuration: ~Copyable {
     typealias ID = String
-    associatedtype ExecutionError: Swift.Error & CustomStringConvertible = Never
+    associatedtype ExecutionError: Swift.Error & CustomStringConvertible = NoError
     static var id: ID { get }
     func executeConfiguration(with configurator: inout Configurator) throws(ExecutionError)
 }

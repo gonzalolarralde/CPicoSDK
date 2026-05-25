@@ -6,8 +6,8 @@ import _Concurrency
 import ConcurrencyShims
 import CPicoSDK
 
-/// Helper class to allow scheduling work from an ISR onto the shared async context, with support
-/// for passing data from the ISR to the async context without allocations. This is used internally
+/// Helper class to allow deferring work from an ISR onto the scheduler, with support
+/// for passing data from the ISR without allocations. This is used internally
 /// for the sleep implementation, but can also be used directly by users for other IRQ handling scenarios.
 public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     /// Creates a new trampoline with the given user data and post-ISR handler, and returns the trampoline 
@@ -23,7 +23,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     /// }
     /// 
     /// let (trampoline, pointer) = ISRTrampoline.create(value: someUserData) { criticalData in
-    ///     // This runs in async_context worker context, NOT in IRQ. You can safely interact with Swift concurrency primitives here.
+    ///     // This runs after the IRQ has escaped into scheduler context. You can safely interact with Swift concurrency primitives here.
     ///     handleCriticalData(criticalData)
     /// }
     /// 
@@ -34,7 +34,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     /// - The trampoline is created with some user data and a post-ISR handler. An opaque pointer to the trampoline is returned.
     /// - The pointer is passed to C code and stored there (e.g. as an IRQ handler argument).
     /// - When the C code calls the handler with the pointer, `ISRTrampoline.consume` is called to obtain the userData, handle the critical section in the ISR, and obtain an output named criticalData.
-    /// - The post-ISR handler is scheduled on the async context with the criticalData, allowing safe interaction with Swift concurrency primitives.
+    /// - The post-ISR handler is deferred through the scheduler with the criticalData, allowing safe interaction with Swift concurrency primitives outside IRQ context.
     /// - The trampoline is automatically cleaned up when the post-ISR handler runs, but it can also be manually cancelled if needed to free resources earlier.
     /// 
     /// When the trampoline is created User Data comes in > When the ISR is triggered Critical Data is prepared > Post-ISR handler is executed with Critical Data
@@ -69,8 +69,8 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
         trampoline.signal(criticalData: criticalSection(trampoline.value))
     }
 
-    /// Preallocated work schedule to avoid allocations in the ISR path.
-    nonisolated(unsafe) private let scheduledWork: ScheduledBlock
+    /// Preallocated deferred work item to avoid allocations in the ISR path.
+    nonisolated(unsafe) private let postISRWorkItem: DeferredWorkItem
     nonisolated(unsafe) private var signaled = false
     private let value: UserData
     nonisolated(unsafe) private let criticalData: UnsafeMutablePointer<CriticalData?> = .allocate(capacity: 1)
@@ -79,19 +79,17 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     private init(value: sending UserData, postISR: @Sendable @escaping @isolated(any) (sending CriticalData) async -> Void) {
         self.value = value
         self.postISR = postISR
-        self.scheduledWork = ScheduledBlock()
+        self.postISRWorkItem = DeferredWorkItem()
         self.criticalData.pointee = nil
 
         let rawSelf: UnsafeMutableRawPointer = Unmanaged.passUnretained(self).toOpaque()
-        scheduledWork.configure {
+        postISRWorkItem.configure {
             Task {
                 await self.run()
             }
         } finalizer: {
             Unmanaged<ISRTrampoline<UserData, CriticalData>>.fromOpaque(rawSelf).release()
         }
-
-        cshimsRuntimeScheduler.register(scheduledWork)
     }
 
     nonisolated private func signal(criticalData: sending CriticalData) {
@@ -103,7 +101,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
         self.signaled = true
         self.criticalData.deinitialize(count: 1)
         self.criticalData.initialize(to: criticalData)
-        scheduledWork.signal()
+        cshimsRuntimeScheduler.enqueueDeferred(postISRWorkItem)
     }
 
     private func run() async {
@@ -123,7 +121,7 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     /// Cancels the trampoline, preventing the post-ISR handler from being called if the trampoline is still pending, and freeing resources. 
     /// If the trampoline has already been signaled, this has no effect.
     public func cancel() {
-        scheduledWork.cancel()
+        postISRWorkItem.cancel()
     }
 
     deinit {
@@ -134,21 +132,19 @@ public actor ISRTrampoline<UserData: Sendable, CriticalData: Sendable> {
     }
 }
 
-/// Schedules a one-shot block onto the shared async context. It cannot be cancelled.
-/// This is useful for scheduling work from an ISR or other non-async contexts without 
-/// needing to manage continuations or trampolines, but it should be used with care as 
+/// Schedules a one-shot block as deferred scheduler work. It cannot be cancelled.
+/// This is useful for scheduling work from non-async contexts without needing
+/// to manage continuations or trampolines, but it should be used with care as
 /// it does not provide any guarantees about when the block will be executed.
 /// 
-/// Prefer using `ISRTrampoline` if you need to pass data from the ISR context avoiding
-/// allocations.
+/// This helper allocates and is not ISR-safe. Prefer using `ISRTrampoline` if
+/// you need to pass data from ISR context while avoiding allocations.
 /// 
 /// Example usage:
 /// ```swift
-/// @c func someIRQHandler() {
-///     executeLater {
-///         // This runs in async_context worker context.
-///         continuation.resume()
-///     }
+/// executeLater {
+///     // This runs later in scheduler context.
+///     continuation.resume()
 /// }
 /// ```
 public func executeLater(_ block: @escaping () -> Void) {

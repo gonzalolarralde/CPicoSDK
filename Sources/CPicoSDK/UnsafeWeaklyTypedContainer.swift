@@ -1,6 +1,5 @@
 public struct UniqueTypeIdentifier: Equatable {
     private let function: UnsafeRawPointer
-    private let context: UnsafeRawPointer
 
     @inline(never) @_optimize(none)
     private static func tokenFunction<T>(_ value: T) {}
@@ -9,8 +8,7 @@ public struct UniqueTypeIdentifier: Equatable {
         _ = type
         let functionValue = Self.tokenFunction as (T) -> Void
         let pair = unsafeBitCast(functionValue, to: (UnsafeRawPointer, UnsafeRawPointer).self)
-        self.function = pair.0
-        self.context = pair.1
+        function = pair.0
     }
 }
 
@@ -31,7 +29,8 @@ public final class UnsafeWeaklyTypedContainer: @unchecked Sendable {
     }
 
     public func load<T>(as type: T.Type) -> T? {
-        guard typeID == UniqueTypeIdentifier(for: type) else {
+        let requestedTypeID = UniqueTypeIdentifier(for: type)
+        guard typeID == requestedTypeID else {
             return nil
         }
         return pointer.load(as: T.self)

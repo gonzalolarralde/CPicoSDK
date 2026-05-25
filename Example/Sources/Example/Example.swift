@@ -60,7 +60,7 @@ struct App: EmbeddedAsyncApp {
         // multicore_launch_core1(ledExample)
         // try! pioExample()
 
-        if let cpuStats = CPUStats.usageEvents(for: .core0) {
+        if let cpuStats = CPUStats.usageEvents() {
             Task {
                 for await report in cpuStats {
                     report.print()

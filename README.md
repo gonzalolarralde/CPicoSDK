@@ -141,6 +141,48 @@ Current status:
 
 The Example project is expected to keep demonstrating an important embedded constraint here: long-running `while true { ... }` loops need some form of yielding or scheduler pumping, otherwise non-awaiting code can monopolize the CPU.
 
+#### Multicore Concurrency
+
+On RP2350 targets, core1 is optional for Swift concurrency. `EmbeddedAsyncApp`
+starts core1 for the Swift concurrency scheduler after `configure(with:)` has
+run and before `setup()` is awaited, unless you disable it:
+
+```swift
+static func configure(with configurator: inout Configurator) {
+    configurator.core1Enabled = false
+}
+```
+
+When core1 is disabled, Swift concurrency still works on core0. That gives apps
+an escape hatch for systems where core1 is better reserved for a tight
+time-sensitive flow, such as a dedicated control loop, protocol bridge, sampling
+routine, or other code that should not share a scheduler run loop. In that mode,
+you can launch and manage core1 yourself using the Pico SDK multicore APIs while
+allowing Swift async tasks, timers, continuations, and scheduler pumping to
+coexist on core0.
+
+The scheduler does not launch core1 from task enqueue paths. Until
+`startMulticore()` is called, Swift concurrency work stays on core0. If you are
+not using `EmbeddedAsyncApp`, multicore startup is explicit. After your app has
+initialized CPicoSDK and sealed any configuration, call:
+
+```swift
+ConcurrencyRuntime.startMulticore()
+```
+
+Only call `ConcurrencyRuntime.startMulticore()` when core1 belongs to the Swift
+concurrency scheduler. If you plan to use core1 for your own dedicated runtime,
+do not call it.
+
+CPU metrics follow the same active-core model. `CPUStats.usageEvents()` emits
+reports for scheduler-managed cores. With core1 disabled or not yet started, the
+combined stream only produces core0 reports. Per-core subscriptions such as
+`CPUStats.usageEvents(for: .core1)` will not produce useful samples until core1
+has been started for the scheduler.
+
+CPU metrics are also compile-time gated by the `CPUMetrics` trait. Without that
+trait, the metrics APIs return `nil`, even if concurrency itself is enabled.
+
 ### Versioning
 
 CPicoSDK follows a versioning scheme that tracks the underlying Pico SDK version:
@@ -659,10 +701,21 @@ Reasons:
 Current implementation shape:
 
 - the toolchain-provided `libswift_Concurrency.a` is used
+- multicore concurrency depends on a Swift build/runtime that supports the
+  embedded threading hooks used by `ConcurrencyShims`
 - the low-level runtime hook exports remain in [Sources/ConcurrencyShims/ConcurrencyShims.c](Sources/ConcurrencyShims/ConcurrencyShims.c)
 - the scheduling backend now lives in [Sources/CPicoConcurrency/RuntimeScheduler.swift](Sources/CPicoConcurrency/RuntimeScheduler.swift)
 - that scheduler uses Pico SDK `async_context` rather than a handwritten queue loop
 - on Linux, the build can fall back to vendored embedded `_Concurrency` artifacts under [Vendor/EmbeddedSwiftRuntime](/Users/gonzalo/src/CPicoSDK/Vendor/EmbeddedSwiftRuntime) when the toolchain packaging is incomplete
+
+Maintainer note: the concurrency path is not using an arbitrary stock embedded
+Swift runtime in isolation. Multicore scheduler support relies on a modified
+Swift build with embedded threading support, plus the matching shim symbols in
+`Sources/ConcurrencyShims`. If `SWIFT_VERSION` is changed in `env.json`, and
+concurrency support is expected to keep working, the replacement Swift snapshot
+must include the same threading/runtime support or an equivalent update to the
+shims and vendored fallback artifacts. A plain snapshot that can compile
+Embedded Swift code is not enough to prove multicore concurrency is supported.
 
 The current state is best described as:
 

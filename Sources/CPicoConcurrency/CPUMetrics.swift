@@ -1,25 +1,34 @@
 import ConcurrencyShims
 import CPicoSDK
 
-public enum CPUCore: UInt8 {
+public enum CPUCore: UInt8, Sendable {
     case core0 = 0
     case core1 = 1
+
+    fileprivate init(_ core: CoreID) {
+        switch core {
+        case .core0:
+            self = .core0
+        case .core1:
+            self = .core1
+        }
+    }
 }
 
-/// Report containing CPU usage metrics for a given time window. The `usageEvents` 
-/// async stream provides periodic reports with the latest CPU usage data, which 
+/// Report containing CPU usage metrics for a given time window. The `usageEvents`
+/// async stream provides periodic reports with the latest CPU usage data, which
 /// can be used for monitoring or debugging purposes.
-/// 
+///
 /// WARNING: *THIS IS AN EXPERIMENTAL IMPLEMENTATION* Expect inaccurate readings,
 /// missing features, and potential performance issues. Use with caution.
-/// 
-/// WARNING: To count CPU usage accurately the IRQ handlers are wrapped with 
+///
+/// WARNING: To count CPU usage accurately the IRQ handlers are wrapped with
 /// a shim that accounts for their execution time in the CPU usage metrics.
-/// Expect potential performance degradations and unexpected interactions with 
+/// Expect potential performance degradations and unexpected interactions with
 /// third-party libraries that also wrap IRQ handlers. If you experience issues,
 /// you can disable CPU monitoring and the IRQ wrapping by undefining the `CPUMetrics`
 /// flag in your build configuration.
-public struct CPUStats {
+public struct CPUStats: Sendable {
     public static var enabled: Bool {
         #if CPUMetrics
             true
@@ -30,15 +39,22 @@ public struct CPUStats {
 
     public static func usageEvents(for core: CPUCore) -> AsyncStream<Self>? {
         #if CPUMetrics
-            // TODO: Support per-core metrics.
-            cshimsRuntimeScheduler.cpuUsage.stream
+            cshimsRuntimeScheduler.cpuUsageEvents(for: core)
+        #else
+            nil
+        #endif
+    }
+
+    public static func usageEvents() -> AsyncStream<Self>? {
+        #if CPUMetrics
+            cshimsRuntimeScheduler.cpuUsageEvents()
         #else
             nil
         #endif
     }
 
     public let timestamp: UInt64
-    public let core: CPUCore = .core0 // TODO: Support per-core metrics.
+    public let core: CPUCore
     public let taskUsageTime: UInt64
     public let interruptUsageTime: UInt64
     public let idleUsageTime: UInt64
@@ -76,7 +92,8 @@ public struct CPUStats {
 struct RuntimeCPUUsageMeter: ~Copyable {
     // MARK: - IRQ Wrapping for Accurate CPU Usage Attribution
     private static let irqWrapReconcileIntervalUs: UInt64 = 1_000_000
-    nonisolated(unsafe) private static var irqWrapNextReconcileUs: UInt64 = 0
+    nonisolated(unsafe) private static var core0IRQWrapNextReconcileUs: UInt64 = 0
+    nonisolated(unsafe) private static var core1IRQWrapNextReconcileUs: UInt64 = 0
 
     @_transparent
     static func irqNeedsWrapping(num irq: UInt32) -> Bool {
@@ -125,13 +142,16 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     }
 
     static func ensureIRQUsageVectorWrapping() {
+        let core = CoreID.current
         let nowUs = time_us_64()
-        if irqWrapNextReconcileUs != 0 && nowUs < irqWrapNextReconcileUs {
+        let nextReconcileUs = irqWrapNextReconcileUs(for: core)
+        if nextReconcileUs != 0 && nowUs < nextReconcileUs {
             return
         }
-        irqWrapNextReconcileUs = nowUs &+ irqWrapReconcileIntervalUs
+        setIRQWrapNextReconcileUs(nowUs &+ irqWrapReconcileIntervalUs, for: core)
 
-        // Non-critical fast pass to find IRQs that might need wrapping. We will check them again in 
+        // Non-critical fast pass to find IRQs that might need wrapping for the
+        // current core's vector table. We will check them again in
         // the critical section to avoid doing any potentially expensive operations while interrupts
         // are disabled.
         if NUM_IRQS > 64 {
@@ -163,6 +183,24 @@ struct RuntimeCPUUsageMeter: ~Copyable {
         UInt(bitPattern: unsafeBitCast(handler, to: UnsafeRawPointer?.self))
     }
 
+    private static func irqWrapNextReconcileUs(for core: CoreID) -> UInt64 {
+        switch core {
+        case .core0:
+            core0IRQWrapNextReconcileUs
+        case .core1:
+            core1IRQWrapNextReconcileUs
+        }
+    }
+
+    private static func setIRQWrapNextReconcileUs(_ value: UInt64, for core: CoreID) {
+        switch core {
+        case .core0:
+            core0IRQWrapNextReconcileUs = value
+        case .core1:
+            core1IRQWrapNextReconcileUs = value
+        }
+    }
+
     enum Event {
         case enterTask(name: String)
         case exitTask(name: String)
@@ -174,9 +212,7 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 
     private static let windowUs: UInt64 = 1_000_000
 
-    private let streamPair = AsyncStream.makeStream(of: CPUStats.self, bufferingPolicy: .bufferingNewest(1))
-    var stream: AsyncStream<CPUStats> { streamPair.stream }
-
+    private let core: CoreID
     private var windowStartUs: UInt64 = 0
     private var lastEventUs: UInt64 = 0
 
@@ -190,7 +226,8 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     
     private let mutex: UnsafeMutablePointer<mutex_t> = .allocate(capacity: 1)
 
-    init() {
+    init(core: CoreID) {
+        self.core = core
         mutex_init(mutex)
     }
 
@@ -203,7 +240,6 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     mutating func record(event: Event) {
         guard mutex_try_enter(mutex, nil) else {
             // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
             return
         }
 
@@ -233,7 +269,6 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     mutating func sample() {
         guard mutex_try_enter(mutex, nil) else {
             // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
             return
         }
 
@@ -246,30 +281,28 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     }
 
     @_transparent
-    mutating func reportIfNeeded() {
+    mutating func reportIfNeeded() -> CPUStats? {
         guard mutex_try_enter(mutex, nil) else {
             // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            assertionFailure("[CPicoConcurrency] Ignoring event due to mutex contention.")
-            return
-        }
-
-        defer {
-            mutex_exit(mutex)
+            return nil
         }
 
         let nowUs = time_us_64()
 
         guard windowStartUs != 0 else {
-            return
+            mutex_exit(mutex)
+            return nil
         }
 
         guard nowUs &- windowStartUs >= Self.windowUs else {
-            return
+            mutex_exit(mutex)
+            return nil
         }
 
         let totalUs = taskUs &+ interruptUs &+ idleUs
         let report = CPUStats(
-            timestamp: nowUs, 
+            timestamp: nowUs,
+            core: CPUCore(core),
             taskUsageTime: taskUs, 
             interruptUsageTime: interruptUs, 
             idleUsageTime: idleUs, 
@@ -277,14 +310,16 @@ struct RuntimeCPUUsageMeter: ~Copyable {
             interruptEvents: interruptEvents
         )
 
-        streamPair.continuation.yield(report)
-
         windowStartUs = nowUs
         lastEventUs = nowUs
         taskUs = 0
         interruptUs = 0
         idleUs = 0
         interruptEvents = 0
+
+        mutex_exit(mutex)
+
+        return report
     }
 
     @_transparent
@@ -309,18 +344,13 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 }
 
 @_spi(Internal) @_cdecl("_cpicosdk_record_runtime_scheduler_enter_interrupt")
-public func recordRuntimeSchedulerEnterInterrupt(_ interrupt: UInt) {
-    cshimsRuntimeScheduler.recordExternalEvent(.enterInterrupt(interrupt: interrupt))
+public func recordRuntimeSchedulerEnterInterrupt(_ coreIndex: UInt, _ interrupt: UInt) {
+    cshimsRuntimeScheduler.recordInterruptCPUUsage(.enterInterrupt(interrupt: interrupt), coreIndex: coreIndex)
 }
 
 @_spi(Internal) @_cdecl("_cpicosdk_record_runtime_scheduler_exit_interrupt")
-public func recordRuntimeSchedulerExitInterrupt(_ interrupt: UInt) {
-    cshimsRuntimeScheduler.recordExternalEvent(.exitInterrupt(interrupt: interrupt))
-}
-
-@_spi(Internal) @_cdecl("_cpicosdk_sample_runtime_scheduler_cpu_usage")
-public func sampleRuntimeSchedulerCPUUsage() {
-    cshimsRuntimeScheduler.sampleCPUUsage()
+public func recordRuntimeSchedulerExitInterrupt(_ coreIndex: UInt, _ interrupt: UInt) {
+    cshimsRuntimeScheduler.recordInterruptCPUUsage(.exitInterrupt(interrupt: interrupt), coreIndex: coreIndex)
 }
 
 #endif

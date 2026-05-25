@@ -75,7 +75,8 @@ Find OpenOCD:
 
 ```sh
 cd Example
-find .build/plugins/PrepareEnvironmentPlugin/outputs -type f -name openocd.exe
+find .build/plugins/PrepareEnvironmentPlugin/outputs \( -type f -o -type l \) \
+  \( -name openocd.exe -o -name openocd \)
 ```
 
 Find the OpenOCD scripts directory:
@@ -98,7 +99,7 @@ Set shell variables from the discovered paths before running debug commands:
 ```sh
 cd Example
 ELF=".build/armv7em-none-none-eabi/release/Example.elf"
-OPENOCD="$(find .build/plugins/PrepareEnvironmentPlugin/outputs -type f -name openocd.exe -print -quit)"
+OPENOCD="$(find .build/plugins/PrepareEnvironmentPlugin/outputs \( -type f -o -type l \) \( -name openocd.exe -o -name openocd \) -print -quit)"
 OPENOCD_SCRIPTS="$(find .build/plugins/PrepareEnvironmentPlugin/outputs -type d -path '*/openocd/*/scripts' -print -quit)"
 ARM_GDB="$(find .build/plugins/PrepareEnvironmentPlugin/outputs -type f -name arm-none-eabi-gdb -print -quit)"
 ARM_ADDR2LINE="$(find .build/plugins/PrepareEnvironmentPlugin/outputs -type f -name arm-none-eabi-addr2line -print -quit)"
@@ -330,13 +331,149 @@ design notes, experiments, and failure analysis in `docs/`.
   If the same OpenOCD command works in a normal shell, rerun command-plugin
   device tests as `swift package --disable-sandbox test-in-device ...`; the
   SwiftPM plugin sandbox can hide USB debug probes from OpenOCD.
+- `Error: unable to find a matching CMSIS-DAP device` happens before OpenOCD
+  talks to the target. Check that the CMSIS-DAP probe is visible over USB and
+  use the discovered `openocd.exe` path from `Example/.build/...`; changing
+  `adapter speed` only helps later target-connect failures such as
+  `cannot read IDR`.
 - For one-shot reset commands, include `-c "init"` before `-c "reset run"`.
   Without `init`, OpenOCD can report `invalid command name "reset"`.
 - If ports are already bound by stale debug sessions, use
   `pkill -f /openocd.exe` before starting OpenOCD again.
+- If a stale OpenOCD process is holding the CMSIS-DAP USB interface, a second
+  OpenOCD instance on alternate ports can still fail with
+  `could not claim interface: Access denied`. Stop the original session or
+  physically reconnect the probe before retrying flash.
+- In this workspace, the known-good OpenOCD launcher is the `openocd.exe`
+  symlink under
+  `Example/.build/plugins/PrepareEnvironmentPlugin/outputs/pico-sdk-bundle/openocd/0.12.0+dev/`.
+  A `find -type f -name openocd.exe` command misses it because it is a symlink;
+  include `-type l` or use that exact `openocd.exe` path when CMSIS-DAP probing
+  unexpectedly fails with the plain `openocd` path.
 - GDB may print missing DWO/PCH or `.debug_names` warnings. Those warnings are
   not necessarily fatal; `info threads` and `thread apply all bt` can still
   provide useful PCs and backtraces.
+
+### Code/Swift Multicore
+
+- Pico SDK `queue_t` is safe for multicore and IRQ producer/consumer exchange;
+  do not add an extra lock around `queue_try_add`/`queue_try_remove` unless a
+  separate invariant requires it. A crash after a job is popped and
+  `swift_job_run` starts, such as `freed pointer was not the last allocation`,
+  points at Swift runtime or allocator concurrency instead of Pico queue
+  corruption.
+- The default Pico SDK core1 stack can be only `PICO_STACK_SIZE` (`0x800` in
+  this workspace). If Swift or async-context code runs on core1, prefer
+  `multicore_launch_core1_with_stack` with an explicit larger stack before
+  treating low-address PCs or unusable stack registers as queue corruption.
+- `global allocator fallback not available` is emitted by the embedded Swift
+  concurrency runtime's `swift_task_alloc` cold path. If it appears after a
+  core1 queue pop, it means Swift runtime/current-task state on core1 is the
+  active boundary, not Pico `queue_t` synchronization.
+- If multicore Swift stress reaches `freed pointer was not the last allocation`,
+  the scheduler has likely reached Swift runtime/job execution. A naive Pico
+  mutex around `swift_job_run` was tested and stalled the normal one-second
+  alarm, so treat that lock as a failed proof step unless the runtime entry
+  model changes.
+- In the multicore scheduler stress logs, `r1=1` with `ps1>0`, `q1=0`, and
+  `pa1=0` means core1 crashed after stealing a shared Swift runtime job before
+  any core1-affine continuation could exist. Current-core affine routing avoids
+  that path, but `q1=0`, `pa1=0`, and `r1=0` also means core1 is only draining
+  shared probe messages, not Swift runtime jobs.
+- For Swift job-affinity experiments, inspect the local Swift runtime source
+  and consider `swift_task_getJobTaskId(job)` as a diagnostic key. It returns
+  the full task id for `AsyncTask` jobs and the job id otherwise, but Swift's
+  source describes it as primarily a debug utility, so validate raw `job`
+  pointer plus task-id logs before depending on it as scheduler policy.
+- Stable task-id affinity alone does not make core1 execution safe. A policy
+  that alternated new post-launch task ids between core1 and core0 reproduced
+  `freed pointer was not the last allocation` immediately after the multicore
+  stress started. Test core1-originated seed tasks separately from stealing
+  arbitrary core0-created Swift tasks.
+- In the pass-2 seed-task logs, `r1=1`, `pa1=1`, and `seed11=1` showed that
+  one Swift job created from core1 ran on core1. `seed10` then increased while
+  `seed11` stayed at `1`, which means `Task.sleep` continuations resumed on
+  core0 under the current task-id affinity policy. Treat that as a stable
+  single-core1-job proof, not proof of sustained Swift execution on core1.
+- Do not use `swift_task_getCurrent()` as a multicore affinity source on this
+  embedded runtime without proving the current-task storage is per-core. A
+  pass-2 experiment saw a core1-created seed task inherit core0 affinity when
+  routing from `swift_task_getCurrent()`.
+- `Task.sleep(ms:)` in this package uses `PicoTimeoutManager` and
+  `ISRTrampoline`, not the Swift global delayed enqueue hook. If core1 sleep
+  continuations resume on core0 and `h1d=0`, investigate trampoline/actor
+  ownership rather than `swift_task_enqueueGlobalWithDelayImpl`.
+- A core1 seed loop using `Task.yield()` is a direct test of sustained Swift job
+  chaining on core1. It reproduced `freed pointer was not the last allocation`,
+  so the current safe PoC should keep the sleep-based seed and treat sustained
+  core1 Swift execution as blocked by the Swift task allocator/runtime edge.
+- `Task.yield()` is not a clean same-task migration probe. The continuation can
+  be enqueued while the task is still marked running, so active affinity should
+  keep it on the same owner. To test non-overlapping migration of one async
+  function, suspend with an explicit continuation and resume it later from
+  worker tasks on either core.
+- A pass-3 suspension-boundary migration probe moved the sleep-based seed
+  `AsyncTask` from core0 to core1 after its first core0 run returned. Serial
+  showed `seed11=2`, matching seed/current owner tokens, then reproduced
+  `freed pointer was not the last allocation`. Treat this as evidence that the
+  embedded Swift task allocator is not safely migratable between cores even when
+  the scheduler avoids overlapping runs of the same `AsyncTask`.
+- Before core1 is launched, scheduler load-balancing must not assign any Swift
+  task id to core1. Symptom: boot reaches `Scheduling 1 second alarm...` and
+  then core0 sits in `async_context_wait_for_work_until` while core1 has not
+  started. The fix is to make the task-owner load policy return core0 until
+  `startRuntimeSchedulerMulticore()` has actually launched core1.
+- A pass-3 task-id ownership table with `queuedCount`/`runningCount` prevented
+  obvious same-task routing across cores, but the device still reproduced
+  `freed pointer was not the last allocation` once stress jobs began running on
+  core1. Treat this as evidence that task-id serialization alone is not enough
+  for arbitrary core0-created Swift work on core1.
+- If multicore stress hardfaults in `_free_r` with another core blocked in the
+  Swift `malloc` wrapper mutex, check the linked newlib `__malloc_lock` and
+  `__malloc_unlock` symbols. In this workspace they initially disassembled to
+  no-op `bx lr` stubs, so direct libc allocation paths could corrupt the heap
+  even though `__wrap_malloc`/`__wrap_free` had a Swift-side mutex. A strong
+  C implementation of `__malloc_lock`/`__malloc_unlock` with a recursive
+  per-core spin lock fixed the observed `_free_r` hardfault in a 120-second
+  multicore `Task.yield()` soak.
+- In pass-3 multicore stress, a direct owner-queue transport for core0/core1
+  removed the shared-FIFO wrong-owner churn. Healthy logs showed
+  `d0=0 d1=0`, both `r0` and `r1` increasing, and `full=0 null=0`.
+- Do not compute scheduler placement load by calling `queue_get_level` on
+  owner queues from the enqueue path. A device hang showed core0 stuck in
+  `spin_lock_unsafe_blocking` inside `queue_get_level` while core1 was polling;
+  use accepted affinity `queuedCount`/`runningCount` as the placement load
+  signal and leave `queue_t` as transport only.
+- Per-loop diagnostic probes can fill the scheduler queue and hide the real
+  runtime signal. Throttle probes to periodic stats snapshots; the symptom was
+  `scheduler owner queue full` from `enqueueRuntimeSchedulerMulticoreProbe()`.
+- Avoid `try!` inside long-running device stress tasks. A task like
+  `Task { try! await blinkLeds() }` can hardfault through
+  `swift_unexpectedErrorTyped` if cancellation or corruption reaches the error
+  path; use `try?` or explicit error handling so the stress signal is not hidden
+  by the forced-error trap.
+- For alarm-backed same-task migration tests, observing a spawned child task can
+  produce a false negative where all `Task.sleep(us:)` resumptions occur on the
+  child task's first owner core. To prove the current async task can migrate
+  without touching scheduler internals, run the observed sleep loop inline in
+  the test task while background pressure tasks are active.
+- A multicore `AsyncStream` producer/consumer stress can fail as a missing
+  device run-end marker before a clean assertion is emitted. Keep that probe
+  isolated or disabled while debugging; first confirm simpler current-task,
+  actor-executor, sleep-cancellation, and task-lifetime tests still pass so the
+  failure points at continuation stream traffic rather than a general scheduler
+  outage.
+- Do not add production API, SPI, or scheduler/executor pass-through plumbing
+  solely to make an internal retention detail testable. Symptom: a test wants
+  to prove a negative such as "this `AsyncStream` continuation is no longer
+  retained" and starts adding counters through layers like
+  `CPUStats -> SchedulerSystem -> CoreExecutor -> RuntimeCPUUsageMeter`. That is
+  too much reach for a test. Prefer public behavioral checks such as churn under
+  pressure, later streams still receiving reports, and memory staying bounded.
+  If exact lifecycle proof is truly required, first extract the owning component
+  into a separately testable unit instead of punching diagnostic holes through
+  production scheduler boundaries. It is acceptable to leave an internal detail
+  less directly tested when the alternative makes the architecture worse.
 
 ### Serial And RTT Logging
 
@@ -349,10 +486,18 @@ design notes, experiments, and failure analysis in `docs/`.
   the TCP connection or delay first device prints.
 - Start `miniterm` first, then reset the board from another shell to capture a
   clean boot log.
+- If `/dev/tty.usbmodem*` or `/dev/cu.usbmodem*` is present but pyserial fails
+  with `Operation not permitted`, the agent sandbox may not have permission to
+  open serial devices. This is different from a missing USB device; rerun the
+  same serial command from a host terminal with device permissions.
 - Serial output can contain stale or interleaved bytes after reset. Trust logs
   more when a fresh boot banner appears.
 - Keep diagnostic log lines short. Long `print` output can make serial debugging
   feel stalled and can hide the actual crash point.
+- In multicore stress tests, let only core0 print periodic stress summaries and
+  let core1 update counters. Printing full diagnostic lines from both cores can
+  interleave bytes on USB serial and make otherwise useful counter snapshots
+  unreadable.
 
 ### Build And Package Wiring
 

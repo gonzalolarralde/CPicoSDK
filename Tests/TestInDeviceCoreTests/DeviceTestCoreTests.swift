@@ -132,6 +132,7 @@ import Testing
     let runner = DevicePackageGenerator.runnerSource(for: source)
     #expect(runner.contains("EmbeddedAsyncApp"))
     #expect(runner.contains("deviceDiagnostic"))
+    #expect(runner.contains("configurator.core1Enabled = false"))
     #expect(runner.contains("try await asyncTest()"))
 }
 
