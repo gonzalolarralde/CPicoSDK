@@ -182,10 +182,13 @@ func multicoreBusyWorkThroughputOverFixedWindow() async throws {
     // c0/c1 are observed execution-core hits, and sum prevents dead-code loss.
     // score is units/sec, so higher is better. balanceScore is min(core hits) /
     // max(core hits) scaled to 1000; best is as close as possible to 1000.
+    let rawLine = "workers=\(workerCount), units=\(snapshot.units), elapsedMs=\(elapsedMs), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-multi-throughput")
-    deviceDiagnostic("  raw: workers=\(workerCount), units=\(snapshot.units), elapsedMs=\(elapsedMs), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score workPerSecond=\(unitsPerSecond) (higher is better)")
     deviceDiagnostic("  score coreBalance=\(balanceScore)/1000 (closest to 1000 is best)")
+    logScore("bench-multi-throughput", rawLine, "workPerSecond", unitsPerSecond, "(higher is better)")
+    logScore("bench-multi-throughput", rawLine, "coreBalance", balanceScore, "/1000 (closest to 1000 is best)")
 
     try deviceExpect(completed, "multicore throughput workers did not complete")
     try deviceExpect(snapshot.done == workerCount, "multicore throughput lost worker completions")
@@ -248,10 +251,12 @@ func priorityWorkExecutionOrderIsRecordedOverTimeSlices() async throws {
     // score is a weighted priority average: high=4000, default=3000,
     // low=2000, background=1000. Higher means more work went to higher
     // priorities; an even distribution lands near 2500.
+    let rawLine = "ready=\(snapshot.ready), done=\(snapshot.done), firstPacked=\(snapshot.firstBucketsPacked), totals high/default/low/background=\(snapshot.high)/\(snapshot.defaultPriority)/\(snapshot.low)/\(snapshot.background), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-priority")
-    deviceDiagnostic("  raw: ready=\(snapshot.ready), done=\(snapshot.done), firstPacked=\(snapshot.firstBucketsPacked), totals high/default/low/background=\(snapshot.high)/\(snapshot.defaultPriority)/\(snapshot.low)/\(snapshot.background), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  raw slices high/default/low/background: s0=\(snapshot.slice0High)/\(snapshot.slice0Default)/\(snapshot.slice0Low)/\(snapshot.slice0Background), s1=\(snapshot.slice1High)/\(snapshot.slice1Default)/\(snapshot.slice1Low)/\(snapshot.slice1Background), s2=\(snapshot.slice2High)/\(snapshot.slice2Default)/\(snapshot.slice2Low)/\(snapshot.slice2Background), s3=\(snapshot.slice3High)/\(snapshot.slice3Default)/\(snapshot.slice3Low)/\(snapshot.slice3Background)")
     deviceDiagnostic("  score priorityWeight=\(priorityScore) (higher is more priority-biased; even is near 2500)")
+    logScore("bench-priority", rawLine, "priorityWeight", priorityScore, "(higher is more priority-biased; even is near 2500)")
 
     try deviceExpect(ready, "priority benchmark workers did not all become ready")
     try deviceExpect(completed, "priority benchmark workers did not complete")
@@ -302,9 +307,11 @@ func samePriorityFairnessOverFixedWindow() async throws {
     // loss. Exact balance is not asserted.
     // score is min/max worker units scaled to 1000. Best is as close as
     // possible to 1000.
+    let rawLine = "ready=\(snapshot.ready), done=\(snapshot.done), totalUnits=\(totalUnits), minMax=\(minUnits)/\(maxUnits), workerUnits=\(snapshot.worker0Units)/\(snapshot.worker1Units)/\(snapshot.worker2Units)/\(snapshot.worker3Units)/\(snapshot.worker4Units)/\(snapshot.worker5Units), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-fairness")
-    deviceDiagnostic("  raw: ready=\(snapshot.ready), done=\(snapshot.done), totalUnits=\(totalUnits), minMax=\(minUnits)/\(maxUnits), workerUnits=\(snapshot.worker0Units)/\(snapshot.worker1Units)/\(snapshot.worker2Units)/\(snapshot.worker3Units)/\(snapshot.worker4Units)/\(snapshot.worker5Units), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score workerBalance=\(fairnessScore)/1000 (closest to 1000 is best)")
+    logScore("bench-fairness", rawLine, "workerBalance", fairnessScore, "/1000 (closest to 1000 is best)")
 
     try deviceExpect(ready, "fairness benchmark workers did not all become ready")
     try deviceExpect(completed, "fairness benchmark workers did not complete")
@@ -343,9 +350,11 @@ func yieldCadenceThroughputComparison() async throws {
     // groups that yield every 1, 4, or 16 chunks. Larger cadence should usually
     // complete more units because it pays less scheduler suspension overhead.
     // score is total units across all cadence groups, so higher is better.
+    let rawLine = "done=\(snapshot.done), units yieldEvery1/4/16=\(snapshot.unitsEvery1)/\(snapshot.unitsEvery4)/\(snapshot.unitsEvery16), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-yield-cadence")
-    deviceDiagnostic("  raw: done=\(snapshot.done), units yieldEvery1/4/16=\(snapshot.unitsEvery1)/\(snapshot.unitsEvery4)/\(snapshot.unitsEvery16), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score totalWork=\(yieldScore) (higher is better)")
+    logScore("bench-yield-cadence", rawLine, "totalWork", yieldScore, "(higher is better)")
 
     try deviceExpect(completed, "yield-cadence benchmark workers did not complete")
     try deviceExpect(snapshot.unitsEvery1 > 0, "yield-every-1 group recorded no work")
@@ -388,9 +397,11 @@ func alarmJitterUnderCPUPressure() async throws {
     // beyond requested Task.sleep duration, and lateCount counts wakes over
     // the current diagnostic threshold.
     // score is average wake lateness in microseconds, so lower is better.
+    let rawLine = "sleepers=\(snapshot.sleepersDone), pressureWorkers=\(snapshot.pressureDone), pressureUnits=\(snapshot.pressureUnits), lateUs min/avg/max=\(minLate)/\(avgLate)/\(snapshot.maxLateUs), lateCount=\(snapshot.lateCount), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-alarm-jitter")
-    deviceDiagnostic("  raw: sleepers=\(snapshot.sleepersDone), pressureWorkers=\(snapshot.pressureDone), pressureUnits=\(snapshot.pressureUnits), lateUs min/avg/max=\(minLate)/\(avgLate)/\(snapshot.maxLateUs), lateCount=\(snapshot.lateCount), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score averageWakeLatenessUs=\(avgLate) (lower is better)")
+    logScore("bench-alarm-jitter", rawLine, "averageWakeLatenessUs", avgLate, "(lower is better)")
 
     try deviceExpect(completed, "alarm jitter benchmark did not complete")
     try deviceExpect(snapshot.sleepersDone == sleeperCount, "alarm jitter benchmark lost sleepers")
@@ -435,9 +446,11 @@ func burstEnqueueLatencyIsRecorded() async throws {
     // first and last worker observing execution; spanUs is the spread between
     // first and last observed workers. c0/c1 should cover both cores.
     // score is last worker latency in microseconds, so lower is better.
+    let rawLine = "ready=\(snapshot.ready), done=\(snapshot.done), firstUs=\(firstLatency), lastUs=\(lastLatency), spanUs=\(span), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-burst")
-    deviceDiagnostic("  raw: ready=\(snapshot.ready), done=\(snapshot.done), firstUs=\(firstLatency), lastUs=\(lastLatency), spanUs=\(span), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score lastWorkerLatencyUs=\(lastLatency) (lower is better)")
+    logScore("bench-burst", rawLine, "lastWorkerLatencyUs", lastLatency, "(lower is better)")
 
     try deviceExpect(ready, "burst benchmark workers did not all become ready")
     try deviceExpect(completed, "burst benchmark workers did not complete")
@@ -498,9 +511,11 @@ func explicitContinuationThroughput() async throws {
     // rps is consumed resumptions/sec, rc0/rc1 are resumer core hits, cc0/cc1
     // are consumer resume core hits, and rsum/csum must match.
     // score is consumed resumptions/sec, so higher is better.
+    let rawLine = "slots=\(snapshot.slotsReady), resumed=\(snapshot.resumed), consumed=\(snapshot.consumed), resumersDone=\(snapshot.resumersDone), elapsedMs=\(elapsedMs), resumerCoreHits=\(snapshot.resumerCore0Hits)/\(snapshot.resumerCore1Hits), consumerCoreHits=\(snapshot.consumerCore0Hits)/\(snapshot.consumerCore1Hits), checksums=\(snapshot.resumedChecksum)/\(snapshot.consumedChecksum)"
     deviceDiagnostic("bench-continuation")
-    deviceDiagnostic("  raw: slots=\(snapshot.slotsReady), resumed=\(snapshot.resumed), consumed=\(snapshot.consumed), resumersDone=\(snapshot.resumersDone), elapsedMs=\(elapsedMs), resumerCoreHits=\(snapshot.resumerCore0Hits)/\(snapshot.resumerCore1Hits), consumerCoreHits=\(snapshot.consumerCore0Hits)/\(snapshot.consumerCore1Hits), checksums=\(snapshot.resumedChecksum)/\(snapshot.consumedChecksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score resumptionsPerSecond=\(perSecond) (higher is better)")
+    logScore("bench-continuation", rawLine, "resumptionsPerSecond", perSecond, "(higher is better)")
 
     try deviceExpect(slotsReady, "continuation benchmark slots did not become ready")
     try deviceExpect(resumersCompleted, "continuation benchmark resumers did not complete")
@@ -554,9 +569,13 @@ func allocationHeavyThroughputAndMemoryDelta() async throws {
     // prevents dead-code loss.
     // score is allocation/free work units/sec, so higher is better. Memory
     // deltas remain separate guardrail fields rather than part of the score.
+    let rawLine = "done=\(snapshot.done), units=\(snapshot.units), elapsedMs=\(elapsedMs), used=\(snapshot.beforeUsed)->\(snapshot.afterUsed), free=\(snapshot.beforeTotalFree)->\(snapshot.afterTotalFree), usedGrowth=\(usedGrowth), freeLoss=\(freeLoss), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-allocation")
-    deviceDiagnostic("  raw: done=\(snapshot.done), units=\(snapshot.units), elapsedMs=\(elapsedMs), used=\(snapshot.beforeUsed)->\(snapshot.afterUsed), free=\(snapshot.beforeTotalFree)->\(snapshot.afterTotalFree), usedGrowth=\(usedGrowth), freeLoss=\(freeLoss), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score allocationWorkPerSecond=\(allocationScore) (higher is better)")
+    logScore("bench-allocation", rawLine, "allocationWorkPerSecond", allocationScore, "(higher is better)")
+    logScore("bench-allocation", rawLine, "usedGrowth", usedGrowth, "(lower is better)")
+    logScore("bench-allocation", rawLine, "freeLoss", freeLoss, "(lower is better)")
 
     try deviceExpect(completed, "allocation benchmark workers did not complete")
     try deviceExpect(snapshot.units > 0, "allocation benchmark recorded no work")

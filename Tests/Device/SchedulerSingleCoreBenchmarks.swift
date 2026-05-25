@@ -61,9 +61,11 @@ func singleCoreBusyWorkThroughputBaseline() async throws {
     // fixed-cost spin chunks, ups is units/sec, elapsed is wall time in ms,
     // c0/c1 are observed execution-core hits, and sum prevents dead-code loss.
     // score is units/sec, so higher is better.
+    let rawLine = "workers=\(workerCount), units=\(snapshot.units), elapsedMs=\(elapsedMs), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)"
     deviceDiagnostic("bench-single-throughput")
-    deviceDiagnostic("  raw: workers=\(workerCount), units=\(snapshot.units), elapsedMs=\(elapsedMs), coreHits=\(snapshot.core0Hits)/\(snapshot.core1Hits), checksum=\(snapshot.checksum)")
+    deviceDiagnostic("  raw: \(rawLine)")
     deviceDiagnostic("  score workPerSecond=\(unitsPerSecond) (higher is better)")
+    logScore("bench-single-throughput", rawLine, "workPerSecond", unitsPerSecond, "(higher is better)")
 
     try deviceExpect(completed, "single-core benchmark workers did not complete")
     try deviceExpect(snapshot.done == workerCount, "single-core benchmark lost worker completions")

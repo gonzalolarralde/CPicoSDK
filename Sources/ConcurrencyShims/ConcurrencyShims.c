@@ -21,6 +21,7 @@ typedef struct {
 } SwiftExecutorRef;
 
 extern void SWIFT_CC_SWIFT swift_job_run(void *job, void *executorFirst, void *executorSecond);
+extern uint8_t SWIFT_CC_SWIFT swift_job_getPriority(void *job) __attribute__((weak));
 extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executor);
 extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current_runtime(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
 extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
@@ -154,6 +155,13 @@ void *cshims_job_owner_task(void *job) {
     }
 
     return NULL;
+}
+
+uint8_t cshims_job_priority(void *job) {
+    if (job != NULL && swift_job_getPriority != NULL) {
+        return swift_job_getPriority(job);
+    }
+    return 0;
 }
 
 uint32_t cshims_enter_critical(void) {

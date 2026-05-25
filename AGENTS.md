@@ -474,6 +474,17 @@ design notes, experiments, and failure analysis in `docs/`.
   into a separately testable unit instead of punching diagnostic holes through
   production scheduler boundaries. It is acceptable to leave an internal detail
   less directly tested when the alternative makes the architecture worse.
+- A global-pull scheduler invalidates probes that assume enqueue-time per-core
+  placement. Symptom: `MulticoreForcedSameTaskMigrationProbe` may show the
+  continuation resumed from core1 while the resumed task segment is still pulled
+  by core0 (`resumes=1 r1=1 c0=2 c1=0`). Treat that as expected under global
+  ready queues; use behavior tests such as alarm-backed same-task migration and
+  overlap checks to validate safety, not resume-core ownership.
+- For Swift job priorities, keep the ABI bridge narrow: expose the raw
+  `swift_job_getPriority(job)` value from C and map buckets in Swift using
+  `TaskPriority` raw values. Do not duplicate priority threshold constants in
+  C shims unless the runtime bridge is unavailable and the fallback is
+  explicitly documented.
 
 ### Serial And RTT Logging
 
@@ -552,3 +563,9 @@ design notes, experiments, and failure analysis in `docs/`.
   exits. For long device runs, flush after each progress line and write directly
   to `/dev/tty` when stdout is not a TTY, with normal stdout as the fallback for
   redirected or CI runs.
+- If a filtered `test-in-device` run reports the requested test name but prints
+  subtests or UF2 sizes from another suite, check generated artifact selection
+  before debugging the test. A broad `find .build -path "*/DeviceTestApp.elf"`
+  can pick stale debug/release/finalizer output; return the exact
+  `.build/$SWIFTPM_TRIPLE/$SWIFT_BUILD_TYPE/DeviceTestApp.elf` path and force
+  finalization when generated inputs changed.
