@@ -15,8 +15,9 @@ final class SchedulerSystem {
         .init(core: .core1),
     ]
     private var affinityTable = AffinityTable()
-    private var multicoreEnabled = false
-    private var didRunJobByCore: [2 of Bool] = [false, false]
+    private let multicoreEnabled = Atomic(false)
+    private let didRunJobOnCore0 = Atomic(false)
+    private let didRunJobOnCore1 = Atomic(false)
 #if CPUMetrics
     private struct CPUUsageSnapshotState {
         var reports: [2 of CPUStats?] = [nil, nil]
@@ -104,14 +105,14 @@ final class SchedulerSystem {
     /// method is the place where transport and execution meet.
     func pollOnce(on core: CoreID) -> Int32 {
         let executor = executor(for: core)
-        didRunJobByCore[core.index] = false
+        storeDidRunJob(false, for: core)
         executor.pollOnce()
 #if CPUMetrics
         if core == .core0 {
             collectCPUUsageReports()
         }
 #endif
-        return didRunJobByCore[core.index] ? 1 : 0
+        return loadDidRunJob(for: core) ? 1 : 0
     }
 
     /// Blocks the current core's executor until its async context has work.
@@ -128,13 +129,21 @@ final class SchedulerSystem {
     /// starts multicore after configuration is sealed, and custom app entry
     /// points can call `ConcurrencyRuntime.startMulticore()` directly.
     func startMulticore() {
-        guard CoreID.current == .core0, !multicoreEnabled else {
+        guard CoreID.current == .core0 else {
+            return
+        }
+
+        let didMarkEnabled = multicoreEnabled.compareExchange(
+            expected: false,
+            desired: true,
+            ordering: .relaxed
+        ).exchanged
+        guard didMarkEnabled else {
             return
         }
 
         multicore_reset_core1()
         launchSchedulerCore1()
-        multicoreEnabled = true
     }
 
 #if CPUMetrics
@@ -242,7 +251,7 @@ final class SchedulerSystem {
     /// verify that the current core is still the owner.
     func jobWillRun(envelope: JobEnvelope, core: CoreID) {
         affinityTable.markStarting(identity: envelope.identity, core: core)
-        didRunJobByCore[core.index] = true
+        storeDidRunJob(true, for: core)
     }
 
     /// Marks a job as finished.
@@ -273,7 +282,7 @@ final class SchedulerSystem {
             for: PlacementInput(
                 identity: identity,
                 enqueueCore: enqueueCore,
-                multicoreEnabled: multicoreEnabled,
+                multicoreEnabled: multicoreEnabled.load(ordering: .relaxed),
                 outstandingWorkByCore: outstandingWork
             ),
             existingOwner: existingOwner
@@ -312,7 +321,7 @@ final class SchedulerSystem {
     /// platform escape hatch; if it creates a Swift `Task`, that task will return
     /// through normal runtime enqueue hooks and use the job placement path.
     private func selectDeferredWorkCore(preferredCore: CoreID?) -> CoreID {
-        if !multicoreEnabled {
+        if !multicoreEnabled.load(ordering: .relaxed) {
             return .core0
         }
 
@@ -322,6 +331,24 @@ final class SchedulerSystem {
     /// Returns the executor that owns a core's inbox and async context.
     private func executor(for core: CoreID) -> CoreExecutor {
         executors[core.index]
+    }
+
+    private func loadDidRunJob(for core: CoreID) -> Bool {
+        switch core {
+        case .core0:
+            didRunJobOnCore0.load(ordering: .relaxed)
+        case .core1:
+            didRunJobOnCore1.load(ordering: .relaxed)
+        }
+    }
+
+    private func storeDidRunJob(_ value: Bool, for core: CoreID) {
+        switch core {
+        case .core0:
+            didRunJobOnCore0.store(value, ordering: .relaxed)
+        case .core1:
+            didRunJobOnCore1.store(value, ordering: .relaxed)
+        }
     }
 
     /// Returns the amount of pending/running work used by placement policy.
