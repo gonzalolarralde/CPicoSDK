@@ -942,6 +942,21 @@ with OpenOCD, captures RTT output, and evaluates controller-side expectations.
 Result lines report build, program, host run/capture time, device-reported time,
 UF2 firmware size, and per-function pass/fail status.
 
+One source file can define multiple build variants with an optional `alts:`
+metadata block. Each entry expands into a separate generated device test named
+`<name>-<altName>`. Alternatives can add/remove package traits and provide
+Swift compile definitions for `#if`-guarded test behavior:
+
+```swift
+//% alts:
+//%   - name: baseline
+//%     swiftDefines: [BENCH_BASELINE]
+//%   - name: cpuMetrics
+//%     traits:
+//%       add: [CPUMetrics]
+//%     swiftDefines: [BENCH_CPU_METRICS]
+```
+
 If a test file contains any `async` top-level test function, the harness
 automatically uses the async runner and links `CPicoConcurrency`; sync functions
 in the same file still run normally. Swift Testing syntax (`import Testing`,
