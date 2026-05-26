@@ -6,7 +6,7 @@ committed, because a commit cannot contain its own stable hash.
 
 ## 2026-05-26 Clean-Room C Scheduler
 
-- Implementation commit: pending
+- Implementation commit: `b0e2875`
 - Full device suite: `18/18` passing, including raw multicore sequential
   baseline test.
 - Scheduled multicore, 10 passes:
