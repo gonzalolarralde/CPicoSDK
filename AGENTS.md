@@ -485,6 +485,15 @@ design notes, experiments, and failure analysis in `docs/`.
   `TaskPriority` raw values. Do not duplicate priority threshold constants in
   C shims unless the runtime bridge is unavailable and the fallback is
   explicitly documented.
+- CPUMetrics IRQ wrappers must not call Swift metering code from IRQ context.
+  Symptom: an idle async `Task.sleep(us:)` test prints before the sleep, then
+  times out with a missing run-end marker; GDB shows core0 interrupted inside
+  `alarm_pool_add_alarm_at_force_in_context` and entering
+  `_cpicosdk_record_runtime_scheduler_exit_interrupt` through
+  `cshims_irq_wrapper_3`. Keep the generic IRQ wrapper C-only and nonblocking
+  for event counts, leave Pico timer alarm IRQ vectors unwrapped, and record
+  explicit event/time samples inside known handler paths such as the
+  `Task.sleep` alarm callback.
 - If a scheduler uses a fixed SIO hardware spinlock directly, clear the lock
   once during scheduler startup before the first blocking read. A stale locked
   hardware register can make the next flashed image hang in `startMulticore()`

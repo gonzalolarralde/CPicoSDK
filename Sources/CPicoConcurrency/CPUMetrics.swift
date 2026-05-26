@@ -22,11 +22,12 @@ public enum CPUCore: UInt8, Sendable {
 /// WARNING: *THIS IS AN EXPERIMENTAL IMPLEMENTATION* Expect inaccurate readings,
 /// missing features, and potential performance issues. Use with caution.
 ///
-/// WARNING: To count CPU usage accurately the IRQ handlers are wrapped with
-/// a shim that accounts for their execution time in the CPU usage metrics.
-/// Expect potential performance degradations and unexpected interactions with
-/// third-party libraries that also wrap IRQ handlers. If you experience issues,
-/// you can disable CPU monitoring and the IRQ wrapping by undefining the `CPUMetrics`
+/// WARNING: IRQ handlers are wrapped with a lightweight shim that counts
+/// interrupt events from C. Interrupt time is approximate and is only recorded
+/// by handlers that explicitly publish timing samples. Expect potential
+/// performance degradations and unexpected interactions with third-party
+/// libraries that also wrap IRQ handlers. If you experience issues, you can
+/// disable CPU monitoring and the IRQ wrapping by undefining the `CPUMetrics`
 /// flag in your build configuration.
 public struct CPUStats: Sendable {
     public static var enabled: Bool {
@@ -97,6 +98,10 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 
     @_transparent
     static func irqNeedsWrapping(num irq: UInt32) -> Bool {
+        if irq < UInt32(NUM_ALARMS * NUM_GENERIC_TIMERS) {
+            return false
+        }
+
         guard let wrapper = cshims_get_irq_wrapper(irq) else {
             return false
         }
@@ -288,6 +293,7 @@ struct RuntimeCPUUsageMeter: ~Copyable {
         }
 
         let nowUs = time_us_64()
+        accountElapsed(nowUs: nowUs)
 
         guard windowStartUs != 0 else {
             mutex_exit(mutex)
@@ -324,22 +330,40 @@ struct RuntimeCPUUsageMeter: ~Copyable {
 
     @_transparent
     private mutating func accountElapsed(nowUs: UInt64) {
+        let interruptSample = takeInterruptSample()
+
         if windowStartUs == 0 {
             windowStartUs = nowUs
             lastEventUs = nowUs
+            interruptEvents &+= interruptSample.events
+            interruptUs &+= interruptSample.timeUs
             return
         }
 
         let elapsedUs = nowUs &- lastEventUs
         lastEventUs = nowUs
+        interruptEvents &+= interruptSample.events
+
+        let sampledInterruptUs = min(interruptSample.timeUs, elapsedUs)
+        interruptUs &+= sampledInterruptUs
+
+        let unsampledElapsedUs = elapsedUs &- sampledInterruptUs
 
         if interruptDepth > 0 {
-            interruptUs &+= elapsedUs
+            interruptUs &+= unsampledElapsedUs
         } else if taskIsActive {
-            taskUs &+= elapsedUs
+            taskUs &+= unsampledElapsedUs
         } else {
-            idleUs &+= elapsedUs
+            idleUs &+= unsampledElapsedUs
         }
+    }
+
+    @_transparent
+    private mutating func takeInterruptSample() -> (events: UInt64, timeUs: UInt64) {
+        var events: UInt64 = 0
+        var timeUs: UInt64 = 0
+        cshims_cpu_metrics_take_interrupt_samples(UInt32(CPUCore(core).rawValue), &events, &timeUs)
+        return (events, timeUs)
     }
 }
 

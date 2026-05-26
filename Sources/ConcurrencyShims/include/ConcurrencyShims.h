@@ -61,6 +61,8 @@ cshims_irq_handler_t cshims_get_irq_wrapper(unsigned int irq);
 void cshims_set_irq_wrapper_original(unsigned int irq, cshims_irq_handler_t handler);
 cshims_irq_handler_t cshims_get_irq_vtor_handler(unsigned int irq);
 void cshims_set_irq_vtor_handler(unsigned int irq, cshims_irq_handler_t handler);
+void cshims_cpu_metrics_record_interrupt_sample(uint32_t core, uint64_t events, uint64_t timeUs);
+void cshims_cpu_metrics_take_interrupt_samples(uint32_t core, uint64_t *events, uint64_t *timeUs);
 
 #ifdef __cplusplus
 }
