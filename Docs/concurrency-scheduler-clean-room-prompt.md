@@ -124,3 +124,22 @@ fatal with messages beginning:
 
 Replace those shells with a real implementation. The prompt above is the
 contract; the shell code is only a linkable starting point.
+
+## Boundary Notes Discovered During Implementation
+
+These notes are implementation-neutral facts about the local CPicoSDK boundary:
+
+- `add_alarm_in_us` is a Pico SDK static inline helper in the generated board
+  headers, so C scheduler code cannot link against it as an external symbol.
+  If scheduler timers are implemented in C, call a linkable alarm-pool function
+  such as `alarm_pool_add_alarm_at(alarm_pool_get_default(), deadline, ...)`
+  or provide a local wrapper.
+- The root `test-in-device --build-only` harness can reuse generated package
+  build products under
+  `.build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/.../Current/.build`.
+  After removing or renaming scheduler source files, stale object files from
+  that directory can still be linked until the generated package `.build`
+  directory is removed.
+- The Swift-facing `CPUStats` stream API can remain Swift-owned even when the
+  hot scheduler path is C-owned, as long as C exposes small accounting callbacks
+  for task start, task end, idle samples, and report collection.

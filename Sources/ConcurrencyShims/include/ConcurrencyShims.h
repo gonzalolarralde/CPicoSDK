@@ -40,6 +40,19 @@ uint8_t cshims_job_priority(void *job);
 void cshims_swift_task_clear_current(void);
 void *cshims_scheduler_core1_stack_bottom(void);
 uint32_t cshims_scheduler_core1_stack_size_bytes(void);
+void cshims_scheduler_prepare_lock(void);
+int cshims_scheduler_poll_once(void);
+void cshims_scheduler_wait_for_work_forever(void);
+void cshims_scheduler_start_multicore(void);
+void cshims_scheduler_enqueue_deferred(void *item);
+void cshims_benchmark_multicore_sequential(
+    uint64_t durationUs,
+    uint32_t rounds,
+    uint32_t *core0Units,
+    uint32_t *core1Units,
+    uint32_t *core0Checksum,
+    uint32_t *core1Checksum,
+    uint64_t *elapsedUs);
 unsigned int cshims_enter_critical(void);
 void cshims_exit_critical(unsigned int state);
 

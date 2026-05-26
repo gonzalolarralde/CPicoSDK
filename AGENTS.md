@@ -485,6 +485,16 @@ design notes, experiments, and failure analysis in `docs/`.
   `TaskPriority` raw values. Do not duplicate priority threshold constants in
   C shims unless the runtime bridge is unavailable and the fallback is
   explicitly documented.
+- If a scheduler uses a fixed SIO hardware spinlock directly, clear the lock
+  once during scheduler startup before the first blocking read. A stale locked
+  hardware register can make the next flashed image hang in `startMulticore()`
+  before core1 launches. On this RP2350 SDK build, `spin_lock_init()` returns a
+  software-spinlock byte in SRAM because `PICO_USE_SW_SPIN_LOCKS=1`, so do not
+  treat that returned pointer as an SIO spinlock register.
+- Keep benchmark-only C helpers out of the scheduler hot-path translation unit.
+  Moving a raw multicore baseline helper into `ConcurrencyShims.c` changed code
+  layout enough to drop `SchedulerMulticoreBenchmarks` throughput from roughly
+  22k to 14k; putting it in a separate C file restored the score range.
 
 ### Serial And RTT Logging
 
@@ -569,3 +579,9 @@ design notes, experiments, and failure analysis in `docs/`.
   can pick stale debug/release/finalizer output; return the exact
   `.build/$SWIFTPM_TRIPLE/$SWIFT_BUILD_TYPE/DeviceTestApp.elf` path and force
   finalization when generated inputs changed.
+- After deleting or renaming package source files used by generated device
+  tests, stale objects can remain in the generated package cache and link
+  removed symbols, such as an old `SchedulerPerf.swift.o` referencing deleted
+  scheduler types. Remove only the generated device-test build cache with
+  `rm -rf .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.build`
+  and rerun the focused `swift package --disable-sandbox test-in-device --build-only --filter <TestName> --allow-writing-to-package-directory --allow-network-connections all`.
