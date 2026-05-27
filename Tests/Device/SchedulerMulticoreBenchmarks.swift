@@ -5,6 +5,11 @@
 //% concurrency: true
 //% traits:
 //%   add: [StdIO_RTT]
+//% alts:
+//%   - name: baseline
+//%   - name: cpuMetrics
+//%     traits:
+//%       add: [CPUMetrics]
 //% expect:
 //%   durationMs:
 //%     min: 0
