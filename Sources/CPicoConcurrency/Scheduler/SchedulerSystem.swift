@@ -19,8 +19,6 @@ final class SchedulerSystem {
         var nextCoreIndex: UInt8 = 0
     }
 
-    private var core0Usage = RuntimeCPUUsageMeter(core: .core0)
-    private var core1Usage = RuntimeCPUUsageMeter(core: .core1)
     private var core1MetricsActive = false
     private var cpuUsageSnapshots = CPUUsageSnapshotState()
     private var cpuUsageSnapshotsLock = mutex_t()
@@ -32,6 +30,7 @@ final class SchedulerSystem {
             fatalError("[CPicoConcurrency] failed to initialize scheduler async_context")
         }
 #if CPUMetrics
+        cshims_cpu_metrics_set_enabled(true)
         mutex_init(&cpuUsageSnapshotsLock)
 #endif
     }
@@ -67,28 +66,24 @@ final class SchedulerSystem {
         makeCPUUsageStream(core: nil)
     }
 
-    func recordInterruptCPUUsage(_ event: RuntimeCPUUsageMeter.Event, coreIndex: UInt) {
-        meter(for: coreIndex)?.pointee.record(event: event)
-    }
-
     func recordSchedulerTaskStart(coreIndex: UInt) {
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-        meter(for: coreIndex)?.pointee.record(event: .enterTask(name: "runtimeScheduler.job"))
+        cshims_cpu_metrics_record_task_start(UInt32(coreIndex))
     }
 
     func recordSchedulerTaskEnd(coreIndex: UInt) {
-        meter(for: coreIndex)?.pointee.record(event: .exitTask(name: "runtimeScheduler.job"))
+        cshims_cpu_metrics_record_task_end(UInt32(coreIndex))
     }
 
     func recordSchedulerIdleSample(coreIndex: UInt) {
         RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
-        meter(for: coreIndex)?.pointee.sample()
+        cshims_cpu_metrics_record_idle_sample(UInt32(coreIndex))
     }
 
     func collectCPUUsageReports() {
-        collectCPUUsageReport(core: .core0, report: core0Usage.reportIfNeeded())
+        collectCPUUsageReport(core: .core0, report: RuntimeCPUUsageMeter.reportIfNeeded(core: .core0))
         if core1MetricsActive {
-            collectCPUUsageReport(core: .core1, report: core1Usage.reportIfNeeded())
+            collectCPUUsageReport(core: .core1, report: RuntimeCPUUsageMeter.reportIfNeeded(core: .core1))
         }
     }
 
@@ -108,10 +103,11 @@ final class SchedulerSystem {
             if Task.isCancelled {
                 return nil
             }
+            collectCPUUsageReports()
             if let report = latestCPUUsageReport(core: core, after: sequence) {
                 return report
             }
-            await Task.yield()
+            try? await Task.sleep(ms: 100)
         }
     }
 
@@ -167,18 +163,6 @@ final class SchedulerSystem {
                 cpuUsageSnapshots.core1Report = report
                 cpuUsageSnapshots.core1Sequence = cpuUsageSnapshots.sequence
             }
-        }
-    }
-
-    private func meter(for coreIndex: UInt) -> UnsafeMutablePointer<RuntimeCPUUsageMeter>? {
-        switch coreIndex {
-        case 0:
-            return withUnsafeMutablePointer(to: &core0Usage) { $0 }
-        case 1:
-            return withUnsafeMutablePointer(to: &core1Usage) { $0 }
-        default:
-            assertionFailure("[CPicoConcurrency] CPU metrics received invalid core index \(coreIndex)")
-            return nil
         }
     }
 

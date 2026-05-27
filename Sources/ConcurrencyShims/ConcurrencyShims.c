@@ -115,11 +115,6 @@ extern alarm_id_t alarm_pool_add_alarm_at(
 extern void multicore_reset_core1(void);
 extern void multicore_launch_core1_with_stack(void (*entry)(void), uint32_t *stack_bottom, size_t stack_size_bytes);
 extern void cshims_scheduler_run_deferred_item(void *item);
-extern void cshims_scheduler_record_task_start(uint32_t core) __attribute__((weak));
-extern void cshims_scheduler_record_task_end(uint32_t core) __attribute__((weak));
-extern void cshims_scheduler_record_idle_sample(uint32_t core) __attribute__((weak));
-extern void cshims_scheduler_collect_cpu_reports(void) __attribute__((weak));
-
 enum {
     CSHIMS_SCHEDULER_MAX_JOBS = 768,
     CSHIMS_SCHEDULER_MAX_OWNERS = 512,
@@ -572,27 +567,21 @@ int cshims_scheduler_poll_once(void) {
     }
 
     if (job_index == CSHIMS_SCHEDULER_NONE) {
+#if defined(CPUMetrics)
         uint32_t core = cshims_core_num() & 1u;
-        if (cshims_scheduler_record_idle_sample != NULL) {
-            cshims_scheduler_record_idle_sample(core);
-        }
-        if (cshims_scheduler_collect_cpu_reports != NULL && core == 0u) {
-            cshims_scheduler_collect_cpu_reports();
-        }
+        cshims_cpu_metrics_record_idle_sample(core);
+#endif
         return 0;
     }
 
+#if defined(CPUMetrics)
     uint32_t core = cshims_core_num() & 1u;
-    if (cshims_scheduler_record_task_start != NULL) {
-        cshims_scheduler_record_task_start(core);
-    }
+    cshims_cpu_metrics_record_task_start(core);
+#endif
     cshims_run_job_bridge(job_snapshot.job, job_snapshot.executor_first, job_snapshot.executor_second);
-    if (cshims_scheduler_record_task_end != NULL) {
-        cshims_scheduler_record_task_end(core);
-    }
-    if (cshims_scheduler_collect_cpu_reports != NULL && core == 0u) {
-        cshims_scheduler_collect_cpu_reports();
-    }
+#if defined(CPUMetrics)
+    cshims_cpu_metrics_record_task_end(core);
+#endif
 
     cshims_scheduler_finish_job(job_index, job_snapshot.owner_slot);
     return 1;
@@ -607,13 +596,10 @@ void cshims_scheduler_wait_for_work_forever(void) {
         if (has_ready) {
             return;
         }
+#if defined(CPUMetrics)
         uint32_t core = cshims_core_num() & 1u;
-        if (cshims_scheduler_record_idle_sample != NULL) {
-            cshims_scheduler_record_idle_sample(core);
-        }
-        if (cshims_scheduler_collect_cpu_reports != NULL && core == 0u) {
-            cshims_scheduler_collect_cpu_reports();
-        }
+        cshims_cpu_metrics_record_idle_sample(core);
+#endif
         cshims_scheduler_wait_event();
     }
 }

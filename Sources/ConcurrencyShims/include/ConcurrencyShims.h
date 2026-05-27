@@ -61,8 +61,40 @@ cshims_irq_handler_t cshims_get_irq_wrapper(unsigned int irq);
 void cshims_set_irq_wrapper_original(unsigned int irq, cshims_irq_handler_t handler);
 cshims_irq_handler_t cshims_get_irq_vtor_handler(unsigned int irq);
 void cshims_set_irq_vtor_handler(unsigned int irq, cshims_irq_handler_t handler);
+
+typedef struct {
+    uint64_t timestampUs;
+    uint32_t core;
+    uint32_t flags;
+    uint64_t taskUs;
+    uint64_t interruptUs;
+    uint64_t idleUs;
+    uint64_t totalUs;
+    uint64_t interruptEvents;
+    uint64_t taskCycles;
+    uint64_t interruptCycles;
+    uint64_t idleCycles;
+    uint64_t totalCycles;
+    uint64_t taskLoadStoreStallCount;
+    uint64_t interruptLoadStoreStallCount;
+    uint64_t idleLoadStoreStallCount;
+    uint64_t loadStoreStallCount;
+} cshims_cpu_metrics_report_t;
+
+enum {
+    CSHIMS_CPU_METRICS_REPORT_HAS_CYCLES = 1u << 0,
+    CSHIMS_CPU_METRICS_REPORT_HAS_LOAD_STORE_STALLS = 1u << 1,
+};
+
+void cshims_cpu_metrics_record_task_start(uint32_t core);
+void cshims_cpu_metrics_record_task_end(uint32_t core);
+void cshims_cpu_metrics_record_idle_sample(uint32_t core);
+void cshims_cpu_metrics_record_interrupt_enter(uint32_t core);
+void cshims_cpu_metrics_record_interrupt_exit(uint32_t core);
 void cshims_cpu_metrics_record_interrupt_sample(uint32_t core, uint64_t events, uint64_t timeUs);
 void cshims_cpu_metrics_take_interrupt_samples(uint32_t core, uint64_t *events, uint64_t *timeUs);
+bool cshims_cpu_metrics_take_report(uint32_t core, cshims_cpu_metrics_report_t *report);
+void cshims_cpu_metrics_set_enabled(bool enabled);
 
 #ifdef __cplusplus
 }

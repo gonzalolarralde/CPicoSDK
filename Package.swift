@@ -132,7 +132,12 @@ let package = Package(
                 .target(name: "CPicoSDK"),
             ]
         ),
-        .target(name: "ConcurrencyShims"),
+        .target(
+            name: "ConcurrencyShims",
+            cSettings: [
+                .define("CPUMetrics", .when(traits: ["CPUMetrics"])),
+            ]
+        ),
 
         .plugin(
             name: "PIOASMPlugin", 

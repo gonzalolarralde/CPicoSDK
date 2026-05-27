@@ -95,7 +95,8 @@ let timerBlockPathCutoff: UInt64 = 500 // microseconds
 @c
 private func sleep_alarm_callback(_: alarm_id_t, _ userData: UnsafeMutableRawPointer?) -> Int64 {
     #if CPUMetrics
-    let startedUs = time_us_64()
+    let core = UInt32(get_core_num() & 1)
+    cshims_cpu_metrics_record_interrupt_enter(core)
     #endif
 
     ISRTrampoline<PicoTimeoutManager.ContinuationID, PicoTimeoutManager.ContinuationID>.consume(userData) {
@@ -103,8 +104,7 @@ private func sleep_alarm_callback(_: alarm_id_t, _ userData: UnsafeMutableRawPoi
     }
 
     #if CPUMetrics
-    let elapsedUs = time_us_64() &- startedUs
-    cshims_cpu_metrics_record_interrupt_sample(UInt32(get_core_num() & 1), 1, elapsedUs)
+    cshims_cpu_metrics_record_interrupt_exit(core)
     #endif
 
     return 0 // 0 = do not reschedule

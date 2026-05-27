@@ -12,8 +12,6 @@ enum {
 
 static cshims_irq_handler_fn_t cshims_irq_wrapper_originals[CSHIMS_CORE_COUNT][CSHIMS_IRQ_WRAPPER_COUNT] = {{0}};
 static cshims_irq_handler_fn_t cshims_irq_wrapper_shared_originals[CSHIMS_IRQ_WRAPPER_COUNT] = {0};
-static uint32_t cshims_cpu_metric_interrupt_events[CSHIMS_CORE_COUNT] = {0};
-static uint32_t cshims_cpu_metric_interrupt_time_us[CSHIMS_CORE_COUNT] = {0};
 
 static unsigned int cshims_current_core(void) {
     volatile uint32_t *const sio_cpuid = (volatile uint32_t *)0xD0000000u;
@@ -65,28 +63,15 @@ void cshims_set_irq_vtor_handler(unsigned int irq, void (*handler)(void)) {
     vectorTable[16u + irq] = handler;
 }
 
-void cshims_cpu_metrics_record_interrupt_sample(uint32_t core, uint64_t events, uint64_t timeUs) {
-    core &= 1u;
-    __atomic_fetch_add(&cshims_cpu_metric_interrupt_events[core], (uint32_t)events, __ATOMIC_RELAXED);
-    __atomic_fetch_add(&cshims_cpu_metric_interrupt_time_us[core], (uint32_t)timeUs, __ATOMIC_RELAXED);
-}
-
-void cshims_cpu_metrics_take_interrupt_samples(uint32_t core, uint64_t *events, uint64_t *timeUs) {
-    assert(events != NULL);
-    assert(timeUs != NULL);
-
-    core &= 1u;
-    *events = __atomic_exchange_n(&cshims_cpu_metric_interrupt_events[core], 0u, __ATOMIC_RELAXED);
-    *timeUs = __atomic_exchange_n(&cshims_cpu_metric_interrupt_time_us[core], 0u, __ATOMIC_RELAXED);
-}
-
 static void cshims_irq_wrapper_dispatch(uint32_t irq) {
     if (irq >= CSHIMS_IRQ_WRAPPER_COUNT) {
         return;
     }
 
     const unsigned int core = cshims_current_core();
-    cshims_cpu_metrics_record_interrupt_sample(core, 1u, 0u);
+#if defined(CPUMetrics)
+    cshims_cpu_metrics_record_interrupt_enter(core);
+#endif
 
     cshims_irq_handler_fn_t original = cshims_irq_wrapper_originals[core][irq];
     if (original == NULL) {
@@ -95,6 +80,10 @@ static void cshims_irq_wrapper_dispatch(uint32_t irq) {
     if (original != NULL) {
         original();
     }
+
+#if defined(CPUMetrics)
+    cshims_cpu_metrics_record_interrupt_exit(core);
+#endif
 }
 
 #define CSHIMS_DEFINE_IRQ_WRAPPER(N) \

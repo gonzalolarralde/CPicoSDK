@@ -61,6 +61,48 @@ public struct CPUStats: Sendable {
     public let idleUsageTime: UInt64
     public let totalTime: UInt64
     public let interruptEvents: UInt64
+    public let taskCycles: UInt64?
+    public let interruptCycles: UInt64?
+    public let idleCycles: UInt64?
+    public let totalCycles: UInt64?
+    public let taskLoadStoreStallCount: UInt64?
+    public let interruptLoadStoreStallCount: UInt64?
+    public let idleLoadStoreStallCount: UInt64?
+    public let loadStoreStallCount: UInt64?
+
+    init(
+        timestamp: UInt64,
+        core: CPUCore,
+        taskUsageTime: UInt64,
+        interruptUsageTime: UInt64,
+        idleUsageTime: UInt64,
+        totalTime: UInt64,
+        interruptEvents: UInt64,
+        taskCycles: UInt64? = nil,
+        interruptCycles: UInt64? = nil,
+        idleCycles: UInt64? = nil,
+        totalCycles: UInt64? = nil,
+        taskLoadStoreStallCount: UInt64? = nil,
+        interruptLoadStoreStallCount: UInt64? = nil,
+        idleLoadStoreStallCount: UInt64? = nil,
+        loadStoreStallCount: UInt64? = nil
+    ) {
+        self.timestamp = timestamp
+        self.core = core
+        self.taskUsageTime = taskUsageTime
+        self.interruptUsageTime = interruptUsageTime
+        self.idleUsageTime = idleUsageTime
+        self.totalTime = totalTime
+        self.interruptEvents = interruptEvents
+        self.taskCycles = taskCycles
+        self.interruptCycles = interruptCycles
+        self.idleCycles = idleCycles
+        self.totalCycles = totalCycles
+        self.taskLoadStoreStallCount = taskLoadStoreStallCount
+        self.interruptLoadStoreStallCount = interruptLoadStoreStallCount
+        self.idleLoadStoreStallCount = idleLoadStoreStallCount
+        self.loadStoreStallCount = loadStoreStallCount
+    }
 
     public var memoryStats: [MemoryType: MemoryStats] {
         MemoryStats.stats
@@ -92,7 +134,7 @@ public struct CPUStats: Sendable {
 
 #if CPUMetrics
 
-struct RuntimeCPUUsageMeter: ~Copyable {
+enum RuntimeCPUUsageMeter {
     // MARK: - IRQ Wrapping for Accurate CPU Usage Attribution
     private static let irqWrapReconcileIntervalUs: UInt64 = 1_000_000
     nonisolated(unsafe) private static var core0IRQWrapNextReconcileUs: UInt64 = 0
@@ -212,175 +254,44 @@ struct RuntimeCPUUsageMeter: ~Copyable {
         }
     }
 
-    enum Event {
-        case enterTask(name: String)
-        case exitTask(name: String)
-        case enterInterrupt(interrupt: UInt)
-        case exitInterrupt(interrupt: UInt)
-    }
-
-    // MARK: - CPU Usage Metering
-
-    private static let windowUs: UInt64 = 1_000_000
-
-    private let core: CoreID
-    private var windowStartUs: UInt64 = 0
-    private var lastEventUs: UInt64 = 0
-
-    private var taskUs: UInt64 = 0
-    private var interruptUs: UInt64 = 0
-    private var idleUs: UInt64 = 0
-    private var interruptEvents: UInt64 = 0
-
-    private var taskIsActive = false
-    private var interruptDepth: UInt = 0
-    
-    private let mutex: UnsafeMutablePointer<mutex_t> = .allocate(capacity: 1)
-
-    init(core: CoreID) {
-        self.core = core
-        mutex_init(mutex)
-    }
-
-    deinit {
-        mutex.deinitialize(count: 1)
-        mutex.deallocate()
-    }
-
-    @_transparent
-    mutating func record(event: Event) {
-        guard mutex_try_enter(mutex, nil) else {
-            // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            return
-        }
-
-        defer {
-            mutex_exit(mutex)
-        }
-
-        let nowUs = time_us_64()
-        accountElapsed(nowUs: nowUs)
-
-        switch event {
-        case .enterTask:
-            taskIsActive = true
-        case .exitTask:
-            taskIsActive = false
-        case .enterInterrupt:
-            interruptDepth &+= 1
-            interruptEvents &+= 1
-        case .exitInterrupt:
-            if interruptDepth > 0 {
-                interruptDepth &-= 1
-            }
-        }
-    }
-
-    @_transparent
-    mutating func sample() {
-        guard mutex_try_enter(mutex, nil) else {
-            // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
-            return
-        }
-
-        defer {
-            mutex_exit(mutex)
-        }
-
-        let nowUs = time_us_64()
-        accountElapsed(nowUs: nowUs)
-    }
-
-    @_transparent
-    mutating func reportIfNeeded() -> CPUStats? {
-        guard mutex_try_enter(mutex, nil) else {
-            // This might cause some inaccuracies in the metrics, but it's better than blocking critical code paths like IRQ handlers.
+    static func reportIfNeeded(core: CPUCore) -> CPUStats? {
+        var raw = cshims_cpu_metrics_report_t()
+        guard cshims_cpu_metrics_take_report(UInt32(core.rawValue), &raw) else {
             return nil
         }
 
-        let nowUs = time_us_64()
-        accountElapsed(nowUs: nowUs)
-
-        guard windowStartUs != 0 else {
-            mutex_exit(mutex)
-            return nil
-        }
-
-        guard nowUs &- windowStartUs >= Self.windowUs else {
-            mutex_exit(mutex)
-            return nil
-        }
-
-        let totalUs = taskUs &+ interruptUs &+ idleUs
-        let report = CPUStats(
-            timestamp: nowUs,
-            core: CPUCore(core),
-            taskUsageTime: taskUs, 
-            interruptUsageTime: interruptUs, 
-            idleUsageTime: idleUs, 
-            totalTime: totalUs, 
-            interruptEvents: interruptEvents
+        let hasCycles = (raw.flags & UInt32(CSHIMS_CPU_METRICS_REPORT_HAS_CYCLES)) != 0
+        let hasLoadStoreStalls = (raw.flags & UInt32(CSHIMS_CPU_METRICS_REPORT_HAS_LOAD_STORE_STALLS)) != 0
+        return CPUStats(
+            timestamp: raw.timestampUs,
+            core: core,
+            taskUsageTime: raw.taskUs,
+            interruptUsageTime: raw.interruptUs,
+            idleUsageTime: raw.idleUs,
+            totalTime: raw.totalUs,
+            interruptEvents: raw.interruptEvents,
+            taskCycles: hasCycles ? raw.taskCycles : nil,
+            interruptCycles: hasCycles ? raw.interruptCycles : nil,
+            idleCycles: hasCycles ? raw.idleCycles : nil,
+            totalCycles: hasCycles ? raw.totalCycles : nil,
+            taskLoadStoreStallCount: hasLoadStoreStalls ? raw.taskLoadStoreStallCount : nil,
+            interruptLoadStoreStallCount: hasLoadStoreStalls ? raw.interruptLoadStoreStallCount : nil,
+            idleLoadStoreStallCount: hasLoadStoreStalls ? raw.idleLoadStoreStallCount : nil,
+            loadStoreStallCount: hasLoadStoreStalls ? raw.loadStoreStallCount : nil
         )
-
-        windowStartUs = nowUs
-        lastEventUs = nowUs
-        taskUs = 0
-        interruptUs = 0
-        idleUs = 0
-        interruptEvents = 0
-
-        mutex_exit(mutex)
-
-        return report
-    }
-
-    @_transparent
-    private mutating func accountElapsed(nowUs: UInt64) {
-        let interruptSample = takeInterruptSample()
-
-        if windowStartUs == 0 {
-            windowStartUs = nowUs
-            lastEventUs = nowUs
-            interruptEvents &+= interruptSample.events
-            interruptUs &+= interruptSample.timeUs
-            return
-        }
-
-        let elapsedUs = nowUs &- lastEventUs
-        lastEventUs = nowUs
-        interruptEvents &+= interruptSample.events
-
-        let sampledInterruptUs = min(interruptSample.timeUs, elapsedUs)
-        interruptUs &+= sampledInterruptUs
-
-        let unsampledElapsedUs = elapsedUs &- sampledInterruptUs
-
-        if interruptDepth > 0 {
-            interruptUs &+= unsampledElapsedUs
-        } else if taskIsActive {
-            taskUs &+= unsampledElapsedUs
-        } else {
-            idleUs &+= unsampledElapsedUs
-        }
-    }
-
-    @_transparent
-    private mutating func takeInterruptSample() -> (events: UInt64, timeUs: UInt64) {
-        var events: UInt64 = 0
-        var timeUs: UInt64 = 0
-        cshims_cpu_metrics_take_interrupt_samples(UInt32(CPUCore(core).rawValue), &events, &timeUs)
-        return (events, timeUs)
     }
 }
 
 @_spi(Internal) @_cdecl("_cpicosdk_record_runtime_scheduler_enter_interrupt")
 public func recordRuntimeSchedulerEnterInterrupt(_ coreIndex: UInt, _ interrupt: UInt) {
-    cshimsRuntimeScheduler.recordInterruptCPUUsage(.enterInterrupt(interrupt: interrupt), coreIndex: coreIndex)
+    _ = interrupt
+    cshims_cpu_metrics_record_interrupt_enter(UInt32(coreIndex))
 }
 
 @_spi(Internal) @_cdecl("_cpicosdk_record_runtime_scheduler_exit_interrupt")
 public func recordRuntimeSchedulerExitInterrupt(_ coreIndex: UInt, _ interrupt: UInt) {
-    cshimsRuntimeScheduler.recordInterruptCPUUsage(.exitInterrupt(interrupt: interrupt), coreIndex: coreIndex)
+    _ = interrupt
+    cshims_cpu_metrics_record_interrupt_exit(UInt32(coreIndex))
 }
 
 #endif
