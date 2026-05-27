@@ -62,7 +62,9 @@ public struct CPUStats: Sendable {
     public let totalTime: UInt64
     public let interruptEvents: UInt64
 
-    public let memoryStats: [MemoryType: MemoryStats] = MemoryStats.stats
+    public var memoryStats: [MemoryType: MemoryStats] {
+        MemoryStats.stats
+    }
 
     public var taskUsagePercent: Double {
         totalTime > 0 ? Double(taskUsageTime) / Double(totalTime) * 100 : 0
@@ -99,6 +101,10 @@ struct RuntimeCPUUsageMeter: ~Copyable {
     @_transparent
     static func irqNeedsWrapping(num irq: UInt32) -> Bool {
         if irq < UInt32(NUM_ALARMS * NUM_GENERIC_TIMERS) {
+            return false
+        }
+
+        if irq == UInt32(USBCTRL_IRQ.rawValue) {
             return false
         }
 

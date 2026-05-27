@@ -21,6 +21,7 @@ final class SchedulerSystem {
 
     private var core0Usage = RuntimeCPUUsageMeter(core: .core0)
     private var core1Usage = RuntimeCPUUsageMeter(core: .core1)
+    private var core1MetricsActive = false
     private var cpuUsageSnapshots = CPUUsageSnapshotState()
     private var cpuUsageSnapshotsLock = mutex_t()
 #endif
@@ -52,6 +53,9 @@ final class SchedulerSystem {
 
     func startMulticore() {
         cshims_scheduler_start_multicore()
+#if CPUMetrics
+        core1MetricsActive = true
+#endif
     }
 
 #if CPUMetrics
@@ -83,7 +87,9 @@ final class SchedulerSystem {
 
     func collectCPUUsageReports() {
         collectCPUUsageReport(core: .core0, report: core0Usage.reportIfNeeded())
-        collectCPUUsageReport(core: .core1, report: core1Usage.reportIfNeeded())
+        if core1MetricsActive {
+            collectCPUUsageReport(core: .core1, report: core1Usage.reportIfNeeded())
+        }
     }
 
     private func makeCPUUsageStream(core: CPUCore?) -> AsyncStream<CPUStats> {

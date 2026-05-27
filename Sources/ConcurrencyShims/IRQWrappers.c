@@ -11,6 +11,7 @@ enum {
 };
 
 static cshims_irq_handler_fn_t cshims_irq_wrapper_originals[CSHIMS_CORE_COUNT][CSHIMS_IRQ_WRAPPER_COUNT] = {{0}};
+static cshims_irq_handler_fn_t cshims_irq_wrapper_shared_originals[CSHIMS_IRQ_WRAPPER_COUNT] = {0};
 static uint32_t cshims_cpu_metric_interrupt_events[CSHIMS_CORE_COUNT] = {0};
 static uint32_t cshims_cpu_metric_interrupt_time_us[CSHIMS_CORE_COUNT] = {0};
 
@@ -35,6 +36,9 @@ void cshims_set_irq_wrapper_original(unsigned int irq, void (*handler)(void)) {
         return;
     }
     cshims_irq_wrapper_originals[cshims_current_core()][irq] = handler;
+    if (cshims_irq_wrapper_shared_originals[irq] == NULL) {
+        cshims_irq_wrapper_shared_originals[irq] = handler;
+    }
 }
 
 void (*cshims_get_irq_vtor_handler(unsigned int irq))(void) {
@@ -85,6 +89,9 @@ static void cshims_irq_wrapper_dispatch(uint32_t irq) {
     cshims_cpu_metrics_record_interrupt_sample(core, 1u, 0u);
 
     cshims_irq_handler_fn_t original = cshims_irq_wrapper_originals[core][irq];
+    if (original == NULL) {
+        original = cshims_irq_wrapper_shared_originals[irq];
+    }
     if (original != NULL) {
         original();
     }

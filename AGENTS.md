@@ -485,15 +485,28 @@ design notes, experiments, and failure analysis in `docs/`.
   `TaskPriority` raw values. Do not duplicate priority threshold constants in
   C shims unless the runtime bridge is unavailable and the fallback is
   explicitly documented.
+- `Task { ... }` created from an `@MainActor` app setup inherits the main actor.
+  Symptom: a diagnostics stream prints its startup lines but never receives
+  later async reports while a display/GIF loop keeps printing. Check whether the
+  display loop has an overrun path with no `await`; add an explicit
+  `await Task.yield()` after each work unit or move unrelated diagnostics into a
+  `nonisolated` helper before creating the task.
 - CPUMetrics IRQ wrappers must not call Swift metering code from IRQ context.
   Symptom: an idle async `Task.sleep(us:)` test prints before the sleep, then
   times out with a missing run-end marker; GDB shows core0 interrupted inside
   `alarm_pool_add_alarm_at_force_in_context` and entering
   `_cpicosdk_record_runtime_scheduler_exit_interrupt` through
   `cshims_irq_wrapper_3`. Keep the generic IRQ wrapper C-only and nonblocking
-  for event counts, leave Pico timer alarm IRQ vectors unwrapped, and record
-  explicit event/time samples inside known handler paths such as the
+  for event counts, leave Pico timer alarm and USB IRQ vectors unwrapped, and
+  record explicit event/time samples inside known handler paths such as the
   `Task.sleep` alarm callback.
+- If an IRQ vector table may be shared between cores, a multicore IRQ wrapper
+  must not depend only on per-core original-handler slots. Symptom: with
+  CPUMetrics enabled, core1 can install a wrapper for a shared vector first,
+  then core0 dispatches the wrapped IRQ and finds no core0-local original
+  handler. Keep per-core originals for core-local vector tables, plus a shared
+  fallback for the shared-vector case, or otherwise key originals by actual
+  vector table identity.
 - If a scheduler uses a fixed SIO hardware spinlock directly, clear the lock
   once during scheduler startup before the first blocking read. A stale locked
   hardware register can make the next flashed image hang in `startMulticore()`
