@@ -1,4 +1,4 @@
-#include "ConcurrencyShims.h"
+#include "../ConcurrencyShims/include/ConcurrencyShims.h"
 
 #if defined(CPUMetrics)
 
@@ -272,12 +272,24 @@ void cshims_cpu_metrics_record_task_start(uint32_t core) {
     cshims_cpu_metrics_record_locked(core, 0u);
 }
 
+void cshims_scheduler_record_task_start(uint32_t core) {
+    cshims_cpu_metrics_record_task_start(core);
+}
+
 void cshims_cpu_metrics_record_task_end(uint32_t core) {
     cshims_cpu_metrics_record_locked(core, 1u);
 }
 
+void cshims_scheduler_record_task_end(uint32_t core) {
+    cshims_cpu_metrics_record_task_end(core);
+}
+
 void cshims_cpu_metrics_record_idle_sample(uint32_t core) {
     cshims_cpu_metrics_record_locked(core, 4u);
+}
+
+void cshims_scheduler_record_idle_sample(uint32_t core) {
+    cshims_cpu_metrics_record_idle_sample(core);
 }
 
 void cshims_cpu_metrics_record_interrupt_enter(uint32_t core) {

@@ -284,25 +284,3 @@ func cshims_scheduler_run_deferred_item(_ item: UnsafeMutableRawPointer?) {
     }
     Unmanaged<DeferredWorkItem>.fromOpaque(item).takeUnretainedValue().execute()
 }
-
-#if CPUMetrics
-@_cdecl("cshims_scheduler_record_task_start")
-func cshims_scheduler_record_task_start(_ core: UInt32) {
-    cshimsRuntimeScheduler.recordSchedulerTaskStart(coreIndex: UInt(core))
-}
-
-@_cdecl("cshims_scheduler_record_task_end")
-func cshims_scheduler_record_task_end(_ core: UInt32) {
-    cshimsRuntimeScheduler.recordSchedulerTaskEnd(coreIndex: UInt(core))
-}
-
-@_cdecl("cshims_scheduler_record_idle_sample")
-func cshims_scheduler_record_idle_sample(_ core: UInt32) {
-    cshimsRuntimeScheduler.recordSchedulerIdleSample(coreIndex: UInt(core))
-}
-
-@_cdecl("cshims_scheduler_collect_cpu_reports")
-func cshims_scheduler_collect_cpu_reports() {
-    cshimsRuntimeScheduler.collectCPUUsageReports()
-}
-#endif

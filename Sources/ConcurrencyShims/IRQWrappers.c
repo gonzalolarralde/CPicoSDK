@@ -11,7 +11,9 @@ enum {
 };
 
 static cshims_irq_handler_fn_t cshims_irq_wrapper_originals[CSHIMS_CORE_COUNT][CSHIMS_IRQ_WRAPPER_COUNT] = {{0}};
+#if defined(CPUMetrics)
 static cshims_irq_handler_fn_t cshims_irq_wrapper_shared_originals[CSHIMS_IRQ_WRAPPER_COUNT] = {0};
+#endif
 
 static unsigned int cshims_current_core(void) {
     volatile uint32_t *const sio_cpuid = (volatile uint32_t *)0xD0000000u;
@@ -34,9 +36,11 @@ void cshims_set_irq_wrapper_original(unsigned int irq, void (*handler)(void)) {
         return;
     }
     cshims_irq_wrapper_originals[cshims_current_core()][irq] = handler;
+#if defined(CPUMetrics)
     if (cshims_irq_wrapper_shared_originals[irq] == NULL) {
         cshims_irq_wrapper_shared_originals[irq] = handler;
     }
+#endif
 }
 
 void (*cshims_get_irq_vtor_handler(unsigned int irq))(void) {
@@ -74,9 +78,11 @@ static void cshims_irq_wrapper_dispatch(uint32_t irq) {
 #endif
 
     cshims_irq_handler_fn_t original = cshims_irq_wrapper_originals[core][irq];
+#if defined(CPUMetrics)
     if (original == NULL) {
         original = cshims_irq_wrapper_shared_originals[irq];
     }
+#endif
     if (original != NULL) {
         original();
     }

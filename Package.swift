@@ -129,6 +129,7 @@ let package = Package(
             name: "CPicoConcurrency",
             dependencies: [
                 .target(name: "ConcurrencyShims"),
+                .target(name: "ConcurrencyCPUMetricsShims", condition: .when(traits: ["CPUMetrics"])),
                 .target(name: "CPicoSDK"),
             ]
         ),
@@ -136,6 +137,12 @@ let package = Package(
             name: "ConcurrencyShims",
             cSettings: [
                 .define("CPUMetrics", .when(traits: ["CPUMetrics"])),
+            ]
+        ),
+        .target(
+            name: "ConcurrencyCPUMetricsShims",
+            cSettings: [
+                .define("CPUMetrics"),
             ]
         ),
 

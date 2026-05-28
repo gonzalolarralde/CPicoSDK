@@ -522,6 +522,14 @@ design notes, experiments, and failure analysis in `docs/`.
   Moving a raw multicore baseline helper into `ConcurrencyShims.c` changed code
   layout enough to drop `SchedulerMulticoreBenchmarks` throughput from roughly
   22k to 14k; putting it in a separate C file restored the score range.
+- Keep CPUMetrics implementation objects and scheduler-affinity experiments out
+  of the CPUMetrics-off hot path until measured. Symptom: the clean C scheduler
+  at `b0e2875` scored about `22k`, while later non-metrics builds dropped first
+  to about `19k` after the shared IRQ fallback and then to about `13k` after
+  `core0_only` ready-queue scanning. The recovery was to compile the shared IRQ
+  fallback only under `CPUMetrics`, restore O(1) ready-queue pop/wait behavior,
+  and keep scheduler metrics as weak hooks so the CPUMetrics-off baseline
+  returned above `23k`.
 - Do not remove or disable a valuable runtime feature, such as CPUMetrics IRQ
   vector wrapping, based only on a plausible correlation from logs. First make
   the smallest reversible experiment, validate it against the symptom and the
