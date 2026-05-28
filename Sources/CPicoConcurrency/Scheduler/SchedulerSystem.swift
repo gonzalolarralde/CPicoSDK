@@ -6,7 +6,7 @@ import CPicoSDK
 /// The performance-sensitive runtime paths live in `ConcurrencyShims.c`. This
 /// object keeps the public Swift API, async-context compatibility hook, deferred
 /// Swift closure execution, and CPU metrics stream surface in one place.
-final class SchedulerSystem {
+final class SchedulerSystem: @unchecked Sendable {
     private var core0Context = async_context_poll_t()
 
 #if CPUMetrics
@@ -16,6 +16,13 @@ final class SchedulerSystem {
         var core0Sequence: UInt64 = 0
         var core1Sequence: UInt64 = 0
         var sequence: UInt64 = 0
+        var nextCoreIndex: UInt8 = 0
+    }
+
+    private final class CPUUsageStreamCursor: @unchecked Sendable {
+        var sequence: UInt64 = 0
+        var core0Sequence: UInt64 = 0
+        var core1Sequence: UInt64 = 0
         var nextCoreIndex: UInt8 = 0
     }
 
@@ -88,13 +95,32 @@ final class SchedulerSystem {
     }
 
     private func makeCPUUsageStream(core: CPUCore?) -> AsyncStream<CPUStats> {
-        var sequence: UInt64 = 0
-        return AsyncStream<CPUStats> {
-            guard let sample = await self.nextCPUUsageReport(core: core, after: sequence) else {
-                return nil
+        let cursor = CPUUsageStreamCursor()
+        if let core {
+            return AsyncStream<CPUStats> {
+                guard let sample = await self.nextCPUUsageReport(core: core, after: cursor.sequence) else {
+                    return nil
+                }
+                cursor.sequence = sample.sequence
+                return sample.report
             }
-            sequence = sample.sequence
-            return sample.report
+        } else {
+            return AsyncStream<CPUStats> {
+                guard let sample = await self.nextCPUUsageReport(
+                    afterCore0: cursor.core0Sequence,
+                    afterCore1: cursor.core1Sequence,
+                    nextCoreIndex: &cursor.nextCoreIndex
+                ) else {
+                    return nil
+                }
+                switch sample.report.core {
+                case .core0:
+                    cursor.core0Sequence = sample.sequence
+                case .core1:
+                    cursor.core1Sequence = sample.sequence
+                }
+                return sample.report
+            }
         }
     }
 
@@ -105,6 +131,27 @@ final class SchedulerSystem {
             }
             collectCPUUsageReports()
             if let report = latestCPUUsageReport(core: core, after: sequence) {
+                return report
+            }
+            try? await Task.sleep(ms: 100)
+        }
+    }
+
+    private func nextCPUUsageReport(
+        afterCore0 core0Sequence: UInt64,
+        afterCore1 core1Sequence: UInt64,
+        nextCoreIndex: inout UInt8
+    ) async -> (report: CPUStats, sequence: UInt64)? {
+        while true {
+            if Task.isCancelled {
+                return nil
+            }
+            collectCPUUsageReports()
+            if let report = latestCPUUsageReport(
+                afterCore0: core0Sequence,
+                afterCore1: core1Sequence,
+                nextCoreIndex: &nextCoreIndex
+            ) {
                 return report
             }
             try? await Task.sleep(ms: 100)
@@ -140,6 +187,32 @@ final class SchedulerSystem {
                    cpuUsageSnapshots.core1Sequence > sequence,
                    let report = cpuUsageSnapshots.core1Report {
                     cpuUsageSnapshots.nextCoreIndex = 0
+                    return (report, cpuUsageSnapshots.core1Sequence)
+                }
+            }
+
+            return nil
+        }
+    }
+
+    private func latestCPUUsageReport(
+        afterCore0 core0Sequence: UInt64,
+        afterCore1 core1Sequence: UInt64,
+        nextCoreIndex: inout UInt8
+    ) -> (report: CPUStats, sequence: UInt64)? {
+        withCPUUsageSnapshotsLock {
+            for offset in UInt8(0)..<2 {
+                let index = (nextCoreIndex &+ offset) & 1
+                if index == 0,
+                   cpuUsageSnapshots.core0Sequence > core0Sequence,
+                   let report = cpuUsageSnapshots.core0Report {
+                    nextCoreIndex = 1
+                    return (report, cpuUsageSnapshots.core0Sequence)
+                }
+                if index == 1,
+                   cpuUsageSnapshots.core1Sequence > core1Sequence,
+                   let report = cpuUsageSnapshots.core1Report {
+                    nextCoreIndex = 0
                     return (report, cpuUsageSnapshots.core1Sequence)
                 }
             }

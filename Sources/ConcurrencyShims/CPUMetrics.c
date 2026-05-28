@@ -56,6 +56,7 @@ static CShimsCPUMetricsCore cshims_cpu_metrics_cores[CSHIMS_CPU_METRICS_CORE_COU
 
 static atomic_uint_fast32_t cshims_cpu_metrics_pending_interrupt_events[CSHIMS_CPU_METRICS_CORE_COUNT];
 static atomic_uint_fast32_t cshims_cpu_metrics_pending_interrupt_time_us[CSHIMS_CPU_METRICS_CORE_COUNT];
+static atomic_uint_fast32_t cshims_cpu_metrics_report_lock_misses[CSHIMS_CPU_METRICS_CORE_COUNT];
 static atomic_bool cshims_cpu_metrics_enabled = false;
 static atomic_bool cshims_cpu_metrics_hw_initialized = false;
 static bool cshims_cpu_metrics_has_cycles = false;
@@ -136,6 +137,25 @@ static uint64_t cshims_cpu_metrics_cycles_to_us(uint32_t cycles) {
 
 static bool cshims_cpu_metrics_try_enter(CShimsCPUMetricsCore *state) {
     return !atomic_flag_test_and_set_explicit(&state->busy, memory_order_acquire);
+}
+
+static bool cshims_cpu_metrics_try_enter_report(uint32_t core, CShimsCPUMetricsCore *state) {
+    if (cshims_cpu_metrics_try_enter(state)) {
+        atomic_store_explicit(&cshims_cpu_metrics_report_lock_misses[core], 0u, memory_order_relaxed);
+        return true;
+    }
+
+    uint32_t misses = atomic_fetch_add_explicit(
+        &cshims_cpu_metrics_report_lock_misses[core],
+        1u,
+        memory_order_relaxed) + 1u;
+    if (misses < 8u) {
+        return false;
+    }
+
+    atomic_store_explicit(&cshims_cpu_metrics_report_lock_misses[core], 0u, memory_order_relaxed);
+    atomic_flag_clear_explicit(&state->busy, memory_order_release);
+    return cshims_cpu_metrics_try_enter(state);
 }
 
 static void cshims_cpu_metrics_exit(CShimsCPUMetricsCore *state) {
@@ -278,7 +298,7 @@ bool cshims_cpu_metrics_take_report(uint32_t core, cshims_cpu_metrics_report_t *
     }
 
     CShimsCPUMetricsCore *state = &cshims_cpu_metrics_cores[core];
-    if (!cshims_cpu_metrics_try_enter(state)) {
+    if (!cshims_cpu_metrics_try_enter_report(core, state)) {
         return false;
     }
 

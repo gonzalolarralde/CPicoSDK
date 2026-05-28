@@ -353,6 +353,11 @@ design notes, experiments, and failure analysis in `docs/`.
 - GDB may print missing DWO/PCH or `.debug_names` warnings. Those warnings are
   not necessarily fatal; `info threads` and `thread apply all bt` can still
   provide useful PCs and backtraces.
+- On RP2350 dual-core firmware, a halted core1 PC near `0x000000da` can be
+  misleading during OpenOCD/GDB inspection. Confirm liveness with firmware
+  counters or CPUStats reports before concluding core1 failed to launch; in one
+  CircularScreen run, core1 had entered the scheduler once and was reporting
+  idle windows even though GDB showed the boot ROM WFE address.
 
 ### Code/Swift Multicore
 
@@ -517,6 +522,11 @@ design notes, experiments, and failure analysis in `docs/`.
   Moving a raw multicore baseline helper into `ConcurrencyShims.c` changed code
   layout enough to drop `SchedulerMulticoreBenchmarks` throughput from roughly
   22k to 14k; putting it in a separate C file restored the score range.
+- Do not remove or disable a valuable runtime feature, such as CPUMetrics IRQ
+  vector wrapping, based only on a plausible correlation from logs. First make
+  the smallest reversible experiment, validate it against the symptom and the
+  relevant tests, then present the evidence and tradeoff before changing
+  production behavior. A reasonable hunch is still a hunch until measured.
 
 ### Serial And RTT Logging
 
@@ -535,6 +545,11 @@ design notes, experiments, and failure analysis in `docs/`.
   same serial command from a host terminal with device permissions.
 - Serial output can contain stale or interleaved bytes after reset. Trust logs
   more when a fresh boot banner appears.
+- When multiple `/dev/cu.usbmodem*` devices are present, do not assume
+  `head -n 1` is the board just programmed through CMSIS-DAP/OpenOCD. Probe
+  each serial device briefly and match the boot banner or reset behavior; a
+  display board can keep streaming old firmware logs while OpenOCD is
+  programming a separate CMSIS target.
 - Keep diagnostic log lines short. Long `print` output can make serial debugging
   feel stalled and can hide the actual crash point.
 - In multicore stress tests, let only core0 print periodic stress summaries and

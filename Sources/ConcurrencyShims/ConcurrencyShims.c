@@ -132,6 +132,7 @@ typedef struct {
     uint16_t next;
     int16_t owner_slot;
     uint8_t priority;
+    bool core0_only;
 } CShimsSchedulerJob;
 
 typedef struct {
@@ -362,29 +363,39 @@ static void cshims_scheduler_make_runnable_locked(uint16_t job_index) {
     cshims_scheduler_push_ready_locked(job_index);
 }
 
-static uint16_t cshims_scheduler_pop_from_priority_locked(uint8_t priority) {
+static uint16_t cshims_scheduler_pop_from_priority_locked(uint8_t priority, uint32_t core) {
     uint16_t current = cshims_scheduler_ready_head[priority];
-    if (current == CSHIMS_SCHEDULER_NONE) {
-        return CSHIMS_SCHEDULER_NONE;
-    }
+    uint16_t previous = CSHIMS_SCHEDULER_NONE;
+    while (current != CSHIMS_SCHEDULER_NONE) {
+        CShimsSchedulerJob *job = &cshims_scheduler_jobs[current];
+        if (!job->core0_only || core == 0u) {
+            if (previous == CSHIMS_SCHEDULER_NONE) {
+                cshims_scheduler_ready_head[priority] = job->next;
+            } else {
+                cshims_scheduler_jobs[previous].next = job->next;
+            }
+            if (cshims_scheduler_ready_tail[priority] == current) {
+                cshims_scheduler_ready_tail[priority] = previous;
+            }
+            job->next = CSHIMS_SCHEDULER_NONE;
 
-    CShimsSchedulerJob *job = &cshims_scheduler_jobs[current];
-    cshims_scheduler_ready_head[priority] = job->next;
-    if (cshims_scheduler_ready_tail[priority] == current) {
-        cshims_scheduler_ready_tail[priority] = CSHIMS_SCHEDULER_NONE;
-    }
-    job->next = CSHIMS_SCHEDULER_NONE;
+            if (job->owner_slot >= 0) {
+                CShimsSchedulerOwner *owner = &cshims_scheduler_owners[job->owner_slot];
+                owner->ready = false;
+                owner->running = true;
+            }
 
-    if (job->owner_slot >= 0) {
-        CShimsSchedulerOwner *owner = &cshims_scheduler_owners[job->owner_slot];
-        owner->ready = false;
-        owner->running = true;
-    }
+            return current;
+        }
 
-    return current;
+        previous = current;
+        current = job->next;
+    }
+    return CSHIMS_SCHEDULER_NONE;
 }
 
 static uint16_t cshims_scheduler_pop_ready_locked(void) {
+    uint32_t core = cshims_core_num() & 1u;
     static const uint8_t priority_order[] = {
         0, 0, 0, 0,
         1,
@@ -403,7 +414,7 @@ static uint16_t cshims_scheduler_pop_ready_locked(void) {
     for (uint8_t attempt = 0; attempt < order_count; attempt++) {
         uint8_t order_index = (uint8_t)((cshims_scheduler_priority_cursor + attempt) % order_count);
         uint8_t priority = priority_order[order_index];
-        uint16_t index = cshims_scheduler_pop_from_priority_locked(priority);
+        uint16_t index = cshims_scheduler_pop_from_priority_locked(priority, core);
         if (index == CSHIMS_SCHEDULER_NONE) {
             continue;
         }
@@ -415,13 +426,18 @@ static uint16_t cshims_scheduler_pop_ready_locked(void) {
     return CSHIMS_SCHEDULER_NONE;
 }
 
-static bool cshims_scheduler_has_ready_locked(void) {
+static bool cshims_scheduler_has_ready_locked(uint32_t core) {
     if (cshims_scheduler_deferred_count > 0) {
         return true;
     }
     for (uint8_t priority = 0; priority < CSHIMS_SCHEDULER_PRIORITY_BUCKETS; priority++) {
-        if (cshims_scheduler_ready_head[priority] != CSHIMS_SCHEDULER_NONE) {
-            return true;
+        uint16_t current = cshims_scheduler_ready_head[priority];
+        while (current != CSHIMS_SCHEDULER_NONE) {
+            CShimsSchedulerJob *job = &cshims_scheduler_jobs[current];
+            if (!job->core0_only || core == 0u) {
+                return true;
+            }
+            current = job->next;
         }
     }
     return false;
@@ -471,7 +487,8 @@ static void cshims_scheduler_enqueue_job(
     void *executorFirst,
     void *executorSecond,
     uint64_t delayUs,
-    bool delayed)
+    bool delayed,
+    bool core0_only)
 {
     void *owner = cshims_job_owner_task(job);
     uint8_t priority = cshims_scheduler_priority_bucket(cshims_job_priority(job));
@@ -485,6 +502,7 @@ static void cshims_scheduler_enqueue_job(
     cshims_scheduler_jobs[job_index].owner = owner;
     cshims_scheduler_jobs[job_index].owner_slot = -1;
     cshims_scheduler_jobs[job_index].priority = priority;
+    cshims_scheduler_jobs[job_index].core0_only = core0_only;
     cshims_scheduler_jobs[job_index].next = CSHIMS_SCHEDULER_NONE;
 
     if (!delayed || delayUs == 0u) {
@@ -506,7 +524,11 @@ static void cshims_scheduler_enqueue_job(
 }
 
 static void cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, void *executorSecond) {
-    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, 0u, false);
+    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, 0u, false, false);
+}
+
+static void cshims_scheduler_enqueue_main(void *job, void *executorFirst, void *executorSecond) {
+    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, 0u, false, true);
 }
 
 static void cshims_scheduler_enqueue_delayed(
@@ -515,7 +537,7 @@ static void cshims_scheduler_enqueue_delayed(
     void *executorFirst,
     void *executorSecond)
 {
-    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, delayUs, true);
+    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, delayUs, true, false);
 }
 
 static void cshims_scheduler_enqueue_deadline(
@@ -526,7 +548,7 @@ static void cshims_scheduler_enqueue_deadline(
 {
     uint64_t now = time_us_64();
     uint64_t delayUs = deadlineUs > now ? deadlineUs - now : 0u;
-    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, delayUs, true);
+    cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, delayUs, true, false);
 }
 
 void cshims_scheduler_enqueue_deferred(void *item) {
@@ -591,13 +613,13 @@ void cshims_scheduler_wait_for_work_forever(void) {
     for (;;) {
         uint32_t irq_state = cshims_scheduler_lock();
         cshims_scheduler_init_locked();
-        bool has_ready = cshims_scheduler_has_ready_locked();
+        uint32_t core = cshims_core_num() & 1u;
+        bool has_ready = cshims_scheduler_has_ready_locked(core);
         cshims_scheduler_unlock(irq_state);
         if (has_ready) {
             return;
         }
 #if defined(CPUMetrics)
-        uint32_t core = cshims_core_num() & 1u;
         cshims_cpu_metrics_record_idle_sample(core);
 #endif
         cshims_scheduler_wait_event();
@@ -717,7 +739,7 @@ SWIFT_CC_SWIFT void swift_task_enqueueGlobalImpl(void *job) {
 }
 
 SWIFT_CC_SWIFT void swift_task_enqueueMainExecutorImpl(void *job) {
-    cshims_scheduler_enqueue_immediate(job, NULL, NULL);
+    cshims_scheduler_enqueue_main(job, NULL, NULL);
 }
 
 SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDelayImpl(uint64_t delay, void *job) {

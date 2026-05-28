@@ -82,6 +82,46 @@ func combinedCPUUsageEventsReportsActiveCores() async throws {
     try deviceExpect(snapshot.workerCore1Hits > 0, "CPU metrics pressure did not execute on core1")
 }
 
+/// Regression for core1 CPU metrics getting stuck while the scheduler is idle.
+/// The stream is intentionally created after multicore has already had time to
+/// enter its idle wait path; this catches a wedged core1 metrics lock that a
+/// pressure-first test can miss.
+func combinedCPUUsageEventsReportsCore1AfterIdleWait() async throws {
+    ConcurrencyRuntime.startMulticore()
+
+    try? await Task.sleep(us: 1_500_000)
+
+    guard let usageEvents = CPUStats.usageEvents() else {
+        try deviceExpect(false, "CPU metrics stream was not available with CPUMetrics enabled")
+        return
+    }
+
+    resetCPUStatsStreamCounters()
+
+    let consumer = Task {
+        var iterator = usageEvents.makeAsyncIterator()
+        while let report = await iterator.next() {
+            recordCPUStatsReport(report)
+            let snapshot = withCPUStatsTestLock { cpuStatsStreamCounters }
+            if snapshot.sampleCore0Hits > 0 && snapshot.sampleCore1Hits > 0 {
+                break
+            }
+        }
+    }
+
+    let observedBothCoresAfterIdle = await waitForCPUStatsCondition(timeoutMs: 5_000) {
+        let snapshot = withCPUStatsTestLock { cpuStatsStreamCounters }
+        return snapshot.sampleCore0Hits > 0 && snapshot.sampleCore1Hits > 0
+    }
+
+    let snapshot = withCPUStatsTestLock { cpuStatsStreamCounters }
+    consumer.cancel()
+
+    print("cpu-stats-after-idle samples=\(snapshot.sampleCount) s0=\(snapshot.sampleCore0Hits) s1=\(snapshot.sampleCore1Hits)")
+
+    try deviceExpect(observedBothCoresAfterIdle, "combined CPU metrics stream did not report core1 after idle multicore wait")
+}
+
 /// Goal: validate the public CPU and memory stats print surface. The test waits
 /// for one real scheduler CPU report, checks that its description and memory
 /// snapshot are internally coherent, then exercises both `CPUStats.print()` and
