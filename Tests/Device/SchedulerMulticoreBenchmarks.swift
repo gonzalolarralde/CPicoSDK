@@ -10,6 +10,10 @@
 //%   - name: cpuMetrics
 //%     traits:
 //%       add: [CPUMetrics]
+//%   - name: cpuMetricsPrinting
+//%     traits:
+//%       add: [CPUMetrics]
+//%     swiftDefines: [CPU_METRICS_PRINTING]
 //% expect:
 //%   durationMs:
 //%     min: 0
@@ -152,11 +156,16 @@ private nonisolated(unsafe) var allocationBenchmarkCounters = AllocationBenchmar
 private nonisolated(unsafe) var continuationSlots: [UnsafeContinuation<UInt32, Never>?] =
     Array(repeating: nil, count: 128)
 
+#if CPU_METRICS_PRINTING
+private nonisolated(unsafe) var multicoreBenchmarkCPUStatsPrintingStarted = false
+#endif
+
 /// Goal: capture multicore busy-work throughput. The benchmark tracks how many
 /// cooperative CPU work units complete in a fixed window after core1 joins the
 /// scheduler, and verifies both cores contributed work.
 func multicoreBusyWorkThroughputOverFixedWindow() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetMulticoreThroughputCounters()
 
     let workerCount: UInt32 = 8
@@ -207,6 +216,7 @@ func multicoreBusyWorkThroughputOverFixedWindow() async throws {
 /// for Task priorities without asserting scheduler policy yet.
 func priorityWorkExecutionOrderIsRecordedOverTimeSlices() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetPriorityTraceCounters()
 
     let workersPerPriority: UInt32 = 2
@@ -276,6 +286,7 @@ func priorityWorkExecutionOrderIsRecordedOverTimeSlices() async throws {
 /// later scheduler changes can compare min/max spread.
 func samePriorityFairnessOverFixedWindow() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetFairnessCounters()
 
     let workerCount: UInt32 = 6
@@ -328,6 +339,7 @@ func samePriorityFairnessOverFixedWindow() async throws {
 /// resulting unit counts for later revision-to-revision comparisons.
 func yieldCadenceThroughputComparison() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetYieldCadenceCounters()
 
     let workersPerCadence: UInt32 = 3
@@ -372,6 +384,7 @@ func yieldCadenceThroughputComparison() async throws {
 /// tight timing threshold.
 func alarmJitterUnderCPUPressure() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetAlarmJitterCounters()
 
     let sleeperCount: UInt32 = 8
@@ -418,6 +431,7 @@ func alarmJitterUnderCPUPressure() async throws {
 /// times after release.
 func burstEnqueueLatencyIsRecorded() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetBurstCounters()
 
     let workerCount: UInt32 = 24
@@ -469,6 +483,7 @@ func burstEnqueueLatencyIsRecorded() async throws {
 /// the benchmark records resumptions per second and core participation.
 func explicitContinuationThroughput() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetContinuationCounters()
 
     let continuationCount: UInt32 = 64
@@ -535,6 +550,7 @@ func explicitContinuationThroughput() async throws {
 /// be compared between scheduler revisions.
 func allocationHeavyThroughputAndMemoryDelta() async throws {
     ConcurrencyRuntime.startMulticore()
+    startMulticoreBenchmarkCPUStatsPrinting()
     resetAllocationBenchmarkCounters()
 
     let before = MemoryStats.sram
@@ -1042,6 +1058,33 @@ private func withMulticoreBenchmarkLock<T>(_ body: () -> T) -> T {
         mutex_exit(multicoreBenchmarkLock)
     }
     return body()
+}
+
+private func startMulticoreBenchmarkCPUStatsPrinting() {
+#if CPU_METRICS_PRINTING
+    let shouldStart = withMulticoreBenchmarkLock {
+        if multicoreBenchmarkCPUStatsPrintingStarted {
+            return false
+        }
+        multicoreBenchmarkCPUStatsPrintingStarted = true
+        return true
+    }
+
+    guard shouldStart else {
+        return
+    }
+
+    Task {
+        guard let usageEvents = CPUStats.usageEvents() else {
+            print("[bench-cpu-metrics-printing] unavailable")
+            return
+        }
+
+        for await stats in usageEvents {
+            stats.print(includeMemoryStats: false)
+        }
+    }
+#endif
 }
 
 private func waitForMulticoreBenchmarkCondition(timeoutMs: UInt64, condition: () -> Bool) async -> Bool {
