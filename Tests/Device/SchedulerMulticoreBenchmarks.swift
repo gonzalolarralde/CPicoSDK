@@ -158,6 +158,7 @@ private nonisolated(unsafe) var continuationSlots: [UnsafeContinuation<UInt32, N
 
 #if CPU_METRICS_PRINTING
 private nonisolated(unsafe) var multicoreBenchmarkCPUStatsPrintingStarted = false
+private nonisolated(unsafe) var multicoreBenchmarkCPUStatsPrintedReports: UInt32 = 0
 #endif
 
 /// Goal: capture multicore busy-work throughput. The benchmark tracks how many
@@ -166,10 +167,15 @@ private nonisolated(unsafe) var multicoreBenchmarkCPUStatsPrintingStarted = fals
 func multicoreBusyWorkThroughputOverFixedWindow() async throws {
     ConcurrencyRuntime.startMulticore()
     startMulticoreBenchmarkCPUStatsPrinting()
+    await waitForMulticoreBenchmarkCPUStatsPrinting(minReports: 1, timeoutMs: 1_500)
     resetMulticoreThroughputCounters()
 
     let workerCount: UInt32 = 8
+    #if CPU_METRICS_PRINTING
+    let durationUs: UInt64 = 1_500_000
+    #else
     let durationUs: UInt64 = 700_000
+    #endif
     let startedUs = time_us_64()
 
     for workerID in UInt32(0)..<workerCount {
@@ -1081,9 +1087,30 @@ private func startMulticoreBenchmarkCPUStatsPrinting() {
         }
 
         for await stats in usageEvents {
+            withMulticoreBenchmarkLock {
+                multicoreBenchmarkCPUStatsPrintedReports &+= 1
+            }
             stats.print(includeMemoryStats: false)
         }
     }
+#endif
+}
+
+private func waitForMulticoreBenchmarkCPUStatsPrinting(minReports: UInt32, timeoutMs: UInt64) async {
+#if CPU_METRICS_PRINTING
+    let deadline = time_us_64() &+ timeoutMs &* 1_000
+    while time_us_64() < deadline {
+        let printedReports = withMulticoreBenchmarkLock {
+            multicoreBenchmarkCPUStatsPrintedReports
+        }
+        if printedReports >= minReports {
+            return
+        }
+        try? await Task.sleep(ms: 20)
+    }
+#else
+    _ = minReports
+    _ = timeoutMs
 #endif
 }
 
