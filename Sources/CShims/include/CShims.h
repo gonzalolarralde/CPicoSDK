@@ -12,8 +12,6 @@ void cshims_mmio_set_bits32(volatile uint32_t *addr, uint32_t mask);
 void cshims_mmio_clear_bits32(volatile uint32_t *addr, uint32_t mask);
 uint32_t cshims_qmi_direct_rx_read32(void);
 
-void cshims_runtime_enable_required_coprocessors(void);
-
 enum {
     CSHIMS_IRQ_ALLOCATOR_MALLOC = 1u,
     CSHIMS_IRQ_ALLOCATOR_CALLOC = 2u,

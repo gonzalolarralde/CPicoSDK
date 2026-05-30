@@ -117,9 +117,6 @@
      }
 #endif
 
-import CShims
-
 @_spi(Internal) public func setupPicoSDK() {
-    cshims_runtime_enable_required_coprocessors()
     stdio_init_all()
 }
