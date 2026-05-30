@@ -353,6 +353,20 @@ design notes, experiments, and failure analysis in `docs/`.
 - GDB may print missing DWO/PCH or `.debug_names` warnings. Those warnings are
   not necessarily fatal; `info threads` and `thread apply all bt` can still
   provide useful PCs and backtraces.
+- For RP2350 `NOCP` hard faults, decode the exception frame before assuming the
+  visible PC is random. Symptom: core halts in a default ISR breakpoint,
+  `HFSR=0x40000000`, and `CFSR` has bit 19 set; the stacked PC points at a VFP
+  instruction such as `vpush {d8}` in an IRQ handler. Use GDB or telnet `mdw`
+  to check `CPACR` at `0xe000ed88` and fault registers at `0xe000ed28` and
+  `0xe000ed2c`. On RP2350 Arm builds using VFP instructions, `CPACR` must
+  include CP10 and CP11 access bits; a healthy checked value was
+  `0x00f0c303`, with `CFSR/HFSR` clear while both cores were running.
+- After a batch GDB snapshot, verify that the target resumed. Symptom:
+  OpenOCD telnet `targets` shows both `rp2350.cm0` and `rp2350.cm1` still
+  halted after `detach`. Resume through telnet by selecting each target first:
+  `targets rp2350.cm0`, `resume`, then `targets rp2350.cm1`, `resume`. The
+  target-specific form `rp2350.cm0 resume` only prints target help in this
+  OpenOCD build.
 - On RP2350 dual-core firmware, a halted core1 PC near `0x000000da` can be
   misleading during OpenOCD/GDB inspection. Confirm liveness with firmware
   counters or CPUStats reports before concluding core1 failed to launch; in one
@@ -535,6 +549,31 @@ design notes, experiments, and failure analysis in `docs/`.
   the smallest reversible experiment, validate it against the symptom and the
   relevant tests, then present the evidence and tradeoff before changing
   production behavior. A reasonable hunch is still a hunch until measured.
+- Avoid Swift object lifetime work, allocation, and free from hard IRQ handlers
+  unless the allocator path is proven IRQ-safe. Symptom: a stuck core0 halted in
+  Handler mode with an IRQ handler backtrace entering `swift_release`/`free`
+  while the interrupted frame is already in `free` or `mallocExit`; the handler
+  then blocks in `mutex_enter_blocking` on the same allocator mutex and the
+  interrupted code cannot resume to release it. Attach with GDB, collect
+  `thread apply all bt`, and check for a `<signal handler called>` frame between
+  the interrupted allocator path and the IRQ handler. Defer ownership release or
+  buffer reclamation to thread/task context, or use a bounded IRQ-safe queue.
+- To debug IRQ allocator use, watch for the one-shot `[CPicoSDK]` warning from
+  the wrapped allocator entrypoints. The warning uses a static C string, so it
+  does not allocate by itself, but it still goes through Pico stdio and the
+  configured output driver; treat it as best-effort visibility. Enable the
+  `GuardIRQAllocations` trait to trap in `trapIRQAllocatorUse`, then inspect
+  `cshims_irq_allocator_operation`, `cshims_irq_allocator_exception`, and
+  `cshims_irq_allocator_core` in GDB.
+- `EmbeddedAsyncApp` can start the Swift scheduler on core1 before `setup()`
+  runs when `Configurator.core1Enabled` is true. Symptom: startup appears stuck,
+  GDB shows one core in `cyw43_arch_wifi_connect_blocking` from `WiFi.connect`
+  and the other core in `cshims_scheduler_wait_for_work_forever`, with no IRQ
+  allocator guard hit. If the WiFi async context is core0-owned, a setup
+  continuation running on core1 can block while core0 waits for scheduler work
+  instead of polling CYW43. Validate with a GDB backtrace before changing code;
+  as a mitigation, disable core1 during setup or keep WiFi/lwIP setup work on
+  the async-context owner core.
 
 ### Serial And RTT Logging
 
@@ -564,6 +603,14 @@ design notes, experiments, and failure analysis in `docs/`.
   let core1 update counters. Printing full diagnostic lines from both cores can
   interleave bytes on USB serial and make otherwise useful counter snapshots
   unreadable.
+- Follow a question > validate > plan > fix loop for debugging. Do not turn a
+  plausible hunch directly into a code change. First state the concrete question
+  the symptom raises, gather evidence that can confirm or reject the hunch using
+  the same command, device run, log, or artifact that exposed the symptom, then
+  plan the smallest fix. If validation does not confirm the hunch, loop back to
+  the question instead of implementing. After fixing, rerun the original
+  reproducer; synthetic/unit coverage is useful regression protection but is not
+  proof that the original physical-run or integration symptom was fixed.
 
 ### Build And Package Wiring
 
