@@ -27,6 +27,7 @@ let package = Package(
     ],
     traits: [
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
+        .trait(name: "GuardIRQAllocations", description: "Traps if malloc, calloc, realloc, or free are called from IRQ/exception context."),
 
         // TODO: The generator needs to define traits. This needs to be implemented.
         .trait(name: "Platform_RP2040"),
