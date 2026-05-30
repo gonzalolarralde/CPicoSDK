@@ -85,6 +85,7 @@ public struct Allocator: Configuration, @unchecked Sendable { // TODO: Check how
         (address & Self.addressSpaceMask) == (addressSpace & Self.addressSpaceMask)
     }
 
+    @section(".flashdata.malloc_cold")
     public func executeConfiguration(with configurator: inout Configurator) throws(Allocator.Error) {
         try AllocatorManager.shared.register(self)
     }
@@ -272,7 +273,7 @@ private func trapIRQAllocatorUse(operation: AllocatorOperation, exception: UInt3
 @inline(__always)
 private func mallocEnter(operation: AllocatorOperation, outer: Bool) -> MallocLockState {
     let exception = __get_current_exception()
-    if exception != 0 {
+    if _slowPath(exception != 0) {
         #if GuardIRQAllocations
         trapIRQAllocatorUse(operation: operation, exception: UInt32(exception))
         #else
@@ -281,7 +282,7 @@ private func mallocEnter(operation: AllocatorOperation, outer: Bool) -> MallocLo
     }
 
     let core = get_core_num()
-    let exceptionLevelPlusOne = UInt8(truncatingIfNeeded: Int(exception) + 1)
+    let exceptionLevelPlusOne = UInt8(truncatingIfNeeded: Int(exception) &+ 1)
     let existingLevel = getExceptionLevelPlusOne(forCore: core)
 
     // Match Pico SDK behavior: only re-lock inner calls when exception nesting changed.

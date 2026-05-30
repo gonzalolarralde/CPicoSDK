@@ -7,7 +7,7 @@ volatile uint32_t cshims_irq_allocator_exception = 0;
 volatile uint32_t cshims_irq_allocator_core = 0;
 static volatile uint32_t cshims_irq_allocator_warned = 0;
 
-static uint32_t cshims_current_core(void) {
+static inline uint32_t cshims_current_core(void) {
 #if defined(__arm__) || defined(__thumb__)
     return *(volatile uint32_t *)0xd0000000u;
 #else
@@ -15,12 +15,14 @@ static uint32_t cshims_current_core(void) {
 #endif
 }
 
+__attribute__((section(".flashdata.irq_allocator")))
 void cshims_record_irq_allocator_use(uint32_t operation, uint32_t exception) {
     cshims_irq_allocator_operation = operation;
     cshims_irq_allocator_exception = exception;
     cshims_irq_allocator_core = cshims_current_core() & 1u;
 }
 
+__attribute__((section(".flashdata.irq_allocator")))
 void cshims_warn_irq_allocator_use(uint32_t operation, uint32_t exception) {
     cshims_record_irq_allocator_use(operation, exception);
 
@@ -36,6 +38,7 @@ void cshims_warn_irq_allocator_use(uint32_t operation, uint32_t exception) {
     }
 }
 
+__attribute__((section(".flashdata.irq_allocator")))
 void cshims_irq_allocator_debug_break(void) {
 #if defined(__arm__) || defined(__thumb__)
     __asm__ volatile("bkpt #0" ::: "memory");

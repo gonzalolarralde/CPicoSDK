@@ -536,6 +536,12 @@ design notes, experiments, and failure analysis in `docs/`.
   Moving a raw multicore baseline helper into `ConcurrencyShims.c` changed code
   layout enough to drop `SchedulerMulticoreBenchmarks` throughput from roughly
   22k to 14k; putting it in a separate C file restored the score range.
+- For RP2350 scheduler throughput regressions after tiny cold-path changes,
+  check linker layout before blaming the branch itself. Compare `nm`, map, and
+  disassembly for `__wrap_malloc`, `cshims_scheduler_poll_once`,
+  `swift_job_run`, and `swift_task_alloc`; in one IRQ-allocation warning fix,
+  moving cold warning/configuration code to `.flashdata.*` restored the 22k
+  score range while preserving the warning behavior.
 - Keep CPUMetrics implementation objects and scheduler-affinity experiments out
   of the CPUMetrics-off hot path until measured. Symptom: the clean C scheduler
   at `b0e2875` scored about `22k`, while later non-metrics builds dropped first
