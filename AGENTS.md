@@ -555,6 +555,22 @@ design notes, experiments, and failure analysis in `docs/`.
   the smallest reversible experiment, validate it against the symptom and the
   relevant tests, then present the evidence and tradeoff before changing
   production behavior. A reasonable hunch is still a hunch until measured.
+- Treat whole-binary RAM placement, such as `pico_set_binary_type(... copy_to_ram)`,
+  as a ceiling probe, not a production-shaped scheduler optimization. For hot
+  path placement work, move one named function group or object at a time, verify
+  addresses with `llvm-objdump -t` (`0x200...` means SRAM, `0x100...` means
+  flash), and run the same 10-pass device benchmark after each step. In one
+  `SchedulerMulticoreBenchmarks-baseline` run, C scheduler sections alone
+  regressed throughput to about `15.6k`, C scheduler plus `Actor.cpp.o`
+  restored about `23.6k`, and adding `TaskAlloc.cpp.o` regressed to about
+  `19.1k` despite a small SRAM delta.
+- When moving one hot-path function between RAM and flash produces a surprising
+  benchmark swing, do not attribute the change to that function's direct runtime
+  cost without checking layout. Compare symbol addresses for adjacent scheduler
+  functions, Swift async thunks, `swift_job_run`, and benchmark worker bodies.
+  A one-function move can shift later RAM-resident runtime code or add flash
+  execution before the timed window, so use the result as an investigation clue
+  until a layout-preserving or call-counting experiment isolates the cause.
 - Avoid Swift object lifetime work, allocation, and free from hard IRQ handlers
   unless the allocator path is proven IRQ-safe. Symptom: a stuck core0 halted in
   Handler mode with an IRQ handler backtrace entering `swift_release`/`free`
@@ -683,3 +699,9 @@ design notes, experiments, and failure analysis in `docs/`.
   scheduler types. Remove only the generated device-test build cache with
   `rm -rf .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.build`
   and rerun the focused `swift package --disable-sandbox test-in-device --build-only --filter <TestName> --allow-writing-to-package-directory --allow-network-connections all`.
+- If you remove the generated device-test `.build` directory, also remove the
+  generated prep script and stamps:
+  `rm -f .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.env_prep*`.
+  Otherwise the harness can skip `prepare-rp2xxx-environment`, source a stale
+  `toolset.json`, and fail a cold rebuild because the generated newlib overlay
+  for headers such as `stdatomic.h` no longer exists.

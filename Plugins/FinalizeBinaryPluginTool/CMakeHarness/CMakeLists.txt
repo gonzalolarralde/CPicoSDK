@@ -43,6 +43,36 @@ target_sources("${PROJECT_NAME}" PRIVATE
 pico_set_program_name("${PROJECT_NAME}" "${PROJECT_NAME}")
 pico_set_program_version("${PROJECT_NAME}" "0.1")
 
+set(CPICOSDK_HOT_MEMMAP_SOURCE "${PICO_SDK_PATH}/src/rp2_common/pico_crt0/${PICO_CHIP}/memmap_default.ld")
+set(CPICOSDK_HOT_MEMMAP "${CMAKE_CURRENT_BINARY_DIR}/memmap_cpicosdk_hot.ld")
+file(READ "${CPICOSDK_HOT_MEMMAP_SOURCE}" CPICOSDK_HOT_MEMMAP_CONTENT)
+set(CPICOSDK_HOT_TEXT_ANCHOR "*(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .text*)")
+set(CPICOSDK_HOT_TEXT_REPLACEMENT "*(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *libswift_Concurrency.a:Actor.cpp.o) .text*)")
+set(CPICOSDK_LATE_TEXT_ANCHOR "    .ARM.extab :")
+set(CPICOSDK_LATE_TEXT_REPLACEMENT "    .cpicosdk_late_text : {\n        *(.cpicosdk_late_text*)\n        . = ALIGN(4);\n    } > FLASH\n\n    .ARM.extab :")
+string(FIND "${CPICOSDK_HOT_MEMMAP_CONTENT}" "${CPICOSDK_HOT_TEXT_ANCHOR}" CPICOSDK_HOT_TEXT_ANCHOR_INDEX)
+if(CPICOSDK_HOT_TEXT_ANCHOR_INDEX EQUAL -1)
+    message(FATAL_ERROR "CPicoSDK expected Pico SDK .text linker-script anchor not found in ${CPICOSDK_HOT_MEMMAP_SOURCE}")
+endif()
+string(FIND "${CPICOSDK_HOT_MEMMAP_CONTENT}" "${CPICOSDK_LATE_TEXT_ANCHOR}" CPICOSDK_LATE_TEXT_ANCHOR_INDEX)
+if(CPICOSDK_LATE_TEXT_ANCHOR_INDEX EQUAL -1)
+    message(FATAL_ERROR "CPicoSDK expected Pico SDK .ARM.extab linker-script anchor not found in ${CPICOSDK_HOT_MEMMAP_SOURCE}")
+endif()
+string(REPLACE
+    "${CPICOSDK_HOT_TEXT_ANCHOR}"
+    "${CPICOSDK_HOT_TEXT_REPLACEMENT}"
+    CPICOSDK_HOT_MEMMAP_CONTENT
+    "${CPICOSDK_HOT_MEMMAP_CONTENT}"
+)
+string(REPLACE
+    "${CPICOSDK_LATE_TEXT_ANCHOR}"
+    "${CPICOSDK_LATE_TEXT_REPLACEMENT}"
+    CPICOSDK_HOT_MEMMAP_CONTENT
+    "${CPICOSDK_HOT_MEMMAP_CONTENT}"
+)
+file(WRITE "${CPICOSDK_HOT_MEMMAP}" "${CPICOSDK_HOT_MEMMAP_CONTENT}")
+pico_set_linker_script("${PROJECT_NAME}" "${CPICOSDK_HOT_MEMMAP}")
+
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart("${PROJECT_NAME}" ${STDIO_UART})
 pico_enable_stdio_usb("${PROJECT_NAME}" ${STDIO_USB})

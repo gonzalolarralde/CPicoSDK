@@ -16,6 +16,9 @@
 #define SWIFT_NORETURN
 #endif
 
+#define CSHIMS_SCHEDULER_RAM __attribute__((section(".time_critical.cshims_scheduler")))
+#define CSHIMS_SCHEDULER_LATE_FLASH __attribute__((section(".cpicosdk_late_text.cshims_scheduler")))
+
 typedef struct {
     void *first;
     void *second;
@@ -34,7 +37,7 @@ static volatile uint32_t cshims_malloc_lock_owner = 0;
 static volatile uint32_t cshims_malloc_lock_depth[2] = {0, 0};
 static volatile uint32_t cshims_malloc_lock_irq_state[2] = {0, 0};
 
-static unsigned int cshims_core_num(void) {
+static unsigned int CSHIMS_SCHEDULER_RAM cshims_core_num(void) {
     return *(volatile uint32_t *)0xd0000000u;
 }
 
@@ -120,8 +123,8 @@ extern void cshims_scheduler_record_task_end(uint32_t core) __attribute__((weak)
 extern void cshims_scheduler_record_idle_sample(uint32_t core) __attribute__((weak));
 extern void cshims_scheduler_collect_cpu_reports(void) __attribute__((weak));
 enum {
-    CSHIMS_SCHEDULER_MAX_JOBS = 768,
-    CSHIMS_SCHEDULER_MAX_OWNERS = 512,
+    CSHIMS_SCHEDULER_MAX_JOBS = 256,
+    CSHIMS_SCHEDULER_MAX_OWNERS = 128,
     CSHIMS_SCHEDULER_PRIORITY_BUCKETS = 5,
     CSHIMS_SCHEDULER_MAX_DEFERRED = 128,
     CSHIMS_SCHEDULER_NONE = 0xffffu,
@@ -160,7 +163,11 @@ static uint16_t cshims_scheduler_deferred_count = 0;
 static bool cshims_scheduler_initialized = false;
 static bool cshims_scheduler_multicore_enabled = false;
 
-static uint32_t cshims_scheduler_irq_disable(void) {
+static uint32_t CSHIMS_SCHEDULER_RAM cshims_scheduler_lock(void);
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_unlock(uint32_t irq_state);
+static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_init_locked(void);
+
+static uint32_t CSHIMS_SCHEDULER_RAM cshims_scheduler_irq_disable(void) {
     uint32_t state;
     __asm volatile(
         "mrs %0, primask\n"
@@ -171,15 +178,19 @@ static uint32_t cshims_scheduler_irq_disable(void) {
     return state;
 }
 
-static void cshims_scheduler_irq_restore(uint32_t state) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_irq_restore(uint32_t state) {
     __asm volatile("msr primask, %0\n" : : "r"(state) : "memory");
 }
 
-void cshims_scheduler_prepare_lock(void) {
+void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_prepare_lock(void) {
     *(volatile uint32_t *)CSHIMS_SIO_SPINLOCK31 = 0u;
+    // Initialize eagerly so scheduler runtime hooks do not carry the cold setup path.
+    uint32_t irq_state = cshims_scheduler_lock();
+    cshims_scheduler_init_locked();
+    cshims_scheduler_unlock(irq_state);
 }
 
-static uint32_t cshims_scheduler_lock(void) {
+static uint32_t CSHIMS_SCHEDULER_RAM cshims_scheduler_lock(void) {
     uint32_t irq_state = cshims_scheduler_irq_disable();
     volatile uint32_t *spinlock = (volatile uint32_t *)CSHIMS_SIO_SPINLOCK31;
     while (*spinlock == 0u) {
@@ -189,21 +200,21 @@ static uint32_t cshims_scheduler_lock(void) {
     return irq_state;
 }
 
-static void cshims_scheduler_unlock(uint32_t irq_state) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_unlock(uint32_t irq_state) {
     __asm volatile("" ::: "memory");
     *(volatile uint32_t *)CSHIMS_SIO_SPINLOCK31 = 0u;
     cshims_scheduler_irq_restore(irq_state);
 }
 
-static void cshims_scheduler_signal_work(void) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_signal_work(void) {
     __asm volatile("sev" ::: "memory");
 }
 
-static void cshims_scheduler_wait_event(void) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_wait_event(void) {
     __asm volatile("wfe" ::: "memory");
 }
 
-static uint8_t cshims_scheduler_priority_bucket(uint8_t raw) {
+static uint8_t CSHIMS_SCHEDULER_RAM cshims_scheduler_priority_bucket(uint8_t raw) {
     if (raw >= 25u) {
         return 0u;
     }
@@ -219,7 +230,7 @@ static uint8_t cshims_scheduler_priority_bucket(uint8_t raw) {
     return 4u;
 }
 
-static uintptr_t cshims_scheduler_owner_hash(void *owner) {
+static uintptr_t CSHIMS_SCHEDULER_RAM cshims_scheduler_owner_hash(void *owner) {
     uintptr_t value = (uintptr_t)owner;
     value >>= 3;
     value ^= value >> 11;
@@ -227,7 +238,7 @@ static uintptr_t cshims_scheduler_owner_hash(void *owner) {
     return value;
 }
 
-static void cshims_scheduler_init_locked(void) {
+static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_init_locked(void) {
     if (cshims_scheduler_initialized) {
         return;
     }
@@ -255,7 +266,7 @@ static void cshims_scheduler_init_locked(void) {
     cshims_scheduler_initialized = true;
 }
 
-static uint16_t cshims_scheduler_alloc_job_locked(void) {
+static uint16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_alloc_job_locked(void) {
     assert(cshims_scheduler_free_head != CSHIMS_SCHEDULER_NONE);
     uint16_t index = cshims_scheduler_free_head;
     cshims_scheduler_free_head = cshims_scheduler_jobs[index].next;
@@ -263,12 +274,12 @@ static uint16_t cshims_scheduler_alloc_job_locked(void) {
     return index;
 }
 
-static void cshims_scheduler_free_job_locked(uint16_t index) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_free_job_locked(uint16_t index) {
     cshims_scheduler_jobs[index].next = cshims_scheduler_free_head;
     cshims_scheduler_free_head = index;
 }
 
-static int16_t cshims_scheduler_find_owner_locked(void *owner, bool create) {
+static int16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_find_owner_locked(void *owner, bool create) {
     if (owner == NULL) {
         return -1;
     }
@@ -315,7 +326,7 @@ static int16_t cshims_scheduler_find_owner_locked(void *owner, bool create) {
     return -1;
 }
 
-static void cshims_scheduler_release_owner_if_idle_locked(int16_t owner_slot) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_release_owner_if_idle_locked(int16_t owner_slot) {
     if (owner_slot < 0) {
         return;
     }
@@ -327,7 +338,7 @@ static void cshims_scheduler_release_owner_if_idle_locked(int16_t owner_slot) {
     }
 }
 
-static void cshims_scheduler_push_ready_locked(uint16_t job_index) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_push_ready_locked(uint16_t job_index) {
     CShimsSchedulerJob *job = &cshims_scheduler_jobs[job_index];
     uint8_t priority = job->priority;
     assert(priority < CSHIMS_SCHEDULER_PRIORITY_BUCKETS);
@@ -340,7 +351,7 @@ static void cshims_scheduler_push_ready_locked(uint16_t job_index) {
     cshims_scheduler_ready_tail[priority] = job_index;
 }
 
-static void cshims_scheduler_make_runnable_locked(uint16_t job_index) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_make_runnable_locked(uint16_t job_index) {
     CShimsSchedulerJob *job = &cshims_scheduler_jobs[job_index];
     int16_t owner_slot = cshims_scheduler_find_owner_locked(job->owner, true);
     job->owner_slot = owner_slot;
@@ -366,7 +377,7 @@ static void cshims_scheduler_make_runnable_locked(uint16_t job_index) {
     cshims_scheduler_push_ready_locked(job_index);
 }
 
-static uint16_t cshims_scheduler_pop_from_priority_locked(uint8_t priority) {
+static uint16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_pop_from_priority_locked(uint8_t priority) {
     uint16_t current = cshims_scheduler_ready_head[priority];
     if (current == CSHIMS_SCHEDULER_NONE) {
         return CSHIMS_SCHEDULER_NONE;
@@ -388,7 +399,7 @@ static uint16_t cshims_scheduler_pop_from_priority_locked(uint8_t priority) {
     return current;
 }
 
-static uint16_t cshims_scheduler_pop_ready_locked(void) {
+static uint16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_pop_ready_locked(void) {
     static const uint8_t priority_order[] = {
         0, 0, 0, 0,
         1,
@@ -419,7 +430,7 @@ static uint16_t cshims_scheduler_pop_ready_locked(void) {
     return CSHIMS_SCHEDULER_NONE;
 }
 
-static bool cshims_scheduler_has_ready_locked(void) {
+static bool CSHIMS_SCHEDULER_RAM cshims_scheduler_has_ready_locked(void) {
     if (cshims_scheduler_deferred_count > 0) {
         return true;
     }
@@ -431,9 +442,8 @@ static bool cshims_scheduler_has_ready_locked(void) {
     return false;
 }
 
-static void cshims_scheduler_finish_job(uint16_t job_index, int16_t owner_slot) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_finish_job(uint16_t job_index, int16_t owner_slot) {
     uint32_t irq_state = cshims_scheduler_lock();
-    cshims_scheduler_init_locked();
 
     if (owner_slot >= 0) {
         CShimsSchedulerOwner *owner = &cshims_scheduler_owners[owner_slot];
@@ -457,12 +467,11 @@ static void cshims_scheduler_finish_job(uint16_t job_index, int16_t owner_slot) 
     cshims_scheduler_signal_work();
 }
 
-static int64_t cshims_scheduler_alarm_callback(int32_t id, void *user_data) {
+static int64_t CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_alarm_callback(int32_t id, void *user_data) {
     (void)id;
     uint16_t job_index = (uint16_t)(((uintptr_t)user_data) - 1u);
 
     uint32_t irq_state = cshims_scheduler_lock();
-    cshims_scheduler_init_locked();
     cshims_scheduler_make_runnable_locked(job_index);
     cshims_scheduler_unlock(irq_state);
     cshims_scheduler_signal_work();
@@ -470,7 +479,7 @@ static int64_t cshims_scheduler_alarm_callback(int32_t id, void *user_data) {
     return 0;
 }
 
-static void cshims_scheduler_enqueue_job(
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_enqueue_job(
     void *job,
     void *executorFirst,
     void *executorSecond,
@@ -481,7 +490,6 @@ static void cshims_scheduler_enqueue_job(
     uint8_t priority = cshims_scheduler_priority_bucket(cshims_job_priority(job));
 
     uint32_t irq_state = cshims_scheduler_lock();
-    cshims_scheduler_init_locked();
     uint16_t job_index = cshims_scheduler_alloc_job_locked();
     cshims_scheduler_jobs[job_index].job = job;
     cshims_scheduler_jobs[job_index].executor_first = executorFirst;
@@ -509,11 +517,11 @@ static void cshims_scheduler_enqueue_job(
     cshims_scheduler_signal_work();
 }
 
-static void cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, void *executorSecond) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_enqueue_immediate(void *job, void *executorFirst, void *executorSecond) {
     cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, 0u, false);
 }
 
-static void cshims_scheduler_enqueue_delayed(
+static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_enqueue_delayed(
     uint64_t delayUs,
     void *job,
     void *executorFirst,
@@ -522,7 +530,7 @@ static void cshims_scheduler_enqueue_delayed(
     cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, delayUs, true);
 }
 
-static void cshims_scheduler_enqueue_deadline(
+static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_enqueue_deadline(
     uint64_t deadlineUs,
     void *job,
     void *executorFirst,
@@ -533,9 +541,8 @@ static void cshims_scheduler_enqueue_deadline(
     cshims_scheduler_enqueue_job(job, executorFirst, executorSecond, delayUs, true);
 }
 
-void cshims_scheduler_enqueue_deferred(void *item) {
+void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_enqueue_deferred(void *item) {
     uint32_t irq_state = cshims_scheduler_lock();
-    cshims_scheduler_init_locked();
     assert(cshims_scheduler_deferred_count < CSHIMS_SCHEDULER_MAX_DEFERRED);
     cshims_scheduler_deferred[cshims_scheduler_deferred_tail] = item;
     cshims_scheduler_deferred_tail = (uint16_t)((cshims_scheduler_deferred_tail + 1u) % CSHIMS_SCHEDULER_MAX_DEFERRED);
@@ -544,13 +551,12 @@ void cshims_scheduler_enqueue_deferred(void *item) {
     cshims_scheduler_signal_work();
 }
 
-int cshims_scheduler_poll_once(void) {
+int CSHIMS_SCHEDULER_RAM cshims_scheduler_poll_once(void) {
     void *deferred_item = NULL;
     uint16_t job_index = CSHIMS_SCHEDULER_NONE;
     CShimsSchedulerJob job_snapshot;
 
     uint32_t irq_state = cshims_scheduler_lock();
-    cshims_scheduler_init_locked();
 
     if (cshims_scheduler_deferred_count > 0) {
         deferred_item = cshims_scheduler_deferred[cshims_scheduler_deferred_head];
@@ -597,10 +603,9 @@ int cshims_scheduler_poll_once(void) {
     return 1;
 }
 
-void cshims_scheduler_wait_for_work_forever(void) {
+void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_wait_for_work_forever(void) {
     for (;;) {
         uint32_t irq_state = cshims_scheduler_lock();
-        cshims_scheduler_init_locked();
         bool has_ready = cshims_scheduler_has_ready_locked();
         cshims_scheduler_unlock(irq_state);
         if (has_ready) {
@@ -617,7 +622,7 @@ void cshims_scheduler_wait_for_work_forever(void) {
     }
 }
 
-static void cshims_scheduler_core1_entry_c(void) {
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_core1_entry_c(void) {
     cshims_swift_task_clear_current();
     for (;;) {
         if (!cshims_scheduler_poll_once()) {
@@ -626,13 +631,12 @@ static void cshims_scheduler_core1_entry_c(void) {
     }
 }
 
-void cshims_scheduler_start_multicore(void) {
+void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_start_multicore(void) {
     if ((cshims_core_num() & 1u) != 0u) {
         return;
     }
 
     uint32_t irq_state = cshims_scheduler_lock();
-    cshims_scheduler_init_locked();
     bool should_start = !cshims_scheduler_multicore_enabled;
     cshims_scheduler_multicore_enabled = true;
     cshims_scheduler_unlock(irq_state);
@@ -664,15 +668,15 @@ static bool cshims_executor_equal(SwiftExecutorRef lhs, SwiftExecutorRef rhs) {
 
 void swift_createDefaultExecutors(void) {}
 
-void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond) {
+void CSHIMS_SCHEDULER_RAM cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond) {
     swift_job_run(job, executorFirst, executorSecond);
 }
 
-void cshims_swift_task_clear_current(void) {
+void CSHIMS_SCHEDULER_RAM cshims_swift_task_clear_current(void) {
     cshims_swift_task_clear_current_runtime();
 }
 
-void *cshims_job_owner_task(void *job) {
+void *CSHIMS_SCHEDULER_RAM cshims_job_owner_task(void *job) {
     if (job == NULL) {
         return NULL;
     }
@@ -703,7 +707,7 @@ void *cshims_job_owner_task(void *job) {
     return NULL;
 }
 
-uint8_t cshims_job_priority(void *job) {
+uint8_t CSHIMS_SCHEDULER_RAM cshims_job_priority(void *job) {
     if (job != NULL && swift_job_getPriority != NULL) {
         return swift_job_getPriority(job);
     }
@@ -725,15 +729,15 @@ void cshims_exit_critical(uint32_t state) {
     __asm volatile("msr primask, %0\n" : : "r"(state) : "memory");
 }
 
-SWIFT_CC_SWIFT void swift_task_enqueueGlobalImpl(void *job) {
+SWIFT_CC_SWIFT void CSHIMS_SCHEDULER_RAM swift_task_enqueueGlobalImpl(void *job) {
     cshims_scheduler_enqueue_immediate(job, NULL, NULL);
 }
 
-SWIFT_CC_SWIFT void swift_task_enqueueMainExecutorImpl(void *job) {
+SWIFT_CC_SWIFT void CSHIMS_SCHEDULER_RAM swift_task_enqueueMainExecutorImpl(void *job) {
     cshims_scheduler_enqueue_immediate(job, NULL, NULL);
 }
 
-SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDelayImpl(uint64_t delay, void *job) {
+SWIFT_CC_SWIFT void CSHIMS_SCHEDULER_LATE_FLASH swift_task_enqueueGlobalWithDelayImpl(uint64_t delay, void *job) {
     uint64_t delayUs = delay / 1000u;
     if (delay > 0 && delayUs == 0) {
         delayUs = 1;
@@ -741,7 +745,7 @@ SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDelayImpl(uint64_t delay, void *
     cshims_scheduler_enqueue_delayed(delayUs, job, NULL, NULL);
 }
 
-SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDeadlineImpl(
+SWIFT_CC_SWIFT void CSHIMS_SCHEDULER_LATE_FLASH swift_task_enqueueGlobalWithDeadlineImpl(
     long long sec,
     long long nsec,
     long long toleranceSec,
@@ -764,7 +768,7 @@ SWIFT_CC_SWIFT void swift_task_enqueueGlobalWithDeadlineImpl(
     cshims_scheduler_enqueue_deadline(deadlineUs, job, NULL, NULL);
 }
 
-SWIFT_CC_SWIFT void swift_task_donateThreadToGlobalExecutorUntilImpl(
+SWIFT_CC_SWIFT void CSHIMS_SCHEDULER_LATE_FLASH swift_task_donateThreadToGlobalExecutorUntilImpl(
     bool (*condition)(void *),
     void *conditionContext
 ) {
@@ -794,7 +798,7 @@ SWIFT_CC_SWIFT bool swift_task_isMainExecutorImpl(SwiftExecutorRef executor) {
     return cshims_executor_equal(executor, cshims_generic_executor());
 }
 
-SWIFT_NORETURN SWIFT_CC_SWIFT void swift_task_asyncMainDrainQueueImpl(void) {
+SWIFT_NORETURN SWIFT_CC_SWIFT void CSHIMS_SCHEDULER_RAM swift_task_asyncMainDrainQueueImpl(void) {
     for (;;) {
         if (!cshims_scheduler_poll_once()) {
             cshims_scheduler_wait_for_work_forever();
