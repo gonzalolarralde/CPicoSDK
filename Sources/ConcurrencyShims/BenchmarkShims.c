@@ -11,8 +11,6 @@
 extern uint64_t time_us_64(void);
 extern void multicore_reset_core1(void);
 extern void multicore_launch_core1_with_stack(void (*entry)(void), uint32_t *stack_bottom, size_t stack_size_bytes);
-extern char __StackOneBottom;
-extern char __StackOneTop;
 
 typedef struct {
     volatile uint32_t gate;
@@ -88,17 +86,20 @@ void cshims_benchmark_multicore_sequential(
     state->checksum = 0;
     state->rounds = rounds;
 
-    uint64_t started = time_us_64();
-    state->deadline_us = started + durationUs;
 #if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
     multicore_reset_core1();
     multicore_launch_core1_with_stack(
         cshims_benchmark_multicore_sequential_core1,
-        (uint32_t *)&__StackOneBottom,
-        (size_t)(&__StackOneTop - &__StackOneBottom));
+        (uint32_t *)cshims_scheduler_core1_stack_bottom(),
+        cshims_scheduler_core1_stack_size_bytes());
 
+    uint64_t started = time_us_64();
+    state->deadline_us = started + durationUs;
     __atomic_store_n(&state->gate, 1u, __ATOMIC_RELEASE);
     cshims_benchmark_signal_work();
+#else
+    uint64_t started = time_us_64();
+    state->deadline_us = started + durationUs;
 #endif
 
     uint32_t units = 0;

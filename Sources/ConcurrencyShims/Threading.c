@@ -68,6 +68,41 @@ typedef struct {
 } SwiftPicoCondition;
 
 static void *swift_pico_tls[SWIFT_PICO_MAX_CORES][SWIFT_PICO_TLS_KEYS];
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+extern uint32_t cshims_scheduler_core1_stack[CPICOSDK_CORE1_STACK_SIZE_BYTES / sizeof(uint32_t)];
+#endif
+
+void *cshims_scheduler_core1_stack_bottom(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return cshims_scheduler_core1_stack;
+#else
+    return NULL;
+#endif
+}
+
+uint32_t cshims_scheduler_core1_stack_size_bytes(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return CPICOSDK_CORE1_STACK_SIZE_BYTES;
+#else
+    return 0;
+#endif
+}
+
+static char *swift_pico_scheduler_core1_stack_bottom(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return (char *)cshims_scheduler_core1_stack;
+#else
+    return NULL;
+#endif
+}
+
+static char *swift_pico_scheduler_core1_stack_top(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return (char *)cshims_scheduler_core1_stack + CPICOSDK_CORE1_STACK_SIZE_BYTES;
+#else
+    return NULL;
+#endif
+}
 
 static void swift_pico_trap(void) {
     for (;;) {
@@ -221,9 +256,24 @@ bool swift_threading_defer_current_stack_bounds(void **low, void **high) {
     if (swift_pico_stack_bounds_if_contains_sp(&__StackOneBottom, &__StackOneTop, sp, low, high)) {
         return true;
     }
+    if (swift_pico_stack_bounds_if_contains_sp(
+            swift_pico_scheduler_core1_stack_bottom(),
+            swift_pico_scheduler_core1_stack_top(),
+            sp,
+            low,
+            high)) {
+        return true;
+    }
 
     if (swift_pico_core_index() == 0u) {
         return swift_pico_stack_bounds_from_symbols(&__StackBottom, &__StackTop, low, high);
+    }
+    if (swift_pico_stack_bounds_from_symbols(
+            swift_pico_scheduler_core1_stack_bottom(),
+            swift_pico_scheduler_core1_stack_top(),
+            low,
+            high)) {
+        return true;
     }
     return swift_pico_stack_bounds_from_symbols(&__StackOneBottom, &__StackOneTop, low, high);
 }

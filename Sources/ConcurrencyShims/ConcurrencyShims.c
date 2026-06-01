@@ -33,8 +33,6 @@ extern uint8_t SWIFT_CC_SWIFT swift_job_getPriority(void *job) __attribute__((we
 extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executor);
 extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current_runtime(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
 extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
-extern char __StackOneBottom;
-extern char __StackOneTop;
 
 struct _reent;
 
@@ -169,6 +167,10 @@ static uint16_t cshims_scheduler_deferred_count = 0;
 static volatile bool cshims_scheduler_spinlock_prepared = false;
 static bool cshims_scheduler_initialized = false;
 static bool cshims_scheduler_multicore_enabled = false;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+uint32_t cshims_scheduler_core1_stack[CPICOSDK_CORE1_STACK_SIZE_BYTES / sizeof(uint32_t)]
+    __attribute__((aligned(16), visibility("hidden")));
+#endif
 
 static uint32_t CSHIMS_SCHEDULER_RAM cshims_scheduler_lock(void);
 static void CSHIMS_SCHEDULER_RAM cshims_scheduler_unlock(uint32_t irq_state);
@@ -667,8 +669,8 @@ bool CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_start_multicore(void) {
     multicore_reset_core1();
     multicore_launch_core1_with_stack(
         cshims_scheduler_core1_entry_c,
-        (uint32_t *)&__StackOneBottom,
-        (size_t)(&__StackOneTop - &__StackOneBottom));
+        (uint32_t *)cshims_scheduler_core1_stack_bottom(),
+        cshims_scheduler_core1_stack_size_bytes());
     cshims_scheduler_signal_work();
     return true;
 #endif
