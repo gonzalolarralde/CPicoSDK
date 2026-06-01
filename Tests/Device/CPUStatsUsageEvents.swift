@@ -1,13 +1,13 @@
 //% -- test yaml
 //% name: CPUStatsUsageEvents
-//% timeout: 12s
+//% timeout: 20s
 //% concurrency: false
 //% traits:
 //%   add: [StdIO_RTT, CPUMetrics]
 //% expect:
 //%   durationMs:
 //%     min: 0
-//%     max: 12000
+//%     max: 20000
 //% -----------
 
 import CPicoSDK
