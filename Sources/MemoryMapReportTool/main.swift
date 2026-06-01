@@ -661,8 +661,10 @@ func run(_ executable: String, _ arguments: [String]) throws -> String {
     let temporaryDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
     let outputURL = temporaryDirectory.appendingPathComponent("cpicosdk-memory-map-\(UUID().uuidString).stdout")
     let errorURL = temporaryDirectory.appendingPathComponent("cpicosdk-memory-map-\(UUID().uuidString).stderr")
-    _ = FileManager.default.createFile(atPath: outputURL.path, contents: nil)
-    _ = FileManager.default.createFile(atPath: errorURL.path, contents: nil)
+    guard FileManager.default.createFile(atPath: outputURL.path, contents: nil),
+          FileManager.default.createFile(atPath: errorURL.path, contents: nil) else {
+        throw ToolError.message("Could not create temporary output files for \(executable)")
+    }
     let outputHandle = try FileHandle(forWritingTo: outputURL)
     let errorHandle = try FileHandle(forWritingTo: errorURL)
     defer {
