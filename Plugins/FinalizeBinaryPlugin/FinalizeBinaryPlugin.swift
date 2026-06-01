@@ -324,6 +324,8 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             "-DSTDIO_UART=\(stdioOptions.uart ? "1" : "0")",
             "-DSTDIO_USB=\(stdioOptions.usb ? "1" : "0")",
             "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",
+            "-DCPICOSDK_CORE0_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE0_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
+            "-DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE1_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
         ] + embeddedResourceArguments
 
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }

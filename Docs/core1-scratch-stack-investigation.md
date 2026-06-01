@@ -118,33 +118,87 @@ core0 8 KiB guarded stack, moved to top of main RAM:
   full 26-test physical device suite PASS
 ```
 
-The final tested linker layout leaves Pico's default dummy stack reservations
-small in scratch (`PICO_STACK_SIZE=0x800`, `PICO_CORE1_STACK_SIZE=0x800`) but
-overrides the exported core0 stack symbols so core0 uses the top 8 KiB of main
-RAM and the heap is capped below it:
+The final linker layout is now size-tiered instead of always moving core0 to
+main RAM:
 
 ```text
-__StackBottom = __StackTop - 0x2000
-__StackLimit = __StackBottom
-__HeapLimit = __StackBottom
+core0 <= 4 KiB:
+  core0 uses SCRATCH_Y.
+  core1, when enabled, starts at the top of SCRATCH_X and extends into main RAM
+  if it is larger than 4 KiB.
+
+4 KiB < core0 <= 8 KiB:
+  core0 uses contiguous SCRATCH_X + SCRATCH_Y.
+  core1, when enabled, uses the top of main RAM.
+
+core0 > 8 KiB:
+  core0 still ends at the top of SCRATCH_Y and extends downward through both
+  scratch banks into main RAM.
+  core1, when enabled, sits below core0 in main RAM.
+  The heap is capped below the lowest main-RAM stack.
 ```
 
-For the final full-suite image, symbols showed:
+The default generated layout is now 8 KiB core0 and 8 KiB core1. Symbols from a
+default `SchedulerMulticoreBenchmarks` build showed:
 
 ```text
-swift_pico_scheduler_core1_stack  0x20005100, size 0x4000
-__end__           0x2000ca84
+__end__           0x20009820
 __HeapLimit       0x2007e000
-__StackBottom     0x2007e000
-__StackLimit      0x2007e000
-__StackTop        0x20080000
-__StackOneBottom  0x20080800
-__StackOneTop     0x20081000
+__StackOneBottom  0x2007e000
+__StackOneTop     0x20080000
+__StackBottom     0x20080000
+__StackLimit      0x20080000
+__StackTop        0x20082000
 ```
 
-That reserves an 8 KiB guarded core0 stack in main RAM, leaves the default Pico
-core1 stack reservation at 2 KiB in `SCRATCH_X`, and keeps the Swift scheduler
-core1 stack as a separate 16 KiB `.bss` allocation.
+That means the default core0 stack is the full 8 KiB scratch range
+`0x20080000..0x20082000`, while the default core1 scheduler stack is the 8 KiB
+main-RAM range immediately below scratch. No separate
+`swift_pico_scheduler_core1_stack` storage symbol remains; core1 launch and
+stack-bound reporting use `__StackOneBottom`/`__StackOneTop`.
+
+The 10-pass `SchedulerMulticoreBenchmarks` score with the default 8 KiB/8 KiB
+scratch-first layout was lower than the previous 8 KiB core0 / 16 KiB core1
+main-RAM-core0 layout:
+
+```text
+baseline:
+  bench-multi-throughput workPerSecond: avg=21146, p95=21320, min=20825, max=21320
+  bench-priority priorityWeight: avg=3355.44, p95=3356, min=3355, max=3356
+
+cpuMetrics:
+  bench-multi-throughput workPerSecond: avg=17841, p95=19707, min=17358, max=19707
+
+cpuMetricsPrinting:
+  bench-multi-throughput workPerSecond: avg=15871.70, p95=15940, min=15774, max=15940
+```
+
+So the scratch-first placement is useful for exposing a configurable,
+bus-independent stack option, but it is not currently the fastest measured
+scheduler benchmark layout.
+
+With `CPICOSDK_CORE1_STACK_SIZE_BYTES=0`, a focused single-core benchmark build
+showed `__StackOneBottom == __StackOneTop == 0x20080000`, no
+`swift_pico_scheduler_core1_stack` symbol, and `cshims_scheduler_start_multicore`
+compiled down to `movs r0, #0; bx lr`.
+
+With `CPICOSDK_CORE0_STACK_SIZE_BYTES=12288` and
+`CPICOSDK_CORE1_STACK_SIZE_BYTES=8192`, a build-only check showed the larger
+core0 stack still anchored at the top of SCRATCH_Y:
+
+```text
+__end__           0x20008a84
+__HeapLimit       0x2007d000
+__StackOneBottom  0x2007d000
+__StackOneTop     0x2007f000
+__StackBottom     0x2007f000
+__StackLimit      0x2007f000
+__StackTop        0x20082000
+```
+
+That is 12 KiB of core0 stack from `0x2007f000..0x20082000`: 4 KiB in main RAM
+plus both 4 KiB scratch banks. Core1 is the 8 KiB main-RAM range immediately
+below core0.
 
 The final 10-pass `SchedulerMulticoreBenchmarks` score with this layout was
 still in the expected range:
@@ -161,7 +215,8 @@ cpuMetricsPrinting:
   bench-multi-throughput workPerSecond: avg=17653.80, p95=17705, min=17592, max=17705
 ```
 
-An 8 KiB scheduler core1 stack was also tested, but rejected. The focused
+An 8 KiB scheduler core1 stack was tested with the CPU/memory stats print path.
+The focused
 `CPUStatsUsageEvents` run reproducibly failed with a missing run-end marker
 after both earlier subtests passed and stdout stopped at:
 
@@ -169,8 +224,8 @@ after both earlier subtests passed and stdout stopped at:
 stats-print-start
 ```
 
-Restoring only the scheduler core1 stack to 16 KiB, while keeping the guarded
-core0 stack at 8 KiB, made the focused test pass:
+Restoring only the scheduler core1 stack to 16 KiB in the earlier main-RAM
+layout made the focused test pass:
 
 ```text
 CPUStatsUsageEvents PASS

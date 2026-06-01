@@ -58,9 +58,9 @@ final class SchedulerSystem: @unchecked Sendable {
     }
 
     func startMulticore() {
-        cshims_scheduler_start_multicore()
+        let multicoreActive = cshims_scheduler_start_multicore()
 #if CPUMetrics
-        core1MetricsActive = true
+        core1MetricsActive = multicoreActive
 #endif
     }
 

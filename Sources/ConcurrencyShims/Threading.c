@@ -9,8 +9,11 @@
 #define SWIFT_PICO_TLS_KEYS 16u
 #define SWIFT_PICO_MAX_CORES 2u
 #define SWIFT_PICO_COND_MAX_WAITERS INT16_MAX
-#define SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES (16u * 1024u)
 #define SWIFT_PICO_SIO_CPUID ((volatile uint32_t *)0xd0000000u)
+
+#ifndef CPICOSDK_CORE1_STACK_SIZE_BYTES
+#define CPICOSDK_CORE1_STACK_SIZE_BYTES 8192u
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
 #define SWIFT_PICO_WEAK __attribute__((weak))
@@ -65,24 +68,6 @@ typedef struct {
 } SwiftPicoCondition;
 
 static void *swift_pico_tls[SWIFT_PICO_MAX_CORES][SWIFT_PICO_TLS_KEYS];
-static uint32_t swift_pico_scheduler_core1_stack[SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES / sizeof(uint32_t)]
-    __attribute__((aligned(16)));
-
-void *cshims_scheduler_core1_stack_bottom(void) {
-    return swift_pico_scheduler_core1_stack;
-}
-
-uint32_t cshims_scheduler_core1_stack_size_bytes(void) {
-    return SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES;
-}
-
-static char *swift_pico_scheduler_core1_stack_bottom(void) {
-    return (char *)swift_pico_scheduler_core1_stack;
-}
-
-static char *swift_pico_scheduler_core1_stack_top(void) {
-    return (char *)swift_pico_scheduler_core1_stack + SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES;
-}
 
 static void swift_pico_trap(void) {
     for (;;) {
@@ -236,24 +221,9 @@ bool swift_threading_defer_current_stack_bounds(void **low, void **high) {
     if (swift_pico_stack_bounds_if_contains_sp(&__StackOneBottom, &__StackOneTop, sp, low, high)) {
         return true;
     }
-    if (swift_pico_stack_bounds_if_contains_sp(
-            swift_pico_scheduler_core1_stack_bottom(),
-            swift_pico_scheduler_core1_stack_top(),
-            sp,
-            low,
-            high)) {
-        return true;
-    }
 
     if (swift_pico_core_index() == 0u) {
         return swift_pico_stack_bounds_from_symbols(&__StackBottom, &__StackTop, low, high);
-    }
-    if (swift_pico_stack_bounds_from_symbols(
-            swift_pico_scheduler_core1_stack_bottom(),
-            swift_pico_scheduler_core1_stack_top(),
-            low,
-            high)) {
-        return true;
     }
     return swift_pico_stack_bounds_from_symbols(&__StackOneBottom, &__StackOneTop, low, high);
 }

@@ -49,6 +49,8 @@ struct Env: Codable, Hashable {
         "BUILD_TYPE",
         "SWIFT_BUILD_TYPE",
         "EXTRA_CONFIG_PARAMS",
+        "CPICOSDK_CORE0_STACK_SIZE_BYTES",
+        "CPICOSDK_CORE1_STACK_SIZE_BYTES",
         "BOARD",
     ]
     

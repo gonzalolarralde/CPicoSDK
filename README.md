@@ -174,6 +174,57 @@ Only call `ConcurrencyRuntime.startMulticore()` when core1 belongs to the Swift
 concurrency scheduler. If you plan to use core1 for your own dedicated runtime,
 do not call it.
 
+#### Scheduler Stack Sizes
+
+CPicoSDK sizes the scheduler stacks during finalization. The prepared
+environment exports these variables to the finalizer:
+
+```bash
+export CPICOSDK_CORE0_STACK_SIZE_BYTES=8192
+export CPICOSDK_CORE1_STACK_SIZE_BYTES=8192
+```
+
+Set them before `prepare-rp2xxx-environment` runs, or uncomment/change them in
+your project's `build.sh`. Values are byte counts. Core0 must be greater than
+zero. Core1 may be set to zero. The same values are passed into both the SwiftPM
+C/Swift build and the final CMake/link step, so stack sizing affects compiled
+code and linker symbols consistently.
+
+```bash
+export CPICOSDK_CORE1_STACK_SIZE_BYTES=0
+```
+
+When core1 stack size is zero, CPicoSDK compiles out the scheduler core1 stack
+allocation and core1 launch path. Calling `ConcurrencyRuntime.startMulticore()`
+then leaves the scheduler on core0; it does not start core1 and does not print a
+warning.
+
+The finalizer also makes the exported linker stack symbols match the actual
+scheduler stacks. Placement is selected from the requested sizes:
+
+- If core0 is 4 KiB or smaller, core0 is placed in `SCRATCH_Y`.
+- If core0 is larger than 4 KiB and no larger than 8 KiB, core0 uses the
+  contiguous `SCRATCH_X` + `SCRATCH_Y` range. In this mode core1 is placed in
+  main RAM so core0 can keep the scratch banks as one bus-independent stack.
+- If core0 is larger than 8 KiB, core0 still ends at the top of `SCRATCH_Y` and
+  extends downward through both scratch banks into the top of main RAM. If
+  core1 is also enabled, core1 is placed below core0 in main RAM and the heap is
+  capped below both stacks.
+- When core0 is 4 KiB or smaller and core1 is enabled, core1 starts at the top
+  of `SCRATCH_X`. If core1 is larger than 4 KiB, its lower bound extends into
+  the top of main RAM and the heap is capped below it.
+
+The exported symbols describe the selected real stack ranges:
+
+```text
+__StackBottom / __StackTop       core0 guarded stack
+__StackOneBottom / __StackOneTop core1 scheduler stack
+```
+
+These symbols intentionally do not describe Pico SDK dummy stack reservations.
+Generic runtime code may use them as the canonical stack bounds for stack-limit
+checks and diagnostics.
+
 CPU metrics follow the same active-core model. `CPUStats.usageEvents()` emits
 reports for scheduler-managed cores. With core1 disabled or not yet started, the
 combined stream only produces core0 reports. Per-core subscriptions such as

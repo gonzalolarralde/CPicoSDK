@@ -19,6 +19,10 @@
 #define CSHIMS_SCHEDULER_RAM __attribute__((section(".time_critical.cshims_scheduler")))
 #define CSHIMS_SCHEDULER_LATE_FLASH __attribute__((section(".cpicosdk_late_text.cshims_scheduler")))
 
+#ifndef CPICOSDK_CORE1_STACK_SIZE_BYTES
+#define CPICOSDK_CORE1_STACK_SIZE_BYTES 8192u
+#endif
+
 typedef struct {
     void *first;
     void *second;
@@ -29,6 +33,8 @@ extern uint8_t SWIFT_CC_SWIFT swift_job_getPriority(void *job) __attribute__((we
 extern bool SWIFT_CC_SWIFT swift_task_isCurrentExecutor(SwiftExecutorRef executor);
 extern void *SWIFT_CC_SWIFT cshims_swift_task_clear_current_runtime(void) __asm__("_ZN5swift24_swift_task_clearCurrentEv");
 extern const void *cshims_swift_task_heap_metadata_ptr __asm__("_ZN5swift19taskHeapMetadataPtrE");
+extern char __StackOneBottom;
+extern char __StackOneTop;
 
 struct _reent;
 
@@ -641,9 +647,12 @@ static void CSHIMS_SCHEDULER_RAM cshims_scheduler_core1_entry_c(void) {
     }
 }
 
-void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_start_multicore(void) {
+bool CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_start_multicore(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES <= 0
+    return false;
+#else
     if ((cshims_core_num() & 1u) != 0u) {
-        return;
+        return false;
     }
 
     uint32_t irq_state = cshims_scheduler_lock();
@@ -652,15 +661,17 @@ void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_start_multicore(void) {
     cshims_scheduler_unlock(irq_state);
 
     if (!should_start) {
-        return;
+        return true;
     }
 
     multicore_reset_core1();
     multicore_launch_core1_with_stack(
         cshims_scheduler_core1_entry_c,
-        (uint32_t *)cshims_scheduler_core1_stack_bottom(),
-        cshims_scheduler_core1_stack_size_bytes());
+        (uint32_t *)&__StackOneBottom,
+        (size_t)(&__StackOneTop - &__StackOneBottom));
     cshims_scheduler_signal_work();
+    return true;
+#endif
 }
 
 static SwiftExecutorRef cshims_generic_executor(void) {

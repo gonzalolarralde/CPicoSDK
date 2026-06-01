@@ -4,6 +4,11 @@ set -euo pipefail
 # Set the swift build configuration.
 export BUILD_TYPE="RelWithDebInfo" # Options: Debug, Release, RelWithDebInfo, MinSizeRel
 
+# Optional stack sizing, in bytes. Core1 value 0 compiles out scheduler core1
+# startup even if multicore is requested by the app.
+# export CPICOSDK_CORE0_STACK_SIZE_BYTES=8192
+# export CPICOSDK_CORE1_STACK_SIZE_BYTES=8192
+
 ### Uncommenting the next line could help to debug issues or better understand the pipeline.
 # set -x
 

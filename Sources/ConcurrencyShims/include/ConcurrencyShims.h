@@ -38,12 +38,10 @@ void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond)
 void *cshims_job_owner_task(void *job);
 uint8_t cshims_job_priority(void *job);
 void cshims_swift_task_clear_current(void);
-void *cshims_scheduler_core1_stack_bottom(void);
-uint32_t cshims_scheduler_core1_stack_size_bytes(void);
 void cshims_scheduler_prepare_lock(void);
 int cshims_scheduler_poll_once(void);
 void cshims_scheduler_wait_for_work_forever(void);
-void cshims_scheduler_start_multicore(void);
+bool cshims_scheduler_start_multicore(void);
 void cshims_scheduler_enqueue_deferred(void *item);
 void cshims_benchmark_multicore_sequential(
     uint64_t durationUs,

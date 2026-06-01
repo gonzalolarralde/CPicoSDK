@@ -86,6 +86,23 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] = "0"
         }
 
+        if newEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] == nil {
+            newEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] = "8192"
+        }
+
+        if newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"] == nil {
+            newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"] = "8192"
+        }
+
+        let core1StackDefine = "-Xcc -DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"]!)"
+        if let extra = newEnvVars["EXTRA_CONFIG_PARAMS"] {
+            if !extra.contains("CPICOSDK_CORE1_STACK_SIZE_BYTES=") {
+                newEnvVars["EXTRA_CONFIG_PARAMS"] = extra + " " + core1StackDefine
+            }
+        } else {
+            newEnvVars["EXTRA_CONFIG_PARAMS"] = core1StackDefine
+        }
+
         if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
            let swiftVersion = newEnvVars["SWIFT_VERSION"] 
         {

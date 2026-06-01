@@ -4,9 +4,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef CPICOSDK_CORE1_STACK_SIZE_BYTES
+#define CPICOSDK_CORE1_STACK_SIZE_BYTES 8192u
+#endif
+
 extern uint64_t time_us_64(void);
 extern void multicore_reset_core1(void);
 extern void multicore_launch_core1_with_stack(void (*entry)(void), uint32_t *stack_bottom, size_t stack_size_bytes);
+extern char __StackOneBottom;
+extern char __StackOneTop;
 
 typedef struct {
     volatile uint32_t gate;
@@ -82,16 +88,18 @@ void cshims_benchmark_multicore_sequential(
     state->checksum = 0;
     state->rounds = rounds;
 
+    uint64_t started = time_us_64();
+    state->deadline_us = started + durationUs;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
     multicore_reset_core1();
     multicore_launch_core1_with_stack(
         cshims_benchmark_multicore_sequential_core1,
-        (uint32_t *)cshims_scheduler_core1_stack_bottom(),
-        cshims_scheduler_core1_stack_size_bytes());
+        (uint32_t *)&__StackOneBottom,
+        (size_t)(&__StackOneTop - &__StackOneBottom));
 
-    uint64_t started = time_us_64();
-    state->deadline_us = started + durationUs;
     __atomic_store_n(&state->gate, 1u, __ATOMIC_RELEASE);
     cshims_benchmark_signal_work();
+#endif
 
     uint32_t units = 0;
     uint32_t checksum = 1;
@@ -100,15 +108,22 @@ void cshims_benchmark_multicore_sequential(
         units++;
     }
 
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
     while (__atomic_load_n(&state->done, __ATOMIC_ACQUIRE) == 0u) {
         __asm volatile("nop");
     }
+#endif
 
     *elapsedUs = time_us_64() - started;
     *core0Units = units;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
     *core1Units = state->units;
-    *core0Checksum = checksum;
     *core1Checksum = state->checksum;
 
     multicore_reset_core1();
+#else
+    *core1Units = 0;
+    *core1Checksum = 0;
+#endif
+    *core0Checksum = checksum;
 }

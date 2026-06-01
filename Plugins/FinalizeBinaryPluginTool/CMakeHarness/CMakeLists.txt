@@ -45,16 +45,56 @@ pico_set_program_version("${PROJECT_NAME}" "0.1")
 
 set(CPICOSDK_HOT_MEMMAP_SOURCE "${PICO_SDK_PATH}/src/rp2_common/pico_crt0/${PICO_CHIP}/memmap_default.ld")
 set(CPICOSDK_HOT_MEMMAP "${CMAKE_CURRENT_BINARY_DIR}/memmap_cpicosdk_hot.ld")
+if(NOT DEFINED CPICOSDK_CORE0_STACK_SIZE_BYTES)
+    set(CPICOSDK_CORE0_STACK_SIZE_BYTES "8192")
+endif()
+if(NOT DEFINED CPICOSDK_CORE1_STACK_SIZE_BYTES)
+    set(CPICOSDK_CORE1_STACK_SIZE_BYTES "8192")
+endif()
+if(CPICOSDK_CORE0_STACK_SIZE_BYTES LESS_EQUAL 0)
+    message(FATAL_ERROR "CPICOSDK_CORE0_STACK_SIZE_BYTES must be greater than 0")
+endif()
+if(CPICOSDK_CORE1_STACK_SIZE_BYTES LESS 0)
+    message(FATAL_ERROR "CPICOSDK_CORE1_STACK_SIZE_BYTES must be greater than or equal to 0")
+endif()
 file(READ "${CPICOSDK_HOT_MEMMAP_SOURCE}" CPICOSDK_HOT_MEMMAP_CONTENT)
 set(CPICOSDK_HOT_TEXT_ANCHOR "*(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .text*)")
 set(CPICOSDK_HOT_TEXT_REPLACEMENT "*(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *libswift_Concurrency.a:Actor.cpp.o) .text*)")
 set(CPICOSDK_LATE_TEXT_ANCHOR "    .ARM.extab :")
 set(CPICOSDK_LATE_TEXT_REPLACEMENT "    .cpicosdk_late_text : {\n        *(.cpicosdk_late_text*)\n        . = ALIGN(4);\n    } > FLASH\n\n    .ARM.extab :")
-# Pico SDK's default linker script keeps core0 in SCRATCH_Y. CPicoSDK gives
-# core0 an explicit 8 KiB guarded stack at the top of main RAM and caps the heap
-# below it, while leaving Pico's core1 dummy reservation in SCRATCH_X.
+# Pico SDK's default linker script keeps core0 in SCRATCH_Y. CPicoSDK keeps the
+# core0 stack top there for every size, letting larger core0 stacks extend
+# downward through SCRATCH_X into main RAM. Core1 uses SCRATCH_X only when core0
+# does not need it, otherwise core1 sits below core0 in main RAM.
 set(CPICOSDK_STACK_SYMBOLS_ANCHOR "    __StackLimit = ORIGIN(RAM) + LENGTH(RAM);\n    __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);\n    __StackTop = ORIGIN(SCRATCH_Y) + LENGTH(SCRATCH_Y);\n    __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);\n    __StackBottom = __StackTop - SIZEOF(.stack_dummy);")
-set(CPICOSDK_STACK_SYMBOLS_REPLACEMENT "    __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);\n    __StackTop = ORIGIN(RAM) + LENGTH(RAM);\n    __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);\n    __StackBottom = __StackTop - 0x2000;\n    __StackLimit = __StackBottom;\n    __HeapLimit = __StackBottom;")
+if(CPICOSDK_CORE0_STACK_SIZE_BYTES LESS_EQUAL 4096)
+    set(CPICOSDK_STACK_TOP "ORIGIN(SCRATCH_Y) + LENGTH(SCRATCH_Y)")
+    set(CPICOSDK_STACK_BOTTOM "__StackTop - ${CPICOSDK_CORE0_STACK_SIZE_BYTES}")
+    set(CPICOSDK_STACK_ONE_TOP "ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X)")
+    set(CPICOSDK_STACK_ONE_BOTTOM "__StackOneTop - ${CPICOSDK_CORE1_STACK_SIZE_BYTES}")
+    if(CPICOSDK_CORE1_STACK_SIZE_BYTES GREATER 4096)
+        set(CPICOSDK_HEAP_LIMIT "__StackOneBottom")
+    else()
+        set(CPICOSDK_HEAP_LIMIT "ORIGIN(RAM) + LENGTH(RAM)")
+    endif()
+else()
+    set(CPICOSDK_STACK_TOP "ORIGIN(SCRATCH_Y) + LENGTH(SCRATCH_Y)")
+    set(CPICOSDK_STACK_BOTTOM "__StackTop - ${CPICOSDK_CORE0_STACK_SIZE_BYTES}")
+    if(CPICOSDK_CORE1_STACK_SIZE_BYTES GREATER 0)
+        set(CPICOSDK_STACK_ONE_TOP "__StackBottom")
+        set(CPICOSDK_STACK_ONE_BOTTOM "__StackOneTop - ${CPICOSDK_CORE1_STACK_SIZE_BYTES}")
+        set(CPICOSDK_HEAP_LIMIT "__StackOneBottom")
+    else()
+        set(CPICOSDK_STACK_ONE_TOP "__StackBottom")
+        set(CPICOSDK_STACK_ONE_BOTTOM "__StackOneTop")
+        if(CPICOSDK_CORE0_STACK_SIZE_BYTES GREATER 8192)
+            set(CPICOSDK_HEAP_LIMIT "__StackBottom")
+        else()
+            set(CPICOSDK_HEAP_LIMIT "ORIGIN(RAM) + LENGTH(RAM)")
+        endif()
+    endif()
+endif()
+set(CPICOSDK_STACK_SYMBOLS_REPLACEMENT "    __StackOneTop = ${CPICOSDK_STACK_ONE_TOP};\n    __StackOneBottom = ${CPICOSDK_STACK_ONE_BOTTOM};\n    __StackTop = ${CPICOSDK_STACK_TOP};\n    __StackBottom = ${CPICOSDK_STACK_BOTTOM};\n    __StackLimit = __StackBottom;\n    __HeapLimit = ${CPICOSDK_HEAP_LIMIT};")
 string(FIND "${CPICOSDK_HOT_MEMMAP_CONTENT}" "${CPICOSDK_HOT_TEXT_ANCHOR}" CPICOSDK_HOT_TEXT_ANCHOR_INDEX)
 if(CPICOSDK_HOT_TEXT_ANCHOR_INDEX EQUAL -1)
     message(FATAL_ERROR "CPicoSDK expected Pico SDK .text linker-script anchor not found in ${CPICOSDK_HOT_MEMMAP_SOURCE}")
@@ -103,8 +143,9 @@ target_compile_definitions("${PROJECT_NAME}" PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1
     PICO_ENTER_USB_BOOT_ON_EXIT=1
     PICO_USE_STACK_GUARDS=1
-    PICO_STACK_SIZE=0x800u
-    PICO_CORE1_STACK_SIZE=0x800u
+    PICO_STACK_SIZE=0u
+    PICO_CORE1_STACK_SIZE=0u
+    CPICOSDK_CORE1_STACK_SIZE_BYTES=${CPICOSDK_CORE1_STACK_SIZE_BYTES}
 )
 
 add_library(Output STATIC IMPORTED)
