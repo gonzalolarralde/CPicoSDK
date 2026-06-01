@@ -28,6 +28,8 @@ struct Options {
     var filter: String?
     var listOnly: Bool
     var buildOnly: Bool
+    var memoryMapReport: Bool
+    var memoryMapToolPath: String?
     var passes: Int
     var adapterSpeed: Int
     var target: DeviceTestTarget
@@ -40,6 +42,8 @@ struct Options {
         var filter: String?
         var listOnly = false
         var buildOnly = false
+        var memoryMapReport = false
+        var memoryMapToolPath: String?
         var passes = 1
         var adapterSpeed = 5_000
         var target = DeviceTestTarget.rp2350
@@ -70,6 +74,10 @@ struct Options {
                 listOnly = true
             case "--build-only":
                 buildOnly = true
+            case "--memory-map-report":
+                memoryMapReport = true
+            case "--memory-map-tool":
+                memoryMapToolPath = try takeValue(for: argument)
             case "--passes":
                 passes = max(1, Int(try takeValue(for: argument)) ?? passes)
             case "--adapter-speed":
@@ -102,6 +110,8 @@ struct Options {
             filter: filter,
             listOnly: listOnly,
             buildOnly: buildOnly,
+            memoryMapReport: memoryMapReport,
+            memoryMapToolPath: memoryMapToolPath,
             passes: passes,
             adapterSpeed: adapterSpeed,
             target: target,
@@ -110,7 +120,7 @@ struct Options {
     }
 
     static let help = """
-    Usage: swift package test-in-device [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--passes N] [--adapter-speed HZ]
+    Usage: swift package test-in-device [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--passes N] [--adapter-speed HZ] [--memory-map-report]
 
     Tests are discovered under Tests/Device/**/*.swift. Each file must start with a //% metadata block.
     """
@@ -167,7 +177,7 @@ struct DeviceHarnessRunner {
         var allPassed = true
         for (index, test) in tests.enumerated() {
             let startedAt = Date()
-            logPartial("[test-in-device] \(index + 1)/\(tests.count) \(test.metadata.name)")
+            logPartial("[test-in-device] \(index + 1)/\(tests.count) \(terminalBoldYellow(test.metadata.name))")
             if test.metadata.concurrency && !options.target.supportsConcurrency {
                 logLine(" SKIP: target \(options.target.rawValue) does not support concurrency")
                 continue
@@ -184,8 +194,12 @@ struct DeviceHarnessRunner {
                 let firmware = try build(generated: generated, buildType: test.metadata.buildType)
                 let buildElapsed = Date().timeIntervalSince(buildStartedAt)
                 let firmwareSize = firmwareSizeLabel(url: firmware.uf2URL)
+                let memoryMapReport = options.memoryMapReport
+                    ? try makeMemoryMapReport(for: firmware, generated: generated)
+                    : nil
                 if options.buildOnly {
                     logLine(" (build=\(formatDuration(buildElapsed))) - \(formatElapsed(since: startedAt)) - \(firmwareSize) BUILT \(firmware.uf2URL.path)")
+                    logMemoryMapReport(memoryMapReport)
                     continue
                 }
                 var scoreSamples: [DeviceScore] = []
@@ -202,14 +216,14 @@ struct DeviceHarnessRunner {
                     let passLabel = passCount > 1 ? "; pass=\(pass)/\(passCount)" : ""
                     let timing = " (build=\(formatDuration(buildElapsed)); program=\(formatDuration(runResult.burnElapsed)); run=\(formatDuration(runResult.captureElapsed)); device=\(formatDeviceMilliseconds(transcript.durationMilliseconds))\(passLabel)) - \(formatElapsed(since: startedAt)) - \(firmwareSize)"
                     if evaluation.passed {
-                        logLine("\(timing) PASS")
+                        logLine("\(timing) \(terminalGreen("PASS"))")
                         if passCount == 1 {
                             logFunctionDurations(transcript.functionDurations)
                             logDiagnostics(transcript.diagnostics)
                         }
                     } else {
                         allPassed = false
-                        logLine("\(timing) FAIL: \(evaluation.reason ?? "unknown failure")")
+                        logLine("\(timing) \(terminalRed("FAIL")): \(evaluation.reason ?? "unknown failure")")
                         logFunctionDurations(transcript.functionDurations)
                         logDiagnostics(transcript.diagnostics)
                         if !transcript.stdout.isEmpty {
@@ -218,9 +232,10 @@ struct DeviceHarnessRunner {
                     }
                 }
                 logScoreStatistics(scoreSamples, passCount: passCount)
+                logMemoryMapReport(memoryMapReport)
             } catch {
                 allPassed = false
-                logLine(" total \(formatElapsed(since: startedAt)) FAIL: \(error)")
+                logLine(" total \(formatElapsed(since: startedAt)) \(terminalRed("FAIL")): \(error)")
             }
         }
         return allPassed
@@ -230,7 +245,10 @@ struct DeviceHarnessRunner {
         guard !diagnostics.isEmpty else {
             return
         }
-        log("[test-in-device] Diagnostics:\n\(diagnostics.joined(separator: "\n"))\n")
+        let coloredDiagnostics = diagnostics
+            .map(colorDiagnosticScores)
+            .joined(separator: "\n")
+        log("[test-in-device] Diagnostics:\n\(coloredDiagnostics)\n")
     }
 
     private func expandedAlternatives(for source: DeviceTestSource) -> [DeviceTestSource] {
@@ -278,9 +296,36 @@ struct DeviceHarnessRunner {
             let minValue = values.first ?? 0
             let maxValue = values.last ?? 0
             let latestRaw = samples.last?.rawLine ?? ""
-            return "  \(key.metric) \(key.score): count=\(values.count)/\(passCount), avg=\(formatScoreValue(average)), p95=\(formatScoreValue(p95)), min=\(formatScoreValue(minValue)), max=\(formatScoreValue(maxValue)) \(key.context) latestRaw=\"\(latestRaw)\""
+            return "  \(key.metric) \(key.score): count=\(terminalSkyBlue("\(values.count)/\(passCount)")), avg=\(coloredScoreValue(average)), p95=\(coloredScoreValue(p95)), min=\(coloredScoreValue(minValue)), max=\(coloredScoreValue(maxValue)) \(key.context) latestRaw=\"\(latestRaw)\""
         }
         log("[test-in-device] Score statistics:\n\(lines.joined(separator: "\n"))\n")
+    }
+
+    private func makeMemoryMapReport(for firmware: BuiltFirmware, generated: GeneratedPackage) throws -> String {
+        guard let memoryMapToolPath = options.memoryMapToolPath else {
+            throw DeviceTestHarnessError.invalidMetadata("--memory-map-report requires the TestInDevice plugin-provided --memory-map-tool path")
+        }
+        let result = try ProcessRunner.run(
+            memoryMapToolPath,
+            arguments: [
+                "--package-dir", generated.packageDirectory.path,
+                "--cpicosdk-path", options.cpicoSDKPath.path,
+                "--elf", firmware.elfURL.path,
+                "--no-sections",
+            ],
+            workingDirectory: generated.packageDirectory
+        )
+        guard result.status == 0 else {
+            throw DeviceTestHarnessError.processFailed(command: "memory-map-report \(firmware.elfURL.path)", status: result.status, output: result.output)
+        }
+        return result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func logMemoryMapReport(_ report: String?) {
+        guard let report else {
+            return
+        }
+        log("\n\(report)\n")
     }
 
     private func build(generated: GeneratedPackage, buildType: DeviceBuildType) throws -> BuiltFirmware {
@@ -636,6 +681,20 @@ func formatScoreValue(_ value: Double) -> String {
     return String(format: "%.2f", value)
 }
 
+func coloredScoreValue(_ value: Double) -> String {
+    terminalSkyBlue(formatScoreValue(value))
+}
+
+func colorDiagnosticScores(_ diagnostic: String) -> String {
+    diagnostic
+        .split(separator: "\n", omittingEmptySubsequences: false)
+        .map { line in
+            let value = String(line)
+            return value.contains("score ") ? terminalSkyBlue(value) : value
+        }
+        .joined(separator: "\n")
+}
+
 struct ScoreKey: Hashable, Comparable {
     var metric: String
     var score: String
@@ -667,9 +726,32 @@ func firmwareSizeKilobytes(_ url: URL) -> String {
 
 func logFunctionDurations(_ durations: [DeviceFunctionDuration]) {
     for duration in durations {
-        let status = duration.passed ? "PASS" : "FAIL"
+        let status = duration.passed ? terminalGreen("PASS") : terminalRed("FAIL")
         log("[test-in-device]   \(duration.name): \(duration.durationMilliseconds)ms \(status)")
     }
+}
+
+func terminalBoldYellow(_ value: String) -> String {
+    terminalColor(value, code: "1;33")
+}
+
+func terminalGreen(_ value: String) -> String {
+    terminalColor(value, code: "32")
+}
+
+func terminalRed(_ value: String) -> String {
+    terminalColor(value, code: "31")
+}
+
+func terminalSkyBlue(_ value: String) -> String {
+    terminalColor(value, code: "96")
+}
+
+func terminalColor(_ value: String, code: String) -> String {
+    if ProcessInfo.processInfo.environment["NO_COLOR"] != nil {
+        return value
+    }
+    return "\u{001B}[\(code)m\(value)\u{001B}[0m"
 }
 
 func log(_ message: String) {
