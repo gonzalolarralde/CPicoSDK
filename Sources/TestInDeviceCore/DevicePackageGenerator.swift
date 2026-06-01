@@ -55,6 +55,15 @@ public enum DevicePackageGenerator {
         if source.metadata.concurrency {
             dependencyLines.append("                .product(name: \"CPicoConcurrency\", package: \"CPicoSDK\"),")
         }
+        let swiftSettingsLines = source.metadata.swiftDefines
+            .map { "                .define(\"\(escapeSwiftString($0))\")," }
+            .joined(separator: "\n")
+        let swiftSettingsArgument = swiftSettingsLines.isEmpty ? "" : """
+        ,
+                    swiftSettings: [
+        \(swiftSettingsLines)
+                    ]
+        """
 
         return """
         // swift-tools-version: 6.2
@@ -79,7 +88,7 @@ public enum DevicePackageGenerator {
                     name: "\(productName)",
                     dependencies: [
         \(dependencyLines.joined(separator: "\n"))
-                    ]
+                    ]\(swiftSettingsArgument)
                 ),
             ]
         )
@@ -116,6 +125,40 @@ public enum DevicePackageGenerator {
 
             public func deviceDiagnostic(_ message: String) {
                 print("__CPICOSDK_DEVICE_DIAGNOSTIC__|\\(message)")
+            }
+
+            public func logScore(_ metric: String, _ rawLine: String, _ score: String, _ value: UInt64, _ context: String) {
+                logScoreValue(metric, rawLine, score, String(value), context)
+            }
+
+            public func logScore(_ metric: String, _ rawLine: String, _ score: String, _ value: UInt32, _ context: String) {
+                logScoreValue(metric, rawLine, score, String(value), context)
+            }
+
+            public func logScore(_ metric: String, _ rawLine: String, _ score: String, _ value: Int, _ context: String) {
+                logScoreValue(metric, rawLine, score, String(value), context)
+            }
+
+            private func logScoreValue(_ metric: String, _ rawLine: String, _ score: String, _ value: String, _ context: String) {
+                print("__S__|\\(deviceProtocolField(metric))|\\(deviceProtocolField(score))|\\(value)|\\(deviceProtocolField(context))|\\(deviceProtocolField(rawLine, limit: 48))")
+                sleep_ms(2)
+            }
+
+            private func deviceProtocolField(_ value: String, limit: Int = 64) -> String {
+                var sanitized = ""
+                for character in value {
+                    if sanitized.count >= limit {
+                        break
+                    }
+                    if character == "|" {
+                        sanitized.append("/")
+                    } else if character == "\\n" || character == "\\r" {
+                        sanitized.append(" ")
+                    } else {
+                        sanitized.append(character)
+                    }
+                }
+                return sanitized
             }
 
             @discardableResult
@@ -175,6 +218,40 @@ public enum DevicePackageGenerator {
 
             public func deviceDiagnostic(_ message: String) {
                 print("__CPICOSDK_DEVICE_DIAGNOSTIC__|\\(message)")
+            }
+
+            public func logScore(_ metric: String, _ rawLine: String, _ score: String, _ value: UInt64, _ context: String) {
+                logScoreValue(metric, rawLine, score, String(value), context)
+            }
+
+            public func logScore(_ metric: String, _ rawLine: String, _ score: String, _ value: UInt32, _ context: String) {
+                logScoreValue(metric, rawLine, score, String(value), context)
+            }
+
+            public func logScore(_ metric: String, _ rawLine: String, _ score: String, _ value: Int, _ context: String) {
+                logScoreValue(metric, rawLine, score, String(value), context)
+            }
+
+            private func logScoreValue(_ metric: String, _ rawLine: String, _ score: String, _ value: String, _ context: String) {
+                print("__S__|\\(deviceProtocolField(metric))|\\(deviceProtocolField(score))|\\(value)|\\(deviceProtocolField(context))|\\(deviceProtocolField(rawLine, limit: 48))")
+                sleep_ms(2)
+            }
+
+            private func deviceProtocolField(_ value: String, limit: Int = 64) -> String {
+                var sanitized = ""
+                for character in value {
+                    if sanitized.count >= limit {
+                        break
+                    }
+                    if character == "|" {
+                        sanitized.append("/")
+                    } else if character == "\\n" || character == "\\r" {
+                        sanitized.append(" ")
+                    } else {
+                        sanitized.append(character)
+                    }
+                }
+                return sanitized
             }
 
             @discardableResult

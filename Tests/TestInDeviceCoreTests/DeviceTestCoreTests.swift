@@ -35,6 +35,38 @@ import Testing
     #expect(metadata.expectations.duration?.maxMilliseconds == 500)
 }
 
+@Test func parsesMetadataAlternatives() throws {
+    let source = """
+    //% -- test yaml
+    //% name: CPUStats
+    //% traits:
+    //%   add: [StdIO_RTT, CPUMetrics]
+    //% alts:
+    //%   - name: singleCore
+    //%     swiftDefines: [CPU_STATS_SINGLE_CORE]
+    //%   - name: multicore
+    //%     timeout: 12s
+    //%     traits:
+    //%       add: [CPUMetrics]
+    //%     swiftDefines: [CPU_STATS_MULTICORE]
+    //% -----------
+    """
+
+    let metadata = try DeviceTestParser.parseMetadata(from: source, fallbackName: "Fallback")
+    #expect(metadata.alternatives == [
+        DeviceTestAlternative(
+            name: "singleCore",
+            swiftDefines: ["CPU_STATS_SINGLE_CORE"]
+        ),
+        DeviceTestAlternative(
+            name: "multicore",
+            timeoutMilliseconds: 12_000,
+            traits: TraitSelection(add: ["CPUMetrics"]),
+            swiftDefines: ["CPU_STATS_MULTICORE"]
+        ),
+    ])
+}
+
 @Test func defaultsBuildTypeToDebugAndParsesExplicitBuildTypes() throws {
     let defaultMetadata = try DeviceTestParser.parseMetadata(from: """
     //% -- test yaml
@@ -136,6 +168,24 @@ import Testing
     #expect(runner.contains("try await asyncTest()"))
 }
 
+@Test func generatedPackageIncludesSwiftDefines() throws {
+    let metadata = DeviceTestMetadata(
+        name: "Defines",
+        concurrency: true,
+        swiftDefines: ["CPU_STATS_MULTICORE"]
+    )
+    let source = DeviceTestSource(
+        fileURL: URL(fileURLWithPath: "/tmp/Defines.swift"),
+        source: "func defineTest() async throws {}",
+        metadata: metadata,
+        functions: [DeviceTestFunction(name: "defineTest", isAsync: true, isThrowing: true)]
+    )
+
+    let manifest = DevicePackageGenerator.packageManifest(for: source, cpicoSDKPath: URL(fileURLWithPath: "/repo/CPicoSDK"))
+    #expect(manifest.contains("swiftSettings"))
+    #expect(manifest.contains(".define(\"CPU_STATS_MULTICORE\")"))
+}
+
 @Test func generatesPackageForRP2040Target() throws {
     let metadata = DeviceTestMetadata(name: "Sync", concurrency: false)
     let source = DeviceTestSource(
@@ -180,6 +230,7 @@ import Testing
     let runner = DevicePackageGenerator.runnerSource(for: loaded)
     #expect(runner.contains("try await asyncTest()"))
     #expect(runner.contains("syncTest()"))
+    #expect(runner.contains("logScore"))
 }
 
 @Test func normalizesStdoutAndParsesProtocolMarkers() {
@@ -211,6 +262,38 @@ import Testing
 
     let expectations = DeviceExpectations(stdout: StdoutExpectation(equals: "visible\n"))
     #expect(DeviceResultParser.evaluate(transcript: transcript, expectations: expectations).passed)
+}
+
+@Test func parsesStructuredScoreEventsOutsideStdout() {
+    let raw = """
+    visible
+    __S__|bench-alarm-jitter|averageWakeLatenessUs|2|(lower is better)|sleepers=8, lateUs min/avg/max=1/2/3 | coreHits=4/4
+    __CPICOSDK_DEVICE_TEST__|run-end|status=passed|durationMs=2
+    """
+
+    let transcript = DeviceResultParser.parse(raw)
+    #expect(transcript.sawRunEnd)
+    #expect(transcript.stdout == "visible\n")
+    #expect(transcript.scores == [
+        DeviceScore(
+            metric: "bench-alarm-jitter",
+            rawLine: "sleepers=8, lateUs min/avg/max=1/2/3 | coreHits=4/4",
+            score: "averageWakeLatenessUs",
+            value: 2,
+            context: "(lower is better)"
+        )
+    ])
+}
+
+@Test func ignoresCorruptedStructuredScoreEvents() {
+    let raw = """
+    __S__|bench-continuation|resumptionsPerSecond|7111|(higher __CPICOSDK_DEVICE_TEST__|test-start|name=explicitContinuationThroughput
+    __CPICOSDK_DEVICE_TEST__|run-end|status=passed|durationMs=2
+    """
+
+    let transcript = DeviceResultParser.parse(raw)
+    #expect(transcript.sawRunEnd)
+    #expect(transcript.scores.isEmpty)
 }
 
 @Test func waitsForCompleteRunEndAndParsesEmbeddedMarkers() {

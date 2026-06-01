@@ -28,6 +28,7 @@ struct Options {
     var filter: String?
     var listOnly: Bool
     var buildOnly: Bool
+    var passes: Int
     var adapterSpeed: Int
     var target: DeviceTestTarget
     var buildTypeOverride: DeviceBuildType?
@@ -39,6 +40,7 @@ struct Options {
         var filter: String?
         var listOnly = false
         var buildOnly = false
+        var passes = 1
         var adapterSpeed = 5_000
         var target = DeviceTestTarget.rp2350
         var buildTypeOverride: DeviceBuildType?
@@ -68,6 +70,8 @@ struct Options {
                 listOnly = true
             case "--build-only":
                 buildOnly = true
+            case "--passes":
+                passes = max(1, Int(try takeValue(for: argument)) ?? passes)
             case "--adapter-speed":
                 adapterSpeed = Int(try takeValue(for: argument)) ?? adapterSpeed
             case "--target", "--device":
@@ -98,6 +102,7 @@ struct Options {
             filter: filter,
             listOnly: listOnly,
             buildOnly: buildOnly,
+            passes: passes,
             adapterSpeed: adapterSpeed,
             target: target,
             buildTypeOverride: buildTypeOverride
@@ -105,7 +110,7 @@ struct Options {
     }
 
     static let help = """
-    Usage: swift package test-in-device [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--adapter-speed HZ]
+    Usage: swift package test-in-device [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--passes N] [--adapter-speed HZ]
 
     Tests are discovered under Tests/Device/**/*.swift. Each file must start with a //% metadata block.
     """
@@ -126,7 +131,7 @@ struct DeviceHarnessRunner {
             return true
         }
 
-        var tests = try files.map(DeviceTestParser.load(fileURL:))
+        var tests = try files.map(DeviceTestParser.load(fileURL:)).flatMap(expandedAlternatives(for:))
         if let buildTypeOverride = options.buildTypeOverride {
             tests = tests.map { source in
                 var source = source
@@ -183,27 +188,36 @@ struct DeviceHarnessRunner {
                     logLine(" (build=\(formatDuration(buildElapsed))) - \(formatElapsed(since: startedAt)) - \(firmwareSize) BUILT \(firmware.uf2URL.path)")
                     continue
                 }
-                let runResult = try runOnDevice(
-                    elfURL: firmware.elfURL,
-                    packageDirectory: generated.packageDirectory,
-                    timeoutMilliseconds: test.metadata.timeoutMilliseconds
-                )
-                let transcript = runResult.transcript
-                let evaluation = DeviceResultParser.evaluate(transcript: transcript, expectations: test.metadata.expectations)
-                let timing = " (build=\(formatDuration(buildElapsed)); program=\(formatDuration(runResult.burnElapsed)); run=\(formatDuration(runResult.captureElapsed)); device=\(formatDeviceMilliseconds(transcript.durationMilliseconds))) - \(formatElapsed(since: startedAt)) - \(firmwareSize)"
-                if evaluation.passed {
-                    logLine("\(timing) PASS")
-                    logFunctionDurations(transcript.functionDurations)
-                    logDiagnostics(transcript.diagnostics)
-                } else {
-                    allPassed = false
-                    logLine("\(timing) FAIL: \(evaluation.reason ?? "unknown failure")")
-                    logFunctionDurations(transcript.functionDurations)
-                    logDiagnostics(transcript.diagnostics)
-                    if !transcript.stdout.isEmpty {
-                        log("[test-in-device] Captured stdout:\n\(transcript.stdout)")
+                var scoreSamples: [DeviceScore] = []
+                let passCount = options.passes
+                for pass in 1...passCount {
+                    let runResult = try runOnDevice(
+                        elfURL: firmware.elfURL,
+                        packageDirectory: generated.packageDirectory,
+                        timeoutMilliseconds: test.metadata.timeoutMilliseconds
+                    )
+                    let transcript = runResult.transcript
+                    scoreSamples.append(contentsOf: transcript.scores)
+                    let evaluation = DeviceResultParser.evaluate(transcript: transcript, expectations: test.metadata.expectations)
+                    let passLabel = passCount > 1 ? "; pass=\(pass)/\(passCount)" : ""
+                    let timing = " (build=\(formatDuration(buildElapsed)); program=\(formatDuration(runResult.burnElapsed)); run=\(formatDuration(runResult.captureElapsed)); device=\(formatDeviceMilliseconds(transcript.durationMilliseconds))\(passLabel)) - \(formatElapsed(since: startedAt)) - \(firmwareSize)"
+                    if evaluation.passed {
+                        logLine("\(timing) PASS")
+                        if passCount == 1 {
+                            logFunctionDurations(transcript.functionDurations)
+                            logDiagnostics(transcript.diagnostics)
+                        }
+                    } else {
+                        allPassed = false
+                        logLine("\(timing) FAIL: \(evaluation.reason ?? "unknown failure")")
+                        logFunctionDurations(transcript.functionDurations)
+                        logDiagnostics(transcript.diagnostics)
+                        if !transcript.stdout.isEmpty {
+                            log("[test-in-device] Captured stdout:\n\(transcript.stdout)")
+                        }
                     }
                 }
+                logScoreStatistics(scoreSamples, passCount: passCount)
             } catch {
                 allPassed = false
                 logLine(" total \(formatElapsed(since: startedAt)) FAIL: \(error)")
@@ -219,6 +233,56 @@ struct DeviceHarnessRunner {
         log("[test-in-device] Diagnostics:\n\(diagnostics.joined(separator: "\n"))\n")
     }
 
+    private func expandedAlternatives(for source: DeviceTestSource) -> [DeviceTestSource] {
+        guard !source.metadata.alternatives.isEmpty else {
+            return [source]
+        }
+
+        return source.metadata.alternatives.map { alternative in
+            var expanded = source
+            var metadata = source.metadata
+            metadata.name = "\(metadata.name)-\(alternative.name)"
+            if let timeoutMilliseconds = alternative.timeoutMilliseconds {
+                metadata.timeoutMilliseconds = timeoutMilliseconds
+            }
+            if let buildType = alternative.buildType {
+                metadata.buildType = buildType
+            }
+            if let concurrency = alternative.concurrency {
+                metadata.concurrency = concurrency
+            }
+            metadata.traits = TraitSelection(
+                add: metadata.traits.add + alternative.traits.add,
+                remove: metadata.traits.remove + alternative.traits.remove
+            )
+            metadata.swiftDefines += alternative.swiftDefines
+            metadata.alternatives = []
+            expanded.metadata = metadata
+            return expanded
+        }
+    }
+
+    private func logScoreStatistics(_ scores: [DeviceScore], passCount: Int) {
+        guard !scores.isEmpty else {
+            return
+        }
+
+        let grouped = Dictionary(grouping: scores) { score in
+            ScoreKey(metric: score.metric, score: score.score, context: score.context)
+        }
+        let lines = grouped.keys.sorted().map { key -> String in
+            let samples = grouped[key] ?? []
+            let values = samples.map(\.value).sorted()
+            let average = values.reduce(0, +) / Double(values.count)
+            let p95 = percentile(values, percentile: 0.95)
+            let minValue = values.first ?? 0
+            let maxValue = values.last ?? 0
+            let latestRaw = samples.last?.rawLine ?? ""
+            return "  \(key.metric) \(key.score): count=\(values.count)/\(passCount), avg=\(formatScoreValue(average)), p95=\(formatScoreValue(p95)), min=\(formatScoreValue(minValue)), max=\(formatScoreValue(maxValue)) \(key.context) latestRaw=\"\(latestRaw)\""
+        }
+        log("[test-in-device] Score statistics:\n\(lines.joined(separator: "\n"))\n")
+    }
+
     private func build(generated: GeneratedPackage, buildType: DeviceBuildType) throws -> BuiltFirmware {
         let sharedBundleExport = try sharedPicoSDKBundleExportScript()
         let script = """
@@ -226,17 +290,24 @@ struct DeviceHarnessRunner {
         cd \(shellQuote(generated.packageDirectory.path))
         export BUILD_TYPE="\(buildType.rawValue)"
         export BOARD="\(options.target.board)"
+        export CPICOSDK_CORE0_STACK_SIZE_BYTES="${CPICOSDK_CORE0_STACK_SIZE_BYTES:-8192}"
+        export CPICOSDK_CORE1_STACK_SIZE_BYTES="${CPICOSDK_CORE1_STACK_SIZE_BYTES:-8192}"
         export BUILD_SCRIPT_VERSION=1
         \(sharedBundleExport)
         export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"
         export PREPARATION_BUNDLE_STAMP="$PREPARATION_SCRIPT_PATH.pico-sdk-bundle-path"
         export PREPARATION_BUILD_TYPE_STAMP="$PREPARATION_SCRIPT_PATH.build-type"
+        export PREPARATION_STACK_SIZE_STAMP="$PREPARATION_SCRIPT_PATH.stack-sizes"
         export GENERATED_INPUTS_CHANGED="\(generated.inputsChanged ? "1" : "0")"
+        STACK_SIZE_SIGNATURE="$CPICOSDK_CORE0_STACK_SIZE_BYTES:$CPICOSDK_CORE1_STACK_SIZE_BYTES"
         PREPARATION_INPUTS_CHANGED="$GENERATED_INPUTS_CHANGED"
         if [ ! -f "$PREPARATION_BUNDLE_STAMP" ] || [ "$(cat "$PREPARATION_BUNDLE_STAMP")" != "${PICO_SDK_BUNDLE_PATH:-}" ]; then
           PREPARATION_INPUTS_CHANGED="1"
         fi
         if [ ! -f "$PREPARATION_BUILD_TYPE_STAMP" ] || [ "$(cat "$PREPARATION_BUILD_TYPE_STAMP")" != "$BUILD_TYPE" ]; then
+          PREPARATION_INPUTS_CHANGED="1"
+        fi
+        if [ ! -f "$PREPARATION_STACK_SIZE_STAMP" ] || [ "$(cat "$PREPARATION_STACK_SIZE_STAMP")" != "$STACK_SIZE_SIGNATURE" ]; then
           PREPARATION_INPUTS_CHANGED="1"
         fi
         if command -v swiftly >/dev/null 2>&1; then
@@ -260,6 +331,7 @@ struct DeviceHarnessRunner {
             --disable-sourcekit-lsp-settings
           printf '%s' "${PICO_SDK_BUNDLE_PATH:-}" > "$PREPARATION_BUNDLE_STAMP"
           printf '%s' "$BUILD_TYPE" > "$PREPARATION_BUILD_TYPE_STAMP"
+          printf '%s' "$STACK_SIZE_SIGNATURE" > "$PREPARATION_STACK_SIZE_STAMP"
         fi
         source "$PREPARATION_SCRIPT_PATH"
         "$SWIFTLY_PATH" install
@@ -271,10 +343,10 @@ struct DeviceHarnessRunner {
           $EXTRA_CONFIG_PARAMS
         LIB_PATH=".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/lib\(generated.productName).a"
         ELF_PATH=".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/\(generated.productName).elf"
-        if [ ! -f "$ELF_PATH" ] || [ "$LIB_PATH" -nt "$ELF_PATH" ]; then
+        if [ "$PREPARATION_INPUTS_CHANGED" = "1" ] || [ ! -f "$ELF_PATH" ] || [ "$LIB_PATH" -nt "$ELF_PATH" ]; then
           finalize_rp2xxx_binary \(generated.productName) --incremental
         fi
-        find .build -path "*/\(generated.productName).elf" -print -quit
+        printf '%s\\n' "$ELF_PATH"
         """
 
         let result = try ProcessRunner.run("/bin/bash", arguments: ["-lc", script], workingDirectory: generated.packageDirectory)
@@ -546,6 +618,38 @@ func formatDeviceMilliseconds(_ milliseconds: Int?) -> String {
         return "unknown"
     }
     return "\(milliseconds)ms"
+}
+
+func percentile(_ sortedValues: [Double], percentile: Double) -> Double {
+    guard !sortedValues.isEmpty else {
+        return 0
+    }
+    let rank = Int((percentile * Double(sortedValues.count)).rounded(.up))
+    let index = min(max(rank - 1, 0), sortedValues.count - 1)
+    return sortedValues[index]
+}
+
+func formatScoreValue(_ value: Double) -> String {
+    if value.isFinite && abs(value.rounded() - value) < 0.000_001 {
+        return "\(Int64(value.rounded()))"
+    }
+    return String(format: "%.2f", value)
+}
+
+struct ScoreKey: Hashable, Comparable {
+    var metric: String
+    var score: String
+    var context: String
+
+    static func < (lhs: ScoreKey, rhs: ScoreKey) -> Bool {
+        if lhs.metric != rhs.metric {
+            return lhs.metric < rhs.metric
+        }
+        if lhs.score != rhs.score {
+            return lhs.score < rhs.score
+        }
+        return lhs.context < rhs.context
+    }
 }
 
 func firmwareSizeLabel(url: URL) -> String {

@@ -3,6 +3,7 @@ import Foundation
 public enum DeviceProtocol {
     public static let prefix = "__CPICOSDK_DEVICE_TEST__|"
     public static let diagnosticPrefix = "__CPICOSDK_DEVICE_DIAGNOSTIC__|"
+    public static let scorePrefix = "__S__|"
 }
 
 public struct DeviceProtocolEvent: Equatable {
@@ -19,6 +20,7 @@ public struct DeviceTranscript: Equatable {
     public var events: [DeviceProtocolEvent]
     public var stdout: String
     public var diagnostics: [String]
+    public var scores: [DeviceScore]
     public var sawRunEnd: Bool
     public var runPassed: Bool
     public var durationMilliseconds: Int?
@@ -28,6 +30,7 @@ public struct DeviceTranscript: Equatable {
         events: [DeviceProtocolEvent],
         stdout: String,
         diagnostics: [String] = [],
+        scores: [DeviceScore] = [],
         sawRunEnd: Bool,
         runPassed: Bool,
         durationMilliseconds: Int?,
@@ -36,10 +39,27 @@ public struct DeviceTranscript: Equatable {
         self.events = events
         self.stdout = stdout
         self.diagnostics = diagnostics
+        self.scores = scores
         self.sawRunEnd = sawRunEnd
         self.runPassed = runPassed
         self.durationMilliseconds = durationMilliseconds
         self.functionDurations = functionDurations
+    }
+}
+
+public struct DeviceScore: Equatable, Hashable {
+    public var metric: String
+    public var rawLine: String
+    public var score: String
+    public var value: Double
+    public var context: String
+
+    public init(metric: String, rawLine: String, score: String, value: Double, context: String) {
+        self.metric = metric
+        self.rawLine = rawLine
+        self.score = score
+        self.value = value
+        self.context = context
     }
 }
 
@@ -48,6 +68,7 @@ public enum DeviceResultParser {
         let normalized = rawOutput.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
         var stdout = ""
         var diagnostics: [String] = []
+        var scores: [DeviceScore] = []
         var events: [DeviceProtocolEvent] = []
         var sawRunEnd = false
         var runPassed = false
@@ -91,6 +112,10 @@ public enum DeviceResultParser {
                 events.append(event)
             case .diagnostic:
                 diagnostics.append(payload)
+            case .score:
+                if let score = parseScore(payload) {
+                    scores.append(score)
+                }
             }
 
             if payloadEnd < normalized.endIndex, normalized[payloadEnd] == "\n" {
@@ -104,6 +129,7 @@ public enum DeviceResultParser {
             events: events,
             stdout: stdout,
             diagnostics: diagnostics,
+            scores: scores,
             sawRunEnd: sawRunEnd,
             runPassed: runPassed,
             durationMilliseconds: durationMilliseconds,
@@ -169,25 +195,65 @@ public enum DeviceResultParser {
     private enum MarkerKind {
         case event
         case diagnostic
+        case score
     }
 
     private static func nextMarker(in string: String, from cursor: String.Index) -> (kind: MarkerKind, range: Range<String.Index>)? {
         let searchRange = string[cursor...]
         let eventRange = searchRange.range(of: DeviceProtocol.prefix)
         let diagnosticRange = searchRange.range(of: DeviceProtocol.diagnosticPrefix)
+        let scoreRange = searchRange.range(of: DeviceProtocol.scorePrefix)
+        let candidates = [
+            eventRange.map { (kind: MarkerKind.event, range: $0) },
+            diagnosticRange.map { (kind: MarkerKind.diagnostic, range: $0) },
+            scoreRange.map { (kind: MarkerKind.score, range: $0) },
+        ].compactMap { $0 }
 
-        switch (eventRange, diagnosticRange) {
-        case (nil, nil):
+        guard let first = candidates.min(by: { $0.range.lowerBound < $1.range.lowerBound }) else {
             return nil
-        case (let eventRange?, nil):
-            return (.event, eventRange)
-        case (nil, let diagnosticRange?):
-            return (.diagnostic, diagnosticRange)
-        case (let eventRange?, let diagnosticRange?):
-            if eventRange.lowerBound <= diagnosticRange.lowerBound {
-                return (.event, eventRange)
-            }
-            return (.diagnostic, diagnosticRange)
+        }
+        return first
+    }
+
+    private static func parseScore(_ payload: String) -> DeviceScore? {
+        let directParts = payload.split(separator: "|", maxSplits: 4, omittingEmptySubsequences: false).map(String.init)
+        if directParts.count == 5,
+           isScoreIdentifier(directParts[0]),
+           isScoreIdentifier(directParts[1]),
+           !directParts[4].isEmpty,
+           let value = Double(directParts[2]) {
+            return DeviceScore(
+                metric: directParts[0],
+                rawLine: directParts[4],
+                score: directParts[1],
+                value: value,
+                context: directParts[3]
+            )
+        }
+
+        let event = parseEvent(payload)
+        guard let metric = event.fields["metric"],
+              let rawLine = event.fields["raw"],
+              let score = event.fields["score"],
+              let valueString = event.fields["value"],
+              let value = Double(valueString) else {
+            return nil
+        }
+        return DeviceScore(
+            metric: metric,
+            rawLine: rawLine,
+            score: score,
+            value: value,
+            context: event.fields["context"] ?? ""
+        )
+    }
+
+    private static func isScoreIdentifier(_ value: String) -> Bool {
+        guard !value.isEmpty else {
+            return false
+        }
+        return value.unicodeScalars.allSatisfy {
+            CharacterSet.alphanumerics.contains($0) || $0 == "-" || $0 == "_"
         }
     }
 
