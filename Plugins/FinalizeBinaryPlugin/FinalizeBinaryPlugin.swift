@@ -50,6 +50,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         let productName = arguments.removeFirst()
 
         let incremental = arguments.contains("--incremental")
+        let memoryMapTool = try context.tool(named: "MemoryMapReportTool")
         guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
@@ -91,6 +92,10 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             buildArtifact: buildArtifact,
             productName: libProduct.name,
             embeddedResources: embeddedResources,
+            packageDir: context.package.directoryURL,
+            cpicoSDKPath: picoSDKURL,
+            memoryMapTool: memoryMapTool.url,
+            swiftBuildType: swiftBuildType,
             clean: !incremental
         )
     }
@@ -263,7 +268,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             .path
     }
 
-    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], clean: Bool) async throws {
+    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], packageDir: URL, cpicoSDKPath: URL, memoryMapTool: URL, swiftBuildType: String, clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
@@ -348,9 +353,18 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).uf2").path) to \(outputDir.appending(path: "\(productName).uf2").path)")
 
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
-        await printArtifactStats(outputDir: outputDir, productName: productName)
+        await printArtifactStats(
+            outputDir: outputDir,
+            buildDir: buildDir,
+            productName: productName,
+            packageDir: packageDir,
+            cpicoSDKPath: cpicoSDKPath,
+            memoryMapTool: memoryMapTool,
+            combination: combination,
+            swiftBuildType: swiftBuildType
+        )
 
-        print("[CPicoSDK] 🎉 Finalization completed successfully! 🎉")
+        print("[CPicoSDK] 🎉 Build completed successfully! 🎉")
     }
 
     private func makeEmbeddedResourceCMakeArguments(_ embeddedResources: [String: URL]) throws -> [String] {
@@ -380,7 +394,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         ]
     }
 
-    private func printArtifactStats(outputDir: URL, productName: String) async {
+    private func printArtifactStats(outputDir: URL, buildDir: URL, productName: String, packageDir: URL, cpicoSDKPath: URL, memoryMapTool: URL, combination: String, swiftBuildType: String) async {
         let fileManager = FileManager.default
 
         func formatSize(_ bytes: Int64) -> String {
@@ -389,7 +403,8 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         }
 
         let artifactPaths = [
-            ("Device Storage Used", "UF2", outputDir.appending(path: "\(productName).uf2").path),
+            ("BIN payload size", "BIN", buildDir.appending(path: "\(productName).bin").path),
+            ("UF2 file size", "UF2", outputDir.appending(path: "\(productName).uf2").path),
             ("Host Debug Binary Size", "ELF", outputDir.appending(path: "\(productName).elf").path),
         ]
 
@@ -404,19 +419,52 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             print("[CPicoSDK]   - \(label): \(formatSize(fileSize.int64Value)) (\(kind))")
         }
 
-        let elfURL = outputDir.appending(path: "\(productName).elf")
         do {
-            let output = try await runSize(on: elfURL)
-            if let parsed = parseSizeOutput(output) {
-                let flashFootprint = parsed.text + parsed.data
-                print("[CPicoSDK]   - Linked image footprint (`arm-none-eabi-size`): text=\(parsed.text) data=\(parsed.data) bss=\(parsed.bss) dec=\(parsed.dec) (\(formatSize(Int64(parsed.dec))))")
-                print("[CPicoSDK]   - Flash payload estimate: text+data=\(flashFootprint) B (\(String(format: "%.2f", Double(flashFootprint) / 1024.0)) KiB)")
-            } else {
-                print("[CPicoSDK]   - Linked image footprint (`arm-none-eabi-size`): could not parse output")
-            }
+            let report = try await runMemoryMapReport(
+                memoryMapTool: memoryMapTool,
+                packageDir: packageDir,
+                cpicoSDKPath: cpicoSDKPath,
+                elfURL: buildDir.appending(path: "\(productName).elf"),
+                mapURL: buildDir.appending(path: "\(productName).elf.map"),
+                productName: productName,
+                combination: combination,
+                swiftBuildType: swiftBuildType
+            )
+            print("")
+            print(report)
         } catch {
-            print("[CPicoSDK]   - Linked image footprint (`arm-none-eabi-size`): unavailable (\(error))")
+            print("[CPicoSDK]   - Memory map report: unavailable (\(error))")
         }
+    }
+
+    private func runMemoryMapReport(memoryMapTool: URL, packageDir: URL, cpicoSDKPath: URL, elfURL: URL, mapURL: URL, productName: String, combination: String, swiftBuildType: String) async throws -> String {
+        let reportProcess = Process()
+        reportProcess.executableURL = memoryMapTool
+        reportProcess.arguments = [
+            "--package-dir", packageDir.path,
+            "--cpicosdk-path", cpicoSDKPath.path,
+            "--elf", elfURL.path,
+            "--map", mapURL.path,
+            "--no-sections",
+        ]
+        var environment = ProcessInfo.processInfo.environment
+        environment["SWIFTPM_PRODUCT"] = productName
+        environment["BOARD"] = Env.value("BOARD", combination: combination)
+        environment["SWIFT_BUILD_TYPE"] = swiftBuildType
+        reportProcess.environment = environment
+
+        let (status, outputData, errorData) = try await reportProcess.asyncRun(captureStdout: true, captureStderr: true)
+        guard status == 0,
+              let outputData,
+              let output = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              output.nonEmpty != nil
+        else {
+            let stderr = errorData.flatMap { String(data: $0, encoding: .utf8) }?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            throw NSError(domain: "CPicoSDK.MemoryMapReport", code: Int(status), userInfo: [
+                NSLocalizedDescriptionKey: stderr.nonEmpty ?? "memory-map-report exited with status \(status)",
+            ])
+        }
+        return output
     }
 
     private func runNM(on buildArtifact: URL) async throws -> String {
@@ -433,72 +481,4 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         return outputString
     }
 
-    private func runSize(on elfArtifact: URL) async throws -> String {
-        let sizeProcess = Process()
-        sizeProcess.executableURL = URL(filePath: try resolveSizeToolPath().expected, directoryHint: .notDirectory)
-        sizeProcess.arguments = [elfArtifact.path]
-
-        let (status, outputData, _) = try await sizeProcess.asyncRun(captureStdout: true, captureStderr: true)
-        guard status == 0, let outputData, let outputString = String(data: outputData, encoding: .utf8), outputString.nonEmpty != nil else {
-            throw OptionalError.valueNotFound
-        }
-        return outputString
-    }
-
-    private func resolveSizeToolPath() -> String? {
-        if let explicitSizePath = Env.value("SIZE_PATH"), explicitSizePath.nonEmpty != nil {
-            return explicitSizePath
-        }
-
-        if let picoToolchainPath = Env.value("PICO_TOOLCHAIN_PATH"), picoToolchainPath.nonEmpty != nil {
-            let candidate = URL(filePath: picoToolchainPath, directoryHint: .isDirectory)
-                .appending(path: "bin/arm-none-eabi-size")
-                .path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-
-        guard let nmPath = Env.value("NM_PATH"), nmPath.nonEmpty != nil else {
-            return nil
-        }
-
-        let nmURL = URL(filePath: nmPath, directoryHint: .notDirectory)
-        let nmName = nmURL.lastPathComponent
-        let sizeName: String
-        if nmName.hasSuffix("-nm") {
-            sizeName = String(nmName.dropLast(2)) + "size"
-        } else if nmName == "nm" {
-            sizeName = "size"
-        } else {
-            return nil
-        }
-
-        let candidate = nmURL.deletingLastPathComponent().appending(path: sizeName).path
-        if FileManager.default.fileExists(atPath: candidate) {
-            return candidate
-        }
-
-        return nil
-    }
-
-    private func parseSizeOutput(_ output: String) -> (text: Int64, data: Int64, bss: Int64, dec: Int64, hex: String)? {
-        let rows = output
-            .split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        guard rows.count >= 2 else { return nil }
-        let columns = rows[1].split(whereSeparator: \.isWhitespace)
-        guard columns.count >= 5 else { return nil }
-        guard
-            let text = Int64(columns[0]),
-            let data = Int64(columns[1]),
-            let bss = Int64(columns[2]),
-            let dec = Int64(columns[3])
-        else {
-            return nil
-        }
-        return (text, data, bss, dec, String(columns[4]))
-    }
 }

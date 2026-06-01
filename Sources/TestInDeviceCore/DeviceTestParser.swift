@@ -47,6 +47,8 @@ public enum DeviceTestParser {
         var hasDuration = false
         var section: String?
         var subsection: String?
+        var alternatives: [DeviceTestAlternative] = []
+        var currentAlternative: DeviceTestAlternative?
 
         for rawLine in metadataLines {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
@@ -54,7 +56,57 @@ public enum DeviceTestParser {
                 continue
             }
 
+            if section == "alts" {
+                if rawLine.hasPrefix("  - ") {
+                    if let currentAlternative {
+                        alternatives.append(currentAlternative)
+                    }
+                    let firstField = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                    let name = scalarValue(firstField, key: "name").map(parseString) ?? ""
+                    currentAlternative = DeviceTestAlternative(name: name)
+                    subsection = nil
+                    continue
+                }
+
+                guard currentAlternative != nil else {
+                    throw DeviceTestHarnessError.invalidMetadata("alts entries must start with '- name: <name>'")
+                }
+
+                if rawLine.hasPrefix("    ") && !rawLine.hasPrefix("      ") && line.hasSuffix(":") {
+                    subsection = String(line.dropLast())
+                    continue
+                }
+
+                if rawLine.hasPrefix("    ") && !rawLine.hasPrefix("      ") {
+                    if let value = scalarValue(line, key: "name") {
+                        currentAlternative?.name = parseString(value)
+                    } else if let value = scalarValue(line, key: "timeout") {
+                        currentAlternative?.timeoutMilliseconds = try parseDurationMilliseconds(value)
+                    } else if let value = scalarValue(line, key: "buildType") {
+                        currentAlternative?.buildType = try DeviceBuildType(metadataValue: parseString(value))
+                    } else if let value = scalarValue(line, key: "concurrency") {
+                        currentAlternative?.concurrency = try parseBool(value)
+                    } else if let value = scalarValue(line, key: "swiftDefines") {
+                        currentAlternative?.swiftDefines = parseStringArray(value)
+                    }
+                    continue
+                }
+
+                if rawLine.hasPrefix("      "), subsection == "traits" {
+                    if let value = scalarValue(line, key: "add") {
+                        currentAlternative?.traits.add = parseStringArray(value)
+                    } else if let value = scalarValue(line, key: "remove") {
+                        currentAlternative?.traits.remove = parseStringArray(value)
+                    }
+                    continue
+                }
+            }
+
             if !rawLine.hasPrefix(" ") && line.hasSuffix(":") {
+                if let alternative = currentAlternative {
+                    alternatives.append(alternative)
+                    currentAlternative = nil
+                }
                 section = String(line.dropLast())
                 subsection = nil
                 continue
@@ -74,6 +126,8 @@ public enum DeviceTestParser {
                     metadata.buildType = try DeviceBuildType(metadataValue: parseString(value))
                 } else if let value = scalarValue(line, key: "concurrency") {
                     metadata.concurrency = try parseBool(value)
+                } else if let value = scalarValue(line, key: "swiftDefines") {
+                    metadata.swiftDefines = parseStringArray(value)
                 }
                 continue
             }
@@ -107,6 +161,12 @@ public enum DeviceTestParser {
                 break
             }
         }
+
+        if let currentAlternative {
+            alternatives.append(currentAlternative)
+        }
+        try validateAlternatives(alternatives)
+        metadata.alternatives = alternatives
 
         if hasStdout {
             metadata.expectations.stdout = stdout
@@ -212,6 +272,18 @@ public enum DeviceTestParser {
         }
         let inner = trimmed.dropFirst().dropLast()
         return inner.split(separator: ",").map { parseString(String($0).trimmingCharacters(in: .whitespaces)) }
+    }
+
+    private static func validateAlternatives(_ alternatives: [DeviceTestAlternative]) throws {
+        var names = Set<String>()
+        for alternative in alternatives {
+            if alternative.name.isEmpty {
+                throw DeviceTestHarnessError.invalidMetadata("alts entries require a non-empty name")
+            }
+            if !names.insert(alternative.name).inserted {
+                throw DeviceTestHarnessError.invalidMetadata("duplicate alt name '\(alternative.name)'")
+            }
+        }
     }
 
     private static func parseString(_ value: String) -> String {

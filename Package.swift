@@ -22,6 +22,7 @@ let package = Package(
         .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
     ],
     traits: [
@@ -59,9 +60,14 @@ let package = Package(
     ],
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
+        .executableTarget(name: "MemoryMapReportTool"),
         .testTarget(
             name: "TestInDeviceCoreTests",
             dependencies: ["TestInDeviceCore"]
+        ),
+        .testTarget(
+            name: "MemoryMapReportToolTests",
+            dependencies: ["MemoryMapReportTool"]
         ),
     ] : [
         // GENERATOR MARK: TARGETS
@@ -148,6 +154,7 @@ let package = Package(
             name: "TestInDeviceTool",
             dependencies: ["TestInDeviceCore"]
         ),
+        .executableTarget(name: "MemoryMapReportTool"),
         .testTarget(
             name: "TestInDeviceCoreTests",
             dependencies: ["TestInDeviceCore"]
@@ -182,7 +189,8 @@ let package = Package(
                 permissions: [
                     .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
                 ]
-            )
+            ),
+            dependencies: ["MemoryMapReportTool"]
         ),
         .plugin(
             name: "TestInDevicePlugin",
@@ -193,7 +201,15 @@ let package = Package(
                     .allowNetworkConnections(scope: .all(), reason: "May need to download CPicoSDK tool dependencies and connects to local OpenOCD RTT ports.")
                 ]
             ),
-            dependencies: ["TestInDeviceTool"]
+            dependencies: ["TestInDeviceTool", "MemoryMapReportTool"]
+        ),
+        .plugin(
+            name: "MemoryMapReportPlugin",
+            capability: .command(
+                intent: .custom(verb: "memory-map-report", description: "Reports flash/RAM ownership for an existing CPicoSDK ELF"),
+                permissions: []
+            ),
+            dependencies: ["MemoryMapReportTool"]
         ),
     ]
 )

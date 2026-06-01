@@ -605,9 +605,10 @@ This ensures:
 - 📦 **Zero-configuration**: No manual installation required
 - 🌐 **Offline-friendly**: Downloaded tools are cached locally
 
-### SwiftPM Plugins: The Plugin Trilogy
+### SwiftPM Plugins
 
-CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
+CPicoSDK uses SwiftPM plugins to orchestrate the build and inspect generated
+artifacts:
 
 #### 1. **PrepareEnvironmentPlugin** (`prepare-rp2xxx-environment`)
 
@@ -656,6 +657,10 @@ CPicoSDK uses three SwiftPM command plugins to orchestrate the build:
 - Runs as a native Swift plugin (no standalone shell build script)
 - Includes `shims.c` for runtime compatibility
 - Generates both ELF (for debugging) and UF2 (for flashing) binaries
+- Prints final artifact file sizes, including the raw `.bin` flash payload, UF2
+  transfer file size, and host ELF debug file size
+- Prints the CPicoSDK memory map report for the finalized ELF, including
+  flash/static-RAM/heap/stack usage and ownership by source
 - Optionally flashes to a connected device
 
 **Why it's necessary**: SwiftPM can't directly produce firmware binaries - it generates object files that must be linked with the Pico SDK's startup code, linker scripts, and library implementations.
@@ -682,6 +687,45 @@ ${CMAKE_OBJCOPY} -I binary -O elf32-littlearm -B arm \
 ```
 
 The section rename is important. Plain `objcopy -I binary` emits a writable `.data` section, which the Pico linker treats as initialized SRAM. Renaming it to a read-only section keeps the resource bytes in flash while still exposing normal linker symbols to Swift.
+
+#### 5. **MemoryMapReportPlugin** (`memory-map-report`)
+
+**Purpose**: Report flash/RAM usage for an existing finalized ELF without
+building or flashing.
+
+Run it from a prepared consumer package after `./build.sh` or after the
+finalizer has produced an ELF:
+
+```sh
+swift package --disable-sandbox memory-map-report
+```
+
+The plugin looks for `.env_prep` first, then uses `SWIFTPM_PRODUCT`,
+`SWIFTPM_TRIPLE`, `SWIFT_BUILD_TYPE`, `BOARD`, and the prepared ARM toolchain to
+find the existing ELF, linker map, `arm-none-eabi-size`, and
+`arm-none-eabi-nm`. It does not invoke SwiftPM build or CMake. If no ELF exists,
+it prints a build-first message.
+
+You can override artifact paths when inspecting another output:
+
+```sh
+swift package --disable-sandbox memory-map-report \
+  .build/armv7em-none-none-eabi/release/Example.elf
+
+swift package --disable-sandbox memory-map-report \
+  --elf .build/armv7em-none-none-eabi/release/Example.elf \
+  --map .build/plugins/FinalizeBinaryPlugin/outputs/CMakeHarness/build_pico2/Example.elf.map
+```
+
+When only an ELF path is provided, the tool first checks the ELF directory for a
+matching sibling map file, such as `Example.elf.map` or `Example.map`. A second
+positional path or `--map` can be used to select a different linker map.
+
+The report starts with a small summary in KiB, then shows ownership grouped by
+user program, CPicoSDK, CPicoConcurrency, Pico SDK, Swift runtime, and C/C++
+runtime. Ownership comes from linker-map object paths, so it is most useful
+when the finalizer map is present. Without a map, the command still reports ELF
+sections, stack symbols, and heap headroom, but source ownership is unavailable.
 
 ### Experimental Concurrency Support
 
@@ -882,10 +926,14 @@ swift package --disable-sandbox test-in-device --filter HelloRTT --build-only --
 
 # Override test metadata and build all device-test firmware as Release
 swift package --disable-sandbox test-in-device --build-type Release --build-only --allow-writing-to-package-directory --allow-network-connections all
+
+# Print a memory map report for each finalized device-test ELF
+swift package --disable-sandbox test-in-device --filter HelloRTT --build-only --memory-map-report --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 Use `--build-only` when you want to verify that device tests still generate,
-compile, and link without programming hardware. Full device runs require a
+compile, and link without programming hardware. Add `--memory-map-report` to
+print the memory report for each finalized test ELF. Full device runs require a
 connected target and will program and reset it.
 
 The harness reuses a generated SwiftPM package per target in the plugin work

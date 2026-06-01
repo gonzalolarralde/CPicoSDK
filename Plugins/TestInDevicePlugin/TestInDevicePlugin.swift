@@ -11,6 +11,7 @@ import Darwin
 struct TestInDevicePlugin: CommandPlugin {
     func performCommand(context: PluginContext, arguments: [String]) async throws {
         let tool = try context.tool(named: "TestInDeviceTool")
+        let memoryMapTool = try context.tool(named: "MemoryMapReportTool")
         let cpicoSDKPath = resolveCPicoSDKPath(context: context)
 
         let process = Process()
@@ -19,6 +20,7 @@ struct TestInDevicePlugin: CommandPlugin {
             "--package-dir", context.package.directoryURL.path,
             "--work-dir", context.pluginWorkDirectoryURL.path,
             "--cpicosdk-path", cpicoSDKPath.path,
+            "--memory-map-tool", memoryMapTool.url.path,
         ] + arguments
         process.environment = ProcessInfo.processInfo.environment
 

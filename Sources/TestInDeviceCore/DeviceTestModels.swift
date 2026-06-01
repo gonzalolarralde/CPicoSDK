@@ -38,6 +38,8 @@ public struct DeviceTestMetadata: Equatable {
     public var buildType: DeviceBuildType
     public var concurrency: Bool
     public var traits: TraitSelection
+    public var swiftDefines: [String]
+    public var alternatives: [DeviceTestAlternative]
     public var expectations: DeviceExpectations
 
     public init(
@@ -46,6 +48,8 @@ public struct DeviceTestMetadata: Equatable {
         buildType: DeviceBuildType = .debug,
         concurrency: Bool = false,
         traits: TraitSelection = TraitSelection(),
+        swiftDefines: [String] = [],
+        alternatives: [DeviceTestAlternative] = [],
         expectations: DeviceExpectations = DeviceExpectations()
     ) {
         self.name = name
@@ -53,7 +57,34 @@ public struct DeviceTestMetadata: Equatable {
         self.buildType = buildType
         self.concurrency = concurrency
         self.traits = traits
+        self.swiftDefines = swiftDefines
+        self.alternatives = alternatives
         self.expectations = expectations
+    }
+}
+
+public struct DeviceTestAlternative: Equatable {
+    public var name: String
+    public var timeoutMilliseconds: Int?
+    public var buildType: DeviceBuildType?
+    public var concurrency: Bool?
+    public var traits: TraitSelection
+    public var swiftDefines: [String]
+
+    public init(
+        name: String,
+        timeoutMilliseconds: Int? = nil,
+        buildType: DeviceBuildType? = nil,
+        concurrency: Bool? = nil,
+        traits: TraitSelection = TraitSelection(),
+        swiftDefines: [String] = []
+    ) {
+        self.name = name
+        self.timeoutMilliseconds = timeoutMilliseconds
+        self.buildType = buildType
+        self.concurrency = concurrency
+        self.traits = traits
+        self.swiftDefines = swiftDefines
     }
 }
 

@@ -529,6 +529,19 @@ design notes, experiments, and failure analysis in `docs/`.
   `--build-only` for the frequent compile/link check. Ask the user before
   running non-`--build-only` device tests because they program the connected
   board through OpenOCD.
+- When evaluating size, RAM pressure, stack layout, or code ownership changes,
+  consider the memory map report before guessing from UF2 size alone. Run
+  `swift package --disable-sandbox memory-map-report <elf>` for an existing
+  finalized artifact, or add `--memory-map-report` to focused
+  `test-in-device --build-only` runs to print a per-test report without
+  programming hardware.
+- Host-side Swift tools must compile on Linux CI with Swift 6 concurrency
+  checks. Do not write errors with C stdio globals such as
+  `fputs(message, stderr)`; Linux exposes `stderr` as shared mutable state and
+  Swift can reject it as concurrency-unsafe. Use
+  `FileHandle.standardError.write(Data(...))` or an existing logger instead,
+  and run `CPICOSDK_HOST_TESTS=1 swift test` when touching host tools or
+  plugins.
 - Async embedded tests that use `try await Task.sleep(...)` can fail at link
   time with an undefined `Swift.CancellationError : Swift.Error` witness table
   (`$eScEs5ErrorsWP`). Use a non-throwing await point such as

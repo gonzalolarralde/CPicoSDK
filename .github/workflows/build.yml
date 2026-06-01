@@ -94,7 +94,7 @@ jobs:
           test -d "$PICO_SDK_BUNDLE_PATH/openocd/$(jq -r '.vars.OPENOCD_VERSION' env.json)"
       - name: Build ${{ matrix.target }} ${{ matrix.build_type }} device test firmware
         run: |
-          swiftly run swift package --disable-sandbox test-in-device --target "${{ matrix.target }}" --build-type "${{ matrix.build_type }}" --build-only --allow-writing-to-package-directory --allow-network-connections all
+          swiftly run swift package --disable-sandbox test-in-device --target "${{ matrix.target }}" --build-type "${{ matrix.build_type }}" --build-only --memory-map-report --allow-writing-to-package-directory --allow-network-connections all
 
   build-example:
     name: Example Build
