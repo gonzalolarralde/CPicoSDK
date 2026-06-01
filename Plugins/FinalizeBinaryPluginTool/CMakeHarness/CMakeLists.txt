@@ -50,6 +50,11 @@ set(CPICOSDK_HOT_TEXT_ANCHOR "*(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *l
 set(CPICOSDK_HOT_TEXT_REPLACEMENT "*(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a: *libswift_Concurrency.a:Actor.cpp.o) .text*)")
 set(CPICOSDK_LATE_TEXT_ANCHOR "    .ARM.extab :")
 set(CPICOSDK_LATE_TEXT_REPLACEMENT "    .cpicosdk_late_text : {\n        *(.cpicosdk_late_text*)\n        . = ALIGN(4);\n    } > FLASH\n\n    .ARM.extab :")
+# Pico SDK's default linker script keeps core0 in SCRATCH_Y. CPicoSDK gives
+# core0 an explicit 8 KiB guarded stack at the top of main RAM and caps the heap
+# below it, while leaving Pico's core1 dummy reservation in SCRATCH_X.
+set(CPICOSDK_STACK_SYMBOLS_ANCHOR "    __StackLimit = ORIGIN(RAM) + LENGTH(RAM);\n    __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);\n    __StackTop = ORIGIN(SCRATCH_Y) + LENGTH(SCRATCH_Y);\n    __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);\n    __StackBottom = __StackTop - SIZEOF(.stack_dummy);")
+set(CPICOSDK_STACK_SYMBOLS_REPLACEMENT "    __StackOneTop = ORIGIN(SCRATCH_X) + LENGTH(SCRATCH_X);\n    __StackTop = ORIGIN(RAM) + LENGTH(RAM);\n    __StackOneBottom = __StackOneTop - SIZEOF(.stack1_dummy);\n    __StackBottom = __StackTop - 0x2000;\n    __StackLimit = __StackBottom;\n    __HeapLimit = __StackBottom;")
 string(FIND "${CPICOSDK_HOT_MEMMAP_CONTENT}" "${CPICOSDK_HOT_TEXT_ANCHOR}" CPICOSDK_HOT_TEXT_ANCHOR_INDEX)
 if(CPICOSDK_HOT_TEXT_ANCHOR_INDEX EQUAL -1)
     message(FATAL_ERROR "CPicoSDK expected Pico SDK .text linker-script anchor not found in ${CPICOSDK_HOT_MEMMAP_SOURCE}")
@@ -57,6 +62,10 @@ endif()
 string(FIND "${CPICOSDK_HOT_MEMMAP_CONTENT}" "${CPICOSDK_LATE_TEXT_ANCHOR}" CPICOSDK_LATE_TEXT_ANCHOR_INDEX)
 if(CPICOSDK_LATE_TEXT_ANCHOR_INDEX EQUAL -1)
     message(FATAL_ERROR "CPicoSDK expected Pico SDK .ARM.extab linker-script anchor not found in ${CPICOSDK_HOT_MEMMAP_SOURCE}")
+endif()
+string(FIND "${CPICOSDK_HOT_MEMMAP_CONTENT}" "${CPICOSDK_STACK_SYMBOLS_ANCHOR}" CPICOSDK_STACK_SYMBOLS_ANCHOR_INDEX)
+if(CPICOSDK_STACK_SYMBOLS_ANCHOR_INDEX EQUAL -1)
+    message(FATAL_ERROR "CPicoSDK expected Pico SDK stack symbols linker-script anchor not found in ${CPICOSDK_HOT_MEMMAP_SOURCE}")
 endif()
 string(REPLACE
     "${CPICOSDK_HOT_TEXT_ANCHOR}"
@@ -67,6 +76,12 @@ string(REPLACE
 string(REPLACE
     "${CPICOSDK_LATE_TEXT_ANCHOR}"
     "${CPICOSDK_LATE_TEXT_REPLACEMENT}"
+    CPICOSDK_HOT_MEMMAP_CONTENT
+    "${CPICOSDK_HOT_MEMMAP_CONTENT}"
+)
+string(REPLACE
+    "${CPICOSDK_STACK_SYMBOLS_ANCHOR}"
+    "${CPICOSDK_STACK_SYMBOLS_REPLACEMENT}"
     CPICOSDK_HOT_MEMMAP_CONTENT
     "${CPICOSDK_HOT_MEMMAP_CONTENT}"
 )
@@ -87,6 +102,9 @@ target_compile_definitions("${PROJECT_NAME}" PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
     PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1
     PICO_ENTER_USB_BOOT_ON_EXIT=1
+    PICO_USE_STACK_GUARDS=1
+    PICO_STACK_SIZE=0x800u
+    PICO_CORE1_STACK_SIZE=0x800u
 )
 
 add_library(Output STATIC IMPORTED)

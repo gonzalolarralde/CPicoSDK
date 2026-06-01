@@ -160,6 +160,7 @@ static void *cshims_scheduler_deferred[CSHIMS_SCHEDULER_MAX_DEFERRED];
 static uint16_t cshims_scheduler_deferred_head = 0;
 static uint16_t cshims_scheduler_deferred_tail = 0;
 static uint16_t cshims_scheduler_deferred_count = 0;
+static volatile bool cshims_scheduler_spinlock_prepared = false;
 static bool cshims_scheduler_initialized = false;
 static bool cshims_scheduler_multicore_enabled = false;
 
@@ -184,6 +185,7 @@ static void CSHIMS_SCHEDULER_RAM cshims_scheduler_irq_restore(uint32_t state) {
 
 void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_prepare_lock(void) {
     *(volatile uint32_t *)CSHIMS_SIO_SPINLOCK31 = 0u;
+    cshims_scheduler_spinlock_prepared = true;
     // Initialize eagerly so scheduler runtime hooks do not carry the cold setup path.
     uint32_t irq_state = cshims_scheduler_lock();
     cshims_scheduler_init_locked();
@@ -191,6 +193,10 @@ void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_prepare_lock(void) {
 }
 
 static uint32_t CSHIMS_SCHEDULER_RAM cshims_scheduler_lock(void) {
+    if (!cshims_scheduler_spinlock_prepared) {
+        *(volatile uint32_t *)CSHIMS_SIO_SPINLOCK31 = 0u;
+        cshims_scheduler_spinlock_prepared = true;
+    }
     uint32_t irq_state = cshims_scheduler_irq_disable();
     volatile uint32_t *spinlock = (volatile uint32_t *)CSHIMS_SIO_SPINLOCK31;
     while (*spinlock == 0u) {
@@ -490,6 +496,7 @@ static void CSHIMS_SCHEDULER_RAM cshims_scheduler_enqueue_job(
     uint8_t priority = cshims_scheduler_priority_bucket(cshims_job_priority(job));
 
     uint32_t irq_state = cshims_scheduler_lock();
+    cshims_scheduler_init_locked();
     uint16_t job_index = cshims_scheduler_alloc_job_locked();
     cshims_scheduler_jobs[job_index].job = job;
     cshims_scheduler_jobs[job_index].executor_first = executorFirst;
@@ -543,6 +550,7 @@ static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_enqueue_deadline(
 
 void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_enqueue_deferred(void *item) {
     uint32_t irq_state = cshims_scheduler_lock();
+    cshims_scheduler_init_locked();
     assert(cshims_scheduler_deferred_count < CSHIMS_SCHEDULER_MAX_DEFERRED);
     cshims_scheduler_deferred[cshims_scheduler_deferred_tail] = item;
     cshims_scheduler_deferred_tail = (uint16_t)((cshims_scheduler_deferred_tail + 1u) % CSHIMS_SCHEDULER_MAX_DEFERRED);
@@ -557,6 +565,7 @@ int CSHIMS_SCHEDULER_RAM cshims_scheduler_poll_once(void) {
     CShimsSchedulerJob job_snapshot;
 
     uint32_t irq_state = cshims_scheduler_lock();
+    cshims_scheduler_init_locked();
 
     if (cshims_scheduler_deferred_count > 0) {
         deferred_item = cshims_scheduler_deferred[cshims_scheduler_deferred_head];
@@ -606,6 +615,7 @@ int CSHIMS_SCHEDULER_RAM cshims_scheduler_poll_once(void) {
 void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_wait_for_work_forever(void) {
     for (;;) {
         uint32_t irq_state = cshims_scheduler_lock();
+        cshims_scheduler_init_locked();
         bool has_ready = cshims_scheduler_has_ready_locked();
         cshims_scheduler_unlock(irq_state);
         if (has_ready) {

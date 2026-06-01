@@ -555,6 +555,14 @@ design notes, experiments, and failure analysis in `docs/`.
   the smallest reversible experiment, validate it against the symptom and the
   relevant tests, then present the evidence and tradeoff before changing
   production behavior. A reasonable hunch is still a hunch until measured.
+- If scheduler cold initialization is moved out of a hot path, validate both
+  multicore startup and plain async/single-core programs that never call
+  `startRuntimeSchedulerMulticore()`. Symptom: focused device tests fail with a
+  missing run-end marker or assert in `cshims_scheduler_alloc_job_locked`;
+  GDB may show `cshims_scheduler_lock()` spinning while
+  `cshims_scheduler_initialized == false`. Keep first-use initialization on
+  enqueue/poll/wait paths, and clear any stale SIO spinlock before the first
+  scheduler lock acquisition.
 - Treat whole-binary RAM placement, such as `pico_set_binary_type(... copy_to_ram)`,
   as a ceiling probe, not a production-shaped scheduler optimization. For hot
   path placement work, move one named function group or object at a time, verify
@@ -699,6 +707,21 @@ design notes, experiments, and failure analysis in `docs/`.
   scheduler types. Remove only the generated device-test build cache with
   `rm -rf .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.build`
   and rerun the focused `swift package --disable-sandbox test-in-device --build-only --filter <TestName> --allow-writing-to-package-directory --allow-network-connections all`.
+- The same stale-object pattern can happen in real example/app packages after
+  CPicoSDK source files are renamed or split. Symptom: final CMake link fails
+  with duplicate symbols from both a deleted Swift object such as
+  `RuntimeScheduler.swift.o` and the replacement object such as
+  `SchedulerSystem.swift.o`. Before deleting downloaded SDK/tool bundles,
+  inspect the static archive with `arm-none-eabi-ar t <lib>.a` and remove only
+  the stale target build directory or archive, then rebuild.
+- Do not remove the generated device-test package `.build` just to refresh
+  missing prepare-plugin artifacts. Symptom: `toolset.json` points at
+  `.build/plugins/PrepareEnvironmentPlugin/outputs/generated/newlib_overlay`,
+  but that overlay directory is gone and Swift falls through to raw newlib
+  `stdatomic.h`, producing `_Builtin_stdatomic` typedef errors. First remove
+  only stale prep stamps/toolset files or rerun the prepare step; if the shared
+  Pico SDK bundle itself is missing, rebuild the example with `cd Example &&
+  ./build.sh`.
 - If you remove the generated device-test `.build` directory, also remove the
   generated prep script and stamps:
   `rm -f .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.env_prep*`.
