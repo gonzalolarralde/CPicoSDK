@@ -9,8 +9,11 @@
 #define SWIFT_PICO_TLS_KEYS 16u
 #define SWIFT_PICO_MAX_CORES 2u
 #define SWIFT_PICO_COND_MAX_WAITERS INT16_MAX
-#define SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES (16u * 1024u)
 #define SWIFT_PICO_SIO_CPUID ((volatile uint32_t *)0xd0000000u)
+
+#ifndef CPICOSDK_CORE1_STACK_SIZE_BYTES
+#define CPICOSDK_CORE1_STACK_SIZE_BYTES 8192u
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
 #define SWIFT_PICO_WEAK __attribute__((weak))
@@ -65,23 +68,40 @@ typedef struct {
 } SwiftPicoCondition;
 
 static void *swift_pico_tls[SWIFT_PICO_MAX_CORES][SWIFT_PICO_TLS_KEYS];
-static uint32_t swift_pico_scheduler_core1_stack[SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES / sizeof(uint32_t)]
-    __attribute__((aligned(16)));
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+extern uint32_t cshims_scheduler_core1_stack[CPICOSDK_CORE1_STACK_SIZE_BYTES / sizeof(uint32_t)];
+#endif
 
 void *cshims_scheduler_core1_stack_bottom(void) {
-    return swift_pico_scheduler_core1_stack;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return cshims_scheduler_core1_stack;
+#else
+    return NULL;
+#endif
 }
 
 uint32_t cshims_scheduler_core1_stack_size_bytes(void) {
-    return SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return CPICOSDK_CORE1_STACK_SIZE_BYTES;
+#else
+    return 0;
+#endif
 }
 
 static char *swift_pico_scheduler_core1_stack_bottom(void) {
-    return (char *)swift_pico_scheduler_core1_stack;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return (char *)cshims_scheduler_core1_stack;
+#else
+    return NULL;
+#endif
 }
 
 static char *swift_pico_scheduler_core1_stack_top(void) {
-    return (char *)swift_pico_scheduler_core1_stack + SWIFT_PICO_SCHEDULER_CORE1_STACK_SIZE_BYTES;
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return (char *)cshims_scheduler_core1_stack + CPICOSDK_CORE1_STACK_SIZE_BYTES;
+#else
+    return NULL;
+#endif
 }
 
 static void swift_pico_trap(void) {

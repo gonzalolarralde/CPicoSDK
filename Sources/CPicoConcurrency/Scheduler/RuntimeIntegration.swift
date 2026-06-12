@@ -2,13 +2,7 @@ import ConcurrencyShims
 import CPicoSDK
 
 func launchSchedulerCore1() {
-    let stack = cshims_scheduler_core1_stack_bottom().assumingMemoryBound(to: UInt32.self)
-    let stackSizeBytes = Int(cshims_scheduler_core1_stack_size_bytes())
-    multicore_launch_core1_with_stack(
-        cshims_scheduler_core1_entry,
-        stack,
-        stackSizeBytes
-    )
+    _ = cshims_scheduler_start_multicore()
 }
 
 /// Starts core1 and returns whether multicore scheduling is available.
@@ -16,9 +10,7 @@ func launchSchedulerCore1() {
 /// Swift scheduler work needs more stack than Pico's default core1 launch path
 /// provides, so the scheduler owns a larger persistent stack.
 func startCore1() -> Bool {
-    multicore_reset_core1()
-    launchSchedulerCore1()
-    return true
+    cshims_scheduler_start_multicore()
 }
 
 /// Boundary for Swift runtime state that must be isolated per core.

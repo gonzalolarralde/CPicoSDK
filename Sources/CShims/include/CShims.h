@@ -12,6 +12,21 @@ void cshims_mmio_set_bits32(volatile uint32_t *addr, uint32_t mask);
 void cshims_mmio_clear_bits32(volatile uint32_t *addr, uint32_t mask);
 uint32_t cshims_qmi_direct_rx_read32(void);
 
+enum {
+    CSHIMS_IRQ_ALLOCATOR_MALLOC = 1u,
+    CSHIMS_IRQ_ALLOCATOR_CALLOC = 2u,
+    CSHIMS_IRQ_ALLOCATOR_REALLOC = 3u,
+    CSHIMS_IRQ_ALLOCATOR_FREE = 4u,
+};
+
+extern volatile uint32_t cshims_irq_allocator_operation;
+extern volatile uint32_t cshims_irq_allocator_exception;
+extern volatile uint32_t cshims_irq_allocator_core;
+
+void cshims_record_irq_allocator_use(uint32_t operation, uint32_t exception);
+void cshims_warn_irq_allocator_use(uint32_t operation, uint32_t exception);
+void cshims_irq_allocator_debug_break(void);
+
 #ifdef __cplusplus
 }
 #endif

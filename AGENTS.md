@@ -353,6 +353,25 @@ design notes, experiments, and failure analysis in `docs/`.
 - GDB may print missing DWO/PCH or `.debug_names` warnings. Those warnings are
   not necessarily fatal; `info threads` and `thread apply all bt` can still
   provide useful PCs and backtraces.
+- For RP2350 `NOCP` hard faults, decode the exception frame before assuming the
+  visible PC is random. Symptom: core halts in a default ISR breakpoint,
+  `HFSR=0x40000000`, and `CFSR` has bit 19 set; the stacked PC points at a VFP
+  instruction such as `vpush {d8}` in an IRQ handler. Use GDB or telnet `mdw`
+  to check `CPACR` at `0xe000ed88` and fault registers at `0xe000ed28` and
+  `0xe000ed2c`. On RP2350 Arm builds using VFP instructions, `CPACR` must
+  include CP10 and CP11 access bits; a healthy checked value was
+  `0x00f0c303`, with `CFSR/HFSR` clear while both cores were running.
+- After a batch GDB snapshot, verify that the target resumed. Symptom:
+  OpenOCD telnet `targets` shows both `rp2350.cm0` and `rp2350.cm1` still
+  halted after `detach`. Resume through telnet by selecting each target first:
+  `targets rp2350.cm0`, `resume`, then `targets rp2350.cm1`, `resume`. The
+  target-specific form `rp2350.cm0 resume` only prints target help in this
+  OpenOCD build.
+- On RP2350 dual-core firmware, a halted core1 PC near `0x000000da` can be
+  misleading during OpenOCD/GDB inspection. Confirm liveness with firmware
+  counters or CPUStats reports before concluding core1 failed to launch; in one
+  CircularScreen run, core1 had entered the scheduler once and was reporting
+  idle windows even though GDB showed the boot ROM WFE address.
 
 ### Code/Swift Multicore
 
@@ -474,6 +493,117 @@ design notes, experiments, and failure analysis in `docs/`.
   into a separately testable unit instead of punching diagnostic holes through
   production scheduler boundaries. It is acceptable to leave an internal detail
   less directly tested when the alternative makes the architecture worse.
+- A global-pull scheduler invalidates probes that assume enqueue-time per-core
+  placement. Symptom: `MulticoreForcedSameTaskMigrationProbe` may show the
+  continuation resumed from core1 while the resumed task segment is still pulled
+  by core0 (`resumes=1 r1=1 c0=2 c1=0`). Treat that as expected under global
+  ready queues; use behavior tests such as alarm-backed same-task migration and
+  overlap checks to validate safety, not resume-core ownership.
+- For Swift job priorities, keep the ABI bridge narrow: expose the raw
+  `swift_job_getPriority(job)` value from C and map buckets in Swift using
+  `TaskPriority` raw values. Do not duplicate priority threshold constants in
+  C shims unless the runtime bridge is unavailable and the fallback is
+  explicitly documented.
+- `Task { ... }` created from an `@MainActor` app setup inherits the main actor.
+  Symptom: a diagnostics stream prints its startup lines but never receives
+  later async reports while a display/GIF loop keeps printing. Check whether the
+  display loop has an overrun path with no `await`; add an explicit
+  `await Task.yield()` after each work unit or move unrelated diagnostics into a
+  `nonisolated` helper before creating the task.
+- CPUMetrics IRQ wrappers must not call Swift metering code from IRQ context.
+  Symptom: an idle async `Task.sleep(us:)` test prints before the sleep, then
+  times out with a missing run-end marker; GDB shows core0 interrupted inside
+  `alarm_pool_add_alarm_at_force_in_context` and entering
+  `_cpicosdk_record_runtime_scheduler_exit_interrupt` through
+  `cshims_irq_wrapper_3`. Keep the generic IRQ wrapper C-only and nonblocking
+  for event counts, leave Pico timer alarm and USB IRQ vectors unwrapped, and
+  record explicit event/time samples inside known handler paths such as the
+  `Task.sleep` alarm callback.
+- If an IRQ vector table may be shared between cores, a multicore IRQ wrapper
+  must not depend only on per-core original-handler slots. Symptom: with
+  CPUMetrics enabled, core1 can install a wrapper for a shared vector first,
+  then core0 dispatches the wrapped IRQ and finds no core0-local original
+  handler. Keep per-core originals for core-local vector tables, plus a shared
+  fallback for the shared-vector case, or otherwise key originals by actual
+  vector table identity.
+- If a scheduler uses a fixed SIO hardware spinlock directly, clear the lock
+  once during scheduler startup before the first blocking read. A stale locked
+  hardware register can make the next flashed image hang in `startMulticore()`
+  before core1 launches. On this RP2350 SDK build, `spin_lock_init()` returns a
+  software-spinlock byte in SRAM because `PICO_USE_SW_SPIN_LOCKS=1`, so do not
+  treat that returned pointer as an SIO spinlock register.
+- Keep benchmark-only C helpers out of the scheduler hot-path translation unit.
+  Moving a raw multicore baseline helper into `ConcurrencyShims.c` changed code
+  layout enough to drop `SchedulerMulticoreBenchmarks` throughput from roughly
+  22k to 14k; putting it in a separate C file restored the score range.
+- For RP2350 scheduler throughput regressions after tiny cold-path changes,
+  check linker layout before blaming the branch itself. Compare `nm`, map, and
+  disassembly for `__wrap_malloc`, `cshims_scheduler_poll_once`,
+  `swift_job_run`, and `swift_task_alloc`; in one IRQ-allocation warning fix,
+  moving cold warning/configuration code to `.flashdata.*` restored the 22k
+  score range while preserving the warning behavior.
+- Keep CPUMetrics implementation objects and scheduler-affinity experiments out
+  of the CPUMetrics-off hot path until measured. Symptom: the clean C scheduler
+  at `b0e2875` scored about `22k`, while later non-metrics builds dropped first
+  to about `19k` after the shared IRQ fallback and then to about `13k` after
+  `core0_only` ready-queue scanning. The recovery was to compile the shared IRQ
+  fallback only under `CPUMetrics`, restore O(1) ready-queue pop/wait behavior,
+  and keep scheduler metrics as weak hooks so the CPUMetrics-off baseline
+  returned above `23k`.
+- Do not remove or disable a valuable runtime feature, such as CPUMetrics IRQ
+  vector wrapping, based only on a plausible correlation from logs. First make
+  the smallest reversible experiment, validate it against the symptom and the
+  relevant tests, then present the evidence and tradeoff before changing
+  production behavior. A reasonable hunch is still a hunch until measured.
+- If scheduler cold initialization is moved out of a hot path, validate both
+  multicore startup and plain async/single-core programs that never call
+  `startRuntimeSchedulerMulticore()`. Symptom: focused device tests fail with a
+  missing run-end marker or assert in `cshims_scheduler_alloc_job_locked`;
+  GDB may show `cshims_scheduler_lock()` spinning while
+  `cshims_scheduler_initialized == false`. Keep first-use initialization on
+  enqueue/poll/wait paths, and clear any stale SIO spinlock before the first
+  scheduler lock acquisition.
+- Treat whole-binary RAM placement, such as `pico_set_binary_type(... copy_to_ram)`,
+  as a ceiling probe, not a production-shaped scheduler optimization. For hot
+  path placement work, move one named function group or object at a time, verify
+  addresses with `llvm-objdump -t` (`0x200...` means SRAM, `0x100...` means
+  flash), and run the same 10-pass device benchmark after each step. In one
+  `SchedulerMulticoreBenchmarks-baseline` run, C scheduler sections alone
+  regressed throughput to about `15.6k`, C scheduler plus `Actor.cpp.o`
+  restored about `23.6k`, and adding `TaskAlloc.cpp.o` regressed to about
+  `19.1k` despite a small SRAM delta.
+- When moving one hot-path function between RAM and flash produces a surprising
+  benchmark swing, do not attribute the change to that function's direct runtime
+  cost without checking layout. Compare symbol addresses for adjacent scheduler
+  functions, Swift async thunks, `swift_job_run`, and benchmark worker bodies.
+  A one-function move can shift later RAM-resident runtime code or add flash
+  execution before the timed window, so use the result as an investigation clue
+  until a layout-preserving or call-counting experiment isolates the cause.
+- Avoid Swift object lifetime work, allocation, and free from hard IRQ handlers
+  unless the allocator path is proven IRQ-safe. Symptom: a stuck core0 halted in
+  Handler mode with an IRQ handler backtrace entering `swift_release`/`free`
+  while the interrupted frame is already in `free` or `mallocExit`; the handler
+  then blocks in `mutex_enter_blocking` on the same allocator mutex and the
+  interrupted code cannot resume to release it. Attach with GDB, collect
+  `thread apply all bt`, and check for a `<signal handler called>` frame between
+  the interrupted allocator path and the IRQ handler. Defer ownership release or
+  buffer reclamation to thread/task context, or use a bounded IRQ-safe queue.
+- To debug IRQ allocator use, watch for the one-shot `[CPicoSDK]` warning from
+  the wrapped allocator entrypoints. The warning uses a static C string, so it
+  does not allocate by itself, but it still goes through Pico stdio and the
+  configured output driver; treat it as best-effort visibility. Enable the
+  `GuardIRQAllocations` trait to trap in `trapIRQAllocatorUse`, then inspect
+  `cshims_irq_allocator_operation`, `cshims_irq_allocator_exception`, and
+  `cshims_irq_allocator_core` in GDB.
+- `EmbeddedAsyncApp` can start the Swift scheduler on core1 before `setup()`
+  runs when `Configurator.core1Enabled` is true. Symptom: startup appears stuck,
+  GDB shows one core in `cyw43_arch_wifi_connect_blocking` from `WiFi.connect`
+  and the other core in `cshims_scheduler_wait_for_work_forever`, with no IRQ
+  allocator guard hit. If the WiFi async context is core0-owned, a setup
+  continuation running on core1 can block while core0 waits for scheduler work
+  instead of polling CYW43. Validate with a GDB backtrace before changing code;
+  as a mitigation, disable core1 during setup or keep WiFi/lwIP setup work on
+  the async-context owner core.
 
 ### Serial And RTT Logging
 
@@ -492,12 +622,25 @@ design notes, experiments, and failure analysis in `docs/`.
   same serial command from a host terminal with device permissions.
 - Serial output can contain stale or interleaved bytes after reset. Trust logs
   more when a fresh boot banner appears.
+- When multiple `/dev/cu.usbmodem*` devices are present, do not assume
+  `head -n 1` is the board just programmed through CMSIS-DAP/OpenOCD. Probe
+  each serial device briefly and match the boot banner or reset behavior; a
+  display board can keep streaming old firmware logs while OpenOCD is
+  programming a separate CMSIS target.
 - Keep diagnostic log lines short. Long `print` output can make serial debugging
   feel stalled and can hide the actual crash point.
 - In multicore stress tests, let only core0 print periodic stress summaries and
   let core1 update counters. Printing full diagnostic lines from both cores can
   interleave bytes on USB serial and make otherwise useful counter snapshots
   unreadable.
+- Follow a question > validate > plan > fix loop for debugging. Do not turn a
+  plausible hunch directly into a code change. First state the concrete question
+  the symptom raises, gather evidence that can confirm or reject the hunch using
+  the same command, device run, log, or artifact that exposed the symptom, then
+  plan the smallest fix. If validation does not confirm the hunch, loop back to
+  the question instead of implementing. After fixing, rerun the original
+  reproducer; synthetic/unit coverage is useful regression protection but is not
+  proof that the original physical-run or integration symptom was fixed.
 
 ### Build And Package Wiring
 
@@ -552,3 +695,36 @@ design notes, experiments, and failure analysis in `docs/`.
   exits. For long device runs, flush after each progress line and write directly
   to `/dev/tty` when stdout is not a TTY, with normal stdout as the fallback for
   redirected or CI runs.
+- If a filtered `test-in-device` run reports the requested test name but prints
+  subtests or UF2 sizes from another suite, check generated artifact selection
+  before debugging the test. A broad `find .build -path "*/DeviceTestApp.elf"`
+  can pick stale debug/release/finalizer output; return the exact
+  `.build/$SWIFTPM_TRIPLE/$SWIFT_BUILD_TYPE/DeviceTestApp.elf` path and force
+  finalization when generated inputs changed.
+- After deleting or renaming package source files used by generated device
+  tests, stale objects can remain in the generated package cache and link
+  removed symbols, such as an old `SchedulerPerf.swift.o` referencing deleted
+  scheduler types. Remove only the generated device-test build cache with
+  `rm -rf .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.build`
+  and rerun the focused `swift package --disable-sandbox test-in-device --build-only --filter <TestName> --allow-writing-to-package-directory --allow-network-connections all`.
+- The same stale-object pattern can happen in real example/app packages after
+  CPicoSDK source files are renamed or split. Symptom: final CMake link fails
+  with duplicate symbols from both a deleted Swift object such as
+  `RuntimeScheduler.swift.o` and the replacement object such as
+  `SchedulerSystem.swift.o`. Before deleting downloaded SDK/tool bundles,
+  inspect the static archive with `arm-none-eabi-ar t <lib>.a` and remove only
+  the stale target build directory or archive, then rebuild.
+- Do not remove the generated device-test package `.build` just to refresh
+  missing prepare-plugin artifacts. Symptom: `toolset.json` points at
+  `.build/plugins/PrepareEnvironmentPlugin/outputs/generated/newlib_overlay`,
+  but that overlay directory is gone and Swift falls through to raw newlib
+  `stdatomic.h`, producing `_Builtin_stdatomic` typedef errors. First remove
+  only stale prep stamps/toolset files or rerun the prepare step; if the shared
+  Pico SDK bundle itself is missing, rebuild the example with `cd Example &&
+  ./build.sh`.
+- If you remove the generated device-test `.build` directory, also remove the
+  generated prep script and stamps:
+  `rm -f .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.env_prep*`.
+  Otherwise the harness can skip `prepare-rp2xxx-environment`, source a stale
+  `toolset.json`, and fail a cold rebuild because the generated newlib overlay
+  for headers such as `stdatomic.h` no longer exists.

@@ -1,149 +1,67 @@
 import ConcurrencyShims
 import CPicoSDK
-import Synchronization
 
-/// Top-level facade for embedded Swift concurrency scheduling.
+/// Swift facade for the C scheduler core.
 ///
-/// This is the only scheduler object exposed to the C shims. Runtime hooks enter
-/// here with raw Swift jobs, the system resolves identity and placement, then it
-/// hands an envelope to the selected core executor. The system owns cross-core
-/// coordination state such as affinity and multicore enablement; executors own
-/// per-core transport and async-context mechanics.
-final class SchedulerSystem {
-    private var executors: [2 of CoreExecutor] = [
-        .init(core: .core0),
-        .init(core: .core1),
-    ]
-    private var affinityTable = AffinityTable()
-    private let multicoreEnabled = Atomic(false)
-    private let didRunJobOnCore0 = Atomic(false)
-    private let didRunJobOnCore1 = Atomic(false)
+/// The performance-sensitive runtime paths live in `ConcurrencyShims.c`. This
+/// object keeps the public Swift API, async-context compatibility hook, deferred
+/// Swift closure execution, and CPU metrics stream surface in one place.
+final class SchedulerSystem: @unchecked Sendable {
+    private var core0Context = async_context_poll_t()
+
 #if CPUMetrics
     private struct CPUUsageSnapshotState {
-        var reports: [2 of CPUStats?] = [nil, nil]
-        var reportSequences: [2 of UInt64] = [0, 0]
+        var core0Report: CPUStats?
+        var core1Report: CPUStats?
+        var core0Sequence: UInt64 = 0
+        var core1Sequence: UInt64 = 0
         var sequence: UInt64 = 0
-        var nextCoreIndex: Int = 0
+        var nextCoreIndex: UInt8 = 0
     }
 
-    private let cpuUsageSnapshots = Mutex(CPUUsageSnapshotState())
+    private final class CPUUsageStreamCursor: @unchecked Sendable {
+        var sequence: UInt64 = 0
+        var core0Sequence: UInt64 = 0
+        var core1Sequence: UInt64 = 0
+        var nextCoreIndex: UInt8 = 0
+    }
+
+    private var core1MetricsActive = false
+    private var cpuUsageSnapshots = CPUUsageSnapshotState()
+    private var cpuUsageSnapshotsLock = mutex_t()
 #endif
 
-    /// Enqueues a Swift runtime job that should run as soon as its destination
-    /// core polls.
-    ///
-    /// Called by the global/main executor runtime hooks. This method does no
-    /// async-context work directly; it creates the common envelope path used by
-    /// all job kinds.
-    func enqueueImmediate(
-        job: UnsafeMutableRawPointer?,
-        executorFirst: UnsafeMutableRawPointer?,
-        executorSecond: UnsafeMutableRawPointer?
-    ) {
-        enqueue(
-            kind: .immediate,
-            timeUs: 0,
-            job: job,
-            executorFirst: executorFirst,
-            executorSecond: executorSecond
-        )
-    }
-
-    /// Enqueues a Swift runtime job after a relative delay in microseconds.
-    ///
-    /// Placement happens at enqueue time, so the selected core owns the timer in
-    /// its own async context.
-    func enqueueDelayed(
-        delayUs: UInt64,
-        job: UnsafeMutableRawPointer?,
-        executorFirst: UnsafeMutableRawPointer?,
-        executorSecond: UnsafeMutableRawPointer?
-    ) {
-        enqueue(
-            kind: .delayed,
-            timeUs: delayUs,
-            job: job,
-            executorFirst: executorFirst,
-            executorSecond: executorSecond
-        )
-    }
-
-    /// Enqueues a Swift runtime job for an absolute microsecond deadline.
-    ///
-    /// As with delayed jobs, the deadline worker belongs to the selected core's
-    /// executor. Affinity is decided before the timer is installed.
-    func enqueueDeadline(
-        deadlineUs: UInt64,
-        job: UnsafeMutableRawPointer?,
-        executorFirst: UnsafeMutableRawPointer?,
-        executorSecond: UnsafeMutableRawPointer?
-    ) {
-        enqueue(
-            kind: .deadline,
-            timeUs: deadlineUs,
-            job: job,
-            executorFirst: executorFirst,
-            executorSecond: executorSecond
-        )
-    }
-
-    @discardableResult
-    /// Polls the scheduler once on the current core.
-    ///
-    /// This is the normal entry from runtime drain/donate hooks and tight-loop
-    /// integration. Core0 and core1 both use the same `pollOnce(on:)` path so
-    /// each core drains its own inbox and polls its own async context.
-    func pollOnce() -> Int32 {
-        pollOnce(on: CoreID.current)
-    }
-
-    @discardableResult
-    /// Runs one scheduler iteration for a specific core.
-    ///
-    /// The iteration drains only that core's executor inbox, polls only that
-    /// core's async context, and returns whether a Swift runtime job ran. This
-    /// method is the place where transport and execution meet.
-    func pollOnce(on core: CoreID) -> Int32 {
-        let executor = executor(for: core)
-        storeDidRunJob(false, for: core)
-        executor.pollOnce()
+    init() {
+        cshims_scheduler_prepare_lock()
+        guard async_context_poll_init_with_defaults(&core0Context) else {
+            fatalError("[CPicoConcurrency] failed to initialize scheduler async_context")
+        }
 #if CPUMetrics
-        if core == .core0 {
-            collectCPUUsageReports()
-        }
+        cshims_cpu_metrics_set_enabled(true)
+        mutex_init(&cpuUsageSnapshotsLock)
 #endif
-        return loadDidRunJob(for: core) ? 1 : 0
     }
 
-    /// Blocks the current core's executor until its async context has work.
-    ///
-    /// `SchedulerSystem` chooses the current executor; the executor performs the
-    /// actual Pico wait. CPU metrics sampling wraps the wait when enabled.
+    @discardableResult
+    func pollOnce() -> Int32 {
+        cshims_scheduler_poll_once()
+    }
+
+    @discardableResult
+    func pollOnce(on core: CoreID) -> Int32 {
+        _ = core
+        return cshims_scheduler_poll_once()
+    }
+
     func waitForWork() {
-        executor(for: CoreID.current).waitForWork()
+        cshims_scheduler_wait_for_work_forever()
     }
 
-    /// Starts core1 for scheduler work.
-    ///
-    /// This is intentionally not called from enqueue paths. `EmbeddedAsyncApp`
-    /// starts multicore after configuration is sealed, and custom app entry
-    /// points can call `ConcurrencyRuntime.startMulticore()` directly.
     func startMulticore() {
-        guard CoreID.current == .core0 else {
-            return
-        }
-
-        let didMarkEnabled = multicoreEnabled.compareExchange(
-            expected: false,
-            desired: true,
-            ordering: .relaxed
-        ).exchanged
-        guard didMarkEnabled else {
-            return
-        }
-
-        multicore_reset_core1()
-        launchSchedulerCore1()
+        let multicoreActive = cshims_scheduler_start_multicore()
+#if CPUMetrics
+        core1MetricsActive = multicoreActive
+#endif
     }
 
 #if CPUMetrics
@@ -155,48 +73,121 @@ final class SchedulerSystem {
         makeCPUUsageStream(core: nil)
     }
 
-    func recordInterruptCPUUsage(_ event: RuntimeCPUUsageMeter.Event, coreIndex: UInt) {
-        guard coreIndex < 2 else {
-            fatalError("[CPicoConcurrency] CPU metrics received invalid core index \(coreIndex)")
+    func recordSchedulerTaskStart(coreIndex: UInt) {
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cshims_cpu_metrics_record_task_start(UInt32(coreIndex))
+    }
+
+    func recordSchedulerTaskEnd(coreIndex: UInt) {
+        cshims_cpu_metrics_record_task_end(UInt32(coreIndex))
+    }
+
+    func recordSchedulerIdleSample(coreIndex: UInt) {
+        RuntimeCPUUsageMeter.ensureIRQUsageVectorWrapping()
+        cshims_cpu_metrics_record_idle_sample(UInt32(coreIndex))
+    }
+
+    func collectCPUUsageReports() {
+        collectCPUUsageReport(core: .core0, report: RuntimeCPUUsageMeter.reportIfNeeded(core: .core0))
+        if core1MetricsActive {
+            collectCPUUsageReport(core: .core1, report: RuntimeCPUUsageMeter.reportIfNeeded(core: .core1))
         }
-        executors[Int(coreIndex)].recordInterruptCPUUsage(event: event)
     }
 
     private func makeCPUUsageStream(core: CPUCore?) -> AsyncStream<CPUStats> {
-        var sequence: UInt64 = 0
-        return AsyncStream<CPUStats> {
-            guard let sample = await self.nextCPUUsageReport(core: core, after: sequence) else {
-                return nil
+        let cursor = CPUUsageStreamCursor()
+        if let core {
+            return AsyncStream<CPUStats> {
+                guard let sample = await self.nextCPUUsageReport(core: core, after: cursor.sequence) else {
+                    return nil
+                }
+                cursor.sequence = sample.sequence
+                return sample.report
             }
-            sequence = sample.sequence
-            return sample.report
+        } else {
+            return AsyncStream<CPUStats> {
+                guard let sample = await self.nextCPUUsageReport(
+                    afterCore0: cursor.core0Sequence,
+                    afterCore1: cursor.core1Sequence,
+                    nextCoreIndex: &cursor.nextCoreIndex
+                ) else {
+                    return nil
+                }
+                switch sample.report.core {
+                case .core0:
+                    cursor.core0Sequence = sample.sequence
+                case .core1:
+                    cursor.core1Sequence = sample.sequence
+                }
+                return sample.report
+            }
         }
     }
 
     private func nextCPUUsageReport(core: CPUCore?, after sequence: UInt64) async -> (report: CPUStats, sequence: UInt64)? {
         while true {
+            if Task.isCancelled {
+                return nil
+            }
+            collectCPUUsageReports()
             if let report = latestCPUUsageReport(core: core, after: sequence) {
                 return report
             }
-            await Task.yield()
+            try? await Task.sleep(ms: 100)
+        }
+    }
+
+    private func nextCPUUsageReport(
+        afterCore0 core0Sequence: UInt64,
+        afterCore1 core1Sequence: UInt64,
+        nextCoreIndex: inout UInt8
+    ) async -> (report: CPUStats, sequence: UInt64)? {
+        while true {
+            if Task.isCancelled {
+                return nil
+            }
+            collectCPUUsageReports()
+            if let report = latestCPUUsageReport(
+                afterCore0: core0Sequence,
+                afterCore1: core1Sequence,
+                nextCoreIndex: &nextCoreIndex
+            ) {
+                return report
+            }
+            try? await Task.sleep(ms: 100)
         }
     }
 
     private func latestCPUUsageReport(core: CPUCore?, after sequence: UInt64) -> (report: CPUStats, sequence: UInt64)? {
-        cpuUsageSnapshots.withLock { state in
+        withCPUUsageSnapshotsLock {
             if let core {
-                let index = Int(core.rawValue)
-                guard state.reportSequences[index] > sequence, let report = state.reports[index] else {
-                    return nil
+                switch core {
+                case .core0:
+                    guard cpuUsageSnapshots.core0Sequence > sequence, let report = cpuUsageSnapshots.core0Report else {
+                        return nil
+                    }
+                    return (report, cpuUsageSnapshots.core0Sequence)
+                case .core1:
+                    guard cpuUsageSnapshots.core1Sequence > sequence, let report = cpuUsageSnapshots.core1Report else {
+                        return nil
+                    }
+                    return (report, cpuUsageSnapshots.core1Sequence)
                 }
-                return (report, state.reportSequences[index])
             }
 
-            for offset in 0..<CoreID.allCases.count {
-                let index = (state.nextCoreIndex + offset) % CoreID.allCases.count
-                if state.reportSequences[index] > sequence, let report = state.reports[index] {
-                    state.nextCoreIndex = (index + 1) % CoreID.allCases.count
-                    return (report, state.reportSequences[index])
+            for offset in UInt8(0)..<2 {
+                let index = (cpuUsageSnapshots.nextCoreIndex &+ offset) & 1
+                if index == 0,
+                   cpuUsageSnapshots.core0Sequence > sequence,
+                   let report = cpuUsageSnapshots.core0Report {
+                    cpuUsageSnapshots.nextCoreIndex = 1
+                    return (report, cpuUsageSnapshots.core0Sequence)
+                }
+                if index == 1,
+                   cpuUsageSnapshots.core1Sequence > sequence,
+                   let report = cpuUsageSnapshots.core1Report {
+                    cpuUsageSnapshots.nextCoreIndex = 0
+                    return (report, cpuUsageSnapshots.core1Sequence)
                 }
             }
 
@@ -204,167 +195,75 @@ final class SchedulerSystem {
         }
     }
 
-    private func collectCPUUsageReports() {
-        for core in CoreID.allCases {
-            if let report = executors[core.index].cpuUsageReportIfNeeded() {
-                cpuUsageSnapshots.withLock { state in
-                    state.sequence &+= 1
-                    state.reports[core.index] = report
-                    state.reportSequences[core.index] = state.sequence
+    private func latestCPUUsageReport(
+        afterCore0 core0Sequence: UInt64,
+        afterCore1 core1Sequence: UInt64,
+        nextCoreIndex: inout UInt8
+    ) -> (report: CPUStats, sequence: UInt64)? {
+        withCPUUsageSnapshotsLock {
+            for offset in UInt8(0)..<2 {
+                let index = (nextCoreIndex &+ offset) & 1
+                if index == 0,
+                   cpuUsageSnapshots.core0Sequence > core0Sequence,
+                   let report = cpuUsageSnapshots.core0Report {
+                    nextCoreIndex = 1
+                    return (report, cpuUsageSnapshots.core0Sequence)
                 }
+                if index == 1,
+                   cpuUsageSnapshots.core1Sequence > core1Sequence,
+                   let report = cpuUsageSnapshots.core1Report {
+                    nextCoreIndex = 0
+                    return (report, cpuUsageSnapshots.core1Sequence)
+                }
+            }
+
+            return nil
+        }
+    }
+
+    private func collectCPUUsageReport(core: CPUCore, report: CPUStats?) {
+        guard let report else {
+            return
+        }
+
+        withCPUUsageSnapshotsLock {
+            cpuUsageSnapshots.sequence &+= 1
+            switch core {
+            case .core0:
+                cpuUsageSnapshots.core0Report = report
+                cpuUsageSnapshots.core0Sequence = cpuUsageSnapshots.sequence
+            case .core1:
+                cpuUsageSnapshots.core1Report = report
+                cpuUsageSnapshots.core1Sequence = cpuUsageSnapshots.sequence
             }
         }
     }
+
+    private func withCPUUsageSnapshotsLock<T>(_ body: () -> T) -> T {
+        mutex_enter_blocking(&cpuUsageSnapshotsLock)
+        defer {
+            mutex_exit(&cpuUsageSnapshotsLock)
+        }
+        return body()
+    }
 #endif
 
-    /// Schedules a one-shot closure as deferred scheduler work.
-    ///
-    /// This helper allocates and is not ISR-safe. ISR paths should preallocate a
-    /// `DeferredWorkItem` and call `enqueueDeferred`.
     func schedule(_ block: @escaping () -> Void) {
-        let core = selectDeferredWorkCore(preferredCore: nil)
-        executor(for: core).schedule(block)
+        let item = DeferredWorkItem()
+        _ = Unmanaged.passRetained(item)
+        item.configure(block: block) {
+            Unmanaged.passUnretained(item).release()
+        }
+        enqueueDeferred(item)
     }
 
-    /// Enqueues a preallocated deferred work item.
-    ///
-    /// Deferred work is not a Swift runtime job and has no task identity. The
-    /// scheduler still picks a core for transport, then the selected executor's
-    /// single wake worker pumps the item outside ISR context.
     func enqueueDeferred(_ item: DeferredWorkItem, preferredCore: CoreID? = nil) {
-        let core = selectDeferredWorkCore(preferredCore: preferredCore)
-        executor(for: core).enqueueDeferred(item)
+        _ = preferredCore
+        cshims_scheduler_enqueue_deferred(Unmanaged.passUnretained(item).toOpaque())
     }
 
-    /// Runs a fired job slot on the current core's executor.
-    ///
-    /// Called by Pico worker callbacks after recovering the slot pointer from
-    /// `user_data`.
-    func run(slot: UnsafeMutablePointer<JobSlot>) {
-        executor(for: CoreID.current).run(slot: slot, scheduler: self)
-    }
-
-    /// Marks a job as about to run.
-    ///
-    /// `CoreExecutor` calls this immediately before `swift_job_run`. The
-    /// affinity table should move the identity from queued to running here and
-    /// verify that the current core is still the owner.
-    func jobWillRun(envelope: JobEnvelope, core: CoreID) {
-        affinityTable.markStarting(identity: envelope.identity, core: core)
-        storeDidRunJob(true, for: core)
-    }
-
-    /// Marks a job as finished.
-    ///
-    /// `CoreExecutor` calls this after `swift_job_run`. The affinity table can
-    /// then decrement running state and mark the task idle when no work remains.
-    func jobDidRun(envelope: JobEnvelope, core: CoreID) {
-        affinityTable.markFinished(identity: envelope.identity, core: core, nowUs: time_us_64())
-    }
-
-    /// Shared enqueue path for all Swift runtime job kinds.
-    ///
-    /// The flow is: resolve identity, ask affinity for an active owner, ask
-    /// placement for a destination, record accepted ownership, then transport
-    /// the envelope into the selected executor's inbox.
-    private func enqueue(
-        kind: JobKind,
-        timeUs: UInt64,
-        job: UnsafeMutableRawPointer?,
-        executorFirst: UnsafeMutableRawPointer?,
-        executorSecond: UnsafeMutableRawPointer?
-    ) {
-        let identity = TaskIdentity.resolve(job: job)
-        let enqueueCore = CoreID.current
-        let affinityState = affinityTable.state(for: identity)
-        let existingOwner = affinityState?.isActive == true ? affinityState?.ownerCore : nil
-        let ownerCore = PlacementPolicy.chooseCore(
-            for: PlacementInput(
-                identity: identity,
-                enqueueCore: enqueueCore,
-                multicoreEnabled: multicoreEnabled.load(ordering: .relaxed),
-                outstandingWorkByCore: outstandingWork
-            ),
-            existingOwner: existingOwner
-        )
-
-        let envelope = JobEnvelope(
-            kind: kind,
-            job: job,
-            executorFirst: executorFirst,
-            executorSecond: executorSecond,
-            timeUs: timeUs,
-            identity: identity
-        )
-
-        affinityTable.markAccepted(identity: identity, ownerCore: ownerCore, nowUs: time_us_64())
-        schedule(envelope, on: ownerCore)
-    }
-
-    /// Pushes an envelope to the selected executor.
-    ///
-    /// If the destination is the current core, the executor drains immediately
-    /// so the job can become async-context work without waiting for a later poll.
-    private func schedule(_ envelope: JobEnvelope, on core: CoreID) {
-        guard executor(for: core).enqueue(envelope) else {
-            affinityTable.rollbackAccepted(identity: envelope.identity, ownerCore: core)
-            fatalError("[CPicoConcurrency] scheduler core inbox full")
-        }
-        if core == CoreID.current {
-            executor(for: core).drainInbox()
-        }
-    }
-
-    /// Chooses a destination core for deferred non-job work.
-    ///
-    /// This intentionally does not use task affinity. Deferred work is a
-    /// platform escape hatch; if it creates a Swift `Task`, that task will return
-    /// through normal runtime enqueue hooks and use the job placement path.
-    private func selectDeferredWorkCore(preferredCore: CoreID?) -> CoreID {
-        if !multicoreEnabled.load(ordering: .relaxed) {
-            return .core0
-        }
-
-        return preferredCore ?? CoreID.current
-    }
-
-    /// Returns the executor that owns a core's inbox and async context.
-    private func executor(for core: CoreID) -> CoreExecutor {
-        executors[core.index]
-    }
-
-    private func loadDidRunJob(for core: CoreID) -> Bool {
-        switch core {
-        case .core0:
-            didRunJobOnCore0.load(ordering: .relaxed)
-        case .core1:
-            didRunJobOnCore1.load(ordering: .relaxed)
-        }
-    }
-
-    private func storeDidRunJob(_ value: Bool, for core: CoreID) {
-        switch core {
-        case .core0:
-            didRunJobOnCore0.store(value, ordering: .relaxed)
-        case .core1:
-            didRunJobOnCore1.store(value, ordering: .relaxed)
-        }
-    }
-
-    /// Returns the amount of pending/running work used by placement policy.
-    ///
-    /// This uses accepted affinity ownership rather than probing executor
-    /// transport queues while another core may be draining them.
-    private func outstandingWork(for core: CoreID) -> UInt32 {
-        affinityTable.outstandingWork(on: core)
-    }
-
-    /// Gives legacy helpers access to the core0 async context pointer.
-    ///
-    /// New scheduler code should prefer going through `CoreExecutor`, but this
-    /// keeps existing SPI callers working while the architecture is split apart.
     func callWithAsyncContext(_ body: (UnsafeMutableRawPointer) -> Void) {
-        withUnsafeMutablePointer(to: &executors[CoreID.core0.index].context.core) { contextPtr in
+        withUnsafeMutablePointer(to: &core0Context.core) { contextPtr in
             body(UnsafeMutableRawPointer(contextPtr))
         }
     }
@@ -377,60 +276,11 @@ nonisolated(unsafe) var cshimsRuntimeScheduler = SchedulerSystem()
     cshimsRuntimeScheduler.callWithAsyncContext(body)
 }
 
-/// C shim entrypoint for one nonblocking scheduler poll.
-@_cdecl("cshims_scheduler_poll_once")
-func cshims_scheduler_poll_once() -> Int32 {
-    cshimsRuntimeScheduler.pollOnce()
-}
-
-/// C shim entrypoint used by Swift runtime global/main enqueue hooks.
-@_cdecl("cshims_scheduler_enqueue_immediate")
-func cshims_scheduler_enqueue_immediate(
-    _ job: UnsafeMutableRawPointer?,
-    _ executorFirst: UnsafeMutableRawPointer?,
-    _ executorSecond: UnsafeMutableRawPointer?
-) {
-    cshimsRuntimeScheduler.enqueueImmediate(
-        job: job,
-        executorFirst: executorFirst,
-        executorSecond: executorSecond
-    )
-}
-
-/// C shim entrypoint used by Swift runtime delayed enqueue hooks.
-@_cdecl("cshims_scheduler_enqueue_delayed")
-func cshims_scheduler_enqueue_delayed(
-    _ delayUs: UInt64,
-    _ job: UnsafeMutableRawPointer?,
-    _ executorFirst: UnsafeMutableRawPointer?,
-    _ executorSecond: UnsafeMutableRawPointer?
-) {
-    cshimsRuntimeScheduler.enqueueDelayed(
-        delayUs: delayUs,
-        job: job,
-        executorFirst: executorFirst,
-        executorSecond: executorSecond
-    )
-}
-
-/// C shim entrypoint used by Swift runtime deadline enqueue hooks.
-@_cdecl("cshims_scheduler_enqueue_deadline")
-func cshims_scheduler_enqueue_deadline(
-    _ deadlineUs: UInt64,
-    _ job: UnsafeMutableRawPointer?,
-    _ executorFirst: UnsafeMutableRawPointer?,
-    _ executorSecond: UnsafeMutableRawPointer?
-) {
-    cshimsRuntimeScheduler.enqueueDeadline(
-        deadlineUs: deadlineUs,
-        job: job,
-        executorFirst: executorFirst,
-        executorSecond: executorSecond
-    )
-}
-
-/// C shim entrypoint for donating the current core until work arrives.
-@_cdecl("cshims_scheduler_wait_for_work_forever")
-func cshims_scheduler_wait_for_work_forever() {
-    cshimsRuntimeScheduler.waitForWork()
+@_cdecl("cshims_scheduler_run_deferred_item")
+func cshims_scheduler_run_deferred_item(_ item: UnsafeMutableRawPointer?) {
+    guard let item else {
+        assertionFailure("[CPicoConcurrency] scheduler received nil deferred item")
+        return
+    }
+    Unmanaged<DeferredWorkItem>.fromOpaque(item).takeUnretainedValue().execute()
 }

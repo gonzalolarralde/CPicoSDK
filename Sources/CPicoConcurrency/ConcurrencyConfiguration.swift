@@ -3,8 +3,8 @@ import CPicoSDK
 /// Configuration for the embedded Swift concurrency scheduler.
 ///
 /// Configure this from `EmbeddedAsyncApp.configure(with:)`, before the async app
-/// enters `setup()`. `EmbeddedAsyncApp` reads the sealed configuration and then
-/// explicitly starts core1 before calling `setup()`.
+/// enters `setup()`. `EmbeddedAsyncApp` reads the sealed configuration and
+/// explicitly starts core1 after `setup()` completes.
 public struct ConcurrencyConfiguration: Configuration {
     public static var id: String { "CPicoConcurrency-ConcurrencyConfiguration" }
 
@@ -29,7 +29,8 @@ public extension Configurator {
 public enum ConcurrencyRuntime {
     /// Starts core1 and attaches it to the Swift concurrency scheduler.
     ///
-    /// `EmbeddedAsyncApp` calls this automatically when `core1Enabled` is true.
+    /// `EmbeddedAsyncApp` calls this automatically after `setup()` when
+    /// `core1Enabled` is true.
     /// Apps with a custom `@main` can call this after their CPicoSDK
     /// configuration has been sealed and before they expect work to run on
     /// core1.

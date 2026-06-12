@@ -13,6 +13,7 @@
 #else
     import _CPicoSDK_pico2_w
 #endif
+import CShims
 
 // MARK: - Memory type
 
@@ -84,6 +85,7 @@ public struct Allocator: Configuration, @unchecked Sendable { // TODO: Check how
         (address & Self.addressSpaceMask) == (addressSpace & Self.addressSpaceMask)
     }
 
+    @section(".flashdata.malloc_cold")
     public func executeConfiguration(with configurator: inout Configurator) throws(Allocator.Error) {
         try AllocatorManager.shared.register(self)
     }
@@ -239,6 +241,13 @@ private struct MallocLockState {
     let core: UInt32
 }
 
+private enum AllocatorOperation: UInt32 {
+    case malloc = 1
+    case calloc = 2
+    case realloc = 3
+    case free = 4
+}
+
 @inline(__always)
 private func getExceptionLevelPlusOne(forCore core: UInt32) -> UInt8 {
     core == 0 ? mallocMutexExceptionLevelPlusOneCore0 : mallocMutexExceptionLevelPlusOneCore1
@@ -253,11 +262,27 @@ private func setExceptionLevelPlusOne(forCore core: UInt32, _ value: UInt8) {
     }
 }
 
+@inline(never)
+private func trapIRQAllocatorUse(operation: AllocatorOperation, exception: UInt32) -> Never {
+    cshims_record_irq_allocator_use(operation.rawValue, exception)
+    while true {
+        cshims_irq_allocator_debug_break()
+    }
+}
+
 @inline(__always)
-private func mallocEnter(outer: Bool) -> MallocLockState {
-    let exception = Int(__get_current_exception())
+private func mallocEnter(operation: AllocatorOperation, outer: Bool) -> MallocLockState {
+    let exception = __get_current_exception()
+    if _slowPath(exception != 0) {
+        #if GuardIRQAllocations
+        trapIRQAllocatorUse(operation: operation, exception: UInt32(exception))
+        #else
+        cshims_warn_irq_allocator_use(operation.rawValue, UInt32(exception))
+        #endif
+    }
+
     let core = get_core_num()
-    let exceptionLevelPlusOne = UInt8(truncatingIfNeeded: exception + 1)
+    let exceptionLevelPlusOne = UInt8(truncatingIfNeeded: Int(exception) &+ 1)
     let existingLevel = getExceptionLevelPlusOne(forCore: core)
 
     // Match Pico SDK behavior: only re-lock inner calls when exception nesting changed.
@@ -306,7 +331,7 @@ private func debugAllocFailure(_ fn: StaticString, _ size: Int, memoryType: Memo
 @_cdecl("__wrap_malloc")
 func malloc(_ size: Int) -> UnsafeMutableRawPointer? {
     let allocator = Allocator.sram
-    let state = mallocEnter(outer: false)
+    let state = mallocEnter(operation: .malloc, outer: false)
     let rc = allocator.malloc(size)
     mallocExit(state)
     if rc == nil { debugAllocFailure("malloc", size, memoryType: allocator.memoryType) }
@@ -321,7 +346,7 @@ func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
     if overflow {
         mallocPanic(memoryType: allocator.memoryType)
     }
-    let state = mallocEnter(outer: true)
+    let state = mallocEnter(operation: .calloc, outer: true)
     let rc = allocator.calloc(num, size)
     mallocExit(state)
     if rc == nil { debugAllocFailure("calloc", totalSize, memoryType: allocator.memoryType) }
@@ -331,7 +356,7 @@ func calloc(_ num: Int, _ size: Int) -> UnsafeMutableRawPointer? {
 
 @_cdecl("__wrap_realloc")
 func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPointer? {
-    let state = mallocEnter(outer: true)
+    let state = mallocEnter(operation: .realloc, outer: true)
     let allocator = AllocatorManager.shared.allocator(for: ptr)
     let rc = allocator.realloc(ptr, size)
     mallocExit(state)
@@ -342,7 +367,7 @@ func realloc(_ ptr: UnsafeMutableRawPointer?, _ size: Int) -> UnsafeMutableRawPo
 
 @_cdecl("__wrap_free")
 func free(_ ptr: UnsafeMutableRawPointer?) {
-    let state = mallocEnter(outer: false)
+    let state = mallocEnter(operation: .free, outer: false)
     let allocator = AllocatorManager.shared.allocator(for: ptr)
     allocator.free(ptr)
     mallocExit(state)
