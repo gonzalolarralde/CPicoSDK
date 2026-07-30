@@ -330,13 +330,16 @@ struct DeviceHarnessRunner {
 
     private func build(generated: GeneratedPackage, buildType: DeviceBuildType) throws -> BuiltFirmware {
         let sharedBundleExport = try sharedPicoSDKBundleExportScript()
+        let cpicoSDKEnvVars = try cpicoSDKEnvVars()
+        let core0StackSize = cpicoSDKEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] ?? "8192"
+        let core1StackSize = cpicoSDKEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"] ?? "8192"
         let script = """
         set -euo pipefail
         cd \(shellQuote(generated.packageDirectory.path))
         export BUILD_TYPE="\(buildType.rawValue)"
         export BOARD="\(options.target.board)"
-        export CPICOSDK_CORE0_STACK_SIZE_BYTES="${CPICOSDK_CORE0_STACK_SIZE_BYTES:-8192}"
-        export CPICOSDK_CORE1_STACK_SIZE_BYTES="${CPICOSDK_CORE1_STACK_SIZE_BYTES:-8192}"
+        export CPICOSDK_CORE0_STACK_SIZE_BYTES="${CPICOSDK_CORE0_STACK_SIZE_BYTES:-\(core0StackSize)}"
+        export CPICOSDK_CORE1_STACK_SIZE_BYTES="${CPICOSDK_CORE1_STACK_SIZE_BYTES:-\(core1StackSize)}"
         export BUILD_SCRIPT_VERSION=1
         \(sharedBundleExport)
         export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"

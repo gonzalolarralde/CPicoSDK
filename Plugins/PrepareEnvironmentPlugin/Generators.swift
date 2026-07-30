@@ -86,6 +86,12 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] = "0"
         }
 
+        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] != "1",
+           newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil
+        {
+            newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] = ""
+        }
+
         if newEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] == nil {
             newEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] = "8192"
         }
@@ -104,6 +110,7 @@ extension PrepareEnvironmentPlugin {
         }
 
         if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
+           newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] == "1",
            let swiftVersion = newEnvVars["SWIFT_VERSION"] 
         {
             let fallbackPath = embeddedSwiftRuntimeVendorPath

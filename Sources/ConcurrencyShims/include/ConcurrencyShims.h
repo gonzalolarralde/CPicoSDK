@@ -8,30 +8,38 @@
 extern "C" {
 #endif
 
-uintptr_t swift_threading_defer_current_thread_id(void);
-bool swift_threading_defer_is_main_thread(void);
-bool swift_threading_defer_current_stack_bounds(void **low, void **high);
-void swift_threading_defer_mutex_init(uintptr_t *handle, bool checked);
-void swift_threading_defer_mutex_destroy(uintptr_t *handle);
-void swift_threading_defer_mutex_lock(uintptr_t *handle);
-void swift_threading_defer_mutex_unlock(uintptr_t *handle);
-bool swift_threading_defer_mutex_try_lock(uintptr_t *handle);
-void swift_threading_defer_recursive_mutex_init(uintptr_t *storage, bool checked);
-void swift_threading_defer_recursive_mutex_destroy(uintptr_t *storage);
-void swift_threading_defer_recursive_mutex_lock(uintptr_t *storage);
-void swift_threading_defer_recursive_mutex_unlock(uintptr_t *storage);
-void swift_threading_defer_cond_init(uintptr_t *handle);
-void swift_threading_defer_cond_destroy(uintptr_t *handle);
-void swift_threading_defer_cond_lock(uintptr_t *handle);
-void swift_threading_defer_cond_unlock(uintptr_t *handle);
-void swift_threading_defer_cond_signal(uintptr_t *handle);
-void swift_threading_defer_cond_broadcast(uintptr_t *handle);
-void swift_threading_defer_cond_wait(uintptr_t *handle);
-bool swift_threading_defer_cond_wait_for(uintptr_t *handle, uint64_t ns);
-bool swift_threading_defer_cond_wait_until(uintptr_t *handle, int64_t epochNs);
-void swift_threading_defer_once(uintptr_t *predicate, void (*fn)(void *), void *ctx);
-void *swift_threading_defer_tls_get(uintptr_t key);
-void swift_threading_defer_tls_set(uintptr_t key, void *value);
+#if defined(__has_include) && __has_include(<swift/EmbeddedPlatform.h>)
+#include <swift/EmbeddedPlatform.h>
+#else
+typedef __SIZE_TYPE__ __swift_size_t;
+typedef __PTRDIFF_TYPE__ __swift_ptrdiff_t;
+typedef unsigned long long __swift_options_t;
+typedef __swift_ptrdiff_t swift_tls_key_t;
+typedef void (*__swift_tls_dtor_t)(void *);
+
+#define SWIFT_TLS_KEY_COUNT 8
+#define EMBEDDED_SWIFT_MUTEX_NUM_WORDS (__swift_ptrdiff_t)8
+#define EMBEDDED_SWIFT_MUTEX_RECURSIVE_NUM_WORDS (__swift_ptrdiff_t)8
+
+typedef enum : __swift_options_t {
+    SWIFT_MUTEX_NONE = 0,
+    SWIFT_MUTEX_CHECKED = 0x01
+} swift_mutex_flags_t;
+
+void _swift_mutex_init(void *mutex, swift_mutex_flags_t flags);
+void _swift_mutex_destroy(void *mutex);
+void _swift_mutex_lock(void *mutex);
+void _swift_mutex_unlock(void *mutex);
+__swift_ptrdiff_t _swift_mutex_tryLock(void *mutex);
+void _swift_mutexRecursive_init(void *mutex, swift_mutex_flags_t flags);
+void _swift_mutexRecursive_destroy(void *mutex);
+void _swift_mutexRecursive_lock(void *mutex);
+void _swift_mutexRecursive_unlock(void *mutex);
+void _swift_tls_init(swift_tls_key_t key, __swift_tls_dtor_t destructor);
+void *_swift_tls_get(swift_tls_key_t key);
+void _swift_tls_set(swift_tls_key_t key, void *value);
+__swift_ptrdiff_t _swift_thread_isMain(void);
+#endif
 
 // Optional helper APIs for cooperative polling loops.
 void cshims_run_job_bridge(void *job, void *executorFirst, void *executorSecond);

@@ -14,6 +14,7 @@
     import _CPicoSDK_pico2_w
 #endif
 import CShims
+import Synchronization
 
 // MARK: - Memory type
 

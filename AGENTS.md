@@ -320,6 +320,13 @@ design notes, experiments, and failure analysis in `docs/`.
 - After a hardfault or bad device run, OpenOCD may fail with
   `Error connecting DP: cannot read IDR`. Try `adapter speed 1000`; if it still
   cannot connect, physically reconnect or power-cycle the board.
+- If `ioreg` still lists a Raspberry Pi Debug Probe but OpenOCD reports
+  `could not read product string` for `0x2e8a:0x000c`, check macOS USB logs
+  with `/usr/bin/log show --last 5m --style compact --predicate
+  'eventMessage CONTAINS[c] "Debug Probe"'`. Repeated endpoint `0x81` status
+  `0xe00002ed` transaction errors indicate a wedged probe USB transport;
+  backend, serial-number, and adapter-speed changes do not repair it. Physically
+  unplug and reconnect the debug probe's USB cable before retrying OpenOCD.
 
 ### OpenOCD And GDB
 
@@ -375,6 +382,21 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Code/Swift Multicore
 
+- The presence of `swift/EmbeddedPlatform.h` in a toolchain does not prove its
+  embedded `libswift_Concurrency.a` was built with the platform abstraction
+  layer. Symptom: starting core1 immediately produces
+  `global allocator fallback not available`, and GDB shows both cores in
+  `swift::_swift_task_clearCurrent()` accessing the same
+  `(anonymous namespace)::ActiveTask::Value` global. Check the archive with
+  `arm-none-eabi-nm -u libswift_Concurrency.a | rg
+  '_swift_(tls|mutex|thread)'`; no matches, together with
+  `arm-none-eabi-nm -C libswift_Concurrency.a | rg
+  'ActiveTask::Value'` reporting a lowercase `b` symbol, identifies a
+  single-threaded runtime build. The Swift toolchain build must enable
+  `SWIFT_USE_SWIFT_EMBEDDED_PLATFORM` globally or set
+  `SWIFT_EMBEDDED_PLATFORM_ABSTRACTION_LAYER_TRIPLE_REGEX` to match the target
+  triple; implementing the PAL hooks in the application cannot retrofit TLS
+  into an archive compiled with global current-task storage.
 - Pico SDK `queue_t` is safe for multicore and IRQ producer/consumer exchange;
   do not add an extra lock around `queue_try_add`/`queue_try_remove` unless a
   separate invariant requires it. A crash after a job is popped and
@@ -385,6 +407,16 @@ design notes, experiments, and failure analysis in `docs/`.
   this workspace). If Swift or async-context code runs on core1, prefer
   `multicore_launch_core1_with_stack` with an explicit larger stack before
   treating low-address PCs or unusable stack registers as queue corruption.
+- A missing device run-end marker after earlier assertions pass can be an
+  RP2350 stack fault on whichever core pulled the next Swift job. In the
+  2026-07-28 Swift debug toolchain, `_Float64ToASCII` reserved 14,812 bytes in
+  one frame; with 8 KiB scheduler stacks, `CPUStats.description` faulted on
+  core1 with `CFSR=0x00100000` (`STKOF`). Confirm with `thread apply all bt`,
+  `mdw 0xe000ed28`, and disassembly around the stacked PC. Configure both
+  `CPICOSDK_CORE0_STACK_SIZE_BYTES` and `CPICOSDK_CORE1_STACK_SIZE_BYTES` with
+  enough headroom; 24 KiB passed the reproducer. The root device harness must
+  take its default stack sizes from `env.json`, or its pre-prepare 8 KiB exports
+  will silently override those values.
 - `global allocator fallback not available` is emitted by the embedded Swift
   concurrency runtime's `swift_task_alloc` cold path. If it appears after a
   core1 queue pop, it means Swift runtime/current-task state on core1 is the
@@ -646,6 +678,14 @@ design notes, experiments, and failure analysis in `docs/`.
 
 - Build the device example from `Example/` with `./build.sh`. Do not use a
   repo-root `./build`.
+- If a root `test-in-device --build-only` run fails in Pico SDK
+  `add_subdirectory` after an `Example/build.sh` run, inspect the generated
+  test package's
+  `.build/plugins/FinalizeBinaryPlugin/outputs/CMakeHarness/build_pico2/CMakeCache.txt`.
+  A cache that combines `PICO_SDK_PATH=~/.pico-sdk/...` with
+  `PICO_PLATFORM_CMAKE_FILE` or compiler paths under `Example/.build/...`
+  is stale. Move only that generated `build_pico2` directory aside and rerun
+  the device build; the finalizer recreates it with one consistent SDK root.
 - If local package edits appear to have no effect, check
   `Example/Package.swift` and run `swift package show-dependencies` from
   `Example/`. The example must depend on the local package path, not a released

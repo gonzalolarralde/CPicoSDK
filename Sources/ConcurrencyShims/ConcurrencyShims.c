@@ -172,6 +172,22 @@ uint32_t cshims_scheduler_core1_stack[CPICOSDK_CORE1_STACK_SIZE_BYTES / sizeof(u
     __attribute__((aligned(16), visibility("hidden")));
 #endif
 
+void *cshims_scheduler_core1_stack_bottom(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return cshims_scheduler_core1_stack;
+#else
+    return NULL;
+#endif
+}
+
+uint32_t cshims_scheduler_core1_stack_size_bytes(void) {
+#if CPICOSDK_CORE1_STACK_SIZE_BYTES > 0
+    return CPICOSDK_CORE1_STACK_SIZE_BYTES;
+#else
+    return 0;
+#endif
+}
+
 static uint32_t CSHIMS_SCHEDULER_RAM cshims_scheduler_lock(void);
 static void CSHIMS_SCHEDULER_RAM cshims_scheduler_unlock(uint32_t irq_state);
 static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_init_locked(void);
