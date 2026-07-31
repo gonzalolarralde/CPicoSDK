@@ -701,6 +701,13 @@ design notes, experiments, and failure analysis in `docs/`.
   can pick stale debug/release/finalizer output; return the exact
   `.build/$SWIFTPM_TRIPLE/$SWIFT_BUILD_TYPE/DeviceTestApp.elf` path and force
   finalization when generated inputs changed.
+- A remote device-test batch cannot retain only the artifact URLs returned from
+  repeated builds of the generated `Current` package: every URL names the same
+  mutable ELF/UF2 location, so a later build would make all work items upload
+  the final test binary. Copy each finalized artifact into an invocation-scoped
+  staging directory immediately after its build, submit those immutable copies,
+  and remove only that staging directory after the client has consumed them.
+  Validate batching with distinct input digests and caller-item attribution.
 - After deleting or renaming package source files used by generated device
   tests, stale objects can remain in the generated package cache and link
   removed symbols, such as an old `SchedulerPerf.swift.o` referencing deleted
@@ -728,3 +735,12 @@ design notes, experiments, and failure analysis in `docs/`.
   Otherwise the harness can skip `prepare-rp2xxx-environment`, source a stale
   `toolset.json`, and fail a cold rebuild because the generated newlib overlay
   for headers such as `stdatomic.h` no longer exists.
+- A repository path containing spaces exercises two independent quoting
+  boundaries in the root device harness. The build symptom is `swift build`
+  reporting unexpected arguments split from `toolset.json`; quote the shell
+  expansion as `--toolset "$TOOLSET_PATH"`. The local programming symptom is
+  OpenOCD `Error: Invalid command argument` because Tcl splits the ELF path in
+  `program <elf> verify`; wrap the path in Tcl double quotes and escape
+  backslash, `"`, `$`, `[`, `]`, CR, and LF. Validate both with a real
+  `test-in-device --build-only` invocation from a path containing spaces and a
+  command-builder unit test containing spaces and Tcl metacharacters.

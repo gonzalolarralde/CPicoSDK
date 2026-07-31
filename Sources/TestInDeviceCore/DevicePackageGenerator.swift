@@ -192,6 +192,7 @@ public enum DevicePackageGenerator {
             \(calls)
                     let duration = to_ms_since_boot(get_absolute_time()) - started
                     print("__CPICOSDK_DEVICE_TEST__|run-end|status=\\(passed ? "passed" : "failed")|durationMs=\\(duration)")
+                    print("__CPICOSDK_DEVICE_TEST__|capture-end")
                 }
 
                 static func loop() async {
@@ -281,6 +282,7 @@ public enum DevicePackageGenerator {
             \(calls)
                     let duration = to_ms_since_boot(get_absolute_time()) - started
                     print("__CPICOSDK_DEVICE_TEST__|run-end|status=\\(passed ? "passed" : "failed")|durationMs=\\(duration)")
+                    print("__CPICOSDK_DEVICE_TEST__|capture-end")
                 }
 
                 static func loop() {
