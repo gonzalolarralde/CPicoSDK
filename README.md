@@ -1028,6 +1028,9 @@ first stages all selected firmware, uploads each unique ELF, and submits one
 sets that work item's `runs` value to `N`; HardwareRunner returns a separately
 attributed capture for each 1-based run index, and the harness parses every run
 with the same per-pass labels, failures, and score statistics as local mode.
+For each successful run it also prints a machine-readable HardwareRunner
+attribution line containing the job, work-item, caller-item, run-index, and
+attempt identifiers.
 Repeated runs reuse the test's immutable object and bundle.
 Independent items may fan out across compatible devices; one connected device
 runs them sequentially through its mutex. Job submission uses one idempotency
