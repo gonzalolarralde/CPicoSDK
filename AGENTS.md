@@ -708,6 +708,12 @@ design notes, experiments, and failure analysis in `docs/`.
   staging directory immediately after its build, submit those immutable copies,
   and remove only that staging directory after the client has consumed them.
   Validate batching with distinct input digests and caller-item attribution.
+- Represent remote `--passes N` as one HardwareRunner work item with `runs: N`,
+  not N duplicate work items. Attribute exported evidence by
+  `(workItemID, runIndex)`, and select the highest per-run attempt number
+  (then the global attempt number) within each run so one run's infrastructure
+  retry or failure cannot hide later run captures. Keep the caller item ID
+  stable for the test itself.
 - After deleting or renaming package source files used by generated device
   tests, stale objects can remain in the generated package cache and link
   removed symbols, such as an old `SchedulerPerf.swift.o` referencing deleted

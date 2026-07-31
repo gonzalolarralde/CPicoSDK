@@ -1024,14 +1024,18 @@ connected target and will program and reset it.
 The harness reuses a generated SwiftPM package per target in the plugin work
 directory and builds it against the local CPicoSDK checkout. In remote mode it
 first stages all selected firmware, uploads each unique ELF, and submits one
-`fair` HardwareRunner job with one work item per selected test and pass.
-Repeated passes of the same firmware reuse its immutable object and bundle.
+`fair` HardwareRunner job with one work item per selected test. `--passes N`
+sets that work item's `runs` value to `N`; HardwareRunner returns a separately
+attributed capture for each 1-based run index, and the harness parses every run
+with the same per-pass labels, failures, and score statistics as local mode.
+Repeated runs reuse the test's immutable object and bundle.
 Independent items may fan out across compatible devices; one connected device
 runs them sequentially through its mutex. Job submission uses one idempotency
 key and retries transient transport, HTTP 408/429, an equivalent in-progress
 idempotency claim, and server failures three times after the initial attempt.
 Once submitted, temporary polling failures do not abandon the queued hardware
-work.
+work. The client rejects batches above HardwareRunner's 10,000-logical-run
+per-job limit before uploading any artifacts.
 
 HardwareRunner reports infrastructure outcomes only. The harness downloads the
 authoritative raw RTT stream and feeds it through the same

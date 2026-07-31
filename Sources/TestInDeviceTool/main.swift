@@ -480,29 +480,35 @@ struct DeviceHarnessRunner {
             }
         }
 
-        let remoteInputs = builtTests.flatMap { built in
-            (1...options.passes).map { pass in
-                HardwareRunnerExecutionInput(
-                    callerItemID: remoteCallerItemID(
-                        testIndex: built.index,
-                        pass: pass
-                    ),
-                    firmwareURL: built.firmware.elfURL,
-                    testName: options.passes == 1
-                        ? built.source.metadata.name
-                        : "\(built.source.metadata.name)-pass-\(pass)",
-                    timeoutMilliseconds:
-                        built.source.metadata.timeoutMilliseconds
-                )
-            }
+        let remoteInputs = builtTests.map { built in
+            HardwareRunnerExecutionInput(
+                callerItemID: remoteCallerItemID(testIndex: built.index),
+                firmwareURL: built.firmware.elfURL,
+                testName: built.source.metadata.name,
+                timeoutMilliseconds:
+                    built.source.metadata.timeoutMilliseconds,
+                runs: options.passes
+            )
         }
         guard !remoteInputs.isEmpty else {
             return allPassed
         }
 
+        let expectedRunCount: Int
+        do {
+            expectedRunCount = try HardwareRunnerClient.logicalRunCount(
+                for: remoteInputs
+            )
+        } catch {
+            log(
+                "[test-in-device] Remote batch \(terminalRed("FAIL")): \(error)"
+            )
+            return false
+        }
         log(
             "[test-in-device] Submitting \(remoteInputs.count) work item(s) "
-                + "as one fair HardwareRunner job."
+                + "with \(expectedRunCount) total run(s) as one fair "
+                + "HardwareRunner job."
         )
         let remoteResults: [HardwareRunnerBatchExecutionResult]
         do {
@@ -513,32 +519,41 @@ struct DeviceHarnessRunner {
             log("[test-in-device] Remote batch \(terminalRed("FAIL")): \(error)")
             return false
         }
-        guard remoteResults.count == remoteInputs.count else {
+        guard remoteResults.count == expectedRunCount else {
             log(
                 "[test-in-device] Remote batch \(terminalRed("FAIL")): "
-                    + "result count did not match submitted work items"
+                    + "result count did not match submitted runs"
             )
             return false
         }
-        let resultByCallerID = Dictionary(
-            uniqueKeysWithValues: remoteResults.map {
-                ($0.callerItemID, $0.outcome)
+        var resultByCallerID:
+            [String: [Int: HardwareRunnerBatchExecutionResult.Outcome]] = [:]
+        for result in remoteResults {
+            var runs = resultByCallerID[result.callerItemID] ?? [:]
+            guard runs.updateValue(
+                result.outcome,
+                forKey: result.runIndex
+            ) == nil else {
+                log(
+                    "[test-in-device] Remote batch \(terminalRed("FAIL")): "
+                        + "duplicate result for \(result.callerItemID) "
+                        + "run \(result.runIndex)"
+                )
+                return false
             }
-        )
+            resultByCallerID[result.callerItemID] = runs
+        }
 
         for built in builtTests {
             var scoreSamples: [DeviceScore] = []
+            let callerItemID = remoteCallerItemID(testIndex: built.index)
             for pass in 1...options.passes {
-                let callerItemID = remoteCallerItemID(
-                    testIndex: built.index,
-                    pass: pass
-                )
-                guard let outcome = resultByCallerID[callerItemID] else {
+                guard let outcome = resultByCallerID[callerItemID]?[pass] else {
                     allPassed = false
                     log(
                         "[test-in-device] \(built.source.metadata.name) "
                             + "\(terminalRed("FAIL")): missing remote result "
-                            + callerItemID
+                            + "\(callerItemID) run \(pass)"
                     )
                     continue
                 }
@@ -553,7 +568,7 @@ struct DeviceHarnessRunner {
                         : ""
                     log(
                         "[test-in-device] \(built.source.metadata.name)"
-                            + "\(passLabel) [\(callerItemID)] "
+                            + "\(passLabel) [\(callerItemID) run \(pass)] "
                             + "\(terminalRed("FAIL")): \(error)"
                     )
                     continue
@@ -604,8 +619,8 @@ struct DeviceHarnessRunner {
         return BuiltFirmware(elfURL: elfURL, uf2URL: uf2URL)
     }
 
-    private func remoteCallerItemID(testIndex: Int, pass: Int) -> String {
-        "test-\(testIndex + 1)-pass-\(pass)"
+    private func remoteCallerItemID(testIndex: Int) -> String {
+        "test-\(testIndex + 1)"
     }
 
     private func report(
