@@ -573,6 +573,14 @@ struct DeviceHarnessRunner {
                     )
                     continue
                 }
+                log(
+                    "[test-in-device] HardwareRunner attribution "
+                        + "job=\(result.jobID.uuidString.lowercased()) "
+                        + "workItem=\(result.workItemID.uuidString.lowercased()) "
+                        + "callerItem=\(callerItemID) "
+                        + "run=\(pass) "
+                        + "attempt=\(result.attemptID.uuidString.lowercased())"
+                )
                 logPartial(
                     "[test-in-device] \(built.index + 1)/\(tests.count) "
                         + terminalBoldYellow(built.source.metadata.name)
