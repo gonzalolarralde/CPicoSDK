@@ -169,6 +169,9 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     )
     let workItems = try #require(jobJSON["workItems"] as? [[String: Any]])
     #expect(workItems.count == 1)
+    #expect(workItems[0]["runs"] as? Int == 1)
+    let metadata = try #require(jobJSON["metadata"] as? [String: Any])
+    #expect(metadata["runCount"] as? String == "1")
 
     #expect(
         requests[7].url.path
@@ -370,6 +373,64 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
 }
 
 @available(macOS 12.0, *)
+@Test func overLimitRunCountFailsBeforeSendingRequests() async throws {
+    let transport = ScriptedHTTPTransport([])
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+
+    do {
+        _ = try await client.execute(inputs: [
+            .init(
+                callerItemID: "over-limit",
+                firmwareURL: firmwareURL,
+                testName: "Over limit",
+                timeoutMilliseconds: 1_000,
+                runs: HardwareRunnerClient.maximumLogicalRunsPerJob + 1
+            )
+        ])
+        Issue.record("Expected logical run limit validation failure")
+    } catch let error as HardwareRunnerClientError {
+        #expect(error == .invalidConfiguration(
+            "a job cannot exceed "
+                + "\(HardwareRunnerClient.maximumLogicalRunsPerJob) logical runs"
+        ))
+    }
+    #expect(await transport.recordedRequests().isEmpty)
+}
+
+@available(macOS 12.0, *)
+@Test func overflowingRunCountFailsBeforeSendingRequests() async throws {
+    let transport = ScriptedHTTPTransport([])
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+
+    do {
+        _ = try await client.execute(inputs: [
+            .init(
+                callerItemID: "maximum",
+                firmwareURL: firmwareURL,
+                testName: "Maximum",
+                timeoutMilliseconds: 1_000,
+                runs: Int.max
+            ),
+            .init(
+                callerItemID: "overflow",
+                firmwareURL: firmwareURL,
+                testName: "Overflow",
+                timeoutMilliseconds: 1_000,
+                runs: 1
+            ),
+        ])
+        Issue.record("Expected logical run count overflow validation failure")
+    } catch let error as HardwareRunnerClientError {
+        #expect(error == .invalidConfiguration(
+            "total logical run count overflowed"
+        ))
+    }
+    #expect(await transport.recordedRequests().isEmpty)
+}
+
+@available(macOS 12.0, *)
 @Test func failedAttemptIsReportedAsInfrastructureFailure() async throws {
     let transport = ScriptedHTTPTransport(
         successfulPrelude()
@@ -400,11 +461,37 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
 }
 
 @available(macOS 12.0, *)
-@Test func latestAttemptPreservesExportOrderWhenWireTimestampsTie() async throws {
+@Test func singleRunAcceptsLegacyAttemptWithoutRunIdentity() async throws {
+    let transport = ScriptedHTTPTransport(
+        successfulPrelude() + [
+            .response(exportResponse(includeRunIdentity: false)),
+            .response(.init(statusCode: 200, body: captureBytes)),
+        ]
+    )
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+
+    let result = try await client.execute(
+        firmwareURL: firmwareURL,
+        testName: "Legacy single run",
+        timeoutMilliseconds: 1_000
+    )
+
+    #expect(result.rawOutput == captureBytes)
+    #expect(result.attemptID == attemptID)
+}
+
+@available(macOS 12.0, *)
+@Test func latestRunAttemptWinsOverHigherGlobalAttemptNumber()
+    async throws
+{
     let tiedTimestamp = "2026-07-30T10:00:02Z"
     let earlierAttempt: [String: Any] = [
         "id": earlierAttemptID.uuidString,
         "itemID": itemID.uuidString,
+        "attemptNumber": 100,
+        "runIndex": 1,
+        "runAttemptNumber": 1,
         "state": "programFailed",
         "startedAt": tiedTimestamp,
         "finishedAt": tiedTimestamp,
@@ -415,6 +502,9 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     let laterAttempt: [String: Any] = [
         "id": laterAttemptID.uuidString,
         "itemID": itemID.uuidString,
+        "attemptNumber": 2,
+        "runIndex": 1,
+        "runAttemptNumber": 2,
         "state": "captureCompleted",
         "startedAt": tiedTimestamp,
         "finishedAt": tiedTimestamp,
@@ -425,11 +515,25 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
             captureStream(forAttemptID: laterAttemptID),
         ],
     ]
+    let lowerGlobalAttempt: [String: Any] = [
+        "id": UUID().uuidString,
+        "itemID": itemID.uuidString,
+        "attemptNumber": 1,
+        "runIndex": 1,
+        "runAttemptNumber": 2,
+        "state": "programFailed",
+        "startedAt": tiedTimestamp,
+        "finishedAt": tiedTimestamp,
+        "programExitCode": 1,
+        "outcomeDetail": "lower global attempt number",
+        "streams": [],
+    ]
     let transport = ScriptedHTTPTransport(
         successfulPrelude() + [
             .response(exportResponse(attempts: [
-                earlierAttempt,
                 laterAttempt,
+                earlierAttempt,
+                lowerGlobalAttempt,
             ])),
             .response(.init(statusCode: 200, body: captureBytes)),
         ]
@@ -440,6 +544,53 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     let result = try await client.execute(
         firmwareURL: firmwareURL,
         testName: "Retry ordering",
+        timeoutMilliseconds: 1_000
+    )
+
+    #expect(result.attemptID == laterAttemptID)
+    #expect(result.rawOutput == captureBytes)
+}
+
+@available(macOS 12.0, *)
+@Test func legacyMultipleAttemptsFallBackToLastExportedAttempt() async throws {
+    let tiedTimestamp = "2026-07-30T10:00:02Z"
+    let failedAttempt: [String: Any] = [
+        "id": earlierAttemptID.uuidString,
+        "itemID": itemID.uuidString,
+        "state": "programFailed",
+        "startedAt": tiedTimestamp,
+        "finishedAt": tiedTimestamp,
+        "programExitCode": 1,
+        "outcomeDetail": "first attempt failed",
+        "streams": [],
+    ]
+    let successfulAttempt: [String: Any] = [
+        "id": laterAttemptID.uuidString,
+        "itemID": itemID.uuidString,
+        "state": "captureCompleted",
+        "startedAt": tiedTimestamp,
+        "finishedAt": tiedTimestamp,
+        "programExitCode": 0,
+        "verifyExitCode": 0,
+        "streams": [
+            captureStream(forAttemptID: laterAttemptID),
+        ],
+    ]
+    let transport = ScriptedHTTPTransport(
+        successfulPrelude() + [
+            .response(exportResponse(attempts: [
+                failedAttempt,
+                successfulAttempt,
+            ])),
+            .response(.init(statusCode: 200, body: captureBytes)),
+        ]
+    )
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+
+    let result = try await client.execute(
+        firmwareURL: firmwareURL,
+        testName: "Legacy retry ordering",
         timeoutMilliseconds: 1_000
     )
 
@@ -642,6 +793,9 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
         [
             "id": id.uuidString,
             "itemID": itemID.uuidString,
+            "attemptNumber": 1,
+            "runIndex": 1,
+            "runAttemptNumber": 1,
             "state": "captureCompleted",
             "startedAt": "2026-07-30T10:00:02Z",
             "finishedAt": "2026-07-30T10:00:06Z",
@@ -761,6 +915,7 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     ])
 
     #expect(results.map(\.callerItemID) == ["first", "second", "third"])
+    #expect(results.map(\.runIndex) == [1, 1, 1])
     let executions: [HardwareRunnerExecutionResult] = results.compactMap { result in
         guard case .success(let execution) = result.outcome else {
             return nil
@@ -799,6 +954,8 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     #expect(jobJSON["executionPolicy"] as? String == "fair")
     let jobPolicy = try #require(jobJSON["capturePolicy"] as? [String: Any])
     #expect(jobPolicy["hardDeadlineSeconds"] as? Int == 3)
+    let metadata = try #require(jobJSON["metadata"] as? [String: Any])
+    #expect(metadata["runCount"] as? String == "3")
     let items = try #require(jobJSON["workItems"] as? [[String: Any]])
     #expect(items.count == 3)
     #expect(items.compactMap { $0["clientItemID"] as? String } == [
@@ -809,16 +966,14 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
         secondBundleID.uuidString,
         bundleID.uuidString,
     ])
+    #expect(items.compactMap { $0["runs"] as? Int } == [1, 1, 1])
     #expect(items.compactMap {
         ($0["capturePolicy"] as? [String: Any])?["hardDeadlineSeconds"] as? Int
     } == [1, 3, 2])
 }
 
 @available(macOS 12.0, *)
-@Test func batchReturnsLaterEvidenceAfterEarlierItemFailure() async throws {
-    let secondItemID = UUID(
-        uuidString: "55555555-5555-5555-5555-555555555552"
-    )!
+@Test func repeatedRunsReturnLaterEvidenceAfterEarlierRunFailure() async throws {
     let secondAttemptID = UUID(
         uuidString: "66666666-6666-6666-6666-666666666662"
     )!
@@ -829,14 +984,16 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
             "state": "completed",
             "submittedAt": "2026-07-30T10:00:00Z",
             "workItems": [
-                ["id": itemID.uuidString, "clientItemID": "first"],
-                ["id": secondItemID.uuidString, "clientItemID": "second"],
+                ["id": itemID.uuidString, "clientItemID": "test"],
             ],
         ])
     )
     let failedAttempt: [String: Any] = [
         "id": earlierAttemptID.uuidString,
         "itemID": itemID.uuidString,
+        "attemptNumber": 1,
+        "runIndex": 1,
+        "runAttemptNumber": 1,
         "state": "programFailed",
         "startedAt": "2026-07-30T10:00:02Z",
         "finishedAt": "2026-07-30T10:00:03Z",
@@ -846,7 +1003,10 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     ]
     let successfulAttempt: [String: Any] = [
         "id": secondAttemptID.uuidString,
-        "itemID": secondItemID.uuidString,
+        "itemID": itemID.uuidString,
+        "attemptNumber": 2,
+        "runIndex": 2,
+        "runAttemptNumber": 1,
         "state": "captureCompleted",
         "startedAt": "2026-07-30T10:00:04Z",
         "finishedAt": "2026-07-30T10:00:06Z",
@@ -857,9 +1017,22 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
             captureStream(forAttemptID: secondAttemptID)
         ],
     ]
+    let unscopedAttempt: [String: Any] = [
+        "id": UUID().uuidString,
+        "itemID": itemID.uuidString,
+        "attemptNumber": 999,
+        "runAttemptNumber": 999,
+        "state": "programFailed",
+        "startedAt": "2026-07-30T10:00:07Z",
+        "finishedAt": "2026-07-30T10:00:08Z",
+        "programExitCode": 1,
+        "outcomeDetail": "missing run identity",
+        "streams": [],
+    ]
     let completedExport = exportResponse(attempts: [
         failedAttempt,
         successfulAttempt,
+        unscopedAttempt,
     ])
     let transport = ScriptedHTTPTransport([
         .response(objectResponse()),
@@ -879,42 +1052,152 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
 
     let results = try await client.execute(inputs: [
         .init(
-            callerItemID: "first",
+            callerItemID: "test",
             firmwareURL: firmwareURL,
-            testName: "First",
-            timeoutMilliseconds: 1_000
-        ),
-        .init(
-            callerItemID: "second",
-            firmwareURL: firmwareURL,
-            testName: "Second",
-            timeoutMilliseconds: 1_000
+            testName: "Repeated",
+            timeoutMilliseconds: 1_000,
+            runs: 3
         ),
     ])
 
-    #expect(results.count == 2)
-    #expect(results[0].callerItemID == "first")
+    #expect(results.count == 3)
+    #expect(results.map(\.callerItemID) == ["test", "test", "test"])
+    #expect(results.map(\.runIndex) == [1, 2, 3])
     #expect(results[0].outcome == .failure(.infrastructureFailure(
         state: "programFailed",
-        detail: "first: probe lost"
+        detail: "test run 1: probe lost"
     )))
-    #expect(results[1].callerItemID == "second")
     guard case .success(let laterExecution) = results[1].outcome else {
-        Issue.record("Expected the later work item to return its capture")
+        Issue.record("Expected the later run to return its capture")
         return
     }
-    #expect(laterExecution.workItemID == secondItemID)
+    #expect(laterExecution.workItemID == itemID)
     #expect(laterExecution.attemptID == secondAttemptID)
     #expect(laterExecution.rawOutput == captureBytes)
+    #expect(results[2].outcome == .failure(.infrastructureFailure(
+        state: "missingAttempt",
+        detail: "test run 3: the completed work item has no attempt evidence"
+    )))
 
     let requests = await transport.recordedRequests()
     #expect(requests.count == 5)
+    let jobRequest = try #require(
+        requests.first { $0.url.path == "/api/v1/jobs" }
+    )
+    let jobJSON = try #require(
+        try JSONSerialization.jsonObject(with: jobRequest.body ?? Data())
+            as? [String: Any]
+    )
+    let workItems = try #require(jobJSON["workItems"] as? [[String: Any]])
+    #expect(workItems.count == 1)
+    #expect(workItems[0]["clientItemID"] as? String == "test")
+    #expect(workItems[0]["runs"] as? Int == 3)
+    let metadata = try #require(jobJSON["metadata"] as? [String: Any])
+    #expect(metadata["runCount"] as? String == "3")
     #expect(
         requests.last?.url.path
             == "/api/v1/jobs/\(jobID.uuidString.lowercased())/attempts/"
                 + "\(secondAttemptID.uuidString.lowercased())/streams/"
                 + streamID.uuidString.lowercased()
     )
+}
+
+@available(macOS 12.0, *)
+@Test func repeatedRunsDownloadDistinctSuccessfulCaptures() async throws {
+    let secondAttemptID = UUID(
+        uuidString: "66666666-6666-6666-6666-666666666662"
+    )!
+    let secondStreamID = UUID(
+        uuidString: "77777777-7777-7777-7777-777777777772"
+    )!
+    let completedJob = HardwareRunnerHTTPResponse(
+        statusCode: 200,
+        body: try json([
+            "id": jobID.uuidString,
+            "state": "completed",
+            "submittedAt": "2026-07-30T10:00:00Z",
+            "workItems": [
+                ["id": itemID.uuidString, "clientItemID": "test"],
+            ],
+        ])
+    )
+    let firstAttempt: [String: Any] = [
+        "id": attemptID.uuidString,
+        "itemID": itemID.uuidString,
+        "attemptNumber": 1,
+        "runIndex": 1,
+        "runAttemptNumber": 1,
+        "state": "captureCompleted",
+        "startedAt": "2026-07-30T10:00:02Z",
+        "finishedAt": "2026-07-30T10:00:04Z",
+        "programExitCode": 0,
+        "verifyExitCode": 0,
+        "streams": [captureStream()],
+    ]
+    let secondStream: [String: Any] = [
+        "id": secondStreamID.uuidString,
+        "name": "rtt",
+        "sha256": secondCaptureSHA256,
+        "byteSize": secondCaptureBytes.count,
+        "totalByteCount": secondCaptureBytes.count,
+        "truncated": false,
+        "firstByteAt": "2026-07-30T10:00:05Z",
+        "lastByteAt": "2026-07-30T10:00:06Z",
+        "downloadURL":
+            "/api/v1/jobs/\(jobID.uuidString.lowercased())/attempts/"
+            + "\(secondAttemptID.uuidString.lowercased())/streams/"
+            + secondStreamID.uuidString.lowercased(),
+    ]
+    let secondAttempt: [String: Any] = [
+        "id": secondAttemptID.uuidString,
+        "itemID": itemID.uuidString,
+        "attemptNumber": 2,
+        "runIndex": 2,
+        "runAttemptNumber": 1,
+        "state": "captureCompleted",
+        "startedAt": "2026-07-30T10:00:04Z",
+        "finishedAt": "2026-07-30T10:00:07Z",
+        "programExitCode": 0,
+        "verifyExitCode": 0,
+        "streams": [secondStream],
+    ]
+    let transport = ScriptedHTTPTransport([
+        .response(objectResponse()),
+        .response(bundleResponse()),
+        .response(completedJob),
+        .response(exportResponse(attempts: [
+            secondAttempt,
+            firstAttempt,
+        ])),
+        .response(.init(statusCode: 200, body: captureBytes)),
+        .response(.init(statusCode: 200, body: secondCaptureBytes)),
+    ])
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+
+    let results = try await client.execute(inputs: [
+        .init(
+            callerItemID: "test",
+            firmwareURL: firmwareURL,
+            testName: "Two successful runs",
+            timeoutMilliseconds: 1_000,
+            runs: 2
+        )
+    ])
+
+    #expect(results.map(\.runIndex) == [1, 2])
+    let executions: [HardwareRunnerExecutionResult] = results.compactMap { result in
+        guard case .success(let execution) = result.outcome else {
+            return nil
+        }
+        return execution
+    }
+    #expect(executions.map(\.attemptID) == [attemptID, secondAttemptID])
+    #expect(executions.map(\.rawOutput) == [
+        captureBytes,
+        secondCaptureBytes,
+    ])
+    #expect(await transport.recordedRequests().count == 6)
 }
 
 @available(macOS 12.0, *)
@@ -1062,7 +1345,8 @@ private func jobResponse(state: String) -> HardwareRunnerHTTPResponse {
 private func exportResponse(
     attemptState: String = "captureCompleted",
     outcomeDetail: String? = nil,
-    streams: [[String: Any]]? = nil
+    streams: [[String: Any]]? = nil,
+    includeRunIdentity: Bool = true
 ) -> HardwareRunnerHTTPResponse {
     let streamValues = streams ?? [journalStream(), captureStream()]
     var attempt: [String: Any] = [
@@ -1075,6 +1359,11 @@ private func exportResponse(
         "verifyExitCode": 0,
         "streams": streamValues,
     ]
+    if includeRunIdentity {
+        attempt["attemptNumber"] = 1
+        attempt["runIndex"] = 1
+        attempt["runAttemptNumber"] = 1
+    }
     attempt["outcomeDetail"] = outcomeDetail ?? NSNull()
     return .init(
         statusCode: 200,

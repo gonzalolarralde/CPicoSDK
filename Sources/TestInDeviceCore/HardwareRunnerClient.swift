@@ -115,17 +115,20 @@ public struct HardwareRunnerExecutionInput: Sendable, Equatable {
     public let firmwareURL: URL
     public let testName: String
     public let timeoutMilliseconds: Int
+    public let runs: Int
 
     public init(
         callerItemID: String,
         firmwareURL: URL,
         testName: String,
-        timeoutMilliseconds: Int
+        timeoutMilliseconds: Int,
+        runs: Int = 1
     ) {
         self.callerItemID = callerItemID
         self.firmwareURL = firmwareURL
         self.testName = testName
         self.timeoutMilliseconds = timeoutMilliseconds
+        self.runs = runs
     }
 }
 
@@ -136,13 +139,16 @@ public struct HardwareRunnerBatchExecutionResult: Sendable, Equatable {
     }
 
     public let callerItemID: String
+    public let runIndex: Int
     public let outcome: Outcome
 
     public init(
         callerItemID: String,
+        runIndex: Int,
         outcome: Outcome
     ) {
         self.callerItemID = callerItemID
+        self.runIndex = runIndex
         self.outcome = outcome
     }
 }
@@ -250,6 +256,8 @@ public enum HardwareRunnerClientError: Error, Sendable, Equatable,
 
 @available(macOS 12.0, *)
 public struct HardwareRunnerClient: Sendable {
+    public static let maximumLogicalRunsPerJob = 10_000
+
     private static let maximumRetries = 3
     private static let idempotencyInProgressReason =
         "An equivalent request is already being processed"
@@ -275,6 +283,33 @@ public struct HardwareRunnerClient: Sendable {
         self.transport = transport
     }
 
+    public static func logicalRunCount(
+        for inputs: [HardwareRunnerExecutionInput]
+    ) throws -> Int {
+        var total = 0
+        for input in inputs {
+            guard input.runs > 0 else {
+                throw HardwareRunnerClientError.invalidConfiguration(
+                    "runs must be positive"
+                )
+            }
+            let (updatedTotal, overflowed) =
+                total.addingReportingOverflow(input.runs)
+            guard !overflowed else {
+                throw HardwareRunnerClientError.invalidConfiguration(
+                    "total logical run count overflowed"
+                )
+            }
+            total = updatedTotal
+        }
+        guard total <= maximumLogicalRunsPerJob else {
+            throw HardwareRunnerClientError.invalidConfiguration(
+                "a job cannot exceed \(maximumLogicalRunsPerJob) logical runs"
+            )
+        }
+        return total
+    }
+
     public func execute(
         firmwareURL: URL,
         testName: String,
@@ -289,7 +324,10 @@ public struct HardwareRunnerClient: Sendable {
                 timeoutMilliseconds: timeoutMilliseconds
             )
         ])
-        guard let result = results.first, results.count == 1 else {
+        guard let result = results.first,
+              results.count == 1,
+              result.runIndex == 1
+        else {
             throw HardwareRunnerClientError.invalidResponse(
                 "single-item execution did not return exactly one result"
             )
@@ -315,6 +353,7 @@ public struct HardwareRunnerClient: Sendable {
                 "timeoutMilliseconds must be positive"
             )
         }
+        let totalLogicalRuns = try Self.logicalRunCount(for: inputs)
         let callerItemIDs = inputs.map(\.callerItemID)
         guard callerItemIDs.allSatisfy({
             !$0.isEmpty && $0.utf8.count <= 200
@@ -385,6 +424,7 @@ public struct HardwareRunnerClient: Sendable {
 
         let submitted = try await submitJob(
             inputs: inputs,
+            totalLogicalRuns: totalLogicalRuns,
             digestByCallerItemID: digestByCallerItemID,
             bundleIDByDigest: bundleIDByDigest
         )
@@ -413,29 +453,35 @@ public struct HardwareRunnerClient: Sendable {
 
         let export = try await fetchExport(jobID: submitted.id)
         var results: [HardwareRunnerBatchExecutionResult] = []
-        results.reserveCapacity(inputs.count)
+        results.reserveCapacity(totalLogicalRuns)
         for input in inputs {
             guard let workItem = workItemByCallerID[input.callerItemID] else {
                 throw HardwareRunnerClientError.invalidResponse(
                     "missing work item \(input.callerItemID) after validation"
                 )
             }
-            do {
-                let execution = try await executionResult(
-                    callerItemID: input.callerItemID,
-                    workItem: workItem,
-                    submitted: submitted,
-                    export: export
-                )
-                results.append(HardwareRunnerBatchExecutionResult(
-                    callerItemID: input.callerItemID,
-                    outcome: .success(execution)
-                ))
-            } catch let error as HardwareRunnerClientError {
-                results.append(HardwareRunnerBatchExecutionResult(
-                    callerItemID: input.callerItemID,
-                    outcome: .failure(error)
-                ))
+            for runIndex in 1...input.runs {
+                do {
+                    let execution = try await executionResult(
+                        callerItemID: input.callerItemID,
+                        runIndex: runIndex,
+                        expectedRunCount: input.runs,
+                        workItem: workItem,
+                        submitted: submitted,
+                        export: export
+                    )
+                    results.append(HardwareRunnerBatchExecutionResult(
+                        callerItemID: input.callerItemID,
+                        runIndex: runIndex,
+                        outcome: .success(execution)
+                    ))
+                } catch let error as HardwareRunnerClientError {
+                    results.append(HardwareRunnerBatchExecutionResult(
+                        callerItemID: input.callerItemID,
+                        runIndex: runIndex,
+                        outcome: .failure(error)
+                    ))
+                }
             }
         }
         return results
@@ -443,38 +489,55 @@ public struct HardwareRunnerClient: Sendable {
 
     private func executionResult(
         callerItemID: String,
+        runIndex: Int,
+        expectedRunCount: Int,
         workItem: JobResponse.Item,
         submitted: JobResponse,
         export: ExportResponse
     ) async throws -> HardwareRunnerExecutionResult {
-        let matchingAttempts = export.attempts.filter { $0.itemID == workItem.id }
-        guard !matchingAttempts.isEmpty else {
+        let resultIdentity = expectedRunCount == 1
+            ? callerItemID
+            : "\(callerItemID) run \(runIndex)"
+        let matchingAttempts = export.attempts.enumerated().filter {
+            guard $0.element.itemID == workItem.id else {
+                return false
+            }
+            if let exportedRunIndex = $0.element.runIndex {
+                return exportedRunIndex == runIndex
+            }
+            // Exports produced before HardwareRunner added run-level identity
+            // represent exactly one run. Keep that wire format compatible only
+            // for a single-run request; repeated runs must be explicitly fenced.
+            return expectedRunCount == 1 && runIndex == 1
+        }
+        guard let attempt = matchingAttempts.max(by: {
+            Self.attemptOrderingKey($0) < Self.attemptOrderingKey($1)
+        })?.element else {
             throw HardwareRunnerClientError.infrastructureFailure(
                 state: "missingAttempt",
-                detail: "\(callerItemID): the completed work item has no attempt evidence"
+                detail: "\(resultIdentity): "
+                    + "the completed work item has no attempt evidence"
             )
         }
-        // HardwareRunner exports attempts in ascending start order. Preserve
-        // that ordering instead of comparing its whole-second wire timestamps,
-        // which can tie across a fast infrastructure retry.
-        let attempt = matchingAttempts[matchingAttempts.index(before: matchingAttempts.endIndex)]
         guard Self.successfulAttemptStates.contains(attempt.state) else {
             throw HardwareRunnerClientError.infrastructureFailure(
                 state: attempt.state,
-                detail: "\(callerItemID): "
+                detail: "\(resultIdentity): "
                     + (attempt.outcomeDetail ?? "no infrastructure detail")
             )
         }
         if let exitCode = attempt.programExitCode, exitCode != 0 {
             throw HardwareRunnerClientError.infrastructureFailure(
                 state: "programFailed",
-                detail: "\(callerItemID): programmer exited with status \(exitCode)"
+                detail: "\(resultIdentity): "
+                    + "programmer exited with status \(exitCode)"
             )
         }
         if let exitCode = attempt.verifyExitCode, exitCode != 0 {
             throw HardwareRunnerClientError.infrastructureFailure(
                 state: "verifyFailed",
-                detail: "\(callerItemID): verification exited with status \(exitCode)"
+                detail: "\(resultIdentity): "
+                    + "verification exited with status \(exitCode)"
             )
         }
 
@@ -538,6 +601,17 @@ public struct HardwareRunnerClient: Sendable {
         )
     }
 
+    private static func attemptOrderingKey(
+        _ indexedAttempt: EnumeratedSequence<[ExportResponse.Attempt]>.Element
+    ) -> (Int, Int, Int) {
+        let attempt = indexedAttempt.element
+        return (
+            attempt.runAttemptNumber ?? Int.min,
+            attempt.attemptNumber ?? Int.min,
+            indexedAttempt.offset
+        )
+    }
+
     private func upload(
         firmware: Data,
         digest: String
@@ -582,6 +656,7 @@ public struct HardwareRunnerClient: Sendable {
 
     private func submitJob(
         inputs: [HardwareRunnerExecutionInput],
+        totalLogicalRuns: Int,
         digestByCallerItemID: [String: String],
         bundleIDByDigest: [String: UUID]
     ) async throws -> JobResponse {
@@ -614,6 +689,7 @@ public struct HardwareRunnerClient: Sendable {
             metadata: [
                 "suite": "CPicoSDK device tests",
                 "workItemCount": String(inputs.count),
+                "runCount": String(totalLogicalRuns),
             ],
             workItems: try inputs.map { executionInput in
                 guard let digest = digestByCallerItemID[
@@ -630,6 +706,7 @@ public struct HardwareRunnerClient: Sendable {
                 return .init(
                     clientItemID: executionInput.callerItemID,
                     bundleID: bundleID,
+                    runs: executionInput.runs,
                     capturePolicy: capturePolicy,
                     metadata: ["testName": executionInput.testName]
                 )
@@ -980,6 +1057,7 @@ private struct CreateJobRequest: Encodable {
     struct Item: Encodable {
         let clientItemID: String
         let bundleID: UUID
+        let runs: Int
         let capturePolicy: CapturePolicyRequest
         let metadata: [String: String]
     }
@@ -1025,6 +1103,9 @@ private struct ExportResponse: Decodable {
 
         let id: UUID
         let itemID: UUID
+        let attemptNumber: Int?
+        let runIndex: Int?
+        let runAttemptNumber: Int?
         let state: String
         let startedAt: String
         let finishedAt: String?
