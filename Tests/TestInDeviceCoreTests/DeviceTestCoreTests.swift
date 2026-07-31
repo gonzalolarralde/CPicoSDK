@@ -169,6 +169,30 @@ import Testing
     #expect(runner.contains(DeviceProtocol.captureEndMarker))
 }
 
+@Test func generatedPackagePinsLocalCPicoSDKDependencyIdentity() {
+    let source = DeviceTestSource(
+        fileURL: URL(fileURLWithPath: "/tmp/CloneIdentity.swift"),
+        source: "func cloneIdentityTest() {}",
+        metadata: DeviceTestMetadata(name: "CloneIdentity"),
+        functions: [
+            DeviceTestFunction(
+                name: "cloneIdentityTest",
+                isAsync: false,
+                isThrowing: false
+            ),
+        ]
+    )
+
+    let manifest = DevicePackageGenerator.packageManifest(
+        for: source,
+        cpicoSDKPath: URL(fileURLWithPath: "/work/clone-5")
+    )
+
+    #expect(manifest.contains(#"name: "CPicoSDK","#))
+    #expect(manifest.contains(#"path: "/work/clone-5","#))
+    #expect(manifest.contains(#"package: "CPicoSDK""#))
+}
+
 @Test func generatedPackageIncludesSwiftDefines() throws {
     let metadata = DeviceTestMetadata(
         name: "Defines",
