@@ -77,6 +77,7 @@ public enum DevicePackageGenerator {
             ],
             dependencies: [
                 .package(
+                    name: "CPicoSDK",
                     path: "\(escapeSwiftString(cpicoSDKPath.path))",
                     traits: [
         \(traitLines)
