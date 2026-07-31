@@ -927,8 +927,42 @@ repository root with:
 swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
 ```
 
-The outer `--disable-sandbox` is required because the command talks to OpenOCD
-and a connected debug probe.
+Device execution defaults to a HardwareRunner service. Configure it before a
+physical run:
+
+```bash
+export HARDWARE_RUNNER_URL="http://hardware-runner.example:8080"
+export HARDWARE_RUNNER_TOKEN="hr_..."
+export HARDWARE_RUNNER_PROFILE_ID="00000000-0000-0000-0000-000000000000"
+# Optional when the token/profile can access only one matching pool:
+export HARDWARE_RUNNER_POOL_ID="00000000-0000-0000-0000-000000000000"
+export HARDWARE_RUNNER_CAPABILITIES="rp2350,cmsis-dap,rtt"
+# Optional; defaults to "rtt":
+export HARDWARE_RUNNER_CAPTURE_CHANNEL="rtt"
+```
+
+The equivalent command-line options are `--hardware-runner-url`,
+`--hardware-runner-token`, `--hardware-runner-profile-id`,
+`--hardware-runner-pool-id`, `--hardware-runner-capabilities`, and
+`--hardware-runner-capture-channel`. Command-line values override environment
+values. Prefer the environment for the bearer token so it does not appear in
+process listings.
+
+Use `--execution local` or its `--local` alias to bypass HardwareRunner and
+program the directly connected probe with OpenOCD:
+
+```bash
+swift package --disable-sandbox test-in-device --local --filter HelloRTT \
+  --allow-writing-to-package-directory --allow-network-connections all
+```
+
+`CPICOSDK_DEVICE_TEST_EXECUTION=local|remote` provides the environment
+equivalent. `--list` and `--build-only` do not require HardwareRunner
+credentials.
+
+The outer `--disable-sandbox` is required for direct probe access in local mode.
+The network permission is required for HardwareRunner and may also be needed to
+download build dependencies.
 
 Device tests are self-contained Swift files with a leading `//%` metadata block
 followed by top-level no-argument test functions:
@@ -988,10 +1022,23 @@ print the memory report for each finalized test ELF. Full device runs require a
 connected target and will program and reset it.
 
 The harness reuses a generated SwiftPM package per target in the plugin work
-directory, builds it against the local CPicoSDK checkout, programs the device
-with OpenOCD, captures RTT output, and evaluates controller-side expectations.
-Result lines report build, program, host run/capture time, device-reported time,
-UF2 firmware size, and per-function pass/fail status.
+directory and builds it against the local CPicoSDK checkout. In remote mode it
+first stages all selected firmware, uploads each unique ELF, and submits one
+`fair` HardwareRunner job with one work item per selected test and pass.
+Repeated passes of the same firmware reuse its immutable object and bundle.
+Independent items may fan out across compatible devices; one connected device
+runs them sequentially through its mutex. Job submission uses one idempotency
+key and retries transient transport, HTTP 408/429, an equivalent in-progress
+idempotency claim, and server failures three times after the initial attempt.
+Once submitted, temporary polling failures do not abandon the queued hardware
+work.
+
+HardwareRunner reports infrastructure outcomes only. The harness downloads the
+authoritative raw RTT stream and feeds it through the same
+`DeviceResultParser` and controller-side expectations used by local OpenOCD
+execution. Result lines report build, queue (when remote), program, host
+run/capture time, device-reported time, UF2 firmware size, and per-function
+pass/fail status.
 
 One source file can define multiple build variants with an optional `alts:`
 metadata block. Each entry expands into a separate generated device test named

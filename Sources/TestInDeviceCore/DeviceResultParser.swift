@@ -4,6 +4,8 @@ public enum DeviceProtocol {
     public static let prefix = "__CPICOSDK_DEVICE_TEST__|"
     public static let diagnosticPrefix = "__CPICOSDK_DEVICE_DIAGNOSTIC__|"
     public static let scorePrefix = "__S__|"
+    public static let captureEndEvent = "capture-end"
+    public static let captureEndMarker = prefix + captureEndEvent
 }
 
 public struct DeviceProtocolEvent: Equatable {

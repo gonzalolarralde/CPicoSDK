@@ -166,6 +166,7 @@ import Testing
     #expect(runner.contains("deviceDiagnostic"))
     #expect(runner.contains("configurator.core1Enabled = false"))
     #expect(runner.contains("try await asyncTest()"))
+    #expect(runner.contains(DeviceProtocol.captureEndMarker))
 }
 
 @Test func generatedPackageIncludesSwiftDefines() throws {
@@ -245,6 +246,21 @@ import Testing
     #expect(transcript.sawRunEnd)
     #expect(transcript.runPassed)
     #expect(transcript.durationMilliseconds == 2)
+    #expect(transcript.stdout == "hello\n")
+}
+
+@Test func captureEndEventDoesNotChangeParsedStdout() {
+    let raw = """
+    __CPICOSDK_DEVICE_TEST__|run-start|name=Remote
+    hello
+    __CPICOSDK_DEVICE_TEST__|run-end|status=passed|durationMs=2
+    __CPICOSDK_DEVICE_TEST__|capture-end
+    """
+
+    let transcript = DeviceResultParser.parse(raw)
+    #expect(transcript.sawRunEnd)
+    #expect(transcript.runPassed)
+    #expect(transcript.events.last?.name == DeviceProtocol.captureEndEvent)
     #expect(transcript.stdout == "hello\n")
 }
 
@@ -353,9 +369,28 @@ import Testing
 
     #expect(args.contains("adapter speed 1000"))
     #expect(args.contains("target/rp2350.cfg"))
-    #expect(args.contains("program /tmp/DeviceTestApp.elf verify"))
+    #expect(args.contains("program \"/tmp/DeviceTestApp.elf\" verify"))
     #expect(args.contains(#"rtt setup 0x20000000 0x80000 "SEGGER RTT""#))
     #expect(args.contains("reset run"))
     #expect(args.contains("rtt server start 4 0"))
     #expect(args.contains("/helpers/openocd-helpers.tcl"))
+}
+
+@Test func quotesOpenOCDELFPathsForTcl() {
+    let args = OpenOCDCommandBuilder.arguments(
+        paths: OpenOCDPaths(
+            executable: URL(fileURLWithPath: "/tools/openocd"),
+            scriptsDirectory: URL(fileURLWithPath: "/tools/scripts"),
+            helpersScript: nil
+        ),
+        elfURL: URL(
+            fileURLWithPath: "/Volumes/Build Disk/Device $Test[1].elf"
+        )
+    )
+
+    #expect(
+        args.contains(
+            #"program "/Volumes/Build Disk/Device \$Test\[1\].elf" verify"#
+        )
+    )
 }
