@@ -754,6 +754,13 @@ design notes, experiments, and failure analysis in `docs/`.
   (then the global attempt number) within each run so one run's infrastructure
   retry or failure cannot hide later run captures. Keep the caller item ID
   stable for the test itself.
+- Device-test alternatives are distinct filter names, and only the selected
+  alternative contributes its traits. Before a remote benchmark upload, check
+  the full filter (for example
+  `SchedulerMulticoreBenchmarks-runtimePrivateSwift`) and verify the staged ELF
+  digest or feature symbol. Filtering
+  `SchedulerMulticoreBenchmarks-baseline` measures the plain control even when
+  the branch also defines a feature alternative.
 - After deleting or renaming package source files used by generated device
   tests, stale objects can remain in the generated package cache and link
   removed symbols, such as an old `SchedulerPerf.swift.o` referencing deleted
