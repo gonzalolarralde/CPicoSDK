@@ -202,8 +202,8 @@ Keep the existing weighted policy as the general default for now because it
 provided service to continuously runnable background work every few hundred
 microseconds rather than every ~157 ms. For an opt-in maximum-throughput mode,
 compact Clutch is the clear candidate: it produced the most useful work, has
-the smaller implementation and state, and beat XNU across the canonical
-throughput suite.
+the smaller implementation and state, and led XNU on useful-work,
+yield-cadence, allocation, alarm-jitter, and burst-latency measurements.
 
 The actual XNU structure remains useful as a source-derived reference and won
 the isolated high-burst latency comparison, but it did not increase canonical
