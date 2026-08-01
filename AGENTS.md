@@ -619,6 +619,12 @@ design notes, experiments, and failure analysis in `docs/`.
   differing in `.data`. Also inspect every hot helper address—one missing
   `.time_critical` annotation can leave a callee at `0x100...` and introduce
   SRAM-to-flash veneers even when the public selector lives at `0x200...`.
+- Keep scheduler microbenchmarks supplemental to the established workload
+  scores. A same-priority `Task.yield()` handoff rate isolates enqueue/resume
+  overhead but is not comparable to
+  `bench-multi-throughput/workPerSecond`. When evaluating a new policy, retain
+  both measurements and run the unchanged canonical workload before making a
+  maximum-throughput claim.
 - Avoid Swift object lifetime work, allocation, and free from hard IRQ handlers
   unless the allocator path is proven IRQ-safe. Symptom: a stuck core0 halted in
   Handler mode with an IRQ handler backtrace entering `swift_release`/`free`

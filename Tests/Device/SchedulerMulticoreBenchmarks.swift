@@ -7,6 +7,13 @@
 //%   add: [StdIO_RTT]
 //% alts:
 //%   - name: baseline
+//%   - name: workBase
+//%   - name: workLite
+//%     traits:
+//%       add: [SchedulerClutchLite]
+//%   - name: workXNU0
+//%     traits:
+//%       add: [SchedulerXNUClutch]
 //%   - name: cpuMetrics
 //%     traits:
 //%       add: [CPUMetrics]

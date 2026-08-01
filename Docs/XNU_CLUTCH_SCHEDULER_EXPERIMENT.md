@@ -157,19 +157,55 @@ and moved `swift_job_run` from `0x20001ffc` (weighted) to `0x20002514`
 (compact) and `0x200025ac` (XNU). Consequently, differences between the
 controlled and direct tables are not estimates of dispatch overhead.
 
+### Canonical multicore work throughput
+
+The established `SchedulerMulticoreBenchmarks` workload was then run unchanged
+for three equal-length alternatives: `workBase`, `workLite`, and `workXNU0`.
+HardwareRunner job `633d6f59-a299-4c42-a5d8-6a933e4a4bd1` interleaved ten runs
+of each alternative on the same device.
+
+| Existing benchmark metric | weighted | compact | source-derived XNU |
+|---|---:|---:|---:|
+| `workPerSecond` average | 20,466.5 | 21,677.8 | 20,400.5 |
+| `workPerSecond` maximum | 20,687 | 21,965 | 20,824 |
+| yield-cadence total work | 26,229.3 | 28,367.5 | 27,741.9 |
+| allocation work/s | 19,301 | 22,588 | 20,109 |
+| average wake lateness | 1,835.8 us | 1,812.5 us | 1,947.2 us |
+| last burst-worker latency | 2,234.4 us | 2,179.6 us | 2,334.8 us |
+| core balance (/1000) | 996.4 | 993.2 | 997.7 |
+
+Compact improved average useful work by 5.918% and peak useful work by 6.178%
+over weighted. Source-derived XNU was 0.322% below weighted on average and
+5.892% below compact; its best pass was 20,824 work/s. Compact also led the
+yield-cadence, allocation, alarm-jitter, and burst-latency measurements in this
+matrix. Compact beat the interleaved baseline in all ten paired passes. XNU
+beat baseline in four of ten passes, and its 0.322% average difference is small
+relative to the observed per-variant coefficient of variation (0.86--1.18%).
+
+Twenty-nine captures completed through the configured end sequence. One
+baseline run contained every score and a passing `run-end`, but one byte was
+lost from the final RTT `capture-end` marker, so HardwareRunner conservatively
+waited to the hard deadline. Including that complete measurement gives the
+20,466.5 baseline average above; excluding it gives 20,475.6 and does not alter
+the conclusion. There were no retries or programmer/verification failures.
+
+The two score families answer different questions. The handoff microbenchmark
+shows that compact pays 2.690% and XNU pays 3.222% relative scheduler/runtime
+handoff cost under matched layout. The canonical workload shows the amount of
+useful compute delivered after that overhead and all policy effects. Compact's
+lower handoff rate but higher useful-work rate is therefore a real
+policy/workload tradeoff, not a reason to replace either measurement.
+
 ### Decision
 
-Keep the existing weighted policy as the default. It won same-priority
-throughput and, more importantly, provided service to continuously runnable
-background work every few hundred microseconds rather than every ~157 ms.
+Keep the existing weighted policy as the general default for now because it
+provided service to continuously runnable background work every few hundred
+microseconds rather than every ~157 ms. For an opt-in maximum-throughput mode,
+compact Clutch is the clear candidate: it produced the most useful work, has
+the smaller implementation and state, and beat XNU across the canonical
+throughput suite.
 
-Between the two imported-policy experiments, the actual XNU structure is the
-better follow-up candidate: it was essentially tied with compact under matched
-layout, had consistently lower high-burst latency, and improved direct-build
-handoff throughput, burst latency, and foreground work relative to compact.
-Compact retained slightly faster background first service. That is evidence
-that some of the pairing-heap and branch-ordering shape survived the adaptation,
-but not evidence that either Clutch variant is a better general CPicoSDK
-scheduler yet. The next experiment should tune warp/starvation windows for
-cooperative Swift jobs and require a background-gap bound before considering
-promotion.
+The actual XNU structure remains useful as a source-derived reference and won
+the isolated high-burst latency comparison, but it did not increase canonical
+MCU work throughput. Further production work should start from compact and tune
+its warp/starvation windows until it satisfies a background-gap bound.
