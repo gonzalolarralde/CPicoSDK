@@ -4,6 +4,14 @@
 //% concurrency: true
 //% traits:
 //%   add: [StdIO_RTT]
+//% alts:
+//%   - name: weighted
+//%   - name: clutchLite
+//%     traits:
+//%       add: [SchedulerClutchLite]
+//%   - name: xnuClutch
+//%     traits:
+//%       add: [SchedulerXNUClutch]
 //% expect:
 //%   durationMs:
 //%     min: 0

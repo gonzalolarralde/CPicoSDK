@@ -611,6 +611,14 @@ design notes, experiments, and failure analysis in `docs/`.
   A one-function move can shift later RAM-resident runtime code or add flash
   execution before the timed window, so use the result as an investigation clue
   until a layout-preserving or call-counting experiment isolates the cause.
+- For a layout-controlled scheduler comparison, link every candidate into each
+  ELF and select with a nonzero mutable byte in `.data`; keep alternative names
+  the same length so startup formatting does not change an instruction
+  immediate. Verify with `llvm-nm` and section extraction: a strong matched
+  build has identical symbol tables and `.text`, with exactly the selector byte
+  differing in `.data`. Also inspect every hot helper address—one missing
+  `.time_critical` annotation can leave a callee at `0x100...` and introduce
+  SRAM-to-flash veneers even when the public selector lives at `0x200...`.
 - Avoid Swift object lifetime work, allocation, and free from hard IRQ handlers
   unless the allocator path is proven IRQ-safe. Symptom: a stuck core0 halted in
   Handler mode with an IRQ handler backtrace entering `swift_release`/`free`
@@ -754,6 +762,16 @@ design notes, experiments, and failure analysis in `docs/`.
   (then the global attempt number) within each run so one run's infrastructure
   retry or failure cannot hide later run captures. Keep the caller item ID
   stable for the test itself.
+- If a HardwareRunner group restricts `allowedPoolIDs`, set
+  `HARDWARE_RUNNER_POOL_ID` when invoking `test-in-device`. A job submitted
+  without the permitted pool can remain queued with zero attempts even though
+  its programmer profile and capability tags otherwise match the device.
+- Treat HardwareRunner's content-addressed object store as immutable evidence.
+  GNU `objcopy --dump-section <section>=<file> <input>` can rewrite `<input>`
+  in place when no output-object argument is supplied. Copy an artifact to a
+  temporary directory before using `objcopy`, or extract a section read-only
+  from a copied ELF; verify the original object's byte count and SHA-256 after
+  any evidence tooling mistake.
 - Device-test alternatives are distinct filter names, and only the selected
   alternative contributes its traits. Before a remote benchmark upload, check
   the full filter (for example
