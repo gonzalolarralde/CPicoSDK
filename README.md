@@ -4,7 +4,10 @@ A SwiftPM package that enables seamless Swift development for the Raspberry Pi P
 
 ## License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License, except for the explicitly
+marked source-derived XNU scheduler experiment. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+[`LICENSES/APSL-2.0.txt`](LICENSES/APSL-2.0.txt).
 
 ---
 

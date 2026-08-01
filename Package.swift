@@ -28,6 +28,10 @@ let package = Package(
     traits: [
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
         .trait(name: "GuardIRQAllocations", description: "Traps if malloc, calloc, realloc, or free are called from IRQ/exception context."),
+        .trait(name: "SchedulerExperimentalPolicies", description: "Enables the shared experimental scheduler policy module."),
+        .trait(name: "SchedulerClutchLite", description: "Uses the compact clean-room Clutch-inspired scheduler policy.", enabledTraits: ["SchedulerExperimentalPolicies"]),
+        .trait(name: "SchedulerXNUClutch", description: "Uses the APSL-licensed source-derived XNU Clutch root scheduler policy.", enabledTraits: ["SchedulerExperimentalPolicies"]),
+        .trait(name: "SchedulerPolicyComparison", description: "Links all scheduler policies for layout-controlled benchmark comparisons.", enabledTraits: ["SchedulerExperimentalPolicies"]),
 
         // TODO: The generator needs to define traits. This needs to be implemented.
         .trait(name: "Platform_RP2040"),
@@ -61,10 +65,16 @@ let package = Package(
     ],
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
+        .target(
+            name: "SchedulerPolicies",
+            cSettings: [
+                .define("CPICOSDK_SCHEDULER_POLICY_TESTING"),
+            ]
+        ),
         .executableTarget(name: "MemoryMapReportTool"),
         .testTarget(
             name: "TestInDeviceCoreTests",
-            dependencies: ["TestInDeviceCore"]
+            dependencies: ["TestInDeviceCore", "SchedulerPolicies"]
         ),
         .testTarget(
             name: "MemoryMapReportToolTests",
@@ -136,8 +146,23 @@ let package = Package(
         ),
         .target(
             name: "ConcurrencyShims",
+            dependencies: [
+                .target(name: "SchedulerPolicies", condition: .when(traits: ["SchedulerExperimentalPolicies"])),
+            ],
             cSettings: [
                 .define("CPUMetrics", .when(traits: ["CPUMetrics"])),
+                .define("CPICOSDK_SCHEDULER_CLUTCH_LITE", .when(traits: ["SchedulerClutchLite"])),
+                .define("CPICOSDK_SCHEDULER_XNU_CLUTCH", .when(traits: ["SchedulerXNUClutch"])),
+                .define("CPICOSDK_SCHEDULER_POLICY_COMPARISON", .when(traits: ["SchedulerPolicyComparison"])),
+            ]
+        ),
+        .target(
+            name: "SchedulerPolicies",
+            cSettings: [
+                .define("CPICOSDK_SCHEDULER_EMBEDDED"),
+                .define("CPICOSDK_SCHEDULER_CLUTCH_LITE", .when(traits: ["SchedulerClutchLite"])),
+                .define("CPICOSDK_SCHEDULER_XNU_CLUTCH", .when(traits: ["SchedulerXNUClutch"])),
+                .define("CPICOSDK_SCHEDULER_POLICY_COMPARISON", .when(traits: ["SchedulerPolicyComparison"])),
             ]
         ),
         .target(

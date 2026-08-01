@@ -1,5 +1,16 @@
 #include "ConcurrencyShims.h"
 
+#if defined(CPICOSDK_SCHEDULER_CLUTCH_LITE) || \
+    defined(CPICOSDK_SCHEDULER_XNU_CLUTCH) || \
+    defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+#include "SchedulerPolicies.h"
+#define CSHIMS_SCHEDULER_EXPERIMENTAL_POLICY 1
+#endif
+
+#if defined(CPICOSDK_SCHEDULER_CLUTCH_LITE) && defined(CPICOSDK_SCHEDULER_XNU_CLUTCH)
+#error "SchedulerClutchLite and SchedulerXNUClutch are mutually exclusive"
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -160,6 +171,30 @@ static uint16_t cshims_scheduler_free_head = CSHIMS_SCHEDULER_NONE;
 static uint16_t cshims_scheduler_ready_head[CSHIMS_SCHEDULER_PRIORITY_BUCKETS];
 static uint16_t cshims_scheduler_ready_tail[CSHIMS_SCHEDULER_PRIORITY_BUCKETS];
 static uint8_t cshims_scheduler_priority_cursor = 0;
+#if defined(CPICOSDK_SCHEDULER_CLUTCH_LITE) || defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+static cpicosdk_clutch_lite_state_t cshims_scheduler_clutch_lite_state;
+#endif
+#if defined(CPICOSDK_SCHEDULER_XNU_CLUTCH) || defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+static cpicosdk_xnu_clutch_state_t cshims_scheduler_xnu_clutch_state;
+#endif
+#if defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+enum {
+    // Keep every selector value non-zero so all comparison builds place the
+    // byte in .data at the same address; a zero weighted value would move it
+    // to .bss and perturb absolute references in otherwise identical text.
+    CSHIMS_SCHEDULER_POLICY_WEIGHTED = 1,
+    CSHIMS_SCHEDULER_POLICY_CLUTCH_LITE = 2,
+    CSHIMS_SCHEDULER_POLICY_XNU_CLUTCH = 3,
+};
+volatile uint8_t cshims_scheduler_comparison_policy =
+#if defined(CPICOSDK_SCHEDULER_CLUTCH_LITE)
+    CSHIMS_SCHEDULER_POLICY_CLUTCH_LITE;
+#elif defined(CPICOSDK_SCHEDULER_XNU_CLUTCH)
+    CSHIMS_SCHEDULER_POLICY_XNU_CLUTCH;
+#else
+    CSHIMS_SCHEDULER_POLICY_WEIGHTED;
+#endif
+#endif
 static void *cshims_scheduler_deferred[CSHIMS_SCHEDULER_MAX_DEFERRED];
 static uint16_t cshims_scheduler_deferred_head = 0;
 static uint16_t cshims_scheduler_deferred_tail = 0;
@@ -260,6 +295,85 @@ static uint8_t CSHIMS_SCHEDULER_RAM cshims_scheduler_priority_bucket(uint8_t raw
     return 4u;
 }
 
+#if defined(CSHIMS_SCHEDULER_EXPERIMENTAL_POLICY)
+static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_policy_init_locked(void) {
+#if defined(CPICOSDK_SCHEDULER_CLUTCH_LITE) || defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+    cpicosdk_clutch_lite_init(&cshims_scheduler_clutch_lite_state);
+#endif
+#if defined(CPICOSDK_SCHEDULER_XNU_CLUTCH) || defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+    cpicosdk_xnu_clutch_init(&cshims_scheduler_xnu_clutch_state);
+#endif
+}
+
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_policy_bucket_runnable_locked(
+    uint8_t bucket,
+    uint64_t timestamp_us)
+{
+#if defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+    switch (cshims_scheduler_comparison_policy) {
+    case CSHIMS_SCHEDULER_POLICY_CLUTCH_LITE:
+        cpicosdk_clutch_lite_bucket_runnable(
+            &cshims_scheduler_clutch_lite_state,
+            bucket,
+            timestamp_us);
+        break;
+    case CSHIMS_SCHEDULER_POLICY_XNU_CLUTCH:
+        cpicosdk_xnu_clutch_bucket_runnable(
+            &cshims_scheduler_xnu_clutch_state,
+            bucket,
+            timestamp_us);
+        break;
+    default:
+        break;
+    }
+#elif defined(CPICOSDK_SCHEDULER_CLUTCH_LITE)
+    cpicosdk_clutch_lite_bucket_runnable(
+        &cshims_scheduler_clutch_lite_state,
+        bucket,
+        timestamp_us);
+#elif defined(CPICOSDK_SCHEDULER_XNU_CLUTCH)
+    cpicosdk_xnu_clutch_bucket_runnable(
+        &cshims_scheduler_xnu_clutch_state,
+        bucket,
+        timestamp_us);
+#endif
+}
+
+static void CSHIMS_SCHEDULER_RAM cshims_scheduler_policy_bucket_empty_locked(
+    uint8_t bucket,
+    uint64_t timestamp_us)
+{
+#if defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+    switch (cshims_scheduler_comparison_policy) {
+    case CSHIMS_SCHEDULER_POLICY_CLUTCH_LITE:
+        cpicosdk_clutch_lite_bucket_empty(
+            &cshims_scheduler_clutch_lite_state,
+            bucket,
+            timestamp_us);
+        break;
+    case CSHIMS_SCHEDULER_POLICY_XNU_CLUTCH:
+        cpicosdk_xnu_clutch_bucket_empty(
+            &cshims_scheduler_xnu_clutch_state,
+            bucket,
+            timestamp_us);
+        break;
+    default:
+        break;
+    }
+#elif defined(CPICOSDK_SCHEDULER_CLUTCH_LITE)
+    cpicosdk_clutch_lite_bucket_empty(
+        &cshims_scheduler_clutch_lite_state,
+        bucket,
+        timestamp_us);
+#elif defined(CPICOSDK_SCHEDULER_XNU_CLUTCH)
+    cpicosdk_xnu_clutch_bucket_empty(
+        &cshims_scheduler_xnu_clutch_state,
+        bucket,
+        timestamp_us);
+#endif
+}
+#endif
+
 static uintptr_t CSHIMS_SCHEDULER_RAM cshims_scheduler_owner_hash(void *owner) {
     uintptr_t value = (uintptr_t)owner;
     value >>= 3;
@@ -292,6 +406,10 @@ static void CSHIMS_SCHEDULER_LATE_FLASH cshims_scheduler_init_locked(void) {
         cshims_scheduler_owners[i].ready = false;
         cshims_scheduler_owners[i].state = 0u;
     }
+
+#if defined(CSHIMS_SCHEDULER_EXPERIMENTAL_POLICY)
+    cshims_scheduler_policy_init_locked();
+#endif
 
     cshims_scheduler_initialized = true;
 }
@@ -372,6 +490,9 @@ static void CSHIMS_SCHEDULER_RAM cshims_scheduler_push_ready_locked(uint16_t job
     CShimsSchedulerJob *job = &cshims_scheduler_jobs[job_index];
     uint8_t priority = job->priority;
     assert(priority < CSHIMS_SCHEDULER_PRIORITY_BUCKETS);
+#if defined(CSHIMS_SCHEDULER_EXPERIMENTAL_POLICY)
+    bool was_empty = cshims_scheduler_ready_head[priority] == CSHIMS_SCHEDULER_NONE;
+#endif
     job->next = CSHIMS_SCHEDULER_NONE;
     if (cshims_scheduler_ready_tail[priority] != CSHIMS_SCHEDULER_NONE) {
         cshims_scheduler_jobs[cshims_scheduler_ready_tail[priority]].next = job_index;
@@ -379,6 +500,11 @@ static void CSHIMS_SCHEDULER_RAM cshims_scheduler_push_ready_locked(uint16_t job
         cshims_scheduler_ready_head[priority] = job_index;
     }
     cshims_scheduler_ready_tail[priority] = job_index;
+#if defined(CSHIMS_SCHEDULER_EXPERIMENTAL_POLICY)
+    if (was_empty) {
+        cshims_scheduler_policy_bucket_runnable_locked(priority, time_us_64());
+    }
+#endif
 }
 
 static void CSHIMS_SCHEDULER_RAM cshims_scheduler_make_runnable_locked(uint16_t job_index) {
@@ -430,6 +556,75 @@ static uint16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_pop_from_priority_locked(u
 }
 
 static uint16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_pop_ready_locked(void) {
+#if defined(CSHIMS_SCHEDULER_EXPERIMENTAL_POLICY)
+    uint64_t timestamp_us = time_us_64();
+    int8_t selected_priority = CPICOSDK_CLUTCH_NO_BUCKET;
+
+#if defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+    if (cshims_scheduler_comparison_policy == CSHIMS_SCHEDULER_POLICY_CLUTCH_LITE) {
+        selected_priority = cpicosdk_clutch_lite_select(
+            &cshims_scheduler_clutch_lite_state,
+            timestamp_us,
+            NULL);
+    } else if (cshims_scheduler_comparison_policy == CSHIMS_SCHEDULER_POLICY_XNU_CLUTCH) {
+        selected_priority = cpicosdk_xnu_clutch_select(
+            &cshims_scheduler_xnu_clutch_state,
+            timestamp_us,
+            NULL);
+    }
+#elif defined(CPICOSDK_SCHEDULER_CLUTCH_LITE)
+    selected_priority = cpicosdk_clutch_lite_select(
+        &cshims_scheduler_clutch_lite_state,
+        timestamp_us,
+        NULL);
+#elif defined(CPICOSDK_SCHEDULER_XNU_CLUTCH)
+    selected_priority = cpicosdk_xnu_clutch_select(
+        &cshims_scheduler_xnu_clutch_state,
+        timestamp_us,
+        NULL);
+#endif
+
+#if defined(CPICOSDK_SCHEDULER_POLICY_COMPARISON)
+    if (selected_priority == CPICOSDK_CLUTCH_NO_BUCKET) {
+        static const uint8_t priority_order[] = {
+            0, 0, 0, 0,
+            1,
+            0, 0,
+            1,
+            2,
+            0, 0,
+            1,
+            3,
+            0,
+            2,
+            4,
+        };
+        const uint8_t order_count = (uint8_t)(sizeof(priority_order) / sizeof(priority_order[0]));
+        for (uint8_t attempt = 0; attempt < order_count; attempt++) {
+            uint8_t order_index = (uint8_t)((cshims_scheduler_priority_cursor + attempt) % order_count);
+            uint8_t priority = priority_order[order_index];
+            if (cshims_scheduler_ready_head[priority] == CSHIMS_SCHEDULER_NONE) {
+                continue;
+            }
+            cshims_scheduler_priority_cursor = (uint8_t)((order_index + 1u) % order_count);
+            selected_priority = (int8_t)priority;
+            break;
+        }
+    }
+#endif
+
+    if (selected_priority == CPICOSDK_CLUTCH_NO_BUCKET) {
+        return CSHIMS_SCHEDULER_NONE;
+    }
+    uint8_t priority = (uint8_t)selected_priority;
+    assert(priority < CSHIMS_SCHEDULER_PRIORITY_BUCKETS);
+    uint16_t index = cshims_scheduler_pop_from_priority_locked(priority);
+    assert(index != CSHIMS_SCHEDULER_NONE);
+    if (cshims_scheduler_ready_head[priority] == CSHIMS_SCHEDULER_NONE) {
+        cshims_scheduler_policy_bucket_empty_locked(priority, timestamp_us);
+    }
+    return index;
+#else
     static const uint8_t priority_order[] = {
         0, 0, 0, 0,
         1,
@@ -458,6 +653,7 @@ static uint16_t CSHIMS_SCHEDULER_RAM cshims_scheduler_pop_ready_locked(void) {
     }
 
     return CSHIMS_SCHEDULER_NONE;
+#endif
 }
 
 static bool CSHIMS_SCHEDULER_RAM cshims_scheduler_has_ready_locked(void) {
