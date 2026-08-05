@@ -289,6 +289,9 @@ extension PrepareEnvironmentPlugin {
                     "-isystem", "\(newlibOverlayDir)"
                 ]
             },
+            "librarian": {
+                "path": "\(envVars["PICO_TOOLCHAIN_PATH"]!)/bin/arm-none-eabi-ar"
+            },
             "linker": {
                 "path": "\(envVars["LD_PATH"]!)",
                 "extraCLIOptions": [

@@ -750,3 +750,15 @@ design notes, experiments, and failure analysis in `docs/`.
   backslash, `"`, `$`, `[`, `]`, CR, and LF. Validate both with a real
   `test-in-device --build-only` invocation from a path containing spaces and a
   command-builder unit test containing spaces and Tcl metacharacters.
+- SwiftBuild needs a destination librarian even when the native SwiftPM backend
+  can infer archive creation. Symptom: a bare-metal static-library build falls
+  back to Apple's `libtool` and fails while probing `libtool --version`. Add a
+  `"librarian": { "path": ".../arm-none-eabi-ar" }` entry to the generated
+  toolset and confirm the archive command uses `arm-none-eabi-ar rcs`. This is
+  necessary but not sufficient for full SwiftBuild bare-metal support.
+- When testing a development SwiftPM against a checkout whose path contains
+  spaces, distinguish shell quoting from SwiftBuild setting serialization.
+  Symptom: a correctly quoted `--toolset "$TOOLSET_PATH"` still becomes several
+  `error processing toolset at ...` messages. SwiftPM's `SWIFT_SDK_TOOLSETS`
+  setting must shell-escape each path before joining the string-list value; a
+  no-space copy is useful only as a diagnosis, not a production workaround.
