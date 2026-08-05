@@ -184,4 +184,58 @@ cpicosdk_embed_resources(
     "${CPICOSDK_EMBEDDED_RESOURCE_PATHS}"
 )
 
+if(CPICOSDK_NATIVE_SUPPORT_ARCHIVE)
+    if(NOT IS_ABSOLUTE "${CPICOSDK_NATIVE_SUPPORT_ARCHIVE}")
+        message(FATAL_ERROR "CPICOSDK_NATIVE_SUPPORT_ARCHIVE must be an absolute path")
+    endif()
+    if(NOT EXISTS "${CPICOSDK_NATIVE_SUPPORT_ARCHIVE}")
+        message(FATAL_ERROR "CPICOSDK_NATIVE_SUPPORT_ARCHIVE does not exist: ${CPICOSDK_NATIVE_SUPPORT_ARCHIVE}")
+    endif()
+
+    # The external archive already contains the compiled sources propagated by
+    # the Pico SDK's interface-library graph. Keep the graph's link settings,
+    # but prevent CMake from compiling those sources into the final product a
+    # second time.
+    function(_cpicosdk_clear_propagated_sources directory)
+        get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+        foreach(target IN LISTS targets)
+            get_target_property(interface_sources "${target}" INTERFACE_SOURCES)
+            if(interface_sources)
+                set_property(TARGET "${target}" PROPERTY INTERFACE_SOURCES "")
+            endif()
+        endforeach()
+
+        get_property(subdirectories DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
+        foreach(subdirectory IN LISTS subdirectories)
+            _cpicosdk_clear_propagated_sources("${subdirectory}")
+        endforeach()
+    endfunction()
+    _cpicosdk_clear_propagated_sources("${CMAKE_CURRENT_SOURCE_DIR}")
+
+    # This source is part of the external archive. Product-specific binary
+    # information remains a final-link responsibility and is added below.
+    get_target_property(product_sources "${PROJECT_NAME}" SOURCES)
+    list(FILTER product_sources EXCLUDE REGEX "runtime_coprocessors\\.c$")
+    set_property(TARGET "${PROJECT_NAME}" PROPERTY SOURCES "${product_sources}")
+    target_sources(
+        "${PROJECT_NAME}"
+        PRIVATE
+        "${PICO_SDK_PATH}/src/rp2_common/pico_standard_binary_info/standard_binary_info.c"
+    )
+
+    add_library(CPicoSDKNativeSupport STATIC IMPORTED GLOBAL)
+    set_target_properties(CPicoSDKNativeSupport PROPERTIES
+        IMPORTED_LOCATION "${CPICOSDK_NATIVE_SUPPORT_ARCHIVE}"
+    )
+    set_property(TARGET "${PROJECT_NAME}" PROPERTY LINKER_LANGUAGE CXX)
+    target_link_libraries(
+        "${PROJECT_NAME}"
+        "-Wl,--start-group"
+        "-Wl,--whole-archive"
+        CPicoSDKNativeSupport
+        "-Wl,--no-whole-archive"
+        "-Wl,--end-group"
+    )
+endif()
+
 pico_add_extra_outputs("${PROJECT_NAME}")
