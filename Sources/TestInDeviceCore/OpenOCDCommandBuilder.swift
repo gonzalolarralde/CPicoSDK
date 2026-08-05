@@ -48,7 +48,7 @@ public enum OpenOCDCommandBuilder {
             "-f", target.openOCDTargetConfig,
             "-c", "adapter speed \(adapterSpeed)",
             "-c", "init",
-            "-c", "program \(elfURL.path) verify",
+            "-c", "program \(tclQuote(elfURL.path)) verify",
             "-c", #"rtt setup 0x20000000 \#(String(format: "0x%X", target.rttMemorySize)) "SEGGER RTT""#,
             "-c", "reset run",
             "-c", "sleep 500",
@@ -56,5 +56,17 @@ public enum OpenOCDCommandBuilder {
             "-c", "rtt server start \(ports.rtt) 0",
         ]
         return args
+    }
+
+    private static func tclQuote(_ value: String) -> String {
+        let escaped = value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "$", with: "\\$")
+            .replacingOccurrences(of: "[", with: "\\[")
+            .replacingOccurrences(of: "]", with: "\\]")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\n", with: "\\n")
+        return "\"\(escaped)\""
     }
 }

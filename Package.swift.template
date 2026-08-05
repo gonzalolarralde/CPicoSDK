@@ -146,7 +146,16 @@ let package = Package(
         .target(name: "TestInDeviceCore"),
         .executableTarget(
             name: "TestInDeviceTool",
-            dependencies: ["TestInDeviceCore"]
+            dependencies: ["TestInDeviceCore"],
+            // This executable is a host-side command-plugin tool. Do not add an
+            // Apple platform floor to CPicoSDK: its library targets are
+            // cross-compiled for bare-metal devices.
+            swiftSettings: [
+                .unsafeFlags([
+                    "-Xfrontend",
+                    "-disable-availability-checking",
+                ]),
+            ]
         ),
         .executableTarget(name: "MemoryMapReportTool"),
         .testTarget(
