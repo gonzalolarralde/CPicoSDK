@@ -12,7 +12,8 @@ Swift toolchains.
 The revisions evaluated were:
 
 - SwiftPM `524b58aca7cc10609d828fcb1d01f4451f5bb61c`
-- its companion swift-build branch at
+- its companion
+  [swift-build#1493](https://github.com/swiftlang/swift-build/pull/1493) at
   `801cb538e676908033d55d8549053dba2556fe1c`
 - Swift development snapshot `2026-07-28`
 - the CPicoSDK Example's pinned Swift snapshot `2026-04-27` for the control
@@ -390,10 +391,13 @@ Keep the current native pipeline as the default. In parallel:
 
 1. propose the path escaping, command-environment, and lockfile compatibility
    fixes to the PR author;
-2. propose resolved external-artifact lookup and a declared product post-build
+2. propose `none` to Generic Unix specification inheritance to swift-build,
+   together with a separate follow-up for scoping destination toolset, arch,
+   and triple overrides away from host plugin tools;
+3. propose resolved external-artifact lookup and a declared product post-build
    command;
-3. retain the 99-object CMake split as the acceptance fixture for those APIs;
-4. rerun the control build and compare `picotool`, symbols, memory map, and
+4. retain the 99-object CMake split as the acceptance fixture for those APIs;
+5. rerun the control build and compare `picotool`, symbols, memory map, and
    artifact digests after wiring becomes possible; and
-5. only then replace the explicit `finalize-rp2xxx-binary` line in
+6. only then replace the explicit `finalize-rp2xxx-binary` line in
    `Example/build.sh`.

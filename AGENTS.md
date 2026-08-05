@@ -754,7 +754,8 @@ design notes, experiments, and failure analysis in `docs/`.
   can infer archive creation. Symptom: a bare-metal static-library build falls
   back to Apple's `libtool` and fails while probing `libtool --version`. Add a
   `"librarian": { "path": ".../arm-none-eabi-ar" }` entry to the generated
-  toolset and confirm the archive command uses `arm-none-eabi-ar rcs`. This is
+  toolset and confirm the archive command uses the configured
+  `arm-none-eabi-ar` librarian. This is
   necessary but not sufficient for full SwiftBuild bare-metal support.
 - When testing a development SwiftPM against a checkout whose path contains
   spaces, distinguish shell quoting from SwiftBuild setting serialization.
