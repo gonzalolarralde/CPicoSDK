@@ -927,8 +927,12 @@ repository root with:
 swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
 ```
 
-Device execution defaults to a HardwareRunner service. Configure it before a
-physical run:
+Device execution defaults to local OpenOCD, preserving the original device-test
+command behavior. HardwareRunner configuration is not parsed or validated for
+local, `--list`, or `--build-only` runs.
+
+Pass `--remote` to dispatch a physical run to HardwareRunner, and configure it
+with:
 
 ```bash
 export HARDWARE_RUNNER_URL="http://hardware-runner.example:8080"
@@ -946,19 +950,21 @@ The equivalent command-line options are `--hardware-runner-url`,
 `--hardware-runner-pool-id`, `--hardware-runner-capabilities`, and
 `--hardware-runner-capture-channel`. Command-line values override environment
 values. Prefer the environment for the bearer token so it does not appear in
-process listings.
+process listings. These values are required or validated only for a physical
+`--remote` execution.
 
-Use `--execution local` or its `--local` alias to bypass HardwareRunner and
-program the directly connected probe with OpenOCD:
+For example, run one test remotely with:
 
 ```bash
-swift package --disable-sandbox test-in-device --local --filter HelloRTT \
+swift package --disable-sandbox test-in-device --remote --filter HelloRTT \
   --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 `CPICOSDK_DEVICE_TEST_EXECUTION=local|remote` provides the environment
-equivalent. `--list` and `--build-only` do not require HardwareRunner
-credentials.
+equivalent; `--execution local|remote` and the `--local` compatibility alias are
+also accepted. Explicit command-line selection overrides the environment.
+`--list` and `--build-only` never require HardwareRunner credentials, even when
+remote execution is selected in the environment.
 
 The outer `--disable-sandbox` is required for direct probe access in local mode.
 The network permission is required for HardwareRunner and may also be needed to
@@ -1039,6 +1045,13 @@ idempotency claim, and server failures three times after the initial attempt.
 Once submitted, temporary polling failures do not abandon the queued hardware
 work. The client rejects batches above HardwareRunner's 10,000-logical-run
 per-job limit before uploading any artifacts.
+
+Remote output identifies the durable HardwareRunner job as soon as dispatch
+succeeds. While the job is queued, the harness reports HardwareRunner's
+best-effort device-start estimate without calculating an independent local ETA;
+repeated estimates are coalesced into useful time buckets to keep CI logs
+readable. It reports again when HardwareRunner starts the job. Older servers
+that do not provide queue estimates remain supported and are reported as such.
 
 HardwareRunner reports infrastructure outcomes only. The harness downloads the
 authoritative raw RTT stream and feeds it through the same

@@ -153,6 +153,51 @@ public struct HardwareRunnerBatchExecutionResult: Sendable, Equatable {
     }
 }
 
+/// A best-effort queue estimate calculated by HardwareRunner.
+///
+/// Dates are optional so a client can continue waiting if a newer server sends
+/// an estimate format it cannot interpret. `estimatedWaitSeconds` may be absent
+/// when the server cannot form an estimate; this client never derives one
+/// locally.
+public struct HardwareRunnerQueueEstimate: Sendable, Equatable {
+    public let status: String
+    public let generatedAt: Date?
+    public let estimatedStartAt: Date?
+    public let estimatedWaitSeconds: TimeInterval?
+    public let basis: String
+    public let sampleCount: Int
+
+    public init(
+        status: String,
+        generatedAt: Date?,
+        estimatedStartAt: Date?,
+        estimatedWaitSeconds: TimeInterval?,
+        basis: String,
+        sampleCount: Int
+    ) {
+        self.status = status
+        self.generatedAt = generatedAt
+        self.estimatedStartAt = estimatedStartAt
+        self.estimatedWaitSeconds = estimatedWaitSeconds
+        self.basis = basis
+        self.sampleCount = sampleCount
+    }
+}
+
+/// Lifecycle updates for a submitted HardwareRunner job.
+public enum HardwareRunnerProgressEvent: Sendable, Equatable {
+    /// The job POST succeeded and HardwareRunner returned its durable identity.
+    case dispatched(jobID: UUID, workItemCount: Int, logicalRunCount: Int)
+    /// The accepted job has not started. The estimate is absent when talking to
+    /// an older HardwareRunner or when the server cannot currently estimate it.
+    case waiting(jobID: UUID, estimate: HardwareRunnerQueueEstimate?)
+    /// HardwareRunner has transitioned the job to active execution.
+    case running(jobID: UUID)
+}
+
+public typealias HardwareRunnerProgressHandler =
+    @Sendable (HardwareRunnerProgressEvent) -> Void
+
 public struct HardwareRunnerHTTPResponse: Sendable, Equatable {
     public let statusCode: Int
     public let headers: [String: String]
@@ -313,7 +358,8 @@ public struct HardwareRunnerClient: Sendable {
     public func execute(
         firmwareURL: URL,
         testName: String,
-        timeoutMilliseconds: Int
+        timeoutMilliseconds: Int,
+        onProgress: HardwareRunnerProgressHandler? = nil
     ) async throws -> HardwareRunnerExecutionResult {
         let callerItemID = "cpico-single"
         let results = try await execute(inputs: [
@@ -323,7 +369,7 @@ public struct HardwareRunnerClient: Sendable {
                 testName: testName,
                 timeoutMilliseconds: timeoutMilliseconds
             )
-        ])
+        ], onProgress: onProgress)
         guard let result = results.first,
               results.count == 1,
               result.runIndex == 1
@@ -341,7 +387,8 @@ public struct HardwareRunnerClient: Sendable {
     }
 
     public func execute(
-        inputs: [HardwareRunnerExecutionInput]
+        inputs: [HardwareRunnerExecutionInput],
+        onProgress: HardwareRunnerProgressHandler? = nil
     ) async throws -> [HardwareRunnerBatchExecutionResult] {
         guard !inputs.isEmpty else {
             throw HardwareRunnerClientError.invalidConfiguration(
@@ -443,9 +490,16 @@ public struct HardwareRunnerClient: Sendable {
             }
         )
 
+        onProgress?(.dispatched(
+            jobID: submitted.id,
+            workItemCount: inputs.count,
+            logicalRunCount: totalLogicalRuns
+        ))
+
         let terminalJob = try await waitForTerminalJob(
             initial: submitted,
-            jobID: submitted.id
+            jobID: submitted.id,
+            onProgress: onProgress
         )
         guard terminalJob.state == "completed" else {
             throw HardwareRunnerClientError.jobTerminated(state: terminalJob.state)
@@ -742,15 +796,85 @@ public struct HardwareRunnerClient: Sendable {
 
     private func waitForTerminalJob(
         initial: JobResponse,
-        jobID: UUID
+        jobID: UUID,
+        onProgress: HardwareRunnerProgressHandler?
     ) async throws -> JobResponse {
         var job = initial
+        var lastWaitingSignature: WaitingProgressSignature?
+        var reportedRunning = false
+
+        func reportProgress() {
+            if job.state == "running" {
+                guard !reportedRunning else { return }
+                reportedRunning = true
+                onProgress?(.running(jobID: jobID))
+                return
+            }
+            guard !Self.terminalJobStates.contains(job.state) else { return }
+            let estimate = queueEstimate(job.queueEstimate)
+            let signature = waitingProgressSignature(estimate)
+            guard signature != lastWaitingSignature else { return }
+            lastWaitingSignature = signature
+            onProgress?(.waiting(jobID: jobID, estimate: estimate))
+        }
+
+        reportProgress()
         while !Self.terminalJobStates.contains(job.state) {
             try Task.checkCancellation()
             try await sleep(milliseconds: configuration.pollIntervalMilliseconds)
             job = try await pollJob(jobID: jobID)
+            reportProgress()
         }
         return job
+    }
+
+    private func queueEstimate(
+        _ response: JobResponse.QueueEstimate?
+    ) -> HardwareRunnerQueueEstimate? {
+        guard let response else { return nil }
+        let waitSeconds = response.estimatedWaitSeconds.flatMap { value in
+            value.isFinite && value >= 0 ? value : nil
+        }
+        return HardwareRunnerQueueEstimate(
+            status: response.status,
+            generatedAt: parseDate(response.generatedAt),
+            estimatedStartAt: response.estimatedStartAt.flatMap(parseDate),
+            estimatedWaitSeconds: waitSeconds,
+            basis: response.basis,
+            sampleCount: max(0, response.sampleCount)
+        )
+    }
+
+    private func waitingProgressSignature(
+        _ estimate: HardwareRunnerQueueEstimate?
+    ) -> WaitingProgressSignature {
+        let waitBucket = estimate?.estimatedWaitSeconds.flatMap { seconds -> Int? in
+            let bucketWidth: Double
+            if seconds <= 60 {
+                bucketWidth = 5
+            } else if seconds <= 300 {
+                bucketWidth = 30
+            } else {
+                bucketWidth = 60
+            }
+            let rounded = (seconds / bucketWidth).rounded(.up) * bucketWidth
+            guard rounded <= Double(Int.max) else { return Int.max }
+            return Int(rounded)
+        }
+        let startBucket: Int? = if waitBucket == nil,
+            let start = estimate?.estimatedStartAt
+        {
+            Int(start.timeIntervalSince1970 / 30)
+        } else {
+            nil
+        }
+        return WaitingProgressSignature(
+            status: estimate?.status,
+            basis: estimate?.basis,
+            sampleCount: estimate?.sampleCount,
+            waitBucketSeconds: waitBucket,
+            startBucket: startBucket
+        )
     }
 
     private func pollJob(jobID: UUID) async throws -> JobResponse {
@@ -1081,10 +1205,28 @@ private struct JobResponse: Decodable {
         let clientItemID: String
     }
 
+    struct QueueEstimate: Decodable {
+        let status: String
+        let generatedAt: String
+        let estimatedStartAt: String?
+        let estimatedWaitSeconds: Double?
+        let basis: String
+        let sampleCount: Int
+    }
+
     let id: UUID
     let state: String
     let submittedAt: String
     let workItems: [Item]
+    let queueEstimate: QueueEstimate?
+}
+
+private struct WaitingProgressSignature: Equatable {
+    let status: String?
+    let basis: String?
+    let sampleCount: Int?
+    let waitBucketSeconds: Int?
+    let startBucket: Int?
 }
 
 private struct ExportResponse: Decodable {

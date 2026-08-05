@@ -102,6 +102,24 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
     }
 }
 
+private final class ProgressRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [HardwareRunnerProgressEvent] = []
+
+    func record(_ value: HardwareRunnerProgressEvent) {
+        lock.lock()
+        values.append(value)
+        lock.unlock()
+    }
+
+    func events() -> [HardwareRunnerProgressEvent] {
+        lock.lock()
+        let snapshot = values
+        lock.unlock()
+        return snapshot
+    }
+}
+
 @available(macOS 12.0, *)
 @Test func hardwareRunnerClientExecutesAndValidatesRawEvidence() async throws {
     let transport = ScriptedHTTPTransport([
@@ -183,6 +201,102 @@ private actor ScriptedHTTPTransport: HardwareRunnerHTTPTransport {
                 + "\(attemptID.uuidString.lowercased())/streams/"
                 + streamID.uuidString.lowercased()
     )
+}
+
+@available(macOS 12.0, *)
+@Test func progressReportsDispatchBucketedQueueEstimatesAndRunningTransition()
+    async throws
+{
+    let transport = ScriptedHTTPTransport([
+        .response(objectResponse()),
+        .response(bundleResponse()),
+        .response(jobResponse(
+            state: "queued",
+            queueEstimate: queueEstimate(waitSeconds: 42)
+        )),
+        // Both values round up to the same five-second display bucket. The
+        // second snapshot must not add a noisy duplicate callback.
+        .response(jobResponse(
+            state: "queued",
+            queueEstimate: queueEstimate(waitSeconds: 41)
+        )),
+        .response(jobResponse(
+            state: "queued",
+            queueEstimate: queueEstimate(waitSeconds: 29)
+        )),
+        .response(jobResponse(state: "running")),
+        .response(jobResponse(state: "completed")),
+        .response(exportResponse()),
+        .response(.init(statusCode: 200, body: captureBytes)),
+    ])
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+    let progress = ProgressRecorder()
+
+    _ = try await client.execute(
+        firmwareURL: firmwareURL,
+        testName: "Progress",
+        timeoutMilliseconds: 1_000,
+        onProgress: progress.record
+    )
+
+    let events = progress.events()
+    #expect(events.count == 4)
+    #expect(events[0] == .dispatched(
+        jobID: jobID,
+        workItemCount: 1,
+        logicalRunCount: 1
+    ))
+    guard case .waiting(let waitingJobID, let firstEstimate) = events[1] else {
+        Issue.record("Expected the initial waiting update")
+        return
+    }
+    #expect(waitingJobID == jobID)
+    #expect(firstEstimate?.status == "waiting")
+    #expect(firstEstimate?.estimatedWaitSeconds == 42)
+    #expect(firstEstimate?.basis == "observedLeaseHistory")
+    #expect(firstEstimate?.sampleCount == 12)
+    #expect(firstEstimate?.generatedAt != nil)
+    #expect(firstEstimate?.estimatedStartAt != nil)
+    guard case .waiting(_, let laterEstimate) = events[2] else {
+        Issue.record("Expected a later queue-estimate bucket")
+        return
+    }
+    #expect(laterEstimate?.estimatedWaitSeconds == 29)
+    #expect(events[3] == .running(jobID: jobID))
+}
+
+@available(macOS 12.0, *)
+@Test func progressKeepsOlderServerWithoutQueueEstimateCompatible() async throws {
+    let transport = ScriptedHTTPTransport([
+        .response(objectResponse()),
+        .response(bundleResponse()),
+        .response(jobResponse(state: "queued")),
+        .response(jobResponse(state: "running")),
+        .response(jobResponse(state: "completed")),
+        .response(exportResponse()),
+        .response(.init(statusCode: 200, body: captureBytes)),
+    ])
+    let (client, firmwareURL) = try makeClient(transport: transport)
+    defer { try? FileManager.default.removeItem(at: firmwareURL) }
+    let progress = ProgressRecorder()
+
+    _ = try await client.execute(
+        firmwareURL: firmwareURL,
+        testName: "Legacy progress",
+        timeoutMilliseconds: 1_000,
+        onProgress: progress.record
+    )
+
+    let events = progress.events()
+    #expect(events.count == 3)
+    #expect(events[0] == .dispatched(
+        jobID: jobID,
+        workItemCount: 1,
+        logicalRunCount: 1
+    ))
+    #expect(events[1] == .waiting(jobID: jobID, estimate: nil))
+    #expect(events[2] == .running(jobID: jobID))
 }
 
 @available(macOS 12.0, *)
@@ -1327,19 +1441,37 @@ private func bundleResponse() -> HardwareRunnerHTTPResponse {
     )
 }
 
-private func jobResponse(state: String) -> HardwareRunnerHTTPResponse {
-    .init(
+private func jobResponse(
+    state: String,
+    queueEstimate: [String: Any]? = nil
+) -> HardwareRunnerHTTPResponse {
+    var body: [String: Any] = [
+        "id": jobID.uuidString,
+        "state": state,
+        "submittedAt": "2026-07-30T10:00:00Z",
+        "workItems": [[
+            "id": itemID.uuidString,
+            "clientItemID": "cpico-single",
+        ]],
+    ]
+    if let queueEstimate {
+        body["queueEstimate"] = queueEstimate
+    }
+    return .init(
         statusCode: state == "queued" ? 202 : 200,
-        body: try! json([
-            "id": jobID.uuidString,
-            "state": state,
-            "submittedAt": "2026-07-30T10:00:00Z",
-            "workItems": [[
-                "id": itemID.uuidString,
-                "clientItemID": "cpico-single",
-            ]],
-        ])
+        body: try! json(body)
     )
+}
+
+private func queueEstimate(waitSeconds: Double) -> [String: Any] {
+    [
+        "status": "waiting",
+        "generatedAt": "2026-07-30T10:00:00Z",
+        "estimatedStartAt": "2026-07-30T10:00:42Z",
+        "estimatedWaitSeconds": waitSeconds,
+        "basis": "observedLeaseHistory",
+        "sampleCount": 12,
+    ]
 }
 
 private func exportResponse(

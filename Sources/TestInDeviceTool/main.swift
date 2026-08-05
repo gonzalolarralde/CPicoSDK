@@ -21,20 +21,6 @@ struct TestInDeviceTool {
     }
 }
 
-enum DeviceExecutionMode: String {
-    case local
-    case remote
-
-    init(_ value: String) throws {
-        guard let mode = Self(rawValue: value.lowercased()) else {
-            throw DeviceTestHarnessError.invalidMetadata(
-                "unknown execution mode '\(value)'; expected local or remote"
-            )
-        }
-        self = mode
-    }
-}
-
 struct Options {
     var packageDirectory: URL
     var workDirectory: URL
@@ -70,34 +56,9 @@ struct Options {
         var adapterSpeed = 5_000
         var target = DeviceTestTarget.rp2350
         var buildTypeOverride: DeviceBuildType?
-        var executionMode = try DeviceExecutionMode(
-            nonEmpty(environment["CPICOSDK_DEVICE_TEST_EXECUTION"]) ?? "remote"
-        )
-        var hardwareRunnerURL = try parseURL(
-            nonEmpty(environment["HARDWARE_RUNNER_URL"])
-                ?? nonEmpty(environment["CPICOSDK_HARDWARE_RUNNER_URL"]),
-            option: "HARDWARE_RUNNER_URL"
-        )
-        var hardwareRunnerToken = nonEmpty(environment["HARDWARE_RUNNER_TOKEN"])
-            ?? nonEmpty(environment["CPICOSDK_HARDWARE_RUNNER_TOKEN"])
-        var hardwareRunnerProfileID = try parseUUID(
-            nonEmpty(environment["HARDWARE_RUNNER_PROFILE_ID"])
-                ?? nonEmpty(environment["CPICOSDK_HARDWARE_RUNNER_PROFILE_ID"]),
-            option: "HARDWARE_RUNNER_PROFILE_ID"
-        )
-        var hardwareRunnerPoolID = try parseUUID(
-            nonEmpty(environment["HARDWARE_RUNNER_POOL_ID"])
-                ?? nonEmpty(environment["CPICOSDK_HARDWARE_RUNNER_POOL_ID"]),
-            option: "HARDWARE_RUNNER_POOL_ID"
-        )
-        var hardwareRunnerCapabilities = commaSeparated(
-            environment["HARDWARE_RUNNER_CAPABILITIES"]
-                ?? environment["CPICOSDK_HARDWARE_RUNNER_CAPABILITIES"]
-        )
-        var hardwareRunnerCaptureChannel = nonEmpty(
-            environment["HARDWARE_RUNNER_CAPTURE_CHANNEL"]
-                ?? environment["CPICOSDK_HARDWARE_RUNNER_CAPTURE_CHANNEL"]
-        ) ?? "rtt"
+        // Remote-only strings are resolved after argument parsing so stale
+        // environment values cannot break local, list-only, or build-only work.
+        var executionOverrides = DeviceExecutionOverrides()
         var index = arguments.startIndex
 
         func takeValue(for option: String) throws -> String {
@@ -137,32 +98,23 @@ struct Options {
             case "--build-type":
                 buildTypeOverride = try DeviceBuildType(metadataValue: try takeValue(for: argument))
             case "--execution":
-                executionMode = try DeviceExecutionMode(try takeValue(for: argument))
+                executionOverrides.mode = try takeValue(for: argument)
             case "--local":
-                executionMode = .local
+                executionOverrides.mode = DeviceExecutionMode.local.rawValue
             case "--remote":
-                executionMode = .remote
+                executionOverrides.mode = DeviceExecutionMode.remote.rawValue
             case "--hardware-runner-url":
-                hardwareRunnerURL = try parseURL(
-                    try takeValue(for: argument),
-                    option: argument
-                )
+                executionOverrides.hardwareRunnerURL = try takeValue(for: argument)
             case "--hardware-runner-token":
-                hardwareRunnerToken = try takeValue(for: argument)
+                executionOverrides.hardwareRunnerToken = try takeValue(for: argument)
             case "--hardware-runner-profile-id":
-                hardwareRunnerProfileID = try parseUUID(
-                    try takeValue(for: argument),
-                    option: argument
-                )
+                executionOverrides.hardwareRunnerProfileID = try takeValue(for: argument)
             case "--hardware-runner-pool-id":
-                hardwareRunnerPoolID = try parseUUID(
-                    try takeValue(for: argument),
-                    option: argument
-                )
+                executionOverrides.hardwareRunnerPoolID = try takeValue(for: argument)
             case "--hardware-runner-capabilities":
-                hardwareRunnerCapabilities = commaSeparated(try takeValue(for: argument))
+                executionOverrides.hardwareRunnerCapabilities = try takeValue(for: argument)
             case "--hardware-runner-capture-channel":
-                hardwareRunnerCaptureChannel = try takeValue(for: argument)
+                executionOverrides.hardwareRunnerCaptureChannel = try takeValue(for: argument)
             case "--allow-writing-to-package-directory", "--disable-sandbox":
                 break
             case "--allow-network-connections":
@@ -179,18 +131,13 @@ struct Options {
         guard let packageDirectory, let workDirectory, let cpicoSDKPath else {
             throw DeviceTestHarnessError.invalidMetadata("--package-dir, --work-dir, and --cpicosdk-path are required")
         }
-        if hardwareRunnerCapabilities.isEmpty {
-            hardwareRunnerCapabilities = [
-                target.rawValue,
-                "cmsis-dap",
-                "rtt",
-            ]
-        }
-        guard !hardwareRunnerCaptureChannel.isEmpty else {
-            throw DeviceTestHarnessError.invalidMetadata(
-                "--hardware-runner-capture-channel cannot be empty"
-            )
-        }
+
+        let execution = try DeviceExecutionOptionsResolver.resolve(
+            environment: environment,
+            overrides: executionOverrides,
+            target: target,
+            performsPhysicalRun: !listOnly && !buildOnly
+        )
 
         return Options(
             packageDirectory: packageDirectory,
@@ -205,70 +152,27 @@ struct Options {
             adapterSpeed: adapterSpeed,
             target: target,
             buildTypeOverride: buildTypeOverride,
-            executionMode: executionMode,
-            hardwareRunnerURL: hardwareRunnerURL,
-            hardwareRunnerToken: hardwareRunnerToken,
-            hardwareRunnerProfileID: hardwareRunnerProfileID,
-            hardwareRunnerPoolID: hardwareRunnerPoolID,
-            hardwareRunnerCapabilities: hardwareRunnerCapabilities,
-            hardwareRunnerCaptureChannel: hardwareRunnerCaptureChannel
+            executionMode: execution.mode,
+            hardwareRunnerURL: execution.hardwareRunnerURL,
+            hardwareRunnerToken: execution.hardwareRunnerToken,
+            hardwareRunnerProfileID: execution.hardwareRunnerProfileID,
+            hardwareRunnerPoolID: execution.hardwareRunnerPoolID,
+            hardwareRunnerCapabilities: execution.hardwareRunnerCapabilities,
+            hardwareRunnerCaptureChannel: execution.hardwareRunnerCaptureChannel
         )
     }
 
     static let help = """
-    Usage: swift package test-in-device [--execution remote|local] [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--passes N] [--adapter-speed HZ] [--memory-map-report]
+    Usage: swift package test-in-device [--remote|--execution remote|local] [--target rp2350|rp2040] [--build-type Debug|Release|RelWithDebInfo|MinSizeRel] [--filter NAME] [--list] [--build-only] [--passes N] [--adapter-speed HZ] [--memory-map-report]
 
     Tests are discovered under Tests/Device/**/*.swift. Each file must start with a //% metadata block.
-    Execution defaults to remote. Configure HardwareRunner with HARDWARE_RUNNER_URL,
-    HARDWARE_RUNNER_TOKEN, HARDWARE_RUNNER_PROFILE_ID, and optionally
+    Execution defaults to the directly connected device through local OpenOCD.
+    Pass --remote to use HardwareRunner, configured with HARDWARE_RUNNER_URL,
+    HARDWARE_RUNNER_TOKEN, HARDWARE_RUNNER_PROFILE_ID, and the optional
     HARDWARE_RUNNER_POOL_ID/HARDWARE_RUNNER_CAPABILITIES and
-    HARDWARE_RUNNER_CAPTURE_CHANNEL. Use --local to run directly through this
-    host's OpenOCD installation.
+    HARDWARE_RUNNER_CAPTURE_CHANNEL values.
     """
 
-    private static func nonEmpty(_ value: String?) -> String? {
-        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !value.isEmpty
-        else {
-            return nil
-        }
-        return value
-    }
-
-    private static func parseURL(_ value: String?, option: String) throws -> URL? {
-        guard let value = nonEmpty(value) else {
-            return nil
-        }
-        guard let url = URL(string: value),
-              let scheme = url.scheme?.lowercased(),
-              scheme == "http" || scheme == "https",
-              url.host != nil
-        else {
-            throw DeviceTestHarnessError.invalidMetadata(
-                "\(option) must be an absolute HTTP or HTTPS URL"
-            )
-        }
-        return url
-    }
-
-    private static func parseUUID(_ value: String?, option: String) throws -> UUID? {
-        guard let value = nonEmpty(value) else {
-            return nil
-        }
-        guard let uuid = UUID(uuidString: value) else {
-            throw DeviceTestHarnessError.invalidMetadata(
-                "\(option) must be a UUID"
-            )
-        }
-        return uuid
-    }
-
-    private static func commaSeparated(_ value: String?) -> [String] {
-        (value ?? "")
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-            .filter { !$0.isEmpty }
-    }
 }
 
 struct DeviceHarnessRunner {
@@ -514,7 +418,9 @@ struct DeviceHarnessRunner {
         do {
             remoteResults = try await HardwareRunnerClient(
                 configuration: try hardwareRunnerConfiguration()
-            ).execute(inputs: remoteInputs)
+            ).execute(inputs: remoteInputs) { event in
+                logHardwareRunnerProgress(event)
+            }
         } catch {
             log("[test-in-device] Remote batch \(terminalRed("FAIL")): \(error)")
             return false
@@ -941,9 +847,8 @@ struct DeviceHarnessRunner {
               let profileID = options.hardwareRunnerProfileID
         else {
             throw DeviceTestHarnessError.invalidMetadata(
-                "remote execution is the default and requires "
+                "--remote requires "
                     + missing.joined(separator: ", ")
-                    + "; use --local for direct OpenOCD execution"
             )
         }
         return try HardwareRunnerClientConfiguration(
@@ -1135,6 +1040,59 @@ func formatElapsed(since start: Date) -> String {
 
 func formatDuration(_ seconds: TimeInterval) -> String {
     return String(format: "%.2fs", seconds)
+}
+
+func formatEstimatedDuration(_ seconds: TimeInterval) -> String {
+    let seconds = max(0, Int(seconds.rounded(.up)))
+    if seconds < 60 {
+        return "\(seconds)s"
+    }
+    let minutes = seconds / 60
+    let remainder = seconds % 60
+    if minutes < 60 {
+        return remainder == 0 ? "\(minutes)m" : "\(minutes)m \(remainder)s"
+    }
+    let hours = minutes / 60
+    let remainingMinutes = minutes % 60
+    return remainingMinutes == 0
+        ? "\(hours)h"
+        : "\(hours)h \(remainingMinutes)m"
+}
+
+func logHardwareRunnerProgress(_ event: HardwareRunnerProgressEvent) {
+    switch event {
+    case .dispatched(let jobID, let workItemCount, let logicalRunCount):
+        log(
+            "[test-in-device] Dispatched HardwareRunner job "
+                + "\(jobID.uuidString.lowercased()) "
+                + "(\(workItemCount) work item(s), \(logicalRunCount) run(s))."
+        )
+    case .waiting(let jobID, let estimate):
+        let job = jobID.uuidString.lowercased()
+        if let seconds = estimate?.estimatedWaitSeconds {
+            log(
+                "[test-in-device] HardwareRunner job \(job) is waiting for "
+                    + "a device; estimated start in "
+                    + "\(formatEstimatedDuration(seconds)) "
+                    + "(server estimate)."
+            )
+        } else if let estimate {
+            log(
+                "[test-in-device] HardwareRunner job \(job) is waiting for "
+                    + "a device; queue estimate is \(estimate.status)."
+            )
+        } else {
+            log(
+                "[test-in-device] HardwareRunner job \(job) is waiting for "
+                    + "a device; this server did not provide a queue estimate."
+            )
+        }
+    case .running(let jobID):
+        log(
+            "[test-in-device] HardwareRunner started job "
+                + "\(jobID.uuidString.lowercased())."
+        )
+    }
 }
 
 func formatDeviceMilliseconds(_ milliseconds: Int?) -> String {
