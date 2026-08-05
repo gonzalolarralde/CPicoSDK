@@ -47,9 +47,9 @@ source "$PREPARATION_SCRIPT_PATH"
 # Builds the library using swiftpm. This is where the application code is compiled.
 "$SWIFTLY_PATH" run swift build \
     --build-system native \
-    --configuration $SWIFT_BUILD_TYPE \
-    --toolset $TOOLSET_PATH \
-    --triple $SWIFTPM_TRIPLE \
+    --configuration "$SWIFT_BUILD_TYPE" \
+    --toolset "$TOOLSET_PATH" \
+    --triple "$SWIFTPM_TRIPLE" \
     $EXTRA_CONFIG_PARAMS            # This allows passing extra parameters from the command line.
                                     # Used for adding debugging flags based on the cmake configuration.
 
