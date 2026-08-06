@@ -22,6 +22,61 @@
 4. **Open in VSCode** (optional but recommended):
    Install the recommended extensions when prompted. This enables full IDE integration with debugging and flashing capabilities.
 
+## Experimental SwiftPM External-Builder Build
+
+`build-external-preview.sh` exercises the third-party build-system model from
+[swift-package-manager#10198](https://github.com/swiftlang/swift-package-manager/pull/10198).
+It is intentionally separate from `build.sh`, which remains the supported path
+for released toolchains.
+
+The preview requires a `swift-build` executable built from that PR together
+with its companion SwiftBuild changes and the small local compatibility fixes
+recorded in
+[`Docs/SWIFTPM_EXTERNAL_PACKAGES_INVESTIGATION.md`](../Docs/SWIFTPM_EXTERNAL_PACKAGES_INVESTIGATION.md).
+It uses the compiler pinned in `ExternalPreviewSDK/swift-toolchain.txt`.
+
+First stage the relocatable Pico toolchain and matching Embedded Swift runtime.
+This is a one-time destination setup step, not part of normal builds:
+
+```bash
+./setup-external-preview-sdk.sh --stage-only
+```
+
+Then run the preview build:
+
+```bash
+SWIFTPM_PREVIEW_BUILD=/absolute/path/to/pr-build/swift-build \
+./build-external-preview.sh
+```
+
+The launcher copies the matching manifest/plugin API libraries found beside
+`swift-build` into an isolated temporary directory. Set
+`SWIFTPM_PREVIEW_LIBS_DIR` only when those libraries use a separate installed
+`ManifestAPI`/`PluginAPI` layout. Exact checkout, patch, and build instructions
+are in the investigation document.
+
+The preview selects `Package@swift-6.5.swift`, invokes the PR's
+`ExternalBuilderPlugin` to build Pico native support, builds the Example static
+product, and runs a declared post-product task to generate firmware. The
+launcher makes one SwiftPM product-build request; it does not run preparation
+or finalization itself.
+
+For the default release configuration, the flashable and diagnostic artifacts
+are written to:
+
+```text
+.build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.elf
+.build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.uf2
+.build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.bin
+.build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.hex
+.build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.elf.map
+.build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.dis
+```
+
+The post-product and auxiliary-output APIs are small local extensions to the
+PR experiment. They are documented, with reproducible patches, in the
+investigation document. No device is programmed unless `--flash` is passed.
+
 ## Programming the Device
 
 Once your project is built, you have two options for programming your RP2xxx device:

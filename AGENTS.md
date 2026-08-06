@@ -763,3 +763,50 @@ design notes, experiments, and failure analysis in `docs/`.
   `error processing toolset at ...` messages. SwiftPM's `SWIFT_SDK_TOOLSETS`
   setting must shell-escape each path before joining the string-list value; a
   no-space copy is useful only as a diagnosis, not a production workaround.
+- A SwiftBuild bare-metal custom task can leak an Apple destination deployment
+  target into a host CMake sub-build. Symptom: AppleClang is passed a macOS
+  sysroot but warns that it targets XR/visionOS and rejects pthread APIs while
+  compiling a host tool such as `pioasm`. Inspect the child environment for
+  values such as `XROS_DEPLOYMENT_TARGET`; remove non-host
+  `*_DEPLOYMENT_TARGET` values and select the macOS SDK explicitly for host
+  subprocesses. The limitation is in custom-task environment isolation, not in
+  the Pico ARM toolchain.
+- Do not locate SwiftBuild product or external archives with a broad `find ...
+  -print -quit` in a persistent scratch directory. A later board or
+  configuration can silently finalize a stale first match. Derive the exact
+  configuration/OS/architecture output component, require both expected files,
+  and keep product/native archive paths explicit through finalization.
+- Swift development snapshots using the EmbeddedPlatform abstraction layer may
+  link-fail on `_swift_mutex_*`, `_swift_mutexRecursive_*`, `_swift_tls_*`, and
+  `_swift_thread_isMain` even when the older `swift_threading_defer_*` hooks are
+  implemented. Provide a private C ABI adapter over the existing platform
+  mutex/TLS implementation and retain the old symbols for older toolchains.
+  Keep these linker entry points out of public shim headers because the new
+  header's fixed-underlying enum types are not source-compatible declarations
+  on older snapshots.
+- When splitting Pico native support into a prebuilt external archive, remove
+  direct concrete stdio transports from the imported library list and let the
+  selected `pico_stdio` target add only UART, USB, or RTT as requested. Link the
+  resulting archive with `--whole-archive`: ordinary archive selection can drop
+  pre-init linker-set entries and allow weak Pico runtime initialization to win
+  over CPicoSDK's strong override. Keep product-specific
+  `standard_binary_info.c` in the final link.
+- A custom Swift SDK's `swiftResourcesPath` must name a Swift resource root,
+  not the target-triple directory itself. Embedded modules and archives belong
+  under its `embedded/` child, while `SwiftShims` and the matching Clang
+  resource headers belong under sibling `shims/` and `clang/` directories.
+  Symptom: SwiftPM accepts the SDK but target compilation reports a missing
+  standard library or `SwiftShims` module.
+- `URL(fileURLWithPath:)` resolves a relative string against the current
+  directory. Do not test `URL.path.hasPrefix("/")` to decide whether the
+  original metadata value was absolute; that test is always true after URL
+  construction. Use `(path as NSString).isAbsolutePath`, then resolve relative
+  SDK-layout entries against the layout file's directory.
+- If one external build consumes an auxiliary file from another external
+  build, declare that exact producer output as an input. Inferring a sidecar by
+  adjacency can appear to work while an always-out-of-date producer masks the
+  missing edge, but it is not a correct incremental graph.
+- SwiftPM's resolved destination SDK root may differ from the artifact bundle
+  root. Pass the resolved sysroot to custom tasks explicitly and let
+  destination-specific metadata locate its enclosing bundle; `$(SYSROOT)` can
+  be empty in the aggregate project created for an inline external package.

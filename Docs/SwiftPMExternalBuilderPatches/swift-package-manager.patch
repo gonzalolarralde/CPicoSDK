@@ -1,0 +1,1002 @@
+diff --git a/Sources/Runtimes/PackagePlugin/Plugin.swift b/Sources/Runtimes/PackagePlugin/Plugin.swift
+index d76bfa0b9..a98ced545 100644
+--- a/Sources/Runtimes/PackagePlugin/Plugin.swift
++++ b/Sources/Runtimes/PackagePlugin/Plugin.swift
+@@ -442,8 +442,25 @@ extension Plugin {
+                 arguments: externalBuildCommand.arguments,
+                 environment: externalBuildCommand.environment
+             )
++            let placement: PluginToHostMessage.ExternalBuildCommandPlacement = switch externalBuildCommand.placement {
++            case .package:
++                .package
++            case .postProduct(let productName):
++                .postProduct(productName: productName)
++            }
+             let message = PluginToHostMessage.defineExternalBuildCommand(
+-                configuration: command
++                configuration: command,
++                placement: placement,
++                inputFiles: externalBuildCommand.inputFiles,
++                externalLibraryInputs: externalBuildCommand.externalLibraryInputs.map {
++                    .init(
++                        packageIdentity: $0.packageIdentity,
++                        productName: $0.productName,
++                        environmentVariable: $0.environmentVariable,
++                        outputFileName: $0.outputFileName
++                    )
++                },
++                outputFiles: externalBuildCommand.outputFiles
+             )
+             try pluginHostConnection.sendMessage(message)
+             exit(0)
+diff --git a/Sources/Runtimes/PackagePlugin/PluginMessages.swift b/Sources/Runtimes/PackagePlugin/PluginMessages.swift
+index 379dfca72..e0d9f338c 100644
+--- a/Sources/Runtimes/PackagePlugin/PluginMessages.swift
++++ b/Sources/Runtimes/PackagePlugin/PluginMessages.swift
+@@ -351,7 +351,25 @@ enum PluginToHostMessage: Codable {
+     /// The plugin defines a prebuild command.
+     case definePrebuildCommand(configuration: CommandConfiguration, outputFilesDirectory: URL)
+
+-    case defineExternalBuildCommand(configuration: CommandConfiguration)
++    case defineExternalBuildCommand(
++        configuration: CommandConfiguration,
++        placement: ExternalBuildCommandPlacement,
++        inputFiles: [URL],
++        externalLibraryInputs: [ExternalLibraryInput],
++        outputFiles: [String]
++    )
++
++        enum ExternalBuildCommandPlacement: Codable {
++            case package
++            case postProduct(productName: String)
++        }
++
++        struct ExternalLibraryInput: Codable {
++            let packageIdentity: String
++            let productName: String
++            let environmentVariable: String
++            let outputFileName: String?
++        }
+
+         struct CommandConfiguration: Codable {
+             var version = 2
+diff --git a/Sources/Runtimes/PackagePlugin/Protocols.swift b/Sources/Runtimes/PackagePlugin/Protocols.swift
+index 5bfeb2b96..f0d174c43 100644
+--- a/Sources/Runtimes/PackagePlugin/Protocols.swift
++++ b/Sources/Runtimes/PackagePlugin/Protocols.swift
+@@ -82,15 +82,65 @@ public protocol ExternalBuilderPlugin: Plugin {
+ }
+
+ public struct ExternalBuildCommand {
++    public enum Placement {
++        case package
++        case postProduct(productName: String)
++
++        public static func postProduct(_ product: any Product) -> Self {
++            .postProduct(productName: product.name)
++        }
++    }
++
++    public struct ExternalLibraryInput {
++        let packageIdentity: String
++        let productName: String
++        let environmentVariable: String
++        let outputFileName: String?
++
++        /// Creates an input referring to an externally-built library product.
++        ///
++        /// When `outputFileName` is `nil`, the conventional
++        /// `lib<module-name>.a` output is used. A non-`nil` value must be a safe
++        /// relative path declared in the producer command's `outputFiles`.
++        public init(
++            package: Package,
++            product: any Product,
++            environmentVariable: String,
++            outputFileName: String? = nil
++        ) {
++            self.packageIdentity = package.id
++            self.productName = product.name
++            self.environmentVariable = environmentVariable
++            self.outputFileName = outputFileName
++        }
++    }
++
+     var displayName: String?
+     var executable: URL
+     var arguments: [String]
+     var environment: [String: String]
++    var placement: Placement
++    var inputFiles: [URL]
++    var externalLibraryInputs: [ExternalLibraryInput]
++    var outputFiles: [String]
+
+-    public init(displayName: String? = nil, executable: URL, arguments: [String], environment: [String : String] = [:]) {
++    public init(
++        displayName: String? = nil,
++        executable: URL,
++        arguments: [String],
++        environment: [String: String] = [:],
++        placement: Placement = .package,
++        inputFiles: [URL] = [],
++        externalLibraryInputs: [ExternalLibraryInput] = [],
++        outputFiles: [String] = []
++    ) {
+         self.displayName = displayName
+         self.executable = executable
+         self.arguments = arguments
+         self.environment = environment
++        self.placement = placement
++        self.inputFiles = inputFiles
++        self.externalLibraryInputs = externalLibraryInputs
++        self.outputFiles = outputFiles
+     }
+ }
+diff --git a/Sources/SPMBuildCore/Plugins/PluginInvocation.swift b/Sources/SPMBuildCore/Plugins/PluginInvocation.swift
+index af54b0845..978708bb3 100644
+--- a/Sources/SPMBuildCore/Plugins/PluginInvocation.swift
++++ b/Sources/SPMBuildCore/Plugins/PluginInvocation.swift
+@@ -380,13 +380,36 @@ extension PluginModule {
+                         hasReportedError = true
+                     }
+
+-                case .defineExternalBuildCommand(let config):
++                case .defineExternalBuildCommand(
++                    let config,
++                    let wirePlacement,
++                    let inputFiles,
++                    let wireExternalLibraryInputs,
++                    let outputFiles
++                ):
++                    let placement: BuildToolPluginInvocationResult.ExternalBuildCommand.Placement = switch wirePlacement {
++                    case .package:
++                        .package
++                    case .postProduct(let productName):
++                        .postProduct(productName: productName)
++                    }
+                     self.invocationDelegate.pluginDefinedExternalBuildCommand(
+                         displayName: config.displayName,
+                         executable: try config.executable.filePath,
+                         arguments: config.arguments,
+                         environment: config.environment,
+-                        workingDirectory: try config.workingDirectory.map{ try $0.filePath }
++                        workingDirectory: try config.workingDirectory.map{ try $0.filePath },
++                        placement: placement,
++                        inputFiles: try inputFiles.map { try $0.filePath },
++                        externalLibraryInputs: wireExternalLibraryInputs.map {
++                            .init(
++                                packageIdentity: $0.packageIdentity,
++                                productName: $0.productName,
++                                environmentVariable: $0.environmentVariable,
++                                outputFileName: $0.outputFileName
++                            )
++                        },
++                        outputFiles: outputFiles
+                     )
+
+                 case .buildOperationRequest(let subset, let parameters):
+@@ -836,6 +859,22 @@ public struct BuildToolPluginInvocationResult {
+
+     public struct ExternalBuildCommand {
+         public var configuration: CommandConfiguration
++        public var placement: Placement
++        public var inputFiles: [AbsolutePath]
++        public var externalLibraryInputs: [ExternalLibraryInput]
++        public var outputFiles: [String]
++
++        public enum Placement: Equatable {
++            case package
++            case postProduct(productName: String)
++        }
++
++        public struct ExternalLibraryInput: Equatable {
++            public var packageIdentity: String
++            public var productName: String
++            public var environmentVariable: String
++            public var outputFileName: String?
++        }
+     }
+
+     /// Launch configuration of a command that can be run (including a display name to show in logs etc).
+@@ -895,7 +934,17 @@ public protocol PluginInvocationDelegate {
+     func pluginDefinedPrebuildCommand(displayName: String?, executable: AbsolutePath, arguments: [String], environment: [String: String], workingDirectory: AbsolutePath?, outputFilesDirectory: AbsolutePath) -> Bool
+
+     /// Called when a plugin defines an external build command through the PackagePlugin APIs
+-    func pluginDefinedExternalBuildCommand(displayName: String?, executable: AbsolutePath, arguments: [String], environment: [String: String], workingDirectory: AbsolutePath?)
++    func pluginDefinedExternalBuildCommand(
++        displayName: String?,
++        executable: AbsolutePath,
++        arguments: [String],
++        environment: [String: String],
++        workingDirectory: AbsolutePath?,
++        placement: BuildToolPluginInvocationResult.ExternalBuildCommand.Placement,
++        inputFiles: [AbsolutePath],
++        externalLibraryInputs: [BuildToolPluginInvocationResult.ExternalBuildCommand.ExternalLibraryInput],
++        outputFiles: [String]
++    )
+
+     /// Called when a plugin requests a build operation through the PackagePlugin APIs.
+     func pluginRequestedBuildOperation(subset: PluginInvocationBuildSubset, parameters: PluginInvocationBuildParameters, completion: @escaping (Result<PluginInvocationBuildResult, Error>) -> Void)
+@@ -1007,8 +1056,12 @@ final class DefaultPluginInvocationDelegate: PluginInvocationDelegate {
+         displayName: String?,
+         executable: AbsolutePath,
+         arguments: [String],
+-        environment: [String : String],
+-        workingDirectory: AbsolutePath?
++        environment: [String: String],
++        workingDirectory: AbsolutePath?,
++        placement: BuildToolPluginInvocationResult.ExternalBuildCommand.Placement,
++        inputFiles: [AbsolutePath],
++        externalLibraryInputs: [BuildToolPluginInvocationResult.ExternalBuildCommand.ExternalLibraryInput],
++        outputFiles: [String]
+     ) {
+         dispatchPrecondition(condition: .onQueue(self.delegateQueue))
+         self.externalBuildCommands.append(.init(
+@@ -1018,7 +1071,11 @@ final class DefaultPluginInvocationDelegate: PluginInvocationDelegate {
+                 arguments: arguments,
+                 environment: .init(environment),
+                 workingDirectory: workingDirectory
+-            )
++            ),
++            placement: placement,
++            inputFiles: inputFiles,
++            externalLibraryInputs: externalLibraryInputs,
++            outputFiles: outputFiles
+         ))
+     }
+ }
+@@ -1141,7 +1198,17 @@ public extension PluginInvocationDelegate {
+     func pluginDefinedPrebuildCommand(displayName: String?, executable: AbsolutePath, arguments: [String], environment: [String: String], workingDirectory: AbsolutePath?, outputFilesDirectory: AbsolutePath) -> Bool {
+         return true
+     }
+-    func pluginDefinedExternalBuildCommand(displayName: String?, executable: AbsolutePath, arguments: [String], environment: [String: String], workingDirectory: AbsolutePath?) {
++    func pluginDefinedExternalBuildCommand(
++        displayName: String?,
++        executable: AbsolutePath,
++        arguments: [String],
++        environment: [String: String],
++        workingDirectory: AbsolutePath?,
++        placement: BuildToolPluginInvocationResult.ExternalBuildCommand.Placement,
++        inputFiles: [AbsolutePath],
++        externalLibraryInputs: [BuildToolPluginInvocationResult.ExternalBuildCommand.ExternalLibraryInput],
++        outputFiles: [String]
++    ) {
+     }
+     func pluginRequestedBuildOperation(subset: PluginInvocationBuildSubset, parameters: PluginInvocationBuildParameters, completion: @escaping (Result<PluginInvocationBuildResult, Error>) -> Void) {
+         DispatchQueue.sharedConcurrent.async { completion(Result.failure(StringError("unimplemented"))) }
+diff --git a/Sources/SwiftBuildSupport/PIFBuilder.swift b/Sources/SwiftBuildSupport/PIFBuilder.swift
+index 0098e4132..e48c2fe67 100644
+--- a/Sources/SwiftBuildSupport/PIFBuilder.swift
++++ b/Sources/SwiftBuildSupport/PIFBuilder.swift
+@@ -60,6 +60,9 @@ package struct PIFBuilderParameters {
+     /// The path to the library directory of the active toolchain.
+     let toolchainLibDir: AbsolutePath
+
++    /// Runtime library paths needed by host-built plugin tools.
++    let toolchainRuntimeLibraryPaths: [AbsolutePath]
++
+     /// An array of paths to search for pkg-config `.pc` files.
+     let pkgConfigDirectories: [AbsolutePath]
+
+@@ -87,13 +90,20 @@ package struct PIFBuilderParameters {
+     /// reported by the build system for the host `BuildParameters`.
+     let hostBuildProductsPath: AbsolutePath
+
+-    package init(isPackageAccessModifierSupported: Bool, enableTestability: Bool, shouldCreateDylibForDynamicProducts: Bool, materializeStaticArchiveProductsForRootPackages: Bool, createDynamicVariantsForLibraryProducts: Bool, toolchainLibDir: AbsolutePath, pkgConfigDirectories: [AbsolutePath], supportedSwiftVersions: [SwiftLanguageVersion], pluginScriptRunner: PluginScriptRunner, disableSandbox: Bool, pluginWorkingDirectory: AbsolutePath, additionalFileRules: [FileRuleDescription], addLocalRpaths: PackagePIFBuilder.AddLocalRpaths, hostBuildProductsPath: AbsolutePath) {
++    /// The directory in which destination build products are placed.
++    let destinationBuildProductsPath: AbsolutePath
++
++    /// The resolved SDK root for destination custom tasks.
++    let destinationSDKRootPath: AbsolutePath?
++
++    package init(isPackageAccessModifierSupported: Bool, enableTestability: Bool, shouldCreateDylibForDynamicProducts: Bool, materializeStaticArchiveProductsForRootPackages: Bool, createDynamicVariantsForLibraryProducts: Bool, toolchainLibDir: AbsolutePath, toolchainRuntimeLibraryPaths: [AbsolutePath] = [], pkgConfigDirectories: [AbsolutePath], supportedSwiftVersions: [SwiftLanguageVersion], pluginScriptRunner: PluginScriptRunner, disableSandbox: Bool, pluginWorkingDirectory: AbsolutePath, additionalFileRules: [FileRuleDescription], addLocalRpaths: PackagePIFBuilder.AddLocalRpaths, hostBuildProductsPath: AbsolutePath, destinationBuildProductsPath: AbsolutePath? = nil, destinationSDKRootPath: AbsolutePath? = nil) {
+         self.isPackageAccessModifierSupported = isPackageAccessModifierSupported
+         self.enableTestability = enableTestability
+         self.shouldCreateDylibForDynamicProducts = shouldCreateDylibForDynamicProducts
+         self.materializeStaticArchiveProductsForRootPackages = materializeStaticArchiveProductsForRootPackages
+         self.createDynamicVariantsForLibraryProducts = createDynamicVariantsForLibraryProducts
+         self.toolchainLibDir = toolchainLibDir
++        self.toolchainRuntimeLibraryPaths = toolchainRuntimeLibraryPaths
+         self.pkgConfigDirectories = pkgConfigDirectories
+         self.supportedSwiftVersions = supportedSwiftVersions
+         self.pluginScriptRunner = pluginScriptRunner
+@@ -102,6 +112,8 @@ package struct PIFBuilderParameters {
+         self.additionalFileRules = additionalFileRules
+         self.addLocalRpaths = addLocalRpaths
+         self.hostBuildProductsPath = hostBuildProductsPath
++        self.destinationBuildProductsPath = destinationBuildProductsPath ?? hostBuildProductsPath
++        self.destinationSDKRootPath = destinationSDKRootPath
+     }
+ }
+
+@@ -261,6 +273,7 @@ public final class PIFBuilder {
+             .sorted { $0.manifest.displayName < $1.manifest.displayName } // TODO: use identity instead?
+
+         var packagesAndBuilders: [(ResolvedPackage, PackagePIFBuilder, any PackagePIFBuilder.BuildDelegate)] = []
++        var requestedExternalLibraryOutputPaths: [(description: String, path: String)] = []
+
+         for package in sortedPackages {
+             var buildToolPluginResultsByTargetName: [String: [PackagePIFBuilder.BuildToolPluginInvocationResult]] = [:]
+@@ -380,6 +393,7 @@ public final class PIFBuilder {
+                             buildCommand: buildCommand,
+                             package: package,
+                             pluginOutputDir: pluginOutputDir,
++                            runtimeLibraryPaths: parameters.toolchainRuntimeLibraryPaths,
+                             disableSandbox: parameters.disableSandbox
+                         )
+                     }))
+@@ -479,15 +493,117 @@ public final class PIFBuilder {
+                     modulesGraph: graph,
+                     observabilityScope: observabilityScope
+                 )
+-                let buildCommands: [PackagePIFBuilder.CustomBuildCommand] = results.externalBuildCommands.map {
+-                    .init(
+-                        externalBuildCommand: $0,
++                let expectedPackageOutputFileNames = externalBuilderMap[builder.id, default: []]
++                    .filter { $0.type == .externalLibrary }
++                    .map { "lib\($0.name).a" }
++
++                let buildCommands: [PackagePIFBuilder.CustomBuildCommand] = try results.externalBuildCommands.map { command in
++                    if case .postProduct(let productName) = command.placement {
++                        guard !command.outputFiles.isEmpty else {
++                            throw StringError("post-product external build command for '\(productName)' must declare at least one output file")
++                        }
++                        guard let product = package.products.first(where: { $0.name == productName }) else {
++                            throw StringError("post-product external build command references unknown product '\(productName)' in package '\(package.identity)'")
++                        }
++                        switch product.type {
++                        case .library(.static):
++                            guard graph.rootPackages.contains(id: package.id),
++                                  parameters.materializeStaticArchiveProductsForRootPackages
++                            else {
++                                throw StringError("post-product external build commands require a materialized static archive for '\(productName)'")
++                            }
++                        case .library(.dynamic), .executable:
++                            break
++                        case .library(.automatic):
++                            throw StringError("post-product external build commands require a materialized product; '\(productName)' is an automatic library")
++                        case .test, .snippet, .plugin, .macro:
++                            throw StringError("post-product external build command does not support product '\(productName)' of type '\(product.type)'")
++                        }
++                        let appliedModuleIDs = Set(externalBuilderMap[builder.id, default: []].map(\.id))
++                        guard product.modules.contains(where: { appliedModuleIDs.contains($0.id) }) else {
++                            throw StringError("post-product external builder '\(builder.name)' must be attached to a module in product '\(productName)'")
++                        }
++                    }
++
++                    var resolvedExternalLibraryInputs: [(environmentVariable: String, path: String)] = []
++                    var seenEnvironmentVariables = Set<String>()
++                    for input in command.externalLibraryInputs {
++                        guard !input.environmentVariable.isEmpty,
++                              input.environmentVariable.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") }),
++                              input.environmentVariable.first?.isNumber != true
++                        else {
++                            throw StringError("external library input environment variable '\(input.environmentVariable)' is invalid")
++                        }
++                        guard seenEnvironmentVariables.insert(input.environmentVariable).inserted,
++                              command.configuration.environment[EnvironmentKey(input.environmentVariable)] == nil
++                        else {
++                            throw StringError("external library input environment variable '\(input.environmentVariable)' is duplicated")
++                        }
++                        guard let inputPackage = graph.packages.first(where: {
++                            $0.identity.description == input.packageIdentity
++                        }) else {
++                            throw StringError("external library input references unknown package '\(input.packageIdentity)'")
++                        }
++                        guard let inputProduct = inputPackage.products.first(where: {
++                            $0.name == input.productName
++                        }) else {
++                            throw StringError("external library input references unknown product '\(input.productName)' in package '\(input.packageIdentity)'")
++                        }
++                        guard let inputModule = inputProduct.modules.only,
++                              inputModule.type == .externalLibrary,
++                              let inputBuilder = inputModule.pluginDependencies(capability: .externalBuilder).only
++                        else {
++                            throw StringError("external library input '\(input.packageIdentity):\(input.productName)' must contain exactly one externally-built library")
++                        }
++                        let rawOutputDirectory = inputBuilder.pluginOutputPath(
++                            forPackage: inputPackage.identity,
++                            pluginWorkingDirectory: parameters.pluginWorkingDirectory
++                        )
++                        let outputFileName: String
++                        if let requestedOutputFileName = input.outputFileName {
++                            guard !requestedOutputFileName.isEmpty else {
++                                throw StringError("external library input output file name must not be empty")
++                            }
++                            let relativeOutputPath = try RelativePath(validating: requestedOutputFileName)
++                            guard relativeOutputPath.pathString != ".",
++                                  relativeOutputPath.components.first != ".."
++                            else {
++                                throw StringError(
++                                    "external library input output file name '\(requestedOutputFileName)' must remain inside the external builder output directory"
++                                )
++                            }
++                            outputFileName = relativeOutputPath.pathString
++                        } else {
++                            outputFileName = "lib\(inputModule.name).a"
++                        }
++                        let rawArchivePath = "\(rawOutputDirectory.pathString)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/\(outputFileName)"
++                        resolvedExternalLibraryInputs.append((input.environmentVariable, rawArchivePath))
++                        requestedExternalLibraryOutputPaths.append(
++                            (
++                                description: "\(input.packageIdentity):\(input.productName):\(outputFileName)",
++                                path: rawArchivePath
++                            )
++                        )
++                    }
++
++                    return try .init(
++                        externalBuildCommand: command,
+                         package: package,
+                         pluginOutputDir: pluginOutputDirectory,
++                        resolvedExternalLibraryInputs: resolvedExternalLibraryInputs,
++                        expectedPackageOutputFileNames: expectedPackageOutputFileNames,
++                        destinationBuildProductsPath: parameters.destinationBuildProductsPath,
++                        destinationSDKRootPath: parameters.destinationSDKRootPath,
++                        runtimeLibraryPaths: parameters.toolchainRuntimeLibraryPaths,
+                         disableSandbox: self.parameters.disableSandbox
+                     )
+                 }
+-                externalBuilderResults.append(.init(buildCommands: buildCommands))
++                externalBuilderResults.append(
++                    .init(
++                        buildCommands: buildCommands,
++                        builderTargetID: builder.pifTargetGUID.value
++                    )
++                )
+             }
+
+             let packagePIFBuilderDelegate = PackagePIFBuilderDelegate(
+@@ -514,6 +630,21 @@ public final class PIFBuilder {
+             packagesAndBuilders.append((package, packagePIFBuilder, packagePIFBuilderDelegate))
+         }
+
++        let declaredExternalLibraryOutputPaths = Set(
++            packagesAndBuilders.flatMap { packageAndBuilder in
++                packageAndBuilder.1.externalBuilderResults.flatMap { result in
++                    result.buildCommands.flatMap(\.outputPaths)
++                }
++            }
++        )
++        for requestedOutput in requestedExternalLibraryOutputPaths {
++            guard declaredExternalLibraryOutputPaths.contains(requestedOutput.path) else {
++                throw StringError(
++                    "external library input '\(requestedOutput.description)' is not declared as an output by its external builder"
++                )
++            }
++        }
++
+         return packagesAndBuilders
+     }
+
+@@ -632,7 +763,8 @@ public final class PIFBuilder {
+         addLocalRpaths: PackagePIFBuilder.AddLocalRpaths,
+         materializeStaticArchiveProductsForRootPackages: Bool,
+         createDynamicVariantsForLibraryProducts: Bool,
+-        hostBuildProductsPath: AbsolutePath
++        hostBuildProductsPath: AbsolutePath,
++        destinationBuildProductsPath: AbsolutePath? = nil
+     ) async throws -> PIFGenerationResult {
+         let parameters = PIFBuilderParameters(
+             buildParameters,
+@@ -644,7 +776,8 @@ public final class PIFBuilder {
+             addLocalRpaths: addLocalRpaths,
+             materializeStaticArchiveProductsForRootPackages: materializeStaticArchiveProductsForRootPackages,
+             createDynamicVariantsForLibraryProducts: createDynamicVariantsForLibraryProducts,
+-            hostBuildProductsPath: hostBuildProductsPath
++            hostBuildProductsPath: hostBuildProductsPath,
++            destinationBuildProductsPath: destinationBuildProductsPath
+         )
+         let builder = Self(
+             graph: packageGraph,
+@@ -955,7 +1088,8 @@ extension PIFBuilderParameters {
+         addLocalRpaths: PackagePIFBuilder.AddLocalRpaths,
+         materializeStaticArchiveProductsForRootPackages: Bool,
+         createDynamicVariantsForLibraryProducts: Bool,
+-        hostBuildProductsPath: AbsolutePath
++        hostBuildProductsPath: AbsolutePath,
++        destinationBuildProductsPath: AbsolutePath? = nil
+     ) {
+         self.init(
+             isPackageAccessModifierSupported: buildParameters.driverParameters.isPackageAccessModifierSupported,
+@@ -964,6 +1098,7 @@ extension PIFBuilderParameters {
+             materializeStaticArchiveProductsForRootPackages: materializeStaticArchiveProductsForRootPackages,
+             createDynamicVariantsForLibraryProducts: createDynamicVariantsForLibraryProducts,
+             toolchainLibDir: (try? buildParameters.toolchain.toolchainLibDir) ?? .root,
++            toolchainRuntimeLibraryPaths: buildParameters.toolchain.runtimeLibraryPaths,
+             pkgConfigDirectories: buildParameters.pkgConfigDirectories,
+             supportedSwiftVersions: supportedSwiftVersions,
+             pluginScriptRunner: pluginScriptRunner,
+@@ -971,7 +1106,9 @@ extension PIFBuilderParameters {
+             pluginWorkingDirectory: pluginWorkingDirectory,
+             additionalFileRules: additionalFileRules,
+             addLocalRpaths: addLocalRpaths,
+-            hostBuildProductsPath: hostBuildProductsPath
++            hostBuildProductsPath: hostBuildProductsPath,
++            destinationBuildProductsPath: destinationBuildProductsPath,
++            destinationSDKRootPath: buildParameters.toolchain.sdkRootPath
+         )
+     }
+ }
+@@ -1010,6 +1147,7 @@ extension PackagePIFBuilder.CustomBuildCommand {
+         buildCommand: SPMBuildCore.BuildToolPluginInvocationResult.BuildCommand,
+         package: ResolvedPackage,
+         pluginOutputDir: AbsolutePath,
++        runtimeLibraryPaths: [AbsolutePath],
+         disableSandbox: Bool
+     ) {
+         var newEnv: Environment = buildCommand.configuration.environment
+@@ -1020,10 +1158,8 @@ extension PackagePIFBuilder.CustomBuildCommand {
+         // plugins do not inadvertently use the toolchain stdlib instead of the OS stdlib
+         // when built with a Swift.org toolchain.
+         #if !os(macOS)
+-        let runtimeLibPaths = buildParameters.toolchain.runtimeLibraryPaths
+-
+         // Add paths to swift standard runtime libraries to the library path so that they can be found at runtime
+-        for libPath in runtimeLibPaths {
++        for libPath in runtimeLibraryPaths {
+             newEnv.appendPath(key: .libraryPath, value: libPath.pathString)
+         }
+         #endif
+@@ -1056,9 +1192,14 @@ extension PackagePIFBuilder.CustomBuildCommand {
+         externalBuildCommand: SPMBuildCore.BuildToolPluginInvocationResult.ExternalBuildCommand,
+         package: ResolvedPackage,
+         pluginOutputDir: AbsolutePath,
++        resolvedExternalLibraryInputs: [(environmentVariable: String, path: String)],
++        expectedPackageOutputFileNames: [String],
++        destinationBuildProductsPath: AbsolutePath,
++        destinationSDKRootPath: AbsolutePath?,
++        runtimeLibraryPaths: [AbsolutePath],
+         disableSandbox: Bool
+-    ) {
+-        var newEnv: Environment = .current // externalBuildCommand.configuration.environment
++    ) throws {
++        var newEnv = externalBuildCommand.configuration.environment
+
+         // FIXME: This is largely a workaround for improper rpath setup on Linux. It should be
+         // removed once the Swift Build backend switches to use swiftc as the linker driver
+@@ -1066,10 +1207,8 @@ extension PackagePIFBuilder.CustomBuildCommand {
+         // plugins do not inadvertently use the toolchain stdlib instead of the OS stdlib
+         // when built with a Swift.org toolchain.
+         #if !os(macOS)
+-        let runtimeLibPaths = buildParameters.toolchain.runtimeLibraryPaths
+-
+         // Add paths to swift standard runtime libraries to the library path so that they can be found at runtime
+-        for libPath in runtimeLibPaths {
++        for libPath in runtimeLibraryPaths {
+             newEnv.appendPath(key: .libraryPath, value: libPath.pathString)
+         }
+         #endif
+@@ -1079,20 +1218,67 @@ extension PackagePIFBuilder.CustomBuildCommand {
+             newEnv.appendPath(key: .path, value: pathValue)
+         }
+
++        if let destinationSDKRootPath {
++            newEnv[EnvironmentKey("SWIFT_SDK")] = destinationSDKRootPath.pathString
++        }
++
++        for input in resolvedExternalLibraryInputs {
++            let key = EnvironmentKey(input.environmentVariable)
++            guard newEnv[key] == nil else {
++                throw StringError("external library input environment variable '\(input.environmentVariable)' conflicts with the command environment")
++            }
++            newEnv[key] = input.path
++        }
++
++        let placement: PackagePIFBuilder.CustomBuildCommand.ExternalBuildPlacement
++        let unresolvedInputPaths: [String]
++        let outputBase: String
++        let writableDirectories: [AbsolutePath]
++        let outputFileNames: [String]
++        switch externalBuildCommand.placement {
++        case .package:
++            placement = .package
++            unresolvedInputPaths = resolvedExternalLibraryInputs.map(\.path)
++            outputBase = "\(pluginOutputDir.pathString)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)"
++            writableDirectories = [pluginOutputDir]
++            outputFileNames = expectedPackageOutputFileNames + externalBuildCommand.outputFiles
++        case .postProduct(let productName):
++            placement = .postProduct(productName: productName)
++            let productPath = "$(TARGET_BUILD_DIR)/$(FULL_PRODUCT_NAME)"
++            newEnv[EnvironmentKey("SWIFT_PRODUCT_PATH")] = productPath
++            unresolvedInputPaths = [productPath] + resolvedExternalLibraryInputs.map(\.path)
++            outputBase = "$(TARGET_BUILD_DIR)"
++            writableDirectories = [pluginOutputDir, destinationBuildProductsPath]
++            outputFileNames = externalBuildCommand.outputFiles
++        }
++        newEnv[EnvironmentKey("SWIFT_EXTERNAL_OUTPUT_DIR")] = outputBase
++
++        var seenOutputFileNames = Set<String>()
++        let uniqueOutputFileNames = outputFileNames.filter { seenOutputFileNames.insert($0).inserted }
++        let outputPaths = try uniqueOutputFileNames.map { fileName in
++            guard !fileName.isEmpty else {
++                throw StringError("external build output file name must not be empty")
++            }
++            let relativePath = try RelativePath(validating: fileName)
++            return "\(outputBase)/\(relativePath.pathString)"
++        }
++
+         self.init(
+             displayName: externalBuildCommand.configuration.displayName,
+             executable: externalBuildCommand.configuration.executable.pathString,
+             arguments: externalBuildCommand.configuration.arguments,
+             environment: .init(newEnv),
+             workingDir: package.path,
+-            inputPaths: [],
+-            outputPaths: [],
++            inputPaths: externalBuildCommand.inputFiles,
++            unresolvedInputPaths: unresolvedInputPaths,
++            outputPaths: outputPaths,
+             pluginOutputDir: pluginOutputDir,
+             sandboxProfile: disableSandbox ? nil : .init(
+                 strictness: .writableTemporaryDirectory,
+-                writableDirectories: [pluginOutputDir],
+-                readOnlyDirectories: [package.path]
+-            )
++                writableDirectories: writableDirectories,
++                readOnlyDirectories: [package.path] + externalBuildCommand.inputFiles
++            ),
++            externalBuildPlacement: placement
+         )
+
+     }
+diff --git a/Sources/SwiftBuildSupport/PackagePIFBuilder+Plugins.swift b/Sources/SwiftBuildSupport/PackagePIFBuilder+Plugins.swift
+index 3f440fd9f..09cf56d29 100644
+--- a/Sources/SwiftBuildSupport/PackagePIFBuilder+Plugins.swift
++++ b/Sources/SwiftBuildSupport/PackagePIFBuilder+Plugins.swift
+@@ -60,6 +60,9 @@ extension PackagePIFBuilder {
+     public struct ExternalBuilderPluginInvocationResult: Equatable {
+         /// Build commands to incorporate into the dependency graph.
+         public let buildCommands: [CustomBuildCommand]
++
++        /// PIF target identifier of the external-builder plugin that created the commands.
++        public let builderTargetID: String
+     }
+
+     /// A command provided by a build tool plugin.
+@@ -67,12 +70,18 @@ extension PackagePIFBuilder {
+     ///
+     /// There are *two* basic kinds of build tool commands: prebuild commands and regular build commands.
+     public struct CustomBuildCommand: Equatable {
++        public enum ExternalBuildPlacement: Equatable {
++            case package
++            case postProduct(productName: String)
++        }
++
+         public var displayName: String?
+         public var executable: String
+         public var arguments: [String]
+         public var environment: [String: String]
+         public var workingDir: AbsolutePath?
+         public var inputPaths: [AbsolutePath] = []
++        public var unresolvedInputPaths: [String] = []
+
+         /// Output paths can contain references with un-resolved paths (e.g. "$(DERIVED_FILE_DIR)/myOutput.txt")
+         public var outputPaths: [String] = []
+@@ -83,6 +92,7 @@ extension PackagePIFBuilder {
+         public var pluginOutputDir: AbsolutePath
+
+         public var sandboxProfile: SandboxProfile? = nil
++        public var externalBuildPlacement: ExternalBuildPlacement? = nil
+
+         public init(
+             displayName: String?,
+@@ -91,9 +101,11 @@ extension PackagePIFBuilder {
+             environment: [String: String],
+             workingDir: AbsolutePath?,
+             inputPaths: [AbsolutePath],
++            unresolvedInputPaths: [String] = [],
+             outputPaths: [String],
+             pluginOutputDir: AbsolutePath,
+-            sandboxProfile: SandboxProfile?
++            sandboxProfile: SandboxProfile?,
++            externalBuildPlacement: ExternalBuildPlacement? = nil
+         ) {
+             self.displayName = displayName
+             self.executable = executable
+@@ -101,9 +113,11 @@ extension PackagePIFBuilder {
+             self.environment = environment
+             self.workingDir = workingDir
+             self.inputPaths = inputPaths
++            self.unresolvedInputPaths = unresolvedInputPaths
+             self.outputPaths = outputPaths
+             self.pluginOutputDir = pluginOutputDir
+             self.sandboxProfile = sandboxProfile
++            self.externalBuildPlacement = externalBuildPlacement
+         }
+     }
+
+@@ -149,4 +163,3 @@ extension PackagePIFBuilder {
+         }
+     }
+ }
+-
+diff --git a/Sources/SwiftBuildSupport/PackagePIFBuilder.swift b/Sources/SwiftBuildSupport/PackagePIFBuilder.swift
+index c669504a2..53c5aa2f1 100644
+--- a/Sources/SwiftBuildSupport/PackagePIFBuilder.swift
++++ b/Sources/SwiftBuildSupport/PackagePIFBuilder.swift
+@@ -510,8 +510,9 @@ public final class PackagePIFBuilder {
+         // the structure of the client(s).
+         //
+
+-        // Add the package level external build commands
+-        try projectBuilder.addExternalBuildComands()
++        // Add package-scoped external build commands before their external-library
++        // targets are constructed.
++        try projectBuilder.addExternalPackageBuildCommands()
+
+         self.log(.debug, "Processing \(package.products.count) products:")
+
+@@ -553,6 +554,10 @@ public final class PackagePIFBuilder {
+             }
+         }
+
++        // Product targets now exist, so post-product external commands can attach
++        // directly to them and consume their materialized product files.
++        try projectBuilder.addPostProductExternalBuildCommands()
++
+         self.log(.debug, "Processing \(package.modules.count) modules:")
+
+         // For each of the **modules** in the package other than those that are the *main* module of a product
+diff --git a/Sources/SwiftBuildSupport/PackagePIFProjectBuilder+Products.swift b/Sources/SwiftBuildSupport/PackagePIFProjectBuilder+Products.swift
+index 510244f12..f1d436d22 100644
+--- a/Sources/SwiftBuildSupport/PackagePIFProjectBuilder+Products.swift
++++ b/Sources/SwiftBuildSupport/PackagePIFProjectBuilder+Products.swift
+@@ -903,12 +903,22 @@ extension PackagePIFProjectBuilder {
+                     }
+                 }
+
++                // Header-only Clang targets don't emit an object file. Linking their
++                // target product makes Swift Build add a nonexistent `<target>.o` to
++                // the archive response file. A build-tool plugin may still add
++                // generated source files, so retain linkage for those targets.
++                let hasLinkableBuildOutput = moduleDependency.sourceFileRelativePaths.hasContent ||
++                    moduleDependency.pluginDependencies(capability: .buildTool).hasContent
+                 libraryUmbrellaTarget.common.addDependency(
+                     on: moduleDependency.pifTargetGUID,
+                     platformFilters: packageConditions.toPlatformFilter(toolsVersion: package.manifest.toolsVersion),
+-                    linkProduct: true
++                    linkProduct: hasLinkableBuildOutput
++                )
++                log(
++                    .debug,
++                    indent: 1,
++                    "Added \(hasLinkableBuildOutput ? "linked " : "")dependency on target '\(moduleDependency.pifTargetGUID)'"
+                 )
+-                log(.debug, indent: 1, "Added linked dependency on target '\(moduleDependency.pifTargetGUID)'")
+
+             case .product(let productDependency, let packageConditions):
+                 // Do not add a dependency for binary-only executable products since they are not part of the build.
+diff --git a/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift b/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift
+index 3a33c18a1..77751b04c 100644
+--- a/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift
++++ b/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift
+@@ -11,6 +11,7 @@
+ //===----------------------------------------------------------------------===//
+
+ import Foundation
++import TSCBasic
+ import TSCUtility
+
+ import struct Basics.AbsolutePath
+@@ -514,7 +515,7 @@ struct PackagePIFProjectBuilder {
+                 environment: command.environment.map { Pair($0, $1) }.sorted(by: <),
+                 workingDirectory: command.workingDir?.pathString,
+                 executionDescription: command.displayName ?? "Performing build tool plugin command",
+-                inputFilePaths: [command.executable] + command.inputPaths.map(\.pathString),
++                inputFilePaths: [command.executable] + command.inputPaths.map(\.pathString) + command.unresolvedInputPaths,
+                 outputFilePaths: command.outputPaths,
+                 enableSandboxing: false,
+                 preparesForIndexing: true
+@@ -522,71 +523,105 @@ struct PackagePIFProjectBuilder {
+         )
+     }
+
+-    mutating func addExternalBuildComands() throws {
+-        for results in pifBuilder.externalBuilderResults {
+-            // Create target for the external build
+-            // TODO: Should this be one per plugin?
+-            let package = self.package
+-            let externalTargetKeyPath = try self.project.addAggregateTarget { _ in
+-                ProjectModel.AggregateTarget(
+-                    id: package.pifTargetGUID,
+-                    name: package.name
+-                )
+-            }
+-            do {
+-                let externalTarget = self.project[keyPath: externalTargetKeyPath]
+-                log(.debug, "Created aggregate target '\(externalTarget.id) with name \(externalTarget.name)")
+-            }
++    mutating func addExternalPackageBuildCommands() throws {
++        let commands = pifBuilder.externalBuilderResults.flatMap(\.buildCommands).filter {
++            $0.externalBuildPlacement == .package
++        }
++        guard !commands.isEmpty else { return }
++
++        let packageTargetID = self.package.pifTargetGUID
++        let packageName = self.package.name
++        let externalTargetKeyPath = try self.project.addAggregateTarget { _ in
++            ProjectModel.AggregateTarget(
++                id: packageTargetID,
++                name: packageName
++            )
++        }
++        let externalTarget = self.project[keyPath: externalTargetKeyPath]
++        log(.debug, "Created aggregate target '\(externalTarget.id)' with name '\(externalTarget.name)'")
+
+-            // Add in the custom task for the build commands
+-            for command in results.buildCommands {
+-                var commandLine = [command.executable] + command.arguments
++        for command in commands {
++            self.project[keyPath: externalTargetKeyPath].customTasks.append(
++                try self.makeExternalBuildTask(command, alwaysOutOfDate: true)
++            )
++        }
++        let packageBuilderTargetIDs = pifBuilder.externalBuilderResults.compactMap { result in
++            result.buildCommands.contains(where: { $0.externalBuildPlacement == .package })
++                ? result.builderTargetID
++                : nil
++        }
++        for builderTargetID in Set(packageBuilderTargetIDs) {
++            self.project[keyPath: externalTargetKeyPath].common.addDependency(
++                on: GUID(builderTargetID),
++                platformFilters: [],
++                linkProduct: false
++            )
++        }
+
+-                if let sandbox = command.sandboxProfile, !pifBuilder.delegate.isPluginExecutionSandboxingDisabled {
+-                    commandLine = try! sandbox.apply(to: commandLine, fileSystem: self.pifBuilder.fileSystem)
+-                }
++        self.project[keyPath: externalTargetKeyPath].common.addBuildConfig { id in
++            BuildConfig(id: id, name: "Debug", settings: .init())
++        }
++        self.project[keyPath: externalTargetKeyPath].common.addBuildConfig { id in
++            BuildConfig(id: id, name: "Release", settings: .init())
++        }
++    }
+
+-                var environment = command.environment
+-                environment["SWIFT_CONFIGURATION"] = "$(CONFIGURATION)"
+-                environment["SWIFT_PLATFORM"] = "$(EFFECTIVE_PLATFORM_NAME)"
+-                environment["SWIFT_ARCHS"] = "$(ARCHS)"
+-                environment["SWIFT_VENDOR"] = "$(LLVM_TARGET_TRIPLE_VENDOR)"
+-                environment["SWIFT_OS"] = "$(LLVM_TARGET_TRIPLE_OS_VERSION)"
+-                environment["SWIFT_SUFFIX"] = "$(LLVM_TARGET_TRIPLE_SUFFIX)"
+-                environment["SWIFT_SDK"] = "$(SYSROOT)"
+-
+-                self.project[keyPath: externalTargetKeyPath].customTasks.append(
+-                    ProjectModel.CustomTask(
+-                        commandLine: commandLine,
+-                        environment: environment.map { Pair($0, $1) }.sorted(by: <),
+-                        workingDirectory: command.workingDir?.pathString,
+-                        executionDescription: command.displayName ?? "Performing external build",
+-                        inputFilePaths: [command.executable] + command.inputPaths.map(\.pathString),
+-                        outputFilePaths: command.outputPaths,
+-                        enableSandboxing: false,
+-                        preparesForIndexing: false,
+-                        alwaysOutOfDate: true
+-                    )
++    mutating func addPostProductExternalBuildCommands() throws {
++        for result in pifBuilder.externalBuilderResults {
++            for command in result.buildCommands {
++                guard case .postProduct(let productName) = command.externalBuildPlacement else {
++                    continue
++                }
++                guard let product = self.package.products.first(where: { $0.name == productName }),
++                      let productTargetKeyPath = self.project.findTarget(id: product.pifTargetGUID)
++                else {
++                    throw StringError("could not find PIF target for post-product external build command on '\(productName)'")
++                }
++                self.project[keyPath: productTargetKeyPath].customTasks.append(
++                    try self.makeExternalBuildTask(command, alwaysOutOfDate: command.outputPaths.isEmpty)
+                 )
+-            }
+-
+-            // Add in the build configs
+-            self.project[keyPath: externalTargetKeyPath].common.addBuildConfig { id in
+-                BuildConfig(
+-                    id: id,
+-                    name: "Debug",
+-                    settings: .init()
++                self.project[keyPath: productTargetKeyPath].common.addDependency(
++                    on: GUID(result.builderTargetID),
++                    platformFilters: [],
++                    linkProduct: false
+                 )
+             }
++        }
++    }
+
+-            self.project[keyPath: externalTargetKeyPath].common.addBuildConfig { id in
+-                BuildConfig(
+-                    id: id,
+-                    name: "Release",
+-                    settings: .init(),
+-                )
+-            }
++    private func makeExternalBuildTask(
++        _ command: PackagePIFBuilder.CustomBuildCommand,
++        alwaysOutOfDate: Bool
++    ) throws -> ProjectModel.CustomTask {
++        var commandLine = [command.executable] + command.arguments
++        if let sandbox = command.sandboxProfile,
++           !pifBuilder.delegate.isPluginExecutionSandboxingDisabled
++        {
++            commandLine = try sandbox.apply(to: commandLine, fileSystem: self.pifBuilder.fileSystem)
+         }
++
++        var environment = command.environment
++        environment["SWIFT_CONFIGURATION"] = "$(CONFIGURATION)"
++        environment["SWIFT_PLATFORM"] = "$(EFFECTIVE_PLATFORM_NAME)"
++        environment["SWIFT_ARCHS"] = "$(ARCHS)"
++        environment["SWIFT_VENDOR"] = "$(LLVM_TARGET_TRIPLE_VENDOR)"
++        environment["SWIFT_OS"] = "$(LLVM_TARGET_TRIPLE_OS_VERSION)"
++        environment["SWIFT_SUFFIX"] = "$(LLVM_TARGET_TRIPLE_SUFFIX)"
++        if environment["SWIFT_SDK"] == nil {
++            environment["SWIFT_SDK"] = "$(SYSROOT)"
++        }
++
++        return ProjectModel.CustomTask(
++            commandLine: commandLine,
++            environment: environment.map { Pair($0, $1) }.sorted(by: <),
++            workingDirectory: command.workingDir?.pathString,
++            executionDescription: command.displayName ?? "Performing external build",
++            inputFilePaths: [command.executable] + command.inputPaths.map(\.pathString) + command.unresolvedInputPaths,
++            outputFilePaths: command.outputPaths,
++            enableSandboxing: false,
++            preparesForIndexing: false,
++            alwaysOutOfDate: alwaysOutOfDate
++        )
+     }
+
+     /// Processes the paths of plugin-generated files for a particular package target,
+diff --git a/Sources/SwiftBuildSupport/SwiftBuildSystem.swift b/Sources/SwiftBuildSupport/SwiftBuildSystem.swift
+index ae4374355..06f37cdae 100644
+--- a/Sources/SwiftBuildSupport/SwiftBuildSystem.swift
++++ b/Sources/SwiftBuildSupport/SwiftBuildSystem.swift
+@@ -950,8 +950,8 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
+         }
+
+         if !buildParameters.customToolsetPaths.isEmpty {
+-            settings["SWIFT_SDK_TOOLSETS"] =
+-                (["$(inherited)"] + buildParameters.customToolsetPaths.map { $0.pathStringWithPosixSlashes })
++            settings["SWIFT_SDK_TOOLSETS[__destination_platform=YES]"] =
++                (["$(inherited)"] + buildParameters.customToolsetPaths.map { $0.pathStringWithPosixSlashes.shellEscaped() })
+                 .joined(separator: " ")
+         }
+
+@@ -965,11 +965,11 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
+
+         // FIXME: "none" triples get a placeholder SDK/platform and don't support any specific triple by default. Unlike most platforms, where the vendor and environment is implied as a function of the arch and "platform", bare metal operates in terms of triples directly. We need to replace this bringup convenience with a more idiomatic mechanism, perhaps in the build request.
+         if buildParameters.triple.os == .noneOS {
+-            settings["ARCHS"] = buildParameters.triple.archName
+-            settings["VALID_ARCHS"] = buildParameters.triple.archName
+-            settings["LLVM_TARGET_TRIPLE_VENDOR"] = buildParameters.triple.vendorName
++            settings["ARCHS[__destination_platform=YES]"] = buildParameters.triple.archName
++            settings["VALID_ARCHS[__destination_platform=YES]"] = buildParameters.triple.archName
++            settings["LLVM_TARGET_TRIPLE_VENDOR[__destination_platform=YES]"] = buildParameters.triple.vendorName
+             if !buildParameters.triple.environmentName.isEmpty {
+-                settings["LLVM_TARGET_TRIPLE_SUFFIX"] = "-" + buildParameters.triple.environmentName
++                settings["LLVM_TARGET_TRIPLE_SUFFIX[__destination_platform=YES]"] = "-" + buildParameters.triple.environmentName
+             }
+         }
+
+@@ -1002,7 +1002,7 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
+
+         // Optionally also set the list of architectures to build for.
+         if let architectures = buildParameters.architectures, !architectures.isEmpty {
+-            settings["ARCHS"] = architectures.joined(separator: " ")
++            settings["ARCHS[__destination_platform=YES]"] = architectures.joined(separator: " ")
+         } else {
+             // If the user did not explicitly specify a list of architectures, build only the active arch.
+             // We may want to consider building universal binaries by default in Apple-platform release builds
+@@ -1357,7 +1357,8 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
+                     addLocalRpaths: self.buildParameters.linkingParameters.shouldDisableLocalRpath ? .never : .always,
+                     materializeStaticArchiveProductsForRootPackages: materializeStaticArchiveProductsForRootPackages,
+                     createDynamicVariantsForLibraryProducts: false,
+-                    hostBuildProductsPath: try await self.buildProductsPath(for: self.hostBuildParameters)
++                    hostBuildProductsPath: try await self.buildProductsPath(for: self.hostBuildParameters),
++                    destinationBuildProductsPath: try await self.buildProductsPath(for: self.buildParameters)
+                 ),
+                 fileSystem: self.fileSystem,
+                 observabilityScope: self.observabilityScope,
