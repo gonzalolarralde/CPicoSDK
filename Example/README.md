@@ -33,13 +33,14 @@ The preview requires a `swift-build` executable built from that PR together
 with its companion SwiftBuild changes and the small local compatibility fixes
 recorded in
 [`Docs/SWIFTPM_EXTERNAL_PACKAGES_INVESTIGATION.md`](../Docs/SWIFTPM_EXTERNAL_PACKAGES_INVESTIGATION.md).
-It uses the compiler pinned in `ExternalPreviewSDK/swift-toolchain.txt`.
+It uses the compiler pinned by CPicoSDK in
+[`SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt`](../SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt).
 
 First stage the relocatable Pico toolchain and matching Embedded Swift runtime.
 This is a one-time destination setup step, not part of normal builds:
 
 ```bash
-./setup-external-preview-sdk.sh --stage-only
+../setup-external-preview-sdk.sh --stage-only
 ```
 
 Then run the preview build:
@@ -55,11 +56,21 @@ The launcher copies the matching manifest/plugin API libraries found beside
 `ManifestAPI`/`PluginAPI` layout. Exact checkout, patch, and build instructions
 are in the investigation document.
 
-The preview selects `Package@swift-6.5.swift`, invokes the PR's
-`ExternalBuilderPlugin` to build Pico native support, builds the Example static
-product, and runs a declared post-product task to generate firmware. The
-launcher makes one SwiftPM product-build request; it does not run preparation
-or finalization itself.
+The preview selects `Package@swift-6.5.swift`, whose only preview-specific
+consumer wiring is the exported `CPicoFirmwareBuilder` plugin. CPicoSDK's own
+`Package@swift-6.5.swift` owns the external native package, private builder
+plugins, and host-side tools. SwiftPM builds native support through that
+dependency, builds the Example static product, and runs the declared
+post-product firmware task. The launcher makes one SwiftPM product-build
+request; it does not run preparation or finalization itself.
+
+Consumer-specific settings live in `cpicosdk-build.json`. `productName`
+selects the static library to finalize when a package has more than one, while
+the remaining fields select the board combination, target triple, build type,
+stdio mode, and stack sizes. The launcher exports this file's absolute path as
+`CPICOSDK_BUILD_CONFIGURATION`, allowing both CPicoSDK-owned build phases to
+read it. Other preview launchers must do the same; no external-builder
+implementation files need to be copied into the application package.
 
 For the default release configuration, the flashable and diagnostic artifacts
 are written to:
@@ -73,9 +84,10 @@ are written to:
 .build/swiftpm-external-preview/out/Products/Release-none-armv7em/Example.dis
 ```
 
-The post-product and auxiliary-output APIs are small local extensions to the
-PR experiment. They are documented, with reproducible patches, in the
-investigation document. No device is programmed unless `--flash` is passed.
+The post-product, auxiliary-output, and dependency product-filtering changes
+are small local extensions to the PR experiment. They are documented, with
+reproducible patches, in the investigation document. No device is programmed
+unless `--flash` is passed.
 
 ## Programming the Device
 

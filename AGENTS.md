@@ -810,3 +810,20 @@ design notes, experiments, and failure analysis in `docs/`.
   root. Pass the resolved sysroot to custom tasks explicitly and let
   destination-specific metadata locate its enclosing bundle; `$(SYSROOT)` can
   be empty in the aggregate project created for an inline external package.
+- Keep reusable external-build implementation in the dependency that owns the
+  native SDK, not in each consuming application. In this preview, root
+  `Package@swift-6.5.swift` owns `CPicoNative`, the private builder tools, and
+  the exported `CPicoFirmwareBuilder` plugin; a consumer attaches that plugin
+  and may provide `cpicosdk-build.json`. Export the configuration's absolute
+  path as `CPICOSDK_BUILD_CONFIGURATION` before planning so both the private
+  native builder and consumer-context finalizer read the same file. Stage the
+  Swift SDK from the CPicoSDK root with
+  `./setup-external-preview-sdk.sh --stage-only` first.
+- Dependency product filtering must retain private plugin targets referenced by
+  an inline external package. Symptom: a consumer selects CPicoSDK's public
+  library/plugin products, but package loading later cannot find
+  `CPicoNativeBuilderPlugin` or one of its helper targets. Compute the closure
+  of local plugin targets used by external packages, resolve plugin product
+  names to their target names, and add their local target/plugin dependencies
+  after the ordinary product filter. Do not solve this by copying the private
+  tools into the consumer package.

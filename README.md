@@ -38,6 +38,14 @@ The easiest way to get started is with the **Example** project located in the `E
 4. **Open in VSCode** (optional but recommended):
    Install the recommended extensions when prompted. This enables full IDE integration with debugging and flashing capabilities.
 
+An experimental alternative based on SwiftPM's external-package preview moves
+native support and firmware finalization into CPicoSDK-owned build plugins, so
+applications attach `CPicoFirmwareBuilder` while the preview launcher forwards
+their build configuration to both dependency-owned phases. The released
+`build.sh` path remains the default; see
+[`Example/README.md`](Example/README.md#experimental-swiftpm-external-builder-build)
+for preview setup and limitations.
+
 #### Programming the Device
 
 Once your project is built, you have two options for programming your RP2xxx device:

@@ -51,8 +51,16 @@ Example` request. It does not invoke preparation, prime an external target, or
 call the finalizer itself. SwiftPM owns the producer/consumer edges and the
 final six outputs.
 
+The build implementation is dependency-owned. CPicoSDK's root
+`Package@swift-6.5.swift` declares `CPicoNative`, the external native builder,
+the post-product builder, and their private host tools. Of that implementation,
+it exports only the `CPicoFirmwareBuilder` plugin to clients. The Example
+preview manifest attaches that plugin to its static-library target and keeps
+its application-specific choices in `Example/cpicosdk-build.json`; it contains
+no copied external package, plugin, adapter, or builder implementation.
+
 The established `Example/build.sh` remains the default released-toolchain
-path. The preview is isolated in `Package@swift-6.5.swift` and the external
+path. The preview is isolated in version-gated manifests and the external
 preview launcher.
 
 ## Where Preparation and Finalization Went
@@ -67,8 +75,9 @@ The old preparation command had two different responsibilities:
 Those operations cannot be a normal target build command because SwiftPM needs
 the compiler resources, sysroot, toolset, and target triple before it can
 construct the target graph. The preview therefore runs preparation once from
-`setup-external-preview-sdk.sh` and publishes the result as a relocatable Swift
-SDK artifact bundle.
+CPicoSDK's root `setup-external-preview-sdk.sh` and publishes the result as a
+relocatable Swift SDK artifact bundle. Its templates live under
+`SwiftSDK/ExternalPreviewSDK`, not in the consuming Example package.
 
 Normal builds only select `cpicosdk-rp2350` with `--swift-sdk`. They do not run
 the preparation plugin.
@@ -83,7 +92,7 @@ The staged SDK includes:
 - the compiler's matching Swift shims and Clang resource headers.
 
 The compiler snapshot is pinned in
-`Example/ExternalPreviewSDK/swift-toolchain.txt`. The launcher compares the
+`SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt`. The launcher compares the
 staged `swift-compiler-version.txt` with the selected compiler and fails rather
 than mixing snapshots.
 
@@ -110,12 +119,36 @@ This leaves the finalizer cohesive while removing it from shell orchestration.
 
 ## Checked-In Preview Integration
 
+The ownership boundary is visible in the repository layout:
+
+| Owner | Preview files |
+| --- | --- |
+| CPicoSDK | `Package@swift-6.5.swift` and its template, `External/CPicoNativeSupport`, `Plugins/CPicoNativeBuilderPlugin`, `Plugins/CPicoFirmwareFinalizerPlugin`, `Sources/CPicoExternalBuildSupport`, `Sources/CPicoNativeBuilder`, `Sources/CPicoFirmwareFinalizerAdapter`, `SwiftSDK/ExternalPreviewSDK`, and root `setup-external-preview-sdk.sh` |
+| Consumer | `Example/Package@swift-6.5.swift`, `Example/cpicosdk-build.json`, and the preview launcher used to select the development SwiftPM executable |
+
+The consumer therefore selects policy and a firmware product without carrying
+a private copy of CPicoSDK's build implementation.
+
 ### Version-gated manifest
 
-`Example/Package@swift-6.5.swift` uses the PR's `.externalSource`,
-`.externalLibrary`, and `.externalBuilder` declarations. The Example target
-consumes `CPicoNativeSupport` like an ordinary static-library dependency and
-attaches a post-product firmware builder.
+The root `Package@swift-6.5.swift` uses the PR's `.externalSource`,
+`.externalLibrary`, and `.externalBuilder` declarations. Its ordinary
+`CPicoSDK` library product consumes `CPicoNativeSupport`, while its exported
+`CPicoFirmwareBuilder` plugin names the private post-product plugin target.
+The native and finalizer plugins, their adapters, and their shared resolver are
+all private implementation targets in the CPicoSDK package.
+
+`Example/Package@swift-6.5.swift` remains version-gated because released
+SwiftPM cannot parse the experimental plugin capability. Its preview-specific
+work is limited to attaching `.plugin(name: "CPicoFirmwareBuilder", package:
+"CPicoSDK")` to the Example target. The same target continues to attach the
+existing PIO and asset plugins from CPicoSDK.
+
+`Example/cpicosdk-build.json` is the consumer-owned configuration boundary. It
+selects the product name, board combination, platform triple, build mode,
+stdio transport, stack sizes, and incremental mode. The finalizer can infer a
+product only when the client package has exactly one static library; an
+explicit `productName` keeps multi-product packages unambiguous.
 
 The manifest intentionally describes Pico 2/RP2350. The launcher fixes the SDK
 and combination to that same board so an ambient override cannot mix RP2040
@@ -126,7 +159,8 @@ API.
 
 ### External native builder
 
-`CPicoNativeBuilderPlugin` declares its source/configuration inputs and the
+The root package's private `CPicoNativeBuilderPlugin` declares CPicoSDK's
+external source, the consumer configuration, its native inputs, and the
 `pioasm-package-path.txt` output. `CPicoNativeBuilder` then:
 
 1. resolves the selected CPicoSDK configuration and installed Swift SDK;
@@ -139,9 +173,16 @@ The child environment is the resolver's allowlisted environment, with
 destination deployment variables removed for macOS host-tool compilation.
 CMake/Ninja provide incremental work inside the external command.
 
+The selected configuration path is forwarded by the consumer launcher, so the
+dependency-owned native builder and post-product builder resolve the same
+board and stdio choices without copying configuration into CPicoSDK.
+
 ### Post-product builder
 
-`CPicoFirmwareFinalizerPlugin` declares:
+The exported `CPicoFirmwareBuilder` plugin product resolves to CPicoSDK's
+private `CPicoFirmwareFinalizerPlugin`. When invoked from Example, that plugin
+finds CPicoSDK and its transitive `CPicoNative` external package, selects the
+consumer's configured static product, and declares:
 
 - the materialized `libExample.a` product;
 - the raw external native archive;
@@ -154,6 +195,15 @@ The sidecar is not inferred by filesystem adjacency. A local extension to the
 PR lets a typed external-product input select one of the producer's named
 outputs, validates that the producer declared it, adds the file edge, and
 injects its exact path through an environment variable.
+
+This cross-package layout also exposed a product-filtering gap in the PR.
+SwiftPM normally loads only targets needed by the products selected from a
+dependency. That filtering removed the private plugin and tool targets used by
+CPicoSDK's inline external package, even though the exported CPicoSDK product
+required the external archive. The local patch now retains local plugin
+targets referenced by external packages, plus their transitive local target
+and plugin dependencies. Plugin product names are resolved to their underlying
+target names before computing that closure.
 
 On an identical second build, the external native command ran its conservative
 CMake/Ninja check and reported no work. The post-product finalizer did not run
@@ -221,9 +271,10 @@ swiftly run swift build +main-snapshot-2026-07-28 \
 Stage the destination once, then build:
 
 ```bash
-cd /absolute/path/to/CPicoSDK/Example
+cd /absolute/path/to/CPicoSDK
 ./setup-external-preview-sdk.sh --stage-only
 
+cd Example
 SWIFTPM_PREVIEW_BUILD=~/src/swiftpm-external-preview/swift-package-manager/.build-pr10198/out/Products/Debug/swift-build \
   ./build-external-preview.sh
 ```
@@ -259,7 +310,12 @@ The final result was an ELF32 ARM EABI5 image with resolved symbols and Pico 2
 metadata. The July runtime is larger than the April control, so byte-for-byte
 equality is not expected.
 
-No device was programmed during this build-system investigation.
+The dependency-owned layout was also validated with a clean one-request build.
+An identical incremental request kept native CMake/Ninja work incremental and
+skipped the post-product finalizer because its declared inputs and all six
+outputs were current. The released `Example/build.sh` path still completed,
+and all 56 host tests passed. No device was programmed during this build-system
+investigation.
 
 ## Local SwiftPM Extensions
 
@@ -268,6 +324,8 @@ The functional SwiftPM patch adds or corrects:
 - preservation of `ExternalBuildCommand.environment`;
 - declared external-command inputs and outputs;
 - explicit host-tool and producer/consumer target dependencies;
+- retention of private external-builder plugin/tool targets after dependency
+  product filtering;
 - package and post-product command placement;
 - materialized product path and external output-directory context;
 - typed access to a raw external library archive;
@@ -292,18 +350,20 @@ The most generally useful changes to recommend are:
 
 1. make inputs, outputs, and producer/consumer edges part of the external
    builder API;
-2. support post-product commands with a materialized product and declared
+2. include external-package plugin targets and their private dependency closure
+   when applying dependency product filters;
+3. support post-product commands with a materialized product and declared
    outputs;
-3. expose raw external artifacts without re-archiving them through a host
+4. expose raw external artifacts without re-archiving them through a host
    librarian;
-4. model auxiliary artifacts with a typed selector such as
+5. model auxiliary artifacts with a typed selector such as
    `.libraryArchive` and `.declaredOutput(String)` rather than the local
    optional string;
-5. pass the resolved destination SDK root to external commands;
-6. keep destination settings off host plugin tools;
-7. preserve released `Package.resolved` compatibility;
-8. handle header-only modules and custom toolset paths correctly; and
-9. complete the bare-metal `none` platform's SDKROOT and generic-Unix behavior.
+6. pass the resolved destination SDK root to external commands;
+7. keep destination settings off host plugin tools;
+8. preserve released `Package.resolved` compatibility;
+9. handle header-only modules and custom toolset paths correctly; and
+10. complete the bare-metal `none` platform's SDKROOT and generic-Unix behavior.
 
 The setup/build distinction should remain. A destination installer must run
 before planning; native support belongs before the Swift product; firmware
@@ -312,6 +372,19 @@ operation.
 
 ## Remaining Limitations
 
+- The dependency product-filtering adjustment is deliberately narrow to this
+  experiment. It treats private plugins referenced by every inline external
+  package as additional roots and follows their local target/plugin
+  dependencies, but it does not yet preserve third-party packages referenced
+  through `.product` dependencies. A general upstream implementation should
+  make selected external products part of manifest/package-graph filtering and
+  cover aliases, helper targets, and external tool dependencies with graph
+  tests.
+- The native external builder cannot discover a consumer-root
+  `cpicosdk-build.json` through the current plugin API. Preview launchers must
+  export its absolute path as `CPICOSDK_BUILD_CONFIGURATION`; relative paths
+  are intentionally not part of the documented contract because the native
+  and post-product plugin contexts have different roots.
 - The external package task is conservatively launched on each build because
   the staged Swift SDK's contents are not yet modeled as task inputs. Its inner
   CMake/Ninja build is incremental.
