@@ -3,117 +3,176 @@ import PackagePlugin
 
 @main
 struct FinalizeBinaryPlugin: CommandPlugin {
-    enum Error: Swift.Error {
-        case nmFailed
-        case swiftlyResolutionFailed
-        case rsyncFailed
-        case cmakeConfigurationFailed
-        case cmakeBuildFailed
-        case noCombinationFound
-        case multipleCombinationsFound(Set<String>)
+    enum Error: Swift.Error, CustomStringConvertible {
+        case duplicateEmbeddedResourceName(String)
+        case finalizerFailed(Int32)
+        case invalidArchivePath(String, String)
+        case invalidDirectoryPath(String, String)
         case invalidEmbeddedResourceName(String)
         case invalidEmbeddedResourcePath(String, URL)
-        case duplicateEmbeddedResourceName(String)
         case missingOptionValue(String)
-        case invalidArchivePath(String, String)
 
-        var localizedDescription: String {
+        var description: String {
             switch self {
-            case .nmFailed:
-                return "nm process failed"
-            case .swiftlyResolutionFailed:
-                return "swiftly run which swift failed"
-            case .rsyncFailed:
-                return "rsync process failed"
-            case .cmakeConfigurationFailed:
-                return "CMake configuration process failed"
-            case .cmakeBuildFailed:
-                return "CMake build process failed"
-            case .noCombinationFound:
-                return "No combination found in the build artifact"
-            case .multipleCombinationsFound(let combinations):
-                return "Multiple combinations found in the build artifact: \(combinations)"
+            case .duplicateEmbeddedResourceName(let name):
+                return "Multiple embedded resources would be staged as '\(name)'"
+            case .finalizerFailed(let status):
+                return "FirmwareFinalizerTool failed with exit status \(status)"
+            case .invalidArchivePath(let option, let path):
+                return "\(option) must name an existing absolute archive path without CMake list separators, got: \(path)"
+            case .invalidDirectoryPath(let option, let path):
+                return "\(option) must name an existing absolute directory without CMake list separators, got: \(path)"
             case .invalidEmbeddedResourceName(let name):
                 return "Embedded resource name must not be empty or contain path/list separators, got: \(name)"
             case .invalidEmbeddedResourcePath(let name, let url):
                 return "Embedded resource '\(name)' must use an absolute file URL without CMake list separators, got: \(url)"
-            case .duplicateEmbeddedResourceName(let name):
-                return "Multiple embedded resources would be staged as '\(name)'"
             case .missingOptionValue(let option):
-                return "Expected an absolute archive path after \(option)"
-            case .invalidArchivePath(let option, let path):
-                return "\(option) must name an existing absolute archive path without CMake list separators, got: \(path)"
+                return "Expected a path after \(option)"
             }
         }
     }
 
-    func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
-        guard arguments.count >= 1 else {
-            fatalError("[CPicoSDK] Expected at one argument: A product name is expected. It should be a static library in the Product section of the package.")
+    private struct FinalizationRequest: Encodable {
+        struct EmbeddedResource: Encodable {
+            let name: String
+            let path: String
         }
 
-        var arguments = arguments
-        let productName = arguments.removeFirst()
+        let schemaVersion = 1
+        let productName: String
+        let productArchivePath: String
+        let nativeSupportArchivePath: String?
+        let pioasmPackageDirectoryPath: String?
+        let outputDirectoryPath: String
+        let workingDirectoryPath: String
+        let cmakeHarnessDirectoryPath: String
+        let packageDirectoryPath: String
+        let cpicoSDKDirectoryPath: String
+        let memoryMapToolPath: String
+        let swiftBuildType: String
+        let platformTriple: String
+        let embeddedResources: [EmbeddedResource]
+        let incremental: Bool
+        let environment: [String: String]
+    }
 
-        let productArchiveOverride = try consumeArchiveOption("--product-archive", from: &arguments)
-        let nativeSupportArchive = try consumeArchiveOption("--native-support-archive", from: &arguments)
-        let incremental = arguments.contains("--incremental")
-        let memoryMapTool = try context.tool(named: "MemoryMapReportTool")
-        guard let picoSDKURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL else {
+    func performCommand(
+        context: PackagePlugin.PluginContext,
+        arguments: [String]
+    ) async throws {
+        guard let productName = arguments.first else {
+            fatalError(
+                "[CPicoSDK] Expected at least one argument: a static library product name."
+            )
+        }
+
+        var remainingArguments = Array(arguments.dropFirst())
+        let productArchiveOverride = try consumeArchiveOption(
+            "--product-archive",
+            from: &remainingArguments
+        )
+        let nativeSupportArchive = try consumeArchiveOption(
+            "--native-support-archive",
+            from: &remainingArguments
+        )
+        let pioasmPackageDirectory = try consumeDirectoryOption(
+            "--pioasm-dir",
+            from: &remainingArguments
+        )
+        let incremental = remainingArguments.contains("--incremental")
+
+        guard let cpicoSDKURL = context.package.dependencies.first(where: {
+            $0.package.displayName == "CPicoSDK"
+        })?.package.directoryURL else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK in the dependencies.")
         }
-        
+
         let matchingProducts = context.package.products(ofType: LibraryProduct.self)
-        guard let libProduct = matchingProducts.first(where: { $0.name == productName }) else {
-            fatalError("[CPicoSDK] Couldn't find a viable static library Product, name couldn't be matched. Given: \(productName); Found: [\(matchingProducts.map(\.name).joined(separator: ","))]")
+        guard let libraryProduct = matchingProducts.first(where: { $0.name == productName }) else {
+            fatalError(
+                "[CPicoSDK] Couldn't match static library product '\(productName)'. Found: [\(matchingProducts.map(\.name).joined(separator: ","))]"
+            )
         }
-        
-        guard libProduct.kind == .static else {
+        guard libraryProduct.kind == .static else {
             fatalError("[CPicoSDK] Only static libraries are supported.")
         }
-        
-        // TODO: Figure out how to expand this.
-        guard libProduct.sourceModules.count == 1 else {
+        guard libraryProduct.sourceModules.count == 1 else {
             fatalError("[CPicoSDK] Only libraries with one target are supported.")
         }
 
-        let swiftBuildType = try Env.value("SWIFT_BUILD_TYPE").expected
-        let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
-        let outputDir = context.package.directoryURL.appending(path: "/.build/\(platformTriple)/\(swiftBuildType)")
-        let buildArtifact = productArchiveOverride ?? outputDir
-            .appending(path: "lib\(libProduct.name).a")
-
-        let combination = try await getCombination(from: buildArtifact)
-        let stdioOptions = await getStdioOptions(from: buildArtifact, combination: combination)
-        let extraSwiftArchives = try await getExtraSwiftArchives(from: buildArtifact)
-        let embeddedResources = try getEmbeddedResources(from: libProduct)
-
-        print("[CPicoSDK] Finalizing build for \(libProduct.name), combination: \(combination)...")
-
-        try await self.runBuild(
-            combination: combination,
-            stdioOptions: stdioOptions,
-            extraSwiftArchives: extraSwiftArchives,
-            workingDir: context.pluginWorkDirectoryURL,
-            cmakeHarness: picoSDKURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"),
-            outputDir: outputDir,
-            buildArtifact: buildArtifact,
-            productName: libProduct.name,
-            embeddedResources: embeddedResources,
-            packageDir: context.package.directoryURL,
-            cpicoSDKPath: picoSDKURL,
-            memoryMapTool: memoryMapTool.url,
-            swiftBuildType: swiftBuildType,
-            nativeSupportArchive: nativeSupportArchive,
-            clean: !incremental
+        let swiftBuildType = try processEnvironmentValue("SWIFT_BUILD_TYPE")
+        let platformTriple = try processEnvironmentValue("SWIFTPM_TRIPLE")
+        let outputDirectory = context.package.directoryURL.appending(
+            path: ".build/\(platformTriple)/\(swiftBuildType)"
         )
+        let productArchive = productArchiveOverride ?? outputDirectory.appending(
+            path: "lib\(libraryProduct.name).a"
+        )
+        let memoryMapTool = try context.tool(named: "MemoryMapReportTool")
+        let finalizerTool = try context.tool(named: "FirmwareFinalizerTool")
+
+        let request = FinalizationRequest(
+            productName: libraryProduct.name,
+            productArchivePath: productArchive.path,
+            nativeSupportArchivePath: nativeSupportArchive?.path,
+            pioasmPackageDirectoryPath: pioasmPackageDirectory?.path,
+            outputDirectoryPath: outputDirectory.path,
+            workingDirectoryPath: context.pluginWorkDirectoryURL.path,
+            cmakeHarnessDirectoryPath: cpicoSDKURL.appending(
+                path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"
+            ).path,
+            packageDirectoryPath: context.package.directoryURL.path,
+            cpicoSDKDirectoryPath: cpicoSDKURL.path,
+            memoryMapToolPath: memoryMapTool.url.path,
+            swiftBuildType: swiftBuildType,
+            platformTriple: platformTriple,
+            embeddedResources: try getEmbeddedResources(from: libraryProduct),
+            incremental: incremental,
+            environment: capturedEnvironment()
+        )
+
+        let requestURL = context.pluginWorkDirectoryURL.appending(
+            path: "firmware-finalization-request.json"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(request).write(to: requestURL, options: .atomic)
+
+        let process = Process()
+        process.executableURL = finalizerTool.url
+        process.arguments = ["--request", requestURL.path]
+        let status = try await process.asyncRun()
+        guard status == 0 else {
+            throw Error.finalizerFailed(status)
+        }
     }
 
-    private func consumeArchiveOption(_ option: String, from arguments: inout [String]) throws -> URL? {
+    private func capturedEnvironment() -> [String: String] {
+        let environment = ProcessInfo.processInfo.environment
+        let relevantNames = Set(
+            (environment["RELEVANT_ENV_VARS"] ?? "")
+                .split(separator: ",")
+                .map(String.init)
+        )
+        return environment.filter { key, _ in
+            relevantNames.contains(key)
+                || key == "RELEVANT_ENV_VARS"
+                || key == "AUTO_STDIO"
+                || key.hasPrefix("CPICOSDK_")
+        }
+    }
+
+    private func processEnvironmentValue(_ name: String) throws -> String {
+        try ProcessInfo.processInfo.environment[name].expected
+    }
+
+    private func consumeArchiveOption(
+        _ option: String,
+        from arguments: inout [String]
+    ) throws -> URL? {
         guard let optionIndex = arguments.firstIndex(of: option) else {
             return nil
         }
-
         let valueIndex = arguments.index(after: optionIndex)
         guard valueIndex < arguments.endIndex else {
             throw Error.missingOptionValue(option)
@@ -121,401 +180,73 @@ struct FinalizeBinaryPlugin: CommandPlugin {
 
         let path = arguments[valueIndex]
         arguments.removeSubrange(optionIndex...valueIndex)
-
         guard path.hasPrefix("/"),
               !path.contains(";"),
               FileManager.default.fileExists(atPath: path)
         else {
             throw Error.invalidArchivePath(option, path)
         }
-
         return URL(filePath: path, directoryHint: .notDirectory)
     }
 
-    func getEmbeddedResources(from product: LibraryProduct) throws -> [String: URL] {
-        var embeddedResources: [String: URL] = [:]
+    private func consumeDirectoryOption(
+        _ option: String,
+        from arguments: inout [String]
+    ) throws -> URL? {
+        guard let optionIndex = arguments.firstIndex(of: option) else {
+            return nil
+        }
+        let valueIndex = arguments.index(after: optionIndex)
+        guard valueIndex < arguments.endIndex else {
+            throw Error.missingOptionValue(option)
+        }
 
+        let path = arguments[valueIndex]
+        arguments.removeSubrange(optionIndex...valueIndex)
+        var isDirectory = ObjCBool(false)
+        guard path.hasPrefix("/"),
+              !path.contains(";"),
+              FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              isDirectory.boolValue
+        else {
+            throw Error.invalidDirectoryPath(option, path)
+        }
+        return URL(filePath: path, directoryHint: .isDirectory)
+    }
+
+    private func getEmbeddedResources(
+        from product: LibraryProduct
+    ) throws -> [FinalizationRequest.EmbeddedResource] {
+        var resourcesByName: [String: URL] = [:]
         for sourceModule in product.sourceModules {
-            for sourceFile in sourceModule.sourceFiles where sourceFile.url.pathExtension == "codeasset" {
-                let resourceName = sourceFile.url.lastPathComponent
-                guard embeddedResources[resourceName] == nil else {
-                    throw Error.duplicateEmbeddedResourceName(resourceName)
+            for sourceFile in sourceModule.sourceFiles
+            where sourceFile.url.pathExtension == "codeasset" {
+                let name = sourceFile.url.lastPathComponent
+                guard !name.isEmpty,
+                      !name.contains("/"),
+                      !name.contains("\\"),
+                      !name.contains(";")
+                else {
+                    throw Error.invalidEmbeddedResourceName(name)
                 }
-                embeddedResources[resourceName] = sourceFile.url
-            }
-        }
-
-        return embeddedResources
-    }
-
-    func getStaticTrait(from buildArtifact: URL, traitName: String) async throws -> Bool {
-        let traitSymbol = "_cpicosdk_trait_\(traitName.lowercased())"
-        return try await runNM(on: buildArtifact).contains(traitSymbol)
-    }
-
-    func getStdioOptions(from buildArtifact: URL, combination: String) async -> (uart: Bool, usb: Bool, rtt: Bool) {
-        do {
-            var (uart, usb, rtt) = (false, false, false)
-
-            if try await getStaticTrait(from: buildArtifact, traitName: "stdio_automatic") {
-                switch Env.value("AUTO_STDIO") {
-                    case .some("uart"):
-                        uart = true
-                        print("[CPicoSDK] StdIO automatically selected UART.")
-                    case .some("usb"):
-                        usb = true
-                        print("[CPicoSDK] StdIO automatically selected USB.")
-                    case .some("rtt"):
-                        rtt = true
-                        print("[CPicoSDK] StdIO automatically selected RTT.")
-                    case .some(let other):
-                        usb = true
-                        print("[CPicoSDK] StdIO automatical selection enabled, but unknown value provided by tool (\(other)). Defaulting to USB.")
-                    case .none:
-                        usb = true
-                        print("[CPicoSDK] StdIO automatical selection enabled, but no value provided by tool. Defaulting to USB.")
+                guard sourceFile.url.isFileURL,
+                      sourceFile.url.path.hasPrefix("/"),
+                      !sourceFile.url.path.contains(";")
+                else {
+                    throw Error.invalidEmbeddedResourcePath(name, sourceFile.url)
                 }
-            } else {
-                if try await getStaticTrait(from: buildArtifact, traitName: "stdio_uart") {
-                    uart = true
+                guard resourcesByName[name] == nil else {
+                    throw Error.duplicateEmbeddedResourceName(name)
                 }
-                if try await getStaticTrait(from: buildArtifact, traitName: "stdio_usb") {
-                    usb = true
-                }
-                if try await getStaticTrait(from: buildArtifact, traitName: "stdio_rtt") {
-                    rtt = true
-                }
-
-                print("[CPicoSDK] StdIO manual selection: UART=\(uart), USB=\(usb), RTT=\(rtt).")
-            }
-
-            return (uart, usb, rtt)
-        } catch {
-            print("[CPicoSDK] StdIO Warning: Couldn't determine options from the build artifact. Defaulting to USB. Error: \(error)")
-            return (false, true, false)
-        }
-    }
-
-    func getCombination(from buildArtifact: URL) async throws -> String {
-        let combinationRegex = /_cpicosdk_combination_([a-zA-Z0-9_]+)/
-        let combinations = Set(
-            try await runNM(on: buildArtifact)
-                .matches(of: combinationRegex)
-                .map { String($0.output.1) }
-        )
-
-        guard combinations.count == 1, let combination = combinations.first else {
-            throw combinations.isEmpty ? Error.noCombinationFound : Error.multipleCombinationsFound(combinations)
-        }
-
-        return combination
-    }
-
-    func getExtraSwiftArchives(from buildArtifact: URL) async throws -> [String] {
-        let nmOutput = try await runNM(on: buildArtifact)
-        var extraArchives: [String] = []
-        let toolchainPath = try await resolveSwiftToolchainPath()
-        let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
-
-        func appendEmbeddedArchive(_ archiveName: String, reason: String) {
-            if let fallbackRoot = Env.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
-                let fallbackArchivePath = URL(filePath: fallbackRoot, directoryHint: .isDirectory)
-                    .appending(path: "\(platformTriple)/\(archiveName)")
-                if FileManager.default.fileExists(atPath: fallbackArchivePath.path) {
-                    extraArchives.append(fallbackArchivePath.path)
-                    print("[CPicoSDK] Linking vendored Swift embedded archive (\(reason)): \(fallbackArchivePath.path)")
-                    return
-                }
-            }
-
-            let archivePath = URL(filePath: toolchainPath, directoryHint: .isDirectory)
-                .appending(path: "usr/lib/swift/embedded/\(platformTriple)/\(archiveName)")
-
-            if FileManager.default.fileExists(atPath: archivePath.path) {
-                extraArchives.append(archivePath.path)
-                print("[CPicoSDK] Linking extra Swift embedded archive (\(reason)): \(archivePath.path)")
-            } else {
-                print("[CPicoSDK] Warning: \(reason) detected, but embedded archive was not found at \(archivePath.path)")
+                resourcesByName[name] = sourceFile.url
             }
         }
 
-        let unicodeTableMarkers = [
-            "_swift_stdlib_getNormData",
-            "_swift_stdlib_getComposition",
-            "_swift_stdlib_getDecompositionEntry",
-            "_swift_stdlib_nfd_decompositions",
-            "_swift_stdlib_isInCB_",
-            "_swift_stdlib_getGraphemeBreakProperty",
-        ]
-
-        if unicodeTableMarkers.contains(where: nmOutput.contains) {
-            appendEmbeddedArchive("libswiftUnicodeDataTables.a", reason: "Unicode data symbols")
-        }
-
-        let concurrencyMarkers = [
-            "swift_task_alloc",
-            "swift_task_dealloc",
-            "swift_task_switch",
-            "swift_task_create",
-            "swift_job_run",
-            "swift_continuation_init",
-            "swift_continuation_await",
-            "swift_continuation_throwingResume",
-            "swift_task_getMainExecutor",
-            "swift_task_isCurrentExecutor",
-            "swift_task_reportUnexpectedExecutor",
-            "swift_createDefaultExecutorsOnce",
-        ]
-
-        if concurrencyMarkers.contains(where: nmOutput.contains) {
-            appendEmbeddedArchive("libswift_Concurrency.a", reason: "Swift concurrency symbols")
-        }
-
-        if extraArchives.isEmpty {
-            print("[CPicoSDK] No extra Swift embedded archives were needed.")
-        }
-
-        return extraArchives
-    }
-
-    func resolveSwiftToolchainPath() async throws -> String {
-        let swiftlyProcess = Process()
-        swiftlyProcess.executableURL = URL(filePath: try Env.value("SWIFTLY_PATH").expected, directoryHint: .notDirectory)
-        swiftlyProcess.arguments = ["run", "which", "swift"]
-
-        let (status, outputData, _) = try await swiftlyProcess.asyncRun(captureStdout: true, captureStderr: false)
-        guard status == 0,
-              let outputData,
-              let swiftPath = String(data: outputData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .nonEmpty
-        else {
-            throw Error.swiftlyResolutionFailed
-        }
-
-        return URL(filePath: swiftPath, directoryHint: .notDirectory)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .path
-    }
-
-    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], packageDir: URL, cpicoSDKPath: URL, memoryMapTool: URL, swiftBuildType: String, nativeSupportArchive: URL?, clean: Bool) async throws {
-        let fileManager = FileManager.default
-        let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
-        let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
-        let ninjaPath = try Env.value("NINJA_PATH", combination: combination).expected
-
-        print("[CPicoSDK] Copying CMake harness to working directory")
-
-        let rsyncProcess = Process()
-        rsyncProcess.executableURL = URL(filePath: try Env.value("RSYNC_PATH").expected, directoryHint: .notDirectory)
-        rsyncProcess.arguments = ["-r", "-u", "\(cmakeHarness.path)", "\(workingDir.path)"]
-        guard try await rsyncProcess.asyncRun() == 0 else { throw Error.rsyncFailed }
-
-        let srcDir = workingDir.appending(path: "CMakeHarness")
-        let buildDir = srcDir.appending(path: "build_\(combination)")
-
-        try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
-        print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
-        let importedLibs = try Env.importedLibs(combination: combination)
-        let embeddedResourceArguments = try makeEmbeddedResourceCMakeArguments(embeddedResources)
-
-        print("[CPicoSDK] Imported libraries: \(importedLibs)")
-        if !extraSwiftArchives.isEmpty {
-            print("[CPicoSDK] Extra Swift archives: \(extraSwiftArchives)")
-        }
-
-        if clean {
-            try? fileManager.removeItem(at: buildDir)
-            try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
-        }
-
-        var env = try Env.combinedVars(for: combination)
-        env["PATH"] = "\(cmakePath):\(ninjaPath):\(ProcessInfo.processInfo.environment["PATH"]!)"
-
-        print("[CPicoSDK] Running CMake configuration and build...")
-
-        let cmakeConfigProcess = Process()
-        cmakeConfigProcess.executableURL = cmakeBin
-        cmakeConfigProcess.environment = env
-        cmakeConfigProcess.arguments = [
-            "-S", "\(srcDir.path)",
-            "-B", "\(buildDir.path)",
-            "-G", "Ninja",
-            "-DCMAKE_BUILD_TYPE=\(try Env.value("BUILD_TYPE", combination: combination).expected)",
-            "-DPICO_SDK_PATH=\(try Env.value("PICO_SDK_PATH", combination: combination).expected)",
-            "-DPICOTOOL_PATH=\(try Env.value("PICOTOOL_PATH", combination: combination).expected)",
-            "-DBOARD_TYPE=\(try Env.value("BOARD", combination: combination).expected)",
-            "-DPROJECT_NAME=\(productName)",
-            "-DTOOLCHAIN_VERSION=\(try Env.value("TOOLCHAIN_VERSION", combination: combination).expected)",
-            "-DSDK_VERSION=\(try Env.value("SDK_VERSION", combination: combination).expected)",
-            "-DIMPORTED_LIBS=\(importedLibs.joined(separator: ","))",
-            "-DIMPORTED_LOCATION=\(buildArtifact.path)",
-            "-DEXTRA_SWIFT_ARCHIVES=\(extraSwiftArchives.joined(separator: ";"))",
-            "-DSTDIO_UART=\(stdioOptions.uart ? "1" : "0")",
-            "-DSTDIO_USB=\(stdioOptions.usb ? "1" : "0")",
-            "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",
-            "-DCPICOSDK_CORE0_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE0_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
-            "-DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE1_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
-            // Always set this value so an incremental non-preview build clears
-            // an archive path retained in CMakeCache by an earlier preview run.
-            "-DCPICOSDK_NATIVE_SUPPORT_ARCHIVE=\(nativeSupportArchive?.path ?? "")",
-        ] + embeddedResourceArguments
-
-        guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
-
-        let cmakeBuildProcess = Process()
-        cmakeBuildProcess.executableURL = cmakeBin
-        cmakeBuildProcess.environment = env
-        cmakeBuildProcess.arguments = ["--build", buildDir.path]
-        guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeBuildFailed }
-
-        try fileManager.ensureDirectoryExists(at: outputDir.path, isDirectory: true)
-
-        print("[CPicoSDK] Output directory prepared at \(outputDir.path)")
-
-        try? fileManager.removeItem(at: outputDir.appending(path: "\(productName).elf"))
-        try fileManager.copyItem(
-            at: buildDir.appending(path: "\(productName).elf"),
-            to: outputDir.appending(path: "\(productName).elf")
-        )
-        print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).elf").path) to \(outputDir.appending(path: "\(productName).elf").path)")
-
-        try? fileManager.removeItem(at: outputDir.appending(path: "\(productName).uf2"))
-        try fileManager.copyItem(
-            at: buildDir.appending(path: "\(productName).uf2"),
-            to: outputDir.appending(path: "\(productName).uf2")
-        )
-        print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).uf2").path) to \(outputDir.appending(path: "\(productName).uf2").path)")
-
-        print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
-        await printArtifactStats(
-            outputDir: outputDir,
-            buildDir: buildDir,
-            productName: productName,
-            packageDir: packageDir,
-            cpicoSDKPath: cpicoSDKPath,
-            memoryMapTool: memoryMapTool,
-            combination: combination,
-            swiftBuildType: swiftBuildType
-        )
-
-        print("[CPicoSDK] 🎉 Build completed successfully! 🎉")
-    }
-
-    private func makeEmbeddedResourceCMakeArguments(_ embeddedResources: [String: URL]) throws -> [String] {
-        var names: [String] = []
-        var paths: [String] = []
-
-        for name in embeddedResources.keys.sorted() {
-            guard !name.isEmpty, !name.contains("/"), !name.contains("\\"), !name.contains(";") else {
-                throw Error.invalidEmbeddedResourceName(name)
-            }
-
-            let resourceURL = try embeddedResources[name].expected
-            guard resourceURL.isFileURL, resourceURL.path.hasPrefix("/") else {
-                throw Error.invalidEmbeddedResourcePath(name, resourceURL)
-            }
-            guard !resourceURL.path.contains(";") else {
-                throw Error.invalidEmbeddedResourcePath(name, resourceURL)
-            }
-
-            names.append(name)
-            paths.append(resourceURL.path)
-        }
-
-        return [
-            "-DCPICOSDK_EMBEDDED_RESOURCE_NAMES=\(names.joined(separator: ";"))",
-            "-DCPICOSDK_EMBEDDED_RESOURCE_PATHS=\(paths.joined(separator: ";"))",
-        ]
-    }
-
-    private func printArtifactStats(outputDir: URL, buildDir: URL, productName: String, packageDir: URL, cpicoSDKPath: URL, memoryMapTool: URL, combination: String, swiftBuildType: String) async {
-        let fileManager = FileManager.default
-
-        func formatSize(_ bytes: Int64) -> String {
-            let kib = Double(bytes) / 1024.0
-            return "\(bytes) B (\(String(format: "%.2f", kib)) KiB)"
-        }
-
-        let artifactPaths = [
-            ("BIN payload size", "BIN", buildDir.appending(path: "\(productName).bin").path),
-            ("UF2 file size", "UF2", outputDir.appending(path: "\(productName).uf2").path),
-            ("Host Debug Binary Size", "ELF", outputDir.appending(path: "\(productName).elf").path),
-        ]
-
-        print("[CPicoSDK] Artifact stats:")
-        for (label, kind, path) in artifactPaths {
-            guard
-                let attrs = try? fileManager.attributesOfItem(atPath: path),
-                let fileSize = attrs[.size] as? NSNumber
-            else {
-                continue
-            }
-            print("[CPicoSDK]   - \(label): \(formatSize(fileSize.int64Value)) (\(kind))")
-        }
-
-        do {
-            let report = try await runMemoryMapReport(
-                memoryMapTool: memoryMapTool,
-                packageDir: packageDir,
-                cpicoSDKPath: cpicoSDKPath,
-                elfURL: buildDir.appending(path: "\(productName).elf"),
-                mapURL: buildDir.appending(path: "\(productName).elf.map"),
-                productName: productName,
-                combination: combination,
-                swiftBuildType: swiftBuildType
+        return resourcesByName.keys.sorted().map { name in
+            FinalizationRequest.EmbeddedResource(
+                name: name,
+                path: resourcesByName[name]!.path
             )
-            print("")
-            print(report)
-        } catch {
-            print("[CPicoSDK]   - Memory map report: unavailable (\(error))")
         }
     }
-
-    private func runMemoryMapReport(memoryMapTool: URL, packageDir: URL, cpicoSDKPath: URL, elfURL: URL, mapURL: URL, productName: String, combination: String, swiftBuildType: String) async throws -> String {
-        let reportProcess = Process()
-        reportProcess.executableURL = memoryMapTool
-        reportProcess.arguments = [
-            "--package-dir", packageDir.path,
-            "--cpicosdk-path", cpicoSDKPath.path,
-            "--elf", elfURL.path,
-            "--map", mapURL.path,
-            "--no-sections",
-        ]
-        var environment = ProcessInfo.processInfo.environment
-        environment["SWIFTPM_PRODUCT"] = productName
-        environment["BOARD"] = Env.value("BOARD", combination: combination)
-        environment["SWIFT_BUILD_TYPE"] = swiftBuildType
-        reportProcess.environment = environment
-
-        let (status, outputData, errorData) = try await reportProcess.asyncRun(captureStdout: true, captureStderr: true)
-        guard status == 0,
-              let outputData,
-              let output = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-              output.nonEmpty != nil
-        else {
-            let stderr = errorData.flatMap { String(data: $0, encoding: .utf8) }?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            throw NSError(domain: "CPicoSDK.MemoryMapReport", code: Int(status), userInfo: [
-                NSLocalizedDescriptionKey: stderr.nonEmpty ?? "memory-map-report exited with status \(status)",
-            ])
-        }
-        return output
-    }
-
-    private func runNM(on buildArtifact: URL) async throws -> String {
-        let nmProcess = Process()
-        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
-        nmProcess.arguments = [buildArtifact.path]
-
-        let (status, outputData, _) = try await nmProcess.asyncRun(captureStdout: true, captureStderr: false)
-        guard status == 0, let outputData else { throw Error.nmFailed }
-
-        guard let outputString = String(data: outputData, encoding: .utf8) else {
-            throw Error.nmFailed
-        }
-        return outputString
-    }
-
 }

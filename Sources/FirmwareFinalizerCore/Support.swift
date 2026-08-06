@@ -4,8 +4,8 @@ import Glibc
 #endif
 
 extension Process {
-    // TODO: Remove this workaround when upgrading to Swift 6.3+
-    // https://github.com/swiftlang/swift/issues/81272
+    // Swift versions affected by https://github.com/swiftlang/swift/issues/81272
+    // can inherit SIGCHLD as blocked while running command-plugin tools.
     private func unblockSigchldBeforeSpawnIfNeeded() {
         #if os(Linux)
         var set = sigset_t()
@@ -19,23 +19,26 @@ extension Process {
         try await asyncRun(captureStdout: false, captureStderr: false).status
     }
 
-    func asyncRun(captureStdout: Bool, captureStderr: Bool) async throws -> (status: Int32, stdout: Data?, stderr: Data?) {
+    func asyncRun(
+        captureStdout: Bool,
+        captureStderr: Bool
+    ) async throws -> (status: Int32, stdout: Data?, stderr: Data?) {
         var stdoutPipe: Pipe?
         if captureStdout {
             let pipe = Pipe()
-            self.standardOutput = pipe
+            standardOutput = pipe
             stdoutPipe = pipe
         }
 
         var stderrPipe: Pipe?
         if captureStderr {
             let pipe = Pipe()
-            self.standardError = pipe
+            standardError = pipe
             stderrPipe = pipe
         }
 
-        self.unblockSigchldBeforeSpawnIfNeeded()
-        try self.run()
+        unblockSigchldBeforeSpawnIfNeeded()
+        try run()
 
         async let status: Int32 = withCheckedContinuation { continuation in
             let waiter = Thread {
@@ -49,7 +52,9 @@ extension Process {
             guard let stdoutPipe else { return nil }
             return await withCheckedContinuation { continuation in
                 let reader = Thread {
-                    continuation.resume(returning: stdoutPipe.fileHandleForReading.readDataToEndOfFile())
+                    continuation.resume(
+                        returning: stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    )
                 }
                 reader.start()
             }
@@ -59,7 +64,9 @@ extension Process {
             guard let stderrPipe else { return nil }
             return await withCheckedContinuation { continuation in
                 let reader = Thread {
-                    continuation.resume(returning: stderrPipe.fileHandleForReading.readDataToEndOfFile())
+                    continuation.resume(
+                        returning: stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    )
                 }
                 reader.start()
             }
@@ -83,5 +90,24 @@ extension Optional {
                 throw OptionalError.valueNotFound
             }
         }
+    }
+}
+
+extension Collection {
+    var nonEmpty: Self? {
+        isEmpty ? nil : self
+    }
+}
+
+extension FileManager {
+    func ensureDirectoryExists(at path: String, isDirectory: Bool) throws {
+        let url = URL(
+            filePath: path,
+            directoryHint: isDirectory ? .isDirectory : .notDirectory
+        )
+        try createDirectory(
+            at: isDirectory ? url : url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
     }
 }

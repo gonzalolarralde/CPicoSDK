@@ -61,6 +61,16 @@ let package = Package(
     ],
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
+        .target(
+            name: "FirmwareFinalizerCore",
+            swiftSettings: [
+                .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
+            ]
+        ),
+        .executableTarget(
+            name: "FirmwareFinalizerTool",
+            dependencies: ["FirmwareFinalizerCore"]
+        ),
         .executableTarget(name: "MemoryMapReportTool"),
         .testTarget(
             name: "TestInDeviceCoreTests",
@@ -69,6 +79,10 @@ let package = Package(
         .testTarget(
             name: "MemoryMapReportToolTests",
             dependencies: ["MemoryMapReportTool"]
+        ),
+        .testTarget(
+            name: "FirmwareFinalizerCoreTests",
+            dependencies: ["FirmwareFinalizerCore"]
         ),
     ] : [
         // GENERATOR MARK: TARGETS
@@ -177,6 +191,16 @@ let package = Package(
             ]
         ),
         .executableTarget(name: "MemoryMapReportTool"),
+        .target(
+            name: "FirmwareFinalizerCore",
+            swiftSettings: [
+                .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
+            ]
+        ),
+        .executableTarget(
+            name: "FirmwareFinalizerTool",
+            dependencies: ["FirmwareFinalizerCore"]
+        ),
         .testTarget(
             name: "TestInDeviceCoreTests",
             dependencies: ["TestInDeviceCore"]
@@ -212,7 +236,7 @@ let package = Package(
                     .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
                 ]
             ),
-            dependencies: ["MemoryMapReportTool"]
+            dependencies: ["FirmwareFinalizerTool", "MemoryMapReportTool"]
         ),
         .plugin(
             name: "TestInDevicePlugin",
