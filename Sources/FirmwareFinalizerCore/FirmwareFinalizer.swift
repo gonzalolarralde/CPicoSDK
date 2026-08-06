@@ -131,40 +131,7 @@ public struct FirmwareFinalizer {
 
     func getExtraSwiftArchives(from nmOutput: String) async throws -> [String] {
         var extraArchives: [String] = []
-        let toolchainPath = try await resolveSwiftToolchainPath()
-
-        func appendEmbeddedArchive(_ archiveName: String, reason: String) {
-            if let fallbackRoot = environment.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
-                let fallbackArchivePath = URL(
-                    filePath: fallbackRoot,
-                    directoryHint: .isDirectory
-                ).appending(path: "\(request.platformTriple)/\(archiveName)")
-                if FileManager.default.fileExists(atPath: fallbackArchivePath.path) {
-                    extraArchives.append(fallbackArchivePath.path)
-                    print(
-                        "[CPicoSDK] Linking vendored Swift embedded archive (\(reason)): \(fallbackArchivePath.path)"
-                    )
-                    return
-                }
-            }
-
-            let archivePath = URL(
-                filePath: toolchainPath,
-                directoryHint: .isDirectory
-            ).appending(
-                path: "usr/lib/swift/embedded/\(request.platformTriple)/\(archiveName)"
-            )
-            if FileManager.default.fileExists(atPath: archivePath.path) {
-                extraArchives.append(archivePath.path)
-                print(
-                    "[CPicoSDK] Linking extra Swift embedded archive (\(reason)): \(archivePath.path)"
-                )
-            } else {
-                print(
-                    "[CPicoSDK] Warning: \(reason) detected, but embedded archive was not found at \(archivePath.path)"
-                )
-            }
-        }
+        var requiredArchives: [(name: String, reason: String)] = []
 
         let unicodeTableMarkers = [
             "_swift_stdlib_getNormData",
@@ -175,7 +142,7 @@ public struct FirmwareFinalizer {
             "_swift_stdlib_getGraphemeBreakProperty",
         ]
         if unicodeTableMarkers.contains(where: nmOutput.contains) {
-            appendEmbeddedArchive("libswiftUnicodeDataTables.a", reason: "Unicode data symbols")
+            requiredArchives.append(("libswiftUnicodeDataTables.a", "Unicode data symbols"))
         }
 
         let concurrencyMarkers = [
@@ -193,19 +160,74 @@ public struct FirmwareFinalizer {
             "swift_createDefaultExecutorsOnce",
         ]
         if concurrencyMarkers.contains(where: nmOutput.contains) {
-            appendEmbeddedArchive("libswift_Concurrency.a", reason: "Swift concurrency symbols")
+            requiredArchives.append(("libswift_Concurrency.a", "Swift concurrency symbols"))
         }
 
-        if extraArchives.isEmpty {
+        if requiredArchives.isEmpty {
             print("[CPicoSDK] No extra Swift embedded archives were needed.")
+            return []
+        }
+
+        var toolchainPath: String?
+        for requiredArchive in requiredArchives {
+            if let fallbackRoot = environment.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
+                let fallbackArchivePath = URL(
+                    filePath: fallbackRoot,
+                    directoryHint: .isDirectory
+                ).appending(
+                    path: "\(request.platformTriple)/\(requiredArchive.name)"
+                )
+                if FileManager.default.fileExists(atPath: fallbackArchivePath.path) {
+                    extraArchives.append(fallbackArchivePath.path)
+                    print(
+                        "[CPicoSDK] Linking vendored Swift embedded archive (\(requiredArchive.reason)): \(fallbackArchivePath.path)"
+                    )
+                    continue
+                }
+            }
+
+            if toolchainPath == nil {
+                toolchainPath = try await resolveSwiftToolchainPath()
+            }
+            let archivePath = URL(
+                filePath: toolchainPath!,
+                directoryHint: .isDirectory
+            ).appending(
+                path: "usr/lib/swift/embedded/\(request.platformTriple)/\(requiredArchive.name)"
+            )
+            if FileManager.default.fileExists(atPath: archivePath.path) {
+                extraArchives.append(archivePath.path)
+                print(
+                    "[CPicoSDK] Linking extra Swift embedded archive (\(requiredArchive.reason)): \(archivePath.path)"
+                )
+            } else {
+                print(
+                    "[CPicoSDK] Warning: \(requiredArchive.reason) detected, but embedded archive was not found at \(archivePath.path)"
+                )
+            }
         }
         return extraArchives
     }
 
     private func resolveSwiftToolchainPath() async throws -> String {
+        if let explicitToolchainPath = environment.value("SWIFT_TOOLCHAIN_PATH")?.nonEmpty {
+            return explicitToolchainPath
+        }
+
+        if let swiftExecutablePath = environment.value("SWIFT_EXEC")?.nonEmpty {
+            return URL(filePath: swiftExecutablePath, directoryHint: .notDirectory)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .path
+        }
+
+        guard let swiftlyPath = environment.value("SWIFTLY_PATH")?.nonEmpty else {
+            throw Error.swiftlyResolutionFailed
+        }
         let swiftlyProcess = Process()
         swiftlyProcess.executableURL = URL(
-            filePath: try environment.value("SWIFTLY_PATH").expected,
+            filePath: swiftlyPath,
             directoryHint: .notDirectory
         )
         swiftlyProcess.arguments = ["run", "which", "swift"]

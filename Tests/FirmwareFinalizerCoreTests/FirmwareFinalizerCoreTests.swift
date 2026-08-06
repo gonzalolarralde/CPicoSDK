@@ -63,6 +63,15 @@ struct FirmwareFinalizerCoreTests {
         )
     }
 
+    @Test("archive discovery skips toolchain lookup when no runtime is needed")
+    func noRuntimeArchiveLookup() async throws {
+        let finalizer = FirmwareFinalizer(
+            request: makeRequest(resources: [])
+        )
+
+        #expect(try await finalizer.getExtraSwiftArchives(from: "") == [])
+    }
+
     private func makeRequest(
         resources: [FirmwareFinalizationRequest.EmbeddedResource]
     ) -> FirmwareFinalizationRequest {

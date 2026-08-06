@@ -13,6 +13,8 @@ let package = Package(
     name: "CPicoSDK",
     products: hostOnlyTests ? [
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
+        .executable(name: "FirmwareFinalizerTool", targets: ["FirmwareFinalizerTool"]),
+        .executable(name: "MemoryMapReportTool", targets: ["MemoryMapReportTool"]),
     ] : [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
@@ -24,6 +26,8 @@ let package = Package(
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
         .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
+        .executable(name: "FirmwareFinalizerTool", targets: ["FirmwareFinalizerTool"]),
+        .executable(name: "MemoryMapReportTool", targets: ["MemoryMapReportTool"]),
     ],
     traits: [
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),

@@ -23,6 +23,19 @@ extension Process {
         captureStdout: Bool,
         captureStderr: Bool
     ) async throws -> (status: Int32, stdout: Data?, stderr: Data?) {
+        var childEnvironment = environment ?? ProcessInfo.processInfo.environment
+        // SwiftBuild custom tasks may carry a toolchain-internal DEVELOPER_DIR
+        // and destination deployment variables into host utilities. Apple
+        // command shims such as /usr/bin/nm then ask xcrun for a nonexistent
+        // developer directory instead of inspecting the bare-metal archive.
+        childEnvironment.removeValue(forKey: "DEVELOPER_DIR")
+        #if os(macOS)
+        for key in childEnvironment.keys where key.hasSuffix("_DEPLOYMENT_TARGET") {
+            childEnvironment.removeValue(forKey: key)
+        }
+        #endif
+        environment = childEnvironment
+
         var stdoutPipe: Pipe?
         if captureStdout {
             let pipe = Pipe()
