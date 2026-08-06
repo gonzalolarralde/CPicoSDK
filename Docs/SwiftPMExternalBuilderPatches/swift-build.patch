@@ -1,0 +1,33 @@
+diff --git a/Sources/SWBUniversalPlatform/BareMetal.swift b/Sources/SWBUniversalPlatform/BareMetal.swift
+index 686ada6..8456b6b 100644
+--- a/Sources/SWBUniversalPlatform/BareMetal.swift
++++ b/Sources/SWBUniversalPlatform/BareMetal.swift
+@@ -57,7 +57,12 @@ struct BareMetalPlatformExtension: PlatformInfoExtension {
+             "DefaultProperties": .plDict([
+                 "PLATFORM_NAME": .plString("none"),
+             ].merging(defaultProperties, uniquingKeysWith: { _, new in new })),
+-            "CustomProperties": .plDict([:]),
++            "CustomProperties": .plDict([
++                // Bare-metal toolsets provide their own SDK and sysroot flags.
++                // Do not inject the placeholder root SDK from this registry entry.
++                "SWIFTC_PASS_SDKROOT": "NO",
++                "SWIFTC_PASS_SYSROOT": "NO",
++            ]),
+             "SupportedTargets": .plDict([
+                 "none": .plDict([
+                     "Archs": .plArray([]),
+diff --git a/Sources/SWBUniversalPlatform/Plugin.swift b/Sources/SWBUniversalPlatform/Plugin.swift
+index 0ac7060..1f678cd 100644
+--- a/Sources/SWBUniversalPlatform/Plugin.swift
++++ b/Sources/SWBUniversalPlatform/Plugin.swift
+@@ -26,6 +26,10 @@ public let initializePlugin: PluginInitializationFunction = { manager in
+ }
+
+ struct UniversalPlatformSpecsExtension: SpecificationsExtension {
++    func specificationDomains() -> [String: [String]] {
++        ["none": ["generic-unix"]]
++    }
++
+     func specificationClasses() -> [any SpecIdentifierType.Type] {
+         [
+             CopyPlistFileSpec.self,

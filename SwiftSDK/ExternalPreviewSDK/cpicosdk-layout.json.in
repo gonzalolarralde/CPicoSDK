@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "picoSDKPath": "pico-sdk-bundle/sdk/@SDK_VERSION@",
+  "picoToolchainPath": "pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@",
+  "cmakePath": "pico-sdk-bundle/cmake/v@CMAKE_VERSION@/bin/cmake",
+  "ninjaPath": "pico-sdk-bundle/ninja/v@NINJA_VERSION@/ninja",
+  "picotoolPath": "pico-sdk-bundle/picotool/@PICOTOOL_VERSION@/picotool/picotool",
+  "openocdPath": "pico-sdk-bundle/openocd/@OPENOCD_VERSION@",
+  "newlibOverlayPath": "generated/newlib_overlay",
+  "swiftResourcesPath": "swift-resources/embedded",
+  "swiftCompilerVersionFile": "swift-compiler-version.txt",
+  "embeddedRuntimeStrategy": "bundledTargetSubset",
+  "rp2040ConcurrencySupported": @RP2040_CONCURRENCY_SUPPORTED@,
+  "rp2350ConcurrencySupported": @RP2350_CONCURRENCY_SUPPORTED@
+}

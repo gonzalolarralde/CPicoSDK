@@ -17,7 +17,6 @@
 import CPicoSDK
 import CShims
 import TLSF
-import Synchronization
 
 public enum AllocatorError: Swift.Error, CustomStringConvertible {
     case noMemoryDetected

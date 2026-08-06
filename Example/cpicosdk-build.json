@@ -1,0 +1,8 @@
+{
+  "combination": "pico2",
+  "environment": {
+    "CPICOSDK_CORE0_STACK_SIZE_BYTES": "8192",
+    "CPICOSDK_CORE1_STACK_SIZE_BYTES": "8192"
+  },
+  "incremental": true
+}

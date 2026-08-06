@@ -17,17 +17,20 @@ working-directory rule. Its contributor documentation lives in
 `README.md` under `Device Test Harness`, and test sources live under
 `Tests/Device/**/*.swift`.
 
+Set `SWIFTPM_BIN_DIR` to the Products directory containing the sibling patched
+`swift-package` and `swift-build` executables before invoking the harness.
+
 List available device tests from the repo root:
 
 ```sh
-swift package --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 Check that device tests generate, compile, and link without programming
 hardware:
 
 ```sh
-swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 Run the physical-device suite from the repo root only after confirming with the
@@ -35,7 +38,7 @@ user that a compatible board and CMSIS-DAP/OpenOCD probe are connected and that
 it is OK to program the board:
 
 ```sh
-swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 For focused checks, prefer `--filter <TestName>` before running all tests. Run
@@ -51,20 +54,33 @@ Do not run a repo-root `./build`. Build the example like this:
 
 ```sh
 cd Example
-./build.sh
+SWIFTPM_BIN_DIR=/absolute/path/to/pr-build/Products/Debug ./build.sh
 ```
+
+This experiment intentionally requires the tools-version 6.5 external-package
+APIs from SwiftPM PR #10198. `SWIFTPM_BIN_DIR` must contain sibling patched
+`swift-package` and `swift-build` executables. Do not look for a released-SwiftPM
+fallback, a version-gated manifest, or a separate external-preview launcher.
+The dependency-owned compiler pin is
+`SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt`; preparation does not rewrite
+a consumer `.swift-version` or generate a root toolset/legacy SourceKit config.
 
 The build artifact used for flashing is:
 
 ```text
-Example/.build/armv7em-none-none-eabi/release/Example.elf
+Example/.build/out/Products/Release-none-armv7em/Example.elf
 ```
 
 The corresponding UF2 is in the same directory:
 
 ```text
-Example/.build/armv7em-none-none-eabi/release/Example.uf2
+Example/.build/out/Products/Release-none-armv7em/Example.uf2
 ```
+
+A normal `Example/build.sh` invocation never programs hardware. `--flash`
+invokes the explicit flash command plugin after the build; its device wait is
+bounded to 60 seconds by default. Use `CPICOSDK_FLASH_WAIT_SECONDS` to change
+the bound and `CPICOSDK_PICOTOOL_SERIAL` to select one attached device.
 
 ## Finding Tool Binaries
 
@@ -98,7 +114,7 @@ Set shell variables from the discovered paths before running debug commands:
 
 ```sh
 cd Example
-ELF=".build/armv7em-none-none-eabi/release/Example.elf"
+ELF=".build/out/Products/Release-none-armv7em/Example.elf"
 OPENOCD="$(find .build/plugins/PrepareEnvironmentPlugin/outputs \( -type f -o -type l \) \( -name openocd.exe -o -name openocd \) -print -quit)"
 OPENOCD_SCRIPTS="$(find .build/plugins/PrepareEnvironmentPlugin/outputs -type d -path '*/openocd/*/scripts' -print -quit)"
 ARM_GDB="$(find .build/plugins/PrepareEnvironmentPlugin/outputs -type f -name arm-none-eabi-gdb -print -quit)"
@@ -329,7 +345,7 @@ design notes, experiments, and failure analysis in `docs/`.
 - If OpenOCD exits with `Error: unable to find a matching CMSIS-DAP device`,
   the harness reached the host debug layer but no compatible probe was visible.
   If the same OpenOCD command works in a normal shell, rerun command-plugin
-  device tests as `swift package --disable-sandbox test-in-device ...`; the
+  device tests as `"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device ...`; the
   SwiftPM plugin sandbox can hide USB debug probes from OpenOCD.
 - `Error: unable to find a matching CMSIS-DAP device` happens before OpenOCD
   talks to the target. Check that the CMSIS-DAP probe is visible over USB and
@@ -647,26 +663,27 @@ design notes, experiments, and failure analysis in `docs/`.
 - Build the device example from `Example/` with `./build.sh`. Do not use a
   repo-root `./build`.
 - If local package edits appear to have no effect, check
-  `Example/Package.swift` and run `swift package show-dependencies` from
+  `Example/Package.swift` and run `"$SWIFTPM_BIN_DIR/swift-package" show-dependencies` from
   `Example/`. The example must depend on the local package path, not a released
   remote package.
 - After switching `Example/Package.swift` from the released CPicoSDK package to
   a local path dependency, stale SwiftPM edit state can make resolution fail
   with `dependencies unresolved: 'cpicosdk'`. Remove generated workspace state
   with `rm -f Example/.build/workspace-state.json Example/.build/.lock` and
-  rerun `swift package plugin --list` from `Example/`.
+  rerun `"$SWIFTPM_BIN_DIR/swift-package" plugin --list` from `Example/`.
 - For generated SwiftPM device-test packages, do not delete and recreate
   `Sources/` or `Package.swift` on every run. Write files only when contents
   change; otherwise SwiftPM and the CMake finalizer lose useful incremental
   state and every device test looks like a cold build.
-- The finalizer defaults to a clean CMake build. For repeated generated device
-  test runs, call `finalize_rp2xxx_binary <Product> --incremental`; otherwise
-  the finalizer removes `CMakeHarness/build_<board>` and rebuilds native Pico
-  SDK objects every time.
-- For faster steady-state device tests, skip `prepare-rp2xxx-environment` when
-  the generated package inputs and `env.json` are unchanged, and skip
-  finalization when the generated static library is older than the existing
-  ELF. The next flash can reuse the last ELF safely in that no-change case.
+- Generated device-test packages attach the dependency-owned
+  `CPicoFirmwareBuilder`. Let SwiftPM schedule the native archive and automatic
+  post-product finalizer; do not restore or invoke the legacy
+  `finalize_rp2xxx_binary` command path. The generated configuration enables
+  incremental CMake work for repeated runs.
+- The device harness caches its preparation signature and shares the staged
+  Swift SDK under the repository build directory. Let the harness decide when
+  to rerun `prepare-rp2xxx-environment`; manually bypassing preparation can
+  leave the compiler, SDK metadata, and downloaded Pico payload out of sync.
 - The root `test-in-device` harness is documented in `README.md` under
   `Device Test Harness`. Use `--list` for a no-flash discovery check and
   `--build-only` for the frequent compile/link check. Ask the user before
@@ -674,7 +691,7 @@ design notes, experiments, and failure analysis in `docs/`.
   board through OpenOCD.
 - When evaluating size, RAM pressure, stack layout, or code ownership changes,
   consider the memory map report before guessing from UF2 size alone. Run
-  `swift package --disable-sandbox memory-map-report <elf>` for an existing
+  `"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox memory-map-report <elf>` for an existing
   finalized artifact, or add `--memory-map-report` to focused
   `test-in-device --build-only` runs to print a per-test report without
   programming hardware.
@@ -699,8 +716,8 @@ design notes, experiments, and failure analysis in `docs/`.
   subtests or UF2 sizes from another suite, check generated artifact selection
   before debugging the test. A broad `find .build -path "*/DeviceTestApp.elf"`
   can pick stale debug/release/finalizer output; return the exact
-  `.build/$SWIFTPM_TRIPLE/$SWIFT_BUILD_TYPE/DeviceTestApp.elf` path and force
-  finalization when generated inputs changed.
+  `.build/out/Products/<Debug-or-Release>-none-<arch>/DeviceTestApp.elf` path
+  and preserve the automatic post-product task's declared input changes.
 - A remote device-test batch cannot retain only the artifact URLs returned from
   repeated builds of the generated `Current` package: every URL names the same
   mutable ELF/UF2 location, so a later build would make all work items upload
@@ -719,7 +736,7 @@ design notes, experiments, and failure analysis in `docs/`.
   removed symbols, such as an old `SchedulerPerf.swift.o` referencing deleted
   scheduler types. Remove only the generated device-test build cache with
   `rm -rf .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.build`
-  and rerun the focused `swift package --disable-sandbox test-in-device --build-only --filter <TestName> --allow-writing-to-package-directory --allow-network-connections all`.
+  and rerun the focused `"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --build-only --filter <TestName> --allow-writing-to-package-directory --allow-network-connections all`.
 - The same stale-object pattern can happen in real example/app packages after
   CPicoSDK source files are renamed or split. Symptom: final CMake link fails
   with duplicate symbols from both a deleted Swift object such as
@@ -728,25 +745,103 @@ design notes, experiments, and failure analysis in `docs/`.
   inspect the static archive with `arm-none-eabi-ar t <lib>.a` and remove only
   the stale target build directory or archive, then rebuild.
 - Do not remove the generated device-test package `.build` just to refresh
-  missing prepare-plugin artifacts. Symptom: `toolset.json` points at
-  `.build/plugins/PrepareEnvironmentPlugin/outputs/generated/newlib_overlay`,
-  but that overlay directory is gone and Swift falls through to raw newlib
-  `stdatomic.h`, producing `_Builtin_stdatomic` typedef errors. First remove
-  only stale prep stamps/toolset files or rerun the prepare step; if the shared
-  Pico SDK bundle itself is missing, rebuild the example with `cd Example &&
+  missing preparation artifacts. The destination toolset and newlib overlay
+  now live inside the dependency-owned staged Swift SDK. If the generated
+  environment points at a missing stage and Swift falls through to raw newlib
+  `stdatomic.h`, producing `_Builtin_stdatomic` typedef errors, remove only the
+  stale `.env_prep*` files and rerun the harness preparation. If the shared Pico
+  payload itself is missing, rebuild the example with `cd Example &&
   ./build.sh`.
 - If you remove the generated device-test `.build` directory, also remove the
   generated prep script and stamps:
   `rm -f .build/plugins/TestInDevicePlugin/outputs/GeneratedDeviceTests/rp2350/Current/.env_prep*`.
   Otherwise the harness can skip `prepare-rp2xxx-environment`, source a stale
-  `toolset.json`, and fail a cold rebuild because the generated newlib overlay
-  for headers such as `stdatomic.h` no longer exists.
+  `CPICOSDK_SWIFT_SDKS_PATH`, and fail a cold rebuild because the staged SDK or
+  its newlib overlay no longer exists.
 - A repository path containing spaces exercises two independent quoting
-  boundaries in the root device harness. The build symptom is `swift build`
-  reporting unexpected arguments split from `toolset.json`; quote the shell
-  expansion as `--toolset "$TOOLSET_PATH"`. The local programming symptom is
-  OpenOCD `Error: Invalid command argument` because Tcl splits the ELF path in
-  `program <elf> verify`; wrap the path in Tcl double quotes and escape
-  backslash, `"`, `$`, `[`, `]`, CR, and LF. Validate both with a real
+  boundaries in the root device harness. Pass the staged SDK directory as the
+  single quoted value `--swift-sdks-path "$CPICOSDK_SWIFT_SDKS_PATH"`; do not
+  reintroduce a consumer-root `--toolset` argument. The local programming
+  symptom is OpenOCD `Error: Invalid command argument` because Tcl splits the
+  ELF path in `program <elf> verify`; wrap the path in Tcl double quotes and
+  escape backslash, `"`, `$`, `[`, `]`, CR, and LF. Validate both with a real
   `test-in-device --build-only` invocation from a path containing spaces and a
   command-builder unit test containing spaces and Tcl metacharacters.
+- SwiftBuild needs a destination librarian even when the native SwiftPM backend
+  can infer archive creation. Symptom: a bare-metal static-library build falls
+  back to Apple's `libtool` and fails while probing `libtool --version`. Keep a
+  `"librarian": { "path": "arm-none-eabi-ar" }` entry in the dependency-owned
+  Swift SDK's `toolsets/rp2xxx.json` and confirm the archive command uses that
+  librarian. This is necessary but not sufficient for full SwiftBuild
+  bare-metal support.
+- When testing a development SwiftPM against a checkout whose path contains
+  spaces, distinguish shell quoting from SwiftBuild setting serialization.
+  Symptom: a correctly quoted `--swift-sdks-path` still becomes several
+  `error processing toolset at ...` messages after SwiftPM resolves the staged
+  SDK. SwiftPM's internal `SWIFT_SDK_TOOLSETS` setting must shell-escape each
+  path before joining the string-list value; a no-space copy is useful only as
+  a diagnosis, not a production workaround.
+- A SwiftBuild bare-metal custom task can leak an Apple destination deployment
+  target into a host CMake sub-build. Symptom: AppleClang is passed a macOS
+  sysroot but warns that it targets XR/visionOS and rejects pthread APIs while
+  compiling a host tool such as `pioasm`. Inspect the child environment for
+  values such as `XROS_DEPLOYMENT_TARGET`; remove non-host
+  `*_DEPLOYMENT_TARGET` values and select the macOS SDK explicitly for host
+  subprocesses. The limitation is in custom-task environment isolation, not in
+  the Pico ARM toolchain.
+- Do not locate SwiftBuild product or external archives with a broad `find ...
+  -print -quit` in a persistent scratch directory. A later board or
+  configuration can silently finalize a stale first match. Derive the exact
+  configuration/OS/architecture output component, require both expected files,
+  and keep product/native archive paths explicit through finalization.
+- Swift development snapshots using the EmbeddedPlatform abstraction layer may
+  link-fail on `_swift_mutex_*`, `_swift_mutexRecursive_*`, `_swift_tls_*`, and
+  `_swift_thread_isMain` even when the older `swift_threading_defer_*` hooks are
+  implemented. Provide a private C ABI adapter over the existing platform
+  mutex/TLS implementation and retain the old symbols for older toolchains.
+  Keep these linker entry points out of public shim headers because the new
+  header's fixed-underlying enum types are not source-compatible declarations
+  on older snapshots.
+- When splitting Pico native support into a prebuilt external archive, remove
+  direct concrete stdio transports from the imported library list and let the
+  selected `pico_stdio` target add only UART, USB, or RTT as requested. Link the
+  resulting archive with `--whole-archive`: ordinary archive selection can drop
+  pre-init linker-set entries and allow weak Pico runtime initialization to win
+  over CPicoSDK's strong override. Keep product-specific
+  `standard_binary_info.c` in the final link.
+- A custom Swift SDK's `swiftResourcesPath` must name a Swift resource root,
+  not the target-triple directory itself. Embedded modules and archives belong
+  under its `embedded/` child, while `SwiftShims` and the matching Clang
+  resource headers belong under sibling `shims/` and `clang/` directories.
+  Symptom: SwiftPM accepts the SDK but target compilation reports a missing
+  standard library or `SwiftShims` module.
+- `URL(fileURLWithPath:)` resolves a relative string against the current
+  directory. Do not test `URL.path.hasPrefix("/")` to decide whether the
+  original metadata value was absolute; that test is always true after URL
+  construction. Use `(path as NSString).isAbsolutePath`, then resolve relative
+  SDK-layout entries against the layout file's directory.
+- If one external build consumes an auxiliary file from another external
+  build, declare that exact producer output as an input. Inferring a sidecar by
+  adjacency can appear to work while an always-out-of-date producer masks the
+  missing edge, but it is not a correct incremental graph.
+- SwiftPM's resolved destination SDK root may differ from the artifact bundle
+  root. Pass the resolved sysroot to custom tasks explicitly and let
+  destination-specific metadata locate its enclosing bundle; `$(SYSROOT)` can
+  be empty in the aggregate project created for an inline external package.
+- Keep reusable external-build implementation in the dependency that owns the
+  native SDK, not in each consuming application. The root canonical
+  `Package.swift` owns `CPicoNative`, the private builder tools, and the
+  exported `CPicoFirmwareBuilder` plugin; a consumer attaches that plugin and
+  may provide `cpicosdk-build.json`. Export the configuration's absolute path
+  as `CPICOSDK_BUILD_CONFIGURATION` before planning so preparation, the private
+  native builder, and consumer-context finalizer read the same file. Let the
+  `PrepareEnvironment` command plugin stage or reuse the Swift SDK; there is no
+  separate setup script.
+- Dependency product filtering must retain private plugin targets referenced by
+  an inline external package. Symptom: a consumer selects CPicoSDK's public
+  library/plugin products, but package loading later cannot find
+  `CPicoNativeBuilderPlugin` or one of its helper targets. Compute the closure
+  of local plugin targets used by external packages, resolve plugin product
+  names to their target names, and add their local target/plugin dependencies
+  after the ordinary product filter. Do not solve this by copying the private
+  tools into the consumer package.

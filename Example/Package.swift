@@ -1,7 +1,9 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.5
 
 import PackageDescription
 
+// This experiment requires the external-package prototype from
+// swift-package-manager#10198.
 let package = Package(
     name: "Example",
     products: [
@@ -9,8 +11,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/gonzalolarralde/CPicoSDK",
-            exact: "2.2.7",
+            path: "../",
             traits: [
                 .init(name: "BootStage2_W25Q080"),
                 .init(name: "StdIO_Automatic"),
@@ -54,11 +55,12 @@ let package = Package(
             dependencies: [
                 .product(name: "CPicoSDK", package: "CPicoSDK"),
                 .product(name: "CPicoConcurrency", package: "CPicoSDK"),
-                .product(name: "PSRAM", package: "CPicoSDK"), // Optional, only needed if using PSRAM.
+                .product(name: "PSRAM", package: "CPicoSDK"),
             ],
             plugins: [
                 .plugin(name: "PIOASM", package: "CPicoSDK"),
                 .plugin(name: "AssetCompiler", package: "CPicoSDK"),
+                .plugin(name: "CPicoFirmwareBuilder", package: "CPicoSDK"),
             ]
         ),
     ]

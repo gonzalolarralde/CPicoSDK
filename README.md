@@ -27,16 +27,29 @@ The easiest way to get started is with the **Example** project located in the `E
    sudo apt install build-essential libhidapi-hidraw0 libhidapi-libusb0
    ```
 
-   **Linux and macOS:** Install Swiftly from [swift.org](https://www.swift.org/install/) and ensure all dependencies mentioned at the end of the build script are installed.
+   **Linux and macOS:** Install Swiftly from
+   [swift.org](https://www.swift.org/install/).
 
-3. **Run the build script** for the first time:
+3. **Build SwiftPM PR #10198**, then point `SWIFTPM_BIN_DIR` at the directory
+   containing its sibling `swift-package` and `swift-build` executables.
+
+4. **Run the build script** for the first time:
    ```bash
-   bash build.sh
+   SWIFTPM_BIN_DIR=/absolute/path/to/pr-build/Products/Debug ./build.sh
    ```
    > ⏱️ **Note**: The first run will take a couple of minutes as it downloads all dependencies (Pico SDK, toolchains, and Swift packages).
 
-4. **Open in VSCode** (optional but recommended):
+5. **Open in VSCode** (optional but recommended):
    Install the recommended extensions when prompted. This enables full IDE integration with debugging and flashing capabilities.
+
+This branch is an experiment based on SwiftPM's external-package preview. Its
+tools-version 6.5 manifests require the development SwiftPM from
+[swift-package-manager#10198](https://github.com/swiftlang/swift-package-manager/pull/10198);
+there is intentionally no released-SwiftPM compatibility path. Native support
+and firmware finalization are CPicoSDK-owned build tasks, and `Example/build.sh`
+is the sole launcher. See
+[`Example/README.md`](Example/README.md#swiftpm-external-builder-build) for the
+setup and build flow.
 
 #### Programming the Device
 
@@ -364,29 +377,29 @@ struct App {
 }
 ```
 
-3. **Build and flash** (see the Example directory for a complete build. sh script):
+3. **Build, and optionally flash** (see the Example directory for the complete
+   launcher):
 
 ```bash
-./build.sh --flash
+SWIFTPM_BIN_DIR=/absolute/path/to/pr-build/Products/Debug ./build.sh --flash
 ```
 
-The build script will:
-- Download and configure the Pico SDK, ARM toolchain, and all dependencies
-- Set up VSCode with debugging configurations
-- Build your Swift code
-- Link it with the Pico SDK
-- Generate UF2 and ELF binaries
-- Optionally flash to your device
+The launcher keeps the user-controlled settings near the top, makes one small
+preparation-plugin call, requests the SwiftPM product build, and optionally
+invokes the flash plugin. Native compilation and firmware finalization are
+declared SwiftPM tasks rather than shell-script build stages.
 
 ### VSCode Integration
 
-When you run the environment preparation step, CPicoSDK automatically generates: 
+When you run the environment preparation step, CPicoSDK automatically generates:
 
-- **`.vscode/settings.json`**: VSCode workspace configuration
+- **`.vscode/tasks.json`**: build and flash tasks
 - **`.vscode/launch.json`**: Debug configurations for cortex-debug
-- **`buildServerConfig.json`**: SourceKit-LSP configuration for code completion
-- **`toolset.json`**: SwiftPM toolchain configuration
-- **`.swift-version`**: Swiftly version pinning
+- **`.vscode/extensions.json`**: recommended embedded-development extensions
+
+The destination toolset is contained inside the dependency-owned staged Swift
+SDK. Preparation does not generate a root `toolset.json`, rewrite
+`.swift-version`, or create a legacy SourceKit configuration.
 
 This gives you a complete IDE experience with:
 - Syntax highlighting and code completion
@@ -405,7 +418,12 @@ This section explains how CPicoSDK works internally and how the various pieces f
 
 ### Architecture Overview
 
-CPicoSDK uses a hybrid approach combining **SwiftPM plugins** for Swift-native tooling with **bash scripts** for complex build orchestration. This approach balances maintainability with the flexibility needed for embedded cross-compilation workflows.
+The user-facing build is plugin-owned. `Example/build.sh` is only a short
+bootstrap wrapper around destination preparation, one SwiftPM build request,
+and optional flashing. CPicoSDK's external builders declare the native archive
+and automatic post-product firmware finalizer inside SwiftPM's build graph.
+The separate root `build.sh` remains a maintainer utility for regenerating the
+checked-in compound headers and manifest.
 
 ### Configurator Execution Model
 
@@ -519,7 +537,8 @@ This configuration is:
 1. Read by the **PrepareEnvironmentPlugin** to set up the environment (base vars + combinations)
 2. Resolved (variables expanded) and exported as bash environment variables
 3. Used by **GenerateCPicoSDKPlugin** to generate per-combination headers and `Package.swift`
-4. Consumed by **FinalizeBinaryPlugin** during the linking stage
+4. Consumed by the external native builder and automatic post-product firmware
+   finalizer
 
 ### The `build.sh` Script: Environment Preparation
 
@@ -630,7 +649,9 @@ Separately from these textual fixups, maintainers may also annotate selected imp
 
 ### The `shims.c` File: Runtime Compatibility
 
-Located at `Plugins/FinalizeBinaryPluginTool/CMakeHarness/shims.c`, this file provides **POSIX compatibility shims** for functions that the Swift runtime expects but aren't provided by the bare-metal ARM toolchain.
+Located at `Support/FirmwareFinalizer/CMakeHarness/shims.c`, this file provides
+**POSIX compatibility shims** for functions that the Swift runtime expects but
+aren't provided by the bare-metal ARM toolchain.
 
 For example:
 ```c
@@ -669,11 +690,15 @@ artifacts:
 - Merges base vars and combination overrides from `env.json` with user overrides
 - Resolves variable substitutions (e.g., `${HOME}`, `${PICO_SDK_PATH}`)
 - Downloads dependencies via PicoSDKDownloader
-- Generates `toolset.json` for the ARM cross-compiler
-- Creates `.swift-version` for Swiftly
-- Writes VSCode settings and launch configurations
-- Generates `buildServerConfig.json` for SourceKit-LSP
-- Outputs a bash script with exported environment variables and helper functions
+- Stages and validates a relocatable Swift SDK containing the Pico payload and
+  matching Embedded Swift runtime; that SDK contains its ARM toolset
+- Selects the compiler snapshot pinned by
+  `SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt`
+- Writes VSCode task, extension, and launch configurations
+- Outputs a small shell-readable environment file for the launcher
+
+It does not create a root `toolset.json`, mutate `.swift-version`, or generate
+legacy SourceKit settings.
 
 **Key files**:
 - `PrepareEnvironmentPlugin.swift`: Main plugin logic
@@ -696,27 +721,44 @@ artifacts:
 
 **Why it exists**:  SwiftPM doesn't support prebuild commands for header generation, so this must be run manually during development.
 
-#### 3. **FinalizeBinaryPlugin** (`finalize-rp2xxx-binary`)
+#### 3. **CPicoFirmwareBuilder**
 
-**Purpose**: Link Swift object files with Pico SDK and generate the final binary
+**Purpose**: Declare native support and post-product firmware assembly in
+SwiftPM's external build graph
 
 **What it does**:
-- Takes the compiled Swift `.o` files from SwiftPM
+- Builds CPicoSDK's native support archive before the Swift product
+- Takes the completed Swift static product supplied by SwiftPM
 - Links them with Pico SDK libraries using the CMake harness
 - Detects when the final link needs extra embedded Swift runtime archives and adds them automatically
 - Embeds `.codeasset` resources by passing generated name/path lists into the CMake harness
-- Runs as a native Swift plugin (no standalone shell build script)
+- Runs firmware assembly as an automatic `.postProduct` external task
 - Includes `shims.c` for runtime compatibility
 - Generates both ELF (for debugging) and UF2 (for flashing) binaries
 - Prints final artifact file sizes, including the raw `.bin` flash payload, UF2
   transfer file size, and host ELF debug file size
 - Prints the CPicoSDK memory map report for the finalized ELF, including
   flash/static-RAM/heap/stack usage and ownership by source
-- Optionally flashes to a connected device
+- Leaves device programming to the separate explicit `FlashFirmware` command
+  plugin
 
-**Why it's necessary**: SwiftPM can't directly produce firmware binaries - it generates object files that must be linked with the Pico SDK's startup code, linker scripts, and library implementations.
+**Why it's necessary**: The Swift static library must still be combined with
+Pico startup code, linker scripts, native libraries, runtime archives, and
+format conversion. The external-task API lets SwiftPM own that dependency edge
+instead of a shell script calling a finalizer after the build.
 
-#### 4. **AssetCompiler** (`AssetCompiler`)
+#### 4. **FlashFirmware** (`flash-rp2xxx-binary`)
+
+**Purpose**: Program an already-finalized UF2 only when the user explicitly
+requests it
+
+`Example/build.sh --flash` invokes this command plugin after a successful build.
+A normal build never programs hardware. The plugin waits at most 60 seconds by
+default for a compatible device; set `CPICOSDK_FLASH_WAIT_SECONDS` to change
+that bounded wait. Set `CPICOSDK_PICOTOOL_SERIAL` to select one device by its
+picotool serial when multiple devices may be attached.
+
+#### 5. **AssetCompiler** (`AssetCompiler`)
 
 **Purpose**: Generate Swift accessors for target-local `.codeasset` files
 
@@ -739,7 +781,7 @@ ${CMAKE_OBJCOPY} -I binary -O elf32-littlearm -B arm \
 
 The section rename is important. Plain `objcopy -I binary` emits a writable `.data` section, which the Pico linker treats as initialized SRAM. Renaming it to a read-only section keeps the resource bytes in flash while still exposing normal linker symbols to Swift.
 
-#### 5. **MemoryMapReportPlugin** (`memory-map-report`)
+#### 6. **MemoryMapReportPlugin** (`memory-map-report`)
 
 **Purpose**: Report flash/RAM usage for an existing finalized ELF without
 building or flashing.
@@ -748,7 +790,7 @@ Run it from a prepared consumer package after `./build.sh` or after the
 finalizer has produced an ELF:
 
 ```sh
-swift package --disable-sandbox memory-map-report
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox memory-map-report
 ```
 
 The plugin looks for `.env_prep` first, then uses `SWIFTPM_PRODUCT`,
@@ -760,12 +802,12 @@ it prints a build-first message.
 You can override artifact paths when inspecting another output:
 
 ```sh
-swift package --disable-sandbox memory-map-report \
-  .build/armv7em-none-none-eabi/release/Example.elf
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox memory-map-report \
+  .build/out/Products/Release-none-armv7em/Example.elf
 
-swift package --disable-sandbox memory-map-report \
-  --elf .build/armv7em-none-none-eabi/release/Example.elf \
-  --map .build/plugins/FinalizeBinaryPlugin/outputs/CMakeHarness/build_pico2/Example.elf.map
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox memory-map-report \
+  --elf .build/out/Products/Release-none-armv7em/Example.elf \
+  --map .build/out/Products/Release-none-armv7em/Example.elf.map
 ```
 
 When only an ELF path is provided, the tool first checks the ELF directory for a
@@ -831,36 +873,33 @@ For the detailed investigation history, current architecture, and known limitati
 
 - [Docs/CONCURRENCY_NOTES.md](/Users/gonzalo/src/CPicoSDK/Docs/CONCURRENCY_NOTES.md)
 
-### Bash + Swift:  A Pragmatic Hybrid
+### Plugin-Owned Build Orchestration
 
-While the plugins are written in Swift for type safety and integration with SwiftPM, many complex operations are delegated to bash scripts:
+`Example/build.sh` is intentionally limited to user configuration, a small
+prepare call, the build request, a note that finalization is automatic, and an
+optional flash call. The implementation behind those phases lives in Swift
+tools and SwiftPM plugins:
 
-**Why bash?**
-- ✅ Direct access to CMake, GNU toolchain, and POSIX utilities
-- ✅ Easier to debug and iterate during development
-- ✅ Familiar to embedded developers
-- ✅ Handles complex multi-tool pipelines naturally
+- `PrepareEnvironmentPlugin` provisions and selects the destination SDK before
+  package planning.
+- `CPicoNativeBuilderPlugin` declares the native CMake/Ninja archive task.
+- `CPicoFirmwareFinalizerPlugin` declares firmware assembly after the static
+  Swift product is available.
+- `FlashFirmwarePlugin` performs the explicit device operation.
 
-**Why not all bash?**
-- ❌ No access to SwiftPM's package graph and dependency information
-- ❌ No type safety or structured error handling
-- ❌ Harder to generate JSON and structured config files
-
-**The hybrid approach** lets us:
-- Use Swift for orchestration, environment resolution, and file generation
-- Use bash for invoking CMake, gcc-arm-none-eabi, picotool, etc.
-- Keep `build.sh` files simple and maintainable
-- Gradually migrate more logic to Swift over time (see TODOs)
+The Swift tools may invoke CMake, Ninja, GNU ARM tools, or picotool as owned
+child processes. That is different from treating a shell launcher as the build
+system: SwiftPM sees the declared inputs, outputs, and producer/consumer edges,
+and the application launcher does not duplicate dependency-owned logic.
 
 ### File Structure
 
 ```
 CPicoSDK/
-├── Package.swift                          # Generated package manifest with traits
+├── Package.swift                          # Canonical tools-version 6.5 manifest
 ├── Package.swift.template                 # Template used to generate Package.swift
 ├── env.json                               # Central configuration
 ├── generator_vars.json                    # Available hardware options and libraries
-├── toolset.json                           # Generated by PrepareEnvironmentPlugin
 ├── build.sh                               # Maintainer tool for header + manifest regeneration
 ├── Sources/
 │   ├── _CPicoSDK_pico2/                   # Generated compound header (git-tracked)
@@ -885,17 +924,21 @@ CPicoSDK/
 │   ├── GenerateCPicoSDKPluginTool/
 │   │   └── CMakeHarness/
 │   │       └── CMakeLists.txt            # CMake project for preprocessing
-│   ├── FinalizeBinaryPlugin/
-│   │   ├── FinalizeBinaryPlugin.swift    # Linking and UF2 generation
-│   │   ├── Env.swift
-│   │   └── Extensions.swift
-│   └── FinalizeBinaryPluginTool/
-│       └── CMakeHarness/
-│           ├── CMakeLists.txt            # CMake project for linking
-│           └── shims.c                   # POSIX compatibility layer
+│   ├── CPicoNativeBuilderPlugin/          # External native archive task
+│   ├── CPicoFirmwareFinalizerPlugin/      # Automatic post-product task
+│   └── FlashFirmwarePlugin/               # Explicit programming command
+├── External/
+│   └── CPicoNativeSupport/                # Declared external native product
+├── Support/
+│   └── FirmwareFinalizer/CMakeHarness/
+│       ├── CMakeLists.txt                 # CMake project for firmware linking
+│       └── shims.c                        # POSIX compatibility layer
+├── SwiftSDK/
+│   └── ExternalPreviewSDK/                # Relocatable SDK templates + compiler pin
 └── Example/
     ├── Package.swift                      # Example project consuming CPicoSDK
-    ├── build.sh                          # User-facing build script
+    ├── cpicosdk-build.json                # Consumer-owned build policy
+    ├── build.sh                           # Sole user-facing build launcher
     └── Sources/
         └── Example/
             └── main.swift
@@ -912,10 +955,14 @@ CPicoSDK/
 
 **For users consuming CPicoSDK:**
 
-1. Add CPicoSDK as a dependency
-2. Run `./build.sh` (which calls the plugins)
-3. Develop Swift code with full IDE support
-4. Flash and debug on hardware
+1. Build the patched `swift-package` and `swift-build` products from SwiftPM PR
+   #10198.
+2. Add CPicoSDK as a dependency and attach `CPicoFirmwareBuilder` to the static
+   firmware target.
+3. Point `SWIFTPM_BIN_DIR` at the directory containing those sibling products
+   and run the application's small `build.sh` launcher.
+4. Develop Swift code with full IDE support.
+5. Pass `--flash` only when explicitly programming hardware.
 
 ### Device Test Harness
 
@@ -924,7 +971,7 @@ validation. Tests live under `Tests/Device/**/*.swift` and are run from the
 repository root with:
 
 ```bash
-swift package --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 Device execution defaults to local OpenOCD, preserving the original device-test
@@ -956,7 +1003,7 @@ process listings. These values are required or validated only for a physical
 For example, run one test remotely with:
 
 ```bash
-swift package --disable-sandbox test-in-device --remote --filter HelloRTT \
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --remote --filter HelloRTT \
   --allow-writing-to-package-directory --allow-network-connections all
 ```
 
@@ -1004,22 +1051,22 @@ Useful commands:
 
 ```bash
 # List discovered device tests
-swift package --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --list --allow-writing-to-package-directory --allow-network-connections all
 
 # Generate and build all device-test firmware without flashing/running it
-swift package --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --build-only --allow-writing-to-package-directory --allow-network-connections all
 
 # Run one test by name
-swift package --disable-sandbox test-in-device --filter HelloRTT --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --filter HelloRTT --allow-writing-to-package-directory --allow-network-connections all
 
 # Generate and build one device-test firmware without flashing/running it
-swift package --disable-sandbox test-in-device --filter HelloRTT --build-only --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --filter HelloRTT --build-only --allow-writing-to-package-directory --allow-network-connections all
 
 # Override test metadata and build all device-test firmware as Release
-swift package --disable-sandbox test-in-device --build-type Release --build-only --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --build-type Release --build-only --allow-writing-to-package-directory --allow-network-connections all
 
 # Print a memory map report for each finalized device-test ELF
-swift package --disable-sandbox test-in-device --filter HelloRTT --build-only --memory-map-report --allow-writing-to-package-directory --allow-network-connections all
+"$SWIFTPM_BIN_DIR/swift-package" --disable-sandbox test-in-device --filter HelloRTT --build-only --memory-map-report --allow-writing-to-package-directory --allow-network-connections all
 ```
 
 Use `--build-only` when you want to verify that device tests still generate,

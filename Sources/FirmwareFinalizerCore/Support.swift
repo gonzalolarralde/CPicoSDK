@@ -3,11 +3,9 @@ import Foundation
 import Glibc
 #endif
 
-// TODO: Figure out how to share or keep synchronized between GenerateCPicoSDKPlugin and FinalizeBinaryPlugin
-
 extension Process {
-    // TODO: Remove this workaround when upgrading to Swift 6.3+
-    // https://github.com/swiftlang/swift/issues/81272
+    // Swift versions affected by https://github.com/swiftlang/swift/issues/81272
+    // can inherit SIGCHLD as blocked while running command-plugin tools.
     private func unblockSigchldBeforeSpawnIfNeeded() {
         #if os(Linux)
         var set = sigset_t()
@@ -21,23 +19,39 @@ extension Process {
         try await asyncRun(captureStdout: false, captureStderr: false).status
     }
 
-    func asyncRun(captureStdout: Bool, captureStderr: Bool) async throws -> (status: Int32, stdout: Data?, stderr: Data?) {
+    func asyncRun(
+        captureStdout: Bool,
+        captureStderr: Bool
+    ) async throws -> (status: Int32, stdout: Data?, stderr: Data?) {
+        var childEnvironment = environment ?? ProcessInfo.processInfo.environment
+        // SwiftBuild custom tasks may carry a toolchain-internal DEVELOPER_DIR
+        // and destination deployment variables into host utilities. Apple
+        // command shims such as /usr/bin/nm then ask xcrun for a nonexistent
+        // developer directory instead of inspecting the bare-metal archive.
+        childEnvironment.removeValue(forKey: "DEVELOPER_DIR")
+        #if os(macOS)
+        for key in childEnvironment.keys where key.hasSuffix("_DEPLOYMENT_TARGET") {
+            childEnvironment.removeValue(forKey: key)
+        }
+        #endif
+        environment = childEnvironment
+
         var stdoutPipe: Pipe?
         if captureStdout {
             let pipe = Pipe()
-            self.standardOutput = pipe
+            standardOutput = pipe
             stdoutPipe = pipe
         }
 
         var stderrPipe: Pipe?
         if captureStderr {
             let pipe = Pipe()
-            self.standardError = pipe
+            standardError = pipe
             stderrPipe = pipe
         }
 
-        self.unblockSigchldBeforeSpawnIfNeeded()
-        try self.run()
+        unblockSigchldBeforeSpawnIfNeeded()
+        try run()
 
         async let status: Int32 = withCheckedContinuation { continuation in
             let waiter = Thread {
@@ -51,7 +65,9 @@ extension Process {
             guard let stdoutPipe else { return nil }
             return await withCheckedContinuation { continuation in
                 let reader = Thread {
-                    continuation.resume(returning: stdoutPipe.fileHandleForReading.readDataToEndOfFile())
+                    continuation.resume(
+                        returning: stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                    )
                 }
                 reader.start()
             }
@@ -61,7 +77,9 @@ extension Process {
             guard let stderrPipe else { return nil }
             return await withCheckedContinuation { continuation in
                 let reader = Thread {
-                    continuation.resume(returning: stderrPipe.fileHandleForReading.readDataToEndOfFile())
+                    continuation.resume(
+                        returning: stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                    )
                 }
                 reader.start()
             }
@@ -90,34 +108,17 @@ extension Optional {
 
 extension Collection {
     var nonEmpty: Self? {
-        if self.isEmpty {
-            nil
-        } else {
-            self
-        }
-    }
-}
-
-extension Env {
-    static func importedLibs(combination: String) throws -> [String] {
-        var importedLibs =
-            try Env.value("IMPORTED_LIBS", combination: combination).expected.split(separator: ",")
-                .map(String.init)
-
-        try importedLibs.append(
-            contentsOf: Env.value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
-                .compactMap(\.nonEmpty)
-                .map(String.init)
-        )
-
-        return importedLibs
+        isEmpty ? nil : self
     }
 }
 
 extension FileManager {
     func ensureDirectoryExists(at path: String, isDirectory: Bool) throws {
-        let url = URL(filePath: path, directoryHint: isDirectory ? .isDirectory : .notDirectory)
-        try FileManager.default.createDirectory(
+        let url = URL(
+            filePath: path,
+            directoryHint: isDirectory ? .isDirectory : .notDirectory
+        )
+        try createDirectory(
             at: isDirectory ? url : url.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )

@@ -33,7 +33,6 @@ struct Env: Codable, Hashable {
         "SWIFTLY_PATH",
         "SWIFT_EMBEDDED_FALLBACK_PATH",
         "SWIFT_EMBEDDED_FALLBACK_MODULES",
-        "TOOLSET_PATH",
         "SDK_PATH",
         "LD_PATH",
         "GDB_PATH",
@@ -48,9 +47,10 @@ struct Env: Codable, Hashable {
         "SWIFTPM_TRIPLE",
         "BUILD_TYPE",
         "SWIFT_BUILD_TYPE",
-        "EXTRA_CONFIG_PARAMS",
         "CPICOSDK_CORE0_STACK_SIZE_BYTES",
         "CPICOSDK_CORE1_STACK_SIZE_BYTES",
+        "CPICOSDK_BUILD_CONFIGURATION",
+        "CPICOSDK_COMBINATION",
         "BOARD",
     ]
     

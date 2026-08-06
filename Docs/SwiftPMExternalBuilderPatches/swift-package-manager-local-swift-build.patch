@@ -1,0 +1,13 @@
+diff --git a/Package.swift b/Package.swift
+index c592f825b..d7515290c 100644
+--- a/Package.swift
++++ b/Package.swift
+@@ -1189,7 +1189,7 @@ if !shouldUseSwiftBuildFramework {
+
+     if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
+         package.dependencies += [
+-            .package(url: "https://github.com/swiftlang/swift-build.git", branch: relatedDependenciesBranch),
++            .package(name: "swift-build", path: "../swift-build-baremetal-gap"),
+             .package(url: "https://github.com/swiftlang/swift-tools-protocols.git", branch: relatedDependenciesBranch),
+         ]
+     } else {

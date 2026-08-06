@@ -1,0 +1,5 @@
+#pragma once
+
+#include "../../pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@/arm-none-eabi/include/stdint.h"
+#include "../../pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@/arm-none-eabi/include/inttypes.h"
+#include "../../pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@/arm-none-eabi/include/stdatomic.h"

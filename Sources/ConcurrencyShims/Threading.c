@@ -17,8 +17,10 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #define SWIFT_PICO_WEAK __attribute__((weak))
+#define SWIFT_PICO_PAL_ENTRY __attribute__((section(".text.swift_embedded_platform")))
 #else
 #define SWIFT_PICO_WEAK
+#define SWIFT_PICO_PAL_ENTRY
 #endif
 
 typedef void pico_mutex_t;
@@ -485,4 +487,86 @@ void swift_threading_defer_tls_set(uintptr_t key, void *value) {
         return;
     }
     swift_pico_tls[swift_pico_core_index()][key] = value;
+}
+
+// Swift's EmbeddedPlatform abstraction replaced the deferred threading hooks
+// with caller-owned mutex storage and reserved TLS keys. Keep one Pico
+// implementation and expose both ABIs while released and preview toolchains
+// overlap. The first mutex word remains an owning pointer to the Pico object;
+// EmbeddedPlatform guarantees at least eight pointer-sized words of storage.
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutex_init(void *storage, unsigned long long flags) {
+    swift_threading_defer_mutex_init((uintptr_t *)storage, (flags & 1u) != 0u);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutex_destroy(void *storage) {
+    swift_threading_defer_mutex_destroy((uintptr_t *)storage);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutex_lock(void *storage) {
+    swift_threading_defer_mutex_lock((uintptr_t *)storage);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutex_unlock(void *storage) {
+    swift_threading_defer_mutex_unlock((uintptr_t *)storage);
+}
+
+SWIFT_PICO_PAL_ENTRY
+ptrdiff_t _swift_mutex_tryLock(void *storage) {
+    return swift_threading_defer_mutex_try_lock((uintptr_t *)storage) ? 1 : 0;
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutexRecursive_init(void *storage, unsigned long long flags) {
+    swift_threading_defer_recursive_mutex_init(
+        (uintptr_t *)storage,
+        (flags & 1u) != 0u
+    );
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutexRecursive_destroy(void *storage) {
+    swift_threading_defer_recursive_mutex_destroy((uintptr_t *)storage);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutexRecursive_lock(void *storage) {
+    swift_threading_defer_recursive_mutex_lock((uintptr_t *)storage);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_mutexRecursive_unlock(void *storage) {
+    swift_threading_defer_recursive_mutex_unlock((uintptr_t *)storage);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_tls_init(ptrdiff_t key, void (*destructor)(void *)) {
+    // Both Pico cores are fixed execution contexts that never exit, so the
+    // EmbeddedPlatform contract does not require destructor invocation.
+    (void)key;
+    (void)destructor;
+}
+
+SWIFT_PICO_PAL_ENTRY
+void *_swift_tls_get(ptrdiff_t key) {
+    if (key < 0) {
+        return NULL;
+    }
+    return swift_threading_defer_tls_get((uintptr_t)key);
+}
+
+SWIFT_PICO_PAL_ENTRY
+void _swift_tls_set(ptrdiff_t key, void *value) {
+    if (key < 0) {
+        return;
+    }
+    swift_threading_defer_tls_set((uintptr_t)key, value);
+}
+
+SWIFT_PICO_PAL_ENTRY
+ptrdiff_t _swift_thread_isMain(void) {
+    return swift_threading_defer_is_main_thread() ? 1 : 0;
 }

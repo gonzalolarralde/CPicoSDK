@@ -10,16 +10,19 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
     func performCommand(context: PackagePlugin.PluginContext, arguments: [String]) async throws {
         let cPicoSDKEnvVarsPath: String
+        let cPicoSDKPackageURL: URL
         let embeddedSwiftRuntimeVendorPath: String
         if let packageURL = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" })?.package.directoryURL {
+            cPicoSDKPackageURL = packageURL
             cPicoSDKEnvVarsPath = packageURL.appending(path: "env.json").relativePath
             embeddedSwiftRuntimeVendorPath = packageURL
                 .appending(path: "Vendor/EmbeddedSwiftRuntime")
                 .relativePath
         } else if let argumentEnvVarsPath = self.findArgumentWithValue(from: arguments, argument: "--cpicosdk-envs-path") {
-            cPicoSDKEnvVarsPath = argumentEnvVarsPath
-            embeddedSwiftRuntimeVendorPath = URL(fileURLWithPath: argumentEnvVarsPath)
+            cPicoSDKPackageURL = URL(fileURLWithPath: argumentEnvVarsPath)
                 .deletingLastPathComponent()
+            cPicoSDKEnvVarsPath = argumentEnvVarsPath
+            embeddedSwiftRuntimeVendorPath = cPicoSDKPackageURL
                 .appending(path: "Vendor/EmbeddedSwiftRuntime")
                 .path
         } else {
@@ -30,9 +33,6 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
 
         let generateVSCodeSettings = !arguments.contains("--disable-vscode-settings")
-        let generateSourceKitLSPSettings = !arguments.contains("--disable-sourcekit-lsp-settings")
-        let generateToolset = !arguments.contains("--disable-toolset")
-        let syncSwiftVersion = !arguments.contains("--disable-swift-version")
         let installDependencies = !arguments.contains("--disable-install-dependencies")
         let forceProductName = !arguments.contains("--dont-force-product-name")
 
@@ -53,7 +53,11 @@ class PrepareEnvironmentPlugin: CommandPlugin {
 
         // Finding and merging env vars.
         let packageURL = context.package.directoryURL
-        let givenEnvVars = ProcessInfo.processInfo.environment
+        let processEnvVars = ProcessInfo.processInfo.environment
+        let configuredEnvVars = self.configuredEnvironment(
+            givenEnvVars: processEnvVars,
+            context: context
+        )
 
         guard let cPicoSDKPackageEnv = try? Env(from: cPicoSDKEnvVarsPath) else {
             fatalError("[CPicoSDK] Couldn't find CPicoSDK default env values. Make sure this package depends on CPicoSDK or provide the path using --cpicosdk-envs-path. [path=\(cPicoSDKEnvVarsPath)]")
@@ -61,36 +65,35 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         cPicoSDKPackageEnv.validateCombinations()
 
         let consolidatedEnvVars = await self.generateEnvVars(
-            given: givenEnvVars, 
+            given: processEnvVars,
+            configured: configuredEnvVars,
             packageEnv: cPicoSDKPackageEnv,
             context: context,
             libraryProductName: libraryProduct?.name,
             embeddedSwiftRuntimeVendorPath: embeddedSwiftRuntimeVendorPath
         )
 
-        self.generateBashFunctions()
-
         // Generate helper files if needed
         if installDependencies {
             try await self.installDependencies(context: context, envVars: consolidatedEnvVars)
         }
         
-        if generateToolset {
-            let generatedNewlibOverlayDir = try self.generateNewlibOverlayHeader(envVars: consolidatedEnvVars)
-            try self.generateToolset(envVars: consolidatedEnvVars, newlibOverlayDir: generatedNewlibOverlayDir)
-        }
-
-        if syncSwiftVersion {
-            try self.syncSwiftVersion(packageURL: packageURL.relativePath, envVars: consolidatedEnvVars)
-        }
-
-        if generateSourceKitLSPSettings {
-            try self.generateSourceKitLSPSettings(packageURL: packageURL.relativePath, envVars: consolidatedEnvVars)
-        }
-
         if generateVSCodeSettings {
             try self.generateVSCodeSettings(context: context, envVars: consolidatedEnvVars)
         }
+
+        // The experimental external-build workflow consumes a relocatable
+        // Swift SDK. Keep its compiler/runtime matching, Pico payload staging,
+        // metadata generation, and validation behind this preparation command
+        // instead of requiring a second orchestration script.
+        if !arguments.contains("--disable-swift-sdk-staging") {
+            try await self.stageExternalSwiftSDK(
+                context: context,
+                cPicoSDKPackageURL: cPicoSDKPackageURL,
+                envVars: consolidatedEnvVars
+            )
+        }
+        self.appendExternalBuildInvocationConfiguration(arguments: arguments)
 
         // Write output once generated
         try self.generatePreparationScript(dumpPrepScriptPath: dumpPrepScriptPath)

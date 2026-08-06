@@ -676,84 +676,150 @@ struct DeviceHarnessRunner {
 
     private func build(generated: GeneratedPackage, buildType: DeviceBuildType) throws -> BuiltFirmware {
         let sharedBundleExport = try sharedPicoSDKBundleExportScript()
+        let sharedSwiftSDKsPath: URL
+        if let configuredPath = ProcessInfo.processInfo.environment[
+            "CPICOSDK_SWIFT_SDKS_PATH"
+        ], !configuredPath.isEmpty {
+            sharedSwiftSDKsPath = ((configuredPath as NSString).isAbsolutePath
+                ? URL(fileURLWithPath: configuredPath, isDirectory: true)
+                : options.packageDirectory.appendingPathComponent(
+                    configuredPath,
+                    isDirectory: true
+                )).standardizedFileURL
+        } else {
+            sharedSwiftSDKsPath = options.cpicoSDKPath
+                .appendingPathComponent(
+                    ".build/cpicosdk-swift-sdks",
+                    isDirectory: true
+                )
+                .standardizedFileURL
+        }
         let script = """
         set -euo pipefail
         cd \(shellQuote(generated.packageDirectory.path))
         export BUILD_TYPE="\(buildType.rawValue)"
-        export BOARD="\(options.target.board)"
+        export CPICOSDK_COMBINATION="\(options.target.board)"
+        export CPICOSDK_BUILD_CONFIGURATION=\(shellQuote(generated.packageDirectory.appendingPathComponent("cpicosdk-build.json").path))
         export CPICOSDK_CORE0_STACK_SIZE_BYTES="${CPICOSDK_CORE0_STACK_SIZE_BYTES:-8192}"
         export CPICOSDK_CORE1_STACK_SIZE_BYTES="${CPICOSDK_CORE1_STACK_SIZE_BYTES:-8192}"
-        export BUILD_SCRIPT_VERSION=1
+        export CPICOSDK_SWIFT_SDKS_PATH=\(shellQuote(sharedSwiftSDKsPath.path))
         \(sharedBundleExport)
-        export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"
-        export PREPARATION_BUNDLE_STAMP="$PREPARATION_SCRIPT_PATH.pico-sdk-bundle-path"
-        export PREPARATION_BUILD_TYPE_STAMP="$PREPARATION_SCRIPT_PATH.build-type"
-        export PREPARATION_STACK_SIZE_STAMP="$PREPARATION_SCRIPT_PATH.stack-sizes"
-        export GENERATED_INPUTS_CHANGED="\(generated.inputsChanged ? "1" : "0")"
-        STACK_SIZE_SIGNATURE="$CPICOSDK_CORE0_STACK_SIZE_BYTES:$CPICOSDK_CORE1_STACK_SIZE_BYTES"
-        PREPARATION_INPUTS_CHANGED="$GENERATED_INPUTS_CHANGED"
-        if [ ! -f "$PREPARATION_BUNDLE_STAMP" ] || [ "$(cat "$PREPARATION_BUNDLE_STAMP")" != "${PICO_SDK_BUNDLE_PATH:-}" ]; then
-          PREPARATION_INPUTS_CHANGED="1"
+
+        SWIFTPM_BIN_DIR="${SWIFTPM_BIN_DIR:-}"
+        if [ -z "$SWIFTPM_BIN_DIR" ]; then
+          echo "Set SWIFTPM_BIN_DIR to the Products directory containing the patched swift-package and swift-build executables."
+          exit 1
         fi
-        if [ ! -f "$PREPARATION_BUILD_TYPE_STAMP" ] || [ "$(cat "$PREPARATION_BUILD_TYPE_STAMP")" != "$BUILD_TYPE" ]; then
-          PREPARATION_INPUTS_CHANGED="1"
-        fi
-        if [ ! -f "$PREPARATION_STACK_SIZE_STAMP" ] || [ "$(cat "$PREPARATION_STACK_SIZE_STAMP")" != "$STACK_SIZE_SIGNATURE" ]; then
-          PREPARATION_INPUTS_CHANGED="1"
-        fi
-        if command -v swiftly >/dev/null 2>&1; then
-          export SWIFTLY_PATH="$(command -v swiftly)"
-        elif [ -f "$HOME/.swiftly/bin/swiftly" ]; then
-          export SWIFTLY_PATH="$HOME/.swiftly/bin/swiftly"
-        elif [ -f "$HOME/.local/share/swiftly/bin/swiftly" ]; then
-          export SWIFTLY_PATH="$HOME/.local/share/swiftly/bin/swiftly"
-        else
-          echo "swiftly not found in PATH."
+        SWIFT_PACKAGE="$SWIFTPM_BIN_DIR/swift-package"
+        SWIFT_BUILD="$SWIFTPM_BIN_DIR/swift-build"
+        if [ ! -x "$SWIFT_PACKAGE" ] || [ ! -x "$SWIFT_BUILD" ]; then
+          echo "SWIFTPM_BIN_DIR must contain executable swift-package and swift-build products."
           exit 1
         fi
 
-        if [ "$PREPARATION_INPUTS_CHANGED" = "1" ] || [ ! -f "$PREPARATION_SCRIPT_PATH" ] || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) -nt "$PREPARATION_SCRIPT_PATH" ]; then
-          "$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \\
+        if command -v swiftly >/dev/null 2>&1; then
+          export SWIFTLY_PATH="$(command -v swiftly)"
+        elif [ -x "$HOME/.swiftly/bin/swiftly" ]; then
+          export SWIFTLY_PATH="$HOME/.swiftly/bin/swiftly"
+        elif [ -x "$HOME/.local/share/swiftly/bin/swiftly" ]; then
+          export SWIFTLY_PATH="$HOME/.local/share/swiftly/bin/swiftly"
+        else
+          echo "swiftly not found. Install it from https://www.swift.org/download/."
+          exit 1
+        fi
+        export SWIFT_EXEC="${SWIFT_EXEC:-$("$SWIFTLY_PATH" run which swiftc)}"
+        export SWIFT_EXEC_MANIFEST="${SWIFT_EXEC_MANIFEST:-$SWIFT_EXEC}"
+
+        export PREPARATION_SCRIPT_PATH="\(generated.packageDirectory.path)/.env_prep"
+        PREPARATION_SIGNATURE_PATH="$PREPARATION_SCRIPT_PATH.inputs"
+        PREPARATION_SIGNATURE="${PICO_SDK_BUNDLE_PATH:-}|$CPICOSDK_SWIFT_SDKS_PATH|$SWIFT_EXEC|$CPICOSDK_CORE0_STACK_SIZE_BYTES|$CPICOSDK_CORE1_STACK_SIZE_BYTES"
+        PREPARATION_REQUIRED=0
+        if [ ! -f "$PREPARATION_SCRIPT_PATH" ] || [ ! -f "$PREPARATION_SIGNATURE_PATH" ]; then
+          PREPARATION_REQUIRED=1
+        elif [ "$(cat "$PREPARATION_SIGNATURE_PATH")" != "$PREPARATION_SIGNATURE" ]; then
+          PREPARATION_REQUIRED=1
+        elif [ Package.swift -nt "$PREPARATION_SCRIPT_PATH" ] \\
+          || [ cpicosdk-build.json -nt "$PREPARATION_SCRIPT_PATH" ] \\
+          || [ .swift-version -nt "$PREPARATION_SCRIPT_PATH" ] \\
+          || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) -nt "$PREPARATION_SCRIPT_PATH" ]; then
+          PREPARATION_REQUIRED=1
+        elif find \\
+          \(shellQuote(options.cpicoSDKPath.appendingPathComponent("Plugins/PrepareEnvironmentPlugin").path)) \\
+          \(shellQuote(options.cpicoSDKPath.appendingPathComponent("Sources/CPicoSDKEnvironmentTool").path)) \\
+          \(shellQuote(options.cpicoSDKPath.appendingPathComponent("SwiftSDK/ExternalPreviewSDK").path)) \\
+          -type f -newer "$PREPARATION_SCRIPT_PATH" -print -quit | grep -q .; then
+          PREPARATION_REQUIRED=1
+        fi
+
+        if [ "$PREPARATION_REQUIRED" = "1" ]; then
+          "$SWIFT_PACKAGE" \\
+            --disable-sandbox \\
+            --package-path \(shellQuote(generated.packageDirectory.path)) \\
+            prepare-rp2xxx-environment \\
             --cpicosdk-envs-path \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) \\
             --dump-prep-script "$PREPARATION_SCRIPT_PATH" \\
             --allow-writing-to-package-directory \\
             --allow-network-connections all \\
-            --disable-vscode-settings \\
-            --disable-sourcekit-lsp-settings
-          printf '%s' "${PICO_SDK_BUNDLE_PATH:-}" > "$PREPARATION_BUNDLE_STAMP"
-          printf '%s' "$BUILD_TYPE" > "$PREPARATION_BUILD_TYPE_STAMP"
-          printf '%s' "$STACK_SIZE_SIGNATURE" > "$PREPARATION_STACK_SIZE_STAMP"
+            --disable-vscode-settings
+          printf '%s' "$PREPARATION_SIGNATURE" > "$PREPARATION_SIGNATURE_PATH"
         fi
         source "$PREPARATION_SCRIPT_PATH"
-        "$SWIFTLY_PATH" install
-        "$SWIFTLY_PATH" run swift build \\
-          --build-system native \\
-          --configuration $SWIFT_BUILD_TYPE \\
-          --toolset "$TOOLSET_PATH" \\
-          --triple $SWIFTPM_TRIPLE \\
-          $EXTRA_CONFIG_PARAMS
-        LIB_PATH=".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/lib\(generated.productName).a"
-        ELF_PATH=".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/\(generated.productName).elf"
-        if [ "$PREPARATION_INPUTS_CHANGED" = "1" ] || [ ! -f "$ELF_PATH" ] || [ "$LIB_PATH" -nt "$ELF_PATH" ]; then
-          finalize_rp2xxx_binary \(generated.productName) --incremental
+        export SWIFT_EXEC="$CPICOSDK_SWIFT_EXECUTABLE"
+        export SWIFT_EXEC_MANIFEST="$SWIFT_EXEC"
+
+        SCRATCH_PATH="\(generated.packageDirectory.path)/.build"
+        "$SWIFT_BUILD" \\
+          --disable-sandbox \\
+          --package-path \(shellQuote(generated.packageDirectory.path)) \\
+          --scratch-path "$SCRATCH_PATH" \\
+          --configuration "$SWIFT_BUILD_TYPE" \\
+          --swift-sdks-path "$CPICOSDK_SWIFT_SDKS_PATH" \\
+          --swift-sdk "$CPICOSDK_SWIFT_SDK_ID" \\
+          --product \(generated.productName)
+
+        case "$SWIFT_BUILD_TYPE" in
+          debug) PRODUCTS_CONFIGURATION=Debug ;;
+          release) PRODUCTS_CONFIGURATION=Release ;;
+          *)
+            echo "Unsupported Swift build configuration: $SWIFT_BUILD_TYPE"
+            exit 1
+            ;;
+        esac
+        TARGET_ARCH="${SWIFTPM_TRIPLE%%-*}"
+        ELF_PATH="$SCRATCH_PATH/out/Products/${PRODUCTS_CONFIGURATION}-none-${TARGET_ARCH}/\(generated.productName).elf"
+        if [ ! -f "$ELF_PATH" ]; then
+          echo "The post-product task did not produce $ELF_PATH"
+          exit 1
         fi
         printf '%s\\n' "$ELF_PATH"
         """
 
-        let result = try ProcessRunner.run("/bin/bash", arguments: ["-lc", script], workingDirectory: generated.packageDirectory)
+        let result = try ProcessRunner.run(
+            "/bin/bash",
+            arguments: ["-lc", script],
+            workingDirectory: generated.packageDirectory
+        )
         guard result.status == 0 else {
-            throw DeviceTestHarnessError.processFailed(command: "build \(generated.packageDirectory.path)", status: result.status, output: result.output)
+            throw DeviceTestHarnessError.processFailed(
+                command: "build \(generated.packageDirectory.path)",
+                status: result.status,
+                output: result.output
+            )
         }
 
-        let foundELF = result.output.split(whereSeparator: \.isNewline).map(String.init).last { $0.hasSuffix(".elf") }
-        if let foundELF {
-            let path = foundELF.hasPrefix("/") ? foundELF : generated.packageDirectory.appendingPathComponent(foundELF).path
-            let elfURL = URL(fileURLWithPath: path)
-            return BuiltFirmware(elfURL: elfURL, uf2URL: try findUF2(for: elfURL, generated: generated))
+        guard let foundELF = result.output
+            .split(whereSeparator: \.isNewline)
+            .map(String.init)
+            .last(where: { $0.hasSuffix(".elf") })
+        else {
+            throw DeviceTestHarnessError.missingArtifact(
+                "\(generated.productName).elf in the external build output"
+            )
         }
+        let elfURL = URL(fileURLWithPath: foundELF)
         return BuiltFirmware(
-            elfURL: generated.elfURL,
-            uf2URL: try findUF2(for: generated.elfURL, generated: generated)
+            elfURL: elfURL,
+            uf2URL: try findUF2(for: elfURL, generated: generated)
         )
     }
 
