@@ -216,9 +216,10 @@ That experiment should be considered closed unless the toolchain behavior change
 
 ## Build and Link Notes
 
-### Finalize plugin archive selection
+### Firmware finalizer archive selection
 
-`Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift` was updated so the finalize flow links:
+`Sources/FirmwareFinalizerCore/FirmwareFinalizer.swift` selects the embedded
+runtime archives used by the automatic post-product finalizer. The flow links:
 
 - `libswift_Concurrency.a`
 
@@ -344,8 +345,8 @@ Relevant files as of now:
 - [Sources/CPicoConcurrency/RuntimeScheduler.swift](/Users/gonzalo/src/CPicoSDK/Sources/CPicoConcurrency/RuntimeScheduler.swift)
 - [Sources/CPicoConcurrency/ConcurrencyHelpers.swift](/Users/gonzalo/src/CPicoSDK/Sources/CPicoConcurrency/ConcurrencyHelpers.swift)
 - [Sources/CPicoConcurrency/PicoSerialExecutor.swift](/Users/gonzalo/src/CPicoSDK/Sources/CPicoConcurrency/PicoSerialExecutor.swift)
-- [Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift](/Users/gonzalo/src/CPicoSDK/Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift)
-- [Plugins/FinalizeBinaryPluginTool/CMakeHarness/CMakeLists.txt](/Users/gonzalo/src/CPicoSDK/Plugins/FinalizeBinaryPluginTool/CMakeHarness/CMakeLists.txt)
+- [Sources/FirmwareFinalizerCore/FirmwareFinalizer.swift](../Sources/FirmwareFinalizerCore/FirmwareFinalizer.swift)
+- [Support/FirmwareFinalizer/CMakeHarness/CMakeLists.txt](../Support/FirmwareFinalizer/CMakeHarness/CMakeLists.txt)
 
 ## Bottom Line
 

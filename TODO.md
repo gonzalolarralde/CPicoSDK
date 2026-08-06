@@ -1,20 +1,17 @@
 # TODOs
 
-- Reset PICO_CMAKE_BUILD_TYPE and CFG_TUSB_DEBUG based on build type. Compound header is wrong. May not be relevant as the finalizing script invokes cmake and won't pass the compound header, it assumes that calls are mostly equivalent.
+- Reset `PICO_CMAKE_BUILD_TYPE` and `CFG_TUSB_DEBUG` based on build type. The
+  compound header is currently wrong. This may not affect firmware assembly,
+  because the automatic post-product finalizer configures CMake independently.
 - Try to move out of the compound header maybe by adding a target for each pico-sdk library.
-- Investigate moving the embedded ARM toolchain into a swift toolchain instead.
-- Decide if moving environment preparation logic to a tool makes sense. Figure out trade-offs and feasibility.
+- Decide how the experimental relocatable Swift SDK should be distributed once
+  SwiftPM's external-package APIs stabilize.
 
 ## Swift
 
-- Package.swift:13: // TODO: This needs to be implemented.
-- Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift:62: // TODO: Figure out how to expand this.
-- Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift:67: // TODO: Rewrite all this as swift code.
-- Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift:95: // TODO: Rewrite build.sh as swift code
-- Plugins/FinalizeBinaryPlugin/FinalizeBinaryPlugin.swift:101: // TODO: Move to shared package
-- Plugins/GenerateCPicoSDKPlugin/GenerateCPicoSDKPlugin.swift:57: // TODO: Rewrite build.sh as swift code
-- Plugins/GenerateCPicoSDKPlugin/GenerateCPicoSDKPlugin.swift:63: // TODO: Move to shared package
-- Plugins/PrepareEnvironmentPlugin/Extensions.swift:25: // TODO: Move to shared package
+- Package.swift.template: Define generated traits instead of relying on the
+  checked-in generator section.
+- Share the async `Process` helper currently duplicated across command plugins.
 
 ## Scripts
 

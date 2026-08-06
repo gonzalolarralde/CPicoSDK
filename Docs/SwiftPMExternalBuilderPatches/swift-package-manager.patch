@@ -335,7 +335,7 @@ index af54b0845..978708bb3 100644
      func pluginRequestedBuildOperation(subset: PluginInvocationBuildSubset, parameters: PluginInvocationBuildParameters, completion: @escaping (Result<PluginInvocationBuildResult, Error>) -> Void) {
          DispatchQueue.sharedConcurrent.async { completion(Result.failure(StringError("unimplemented"))) }
 diff --git a/Sources/SwiftBuildSupport/PIFBuilder.swift b/Sources/SwiftBuildSupport/PIFBuilder.swift
-index 0098e4132..e48c2fe67 100644
+index 0098e4132..7b2ccc961 100644
 --- a/Sources/SwiftBuildSupport/PIFBuilder.swift
 +++ b/Sources/SwiftBuildSupport/PIFBuilder.swift
 @@ -60,6 +60,9 @@ package struct PIFBuilderParameters {
@@ -539,7 +539,15 @@ index 0098e4132..e48c2fe67 100644
          return packagesAndBuilders
      }
 
-@@ -632,7 +763,8 @@ public final class PIFBuilder {
+@@ -620,6 +751,7 @@ public final class PIFBuilder {
+     // Convenience method for generating PIF.
+     public static func generatePIF(
+         buildParameters: BuildParameters,
++        hostToolchainRuntimeLibraryPaths: [AbsolutePath]? = nil,
+         packageGraph: ModulesGraph,
+         fileSystem: FileSystem,
+         observabilityScope: ObservabilityScope,
+@@ -632,10 +764,12 @@ public final class PIFBuilder {
          addLocalRpaths: PackagePIFBuilder.AddLocalRpaths,
          materializeStaticArchiveProductsForRootPackages: Bool,
          createDynamicVariantsForLibraryProducts: Bool,
@@ -549,7 +557,11 @@ index 0098e4132..e48c2fe67 100644
      ) async throws -> PIFGenerationResult {
          let parameters = PIFBuilderParameters(
              buildParameters,
-@@ -644,7 +776,8 @@ public final class PIFBuilder {
++            hostToolchainRuntimeLibraryPaths: hostToolchainRuntimeLibraryPaths,
+             supportedSwiftVersions: [],
+             pluginScriptRunner: pluginScriptRunner,
+             disableSandbox: disableSandbox,
+@@ -644,7 +778,8 @@ public final class PIFBuilder {
              addLocalRpaths: addLocalRpaths,
              materializeStaticArchiveProductsForRootPackages: materializeStaticArchiveProductsForRootPackages,
              createDynamicVariantsForLibraryProducts: createDynamicVariantsForLibraryProducts,
@@ -559,7 +571,15 @@ index 0098e4132..e48c2fe67 100644
          )
          let builder = Self(
              graph: packageGraph,
-@@ -955,7 +1088,8 @@ extension PIFBuilderParameters {
+@@ -947,6 +1082,7 @@ extension PIFGenerationError: CustomStringConvertible {
+ extension PIFBuilderParameters {
+     init(
+         _ buildParameters: BuildParameters,
++        hostToolchainRuntimeLibraryPaths: [AbsolutePath]? = nil,
+         supportedSwiftVersions: [SwiftLanguageVersion],
+         pluginScriptRunner: PluginScriptRunner,
+         disableSandbox: Bool,
+@@ -955,7 +1091,8 @@ extension PIFBuilderParameters {
          addLocalRpaths: PackagePIFBuilder.AddLocalRpaths,
          materializeStaticArchiveProductsForRootPackages: Bool,
          createDynamicVariantsForLibraryProducts: Bool,
@@ -569,15 +589,15 @@ index 0098e4132..e48c2fe67 100644
      ) {
          self.init(
              isPackageAccessModifierSupported: buildParameters.driverParameters.isPackageAccessModifierSupported,
-@@ -964,6 +1098,7 @@ extension PIFBuilderParameters {
+@@ -964,6 +1101,7 @@ extension PIFBuilderParameters {
              materializeStaticArchiveProductsForRootPackages: materializeStaticArchiveProductsForRootPackages,
              createDynamicVariantsForLibraryProducts: createDynamicVariantsForLibraryProducts,
              toolchainLibDir: (try? buildParameters.toolchain.toolchainLibDir) ?? .root,
-+            toolchainRuntimeLibraryPaths: buildParameters.toolchain.runtimeLibraryPaths,
++            toolchainRuntimeLibraryPaths: hostToolchainRuntimeLibraryPaths ?? buildParameters.toolchain.runtimeLibraryPaths,
              pkgConfigDirectories: buildParameters.pkgConfigDirectories,
              supportedSwiftVersions: supportedSwiftVersions,
              pluginScriptRunner: pluginScriptRunner,
-@@ -971,7 +1106,9 @@ extension PIFBuilderParameters {
+@@ -971,7 +1109,9 @@ extension PIFBuilderParameters {
              pluginWorkingDirectory: pluginWorkingDirectory,
              additionalFileRules: additionalFileRules,
              addLocalRpaths: addLocalRpaths,
@@ -588,7 +608,7 @@ index 0098e4132..e48c2fe67 100644
          )
      }
  }
-@@ -1010,6 +1147,7 @@ extension PackagePIFBuilder.CustomBuildCommand {
+@@ -1010,6 +1150,7 @@ extension PackagePIFBuilder.CustomBuildCommand {
          buildCommand: SPMBuildCore.BuildToolPluginInvocationResult.BuildCommand,
          package: ResolvedPackage,
          pluginOutputDir: AbsolutePath,
@@ -596,7 +616,7 @@ index 0098e4132..e48c2fe67 100644
          disableSandbox: Bool
      ) {
          var newEnv: Environment = buildCommand.configuration.environment
-@@ -1020,10 +1158,8 @@ extension PackagePIFBuilder.CustomBuildCommand {
+@@ -1020,10 +1161,8 @@ extension PackagePIFBuilder.CustomBuildCommand {
          // plugins do not inadvertently use the toolchain stdlib instead of the OS stdlib
          // when built with a Swift.org toolchain.
          #if !os(macOS)
@@ -608,7 +628,7 @@ index 0098e4132..e48c2fe67 100644
              newEnv.appendPath(key: .libraryPath, value: libPath.pathString)
          }
          #endif
-@@ -1056,9 +1192,14 @@ extension PackagePIFBuilder.CustomBuildCommand {
+@@ -1056,9 +1195,14 @@ extension PackagePIFBuilder.CustomBuildCommand {
          externalBuildCommand: SPMBuildCore.BuildToolPluginInvocationResult.ExternalBuildCommand,
          package: ResolvedPackage,
          pluginOutputDir: AbsolutePath,
@@ -625,7 +645,7 @@ index 0098e4132..e48c2fe67 100644
 
          // FIXME: This is largely a workaround for improper rpath setup on Linux. It should be
          // removed once the Swift Build backend switches to use swiftc as the linker driver
-@@ -1066,10 +1207,8 @@ extension PackagePIFBuilder.CustomBuildCommand {
+@@ -1066,10 +1210,8 @@ extension PackagePIFBuilder.CustomBuildCommand {
          // plugins do not inadvertently use the toolchain stdlib instead of the OS stdlib
          // when built with a Swift.org toolchain.
          #if !os(macOS)
@@ -637,7 +657,7 @@ index 0098e4132..e48c2fe67 100644
              newEnv.appendPath(key: .libraryPath, value: libPath.pathString)
          }
          #endif
-@@ -1079,20 +1218,67 @@ extension PackagePIFBuilder.CustomBuildCommand {
+@@ -1079,20 +1221,67 @@ extension PackagePIFBuilder.CustomBuildCommand {
              newEnv.appendPath(key: .path, value: pathValue)
          }
 
@@ -838,7 +858,7 @@ index 510244f12..f1d436d22 100644
              case .product(let productDependency, let packageConditions):
                  // Do not add a dependency for binary-only executable products since they are not part of the build.
 diff --git a/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift b/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift
-index 3a33c18a1..77751b04c 100644
+index 3a33c18a1..a5c06f685 100644
 --- a/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift
 +++ b/Sources/SwiftBuildSupport/PackagePIFProjectBuilder.swift
 @@ -11,6 +11,7 @@
@@ -858,7 +878,7 @@ index 3a33c18a1..77751b04c 100644
                  outputFilePaths: command.outputPaths,
                  enableSandboxing: false,
                  preparesForIndexing: true
-@@ -522,71 +523,105 @@ struct PackagePIFProjectBuilder {
+@@ -522,71 +523,108 @@ struct PackagePIFProjectBuilder {
          )
      }
 
@@ -871,12 +891,6 @@ index 3a33c18a1..77751b04c 100644
 -                ProjectModel.AggregateTarget(
 -                    id: package.pifTargetGUID,
 -                    name: package.name
--                )
--            }
--            do {
--                let externalTarget = self.project[keyPath: externalTargetKeyPath]
--                log(.debug, "Created aggregate target '\(externalTarget.id) with name \(externalTarget.name)")
--            }
 +    mutating func addExternalPackageBuildCommands() throws {
 +        let commands = pifBuilder.externalBuilderResults.flatMap(\.buildCommands).filter {
 +            $0.externalBuildPlacement == .package
@@ -893,13 +907,18 @@ index 3a33c18a1..77751b04c 100644
 +        }
 +        let externalTarget = self.project[keyPath: externalTargetKeyPath]
 +        log(.debug, "Created aggregate target '\(externalTarget.id)' with name '\(externalTarget.name)'")
-
--            // Add in the custom task for the build commands
--            for command in results.buildCommands {
--                var commandLine = [command.executable] + command.arguments
++
 +        for command in commands {
 +            self.project[keyPath: externalTargetKeyPath].customTasks.append(
-+                try self.makeExternalBuildTask(command, alwaysOutOfDate: true)
++                try self.makeExternalBuildTask(
++                    command,
++                    alwaysOutOfDate: command.outputPaths.isEmpty
+                 )
+-            }
+-            do {
+-                let externalTarget = self.project[keyPath: externalTargetKeyPath]
+-                log(.debug, "Created aggregate target '\(externalTarget.id) with name \(externalTarget.name)")
+-            }
 +            )
 +        }
 +        let packageBuilderTargetIDs = pifBuilder.externalBuilderResults.compactMap { result in
@@ -915,9 +934,9 @@ index 3a33c18a1..77751b04c 100644
 +            )
 +        }
 
--                if let sandbox = command.sandboxProfile, !pifBuilder.delegate.isPluginExecutionSandboxingDisabled {
--                    commandLine = try! sandbox.apply(to: commandLine, fileSystem: self.pifBuilder.fileSystem)
--                }
+-            // Add in the custom task for the build commands
+-            for command in results.buildCommands {
+-                var commandLine = [command.executable] + command.arguments
 +        self.project[keyPath: externalTargetKeyPath].common.addBuildConfig { id in
 +            BuildConfig(id: id, name: "Debug", settings: .init())
 +        }
@@ -926,6 +945,15 @@ index 3a33c18a1..77751b04c 100644
 +        }
 +    }
 
+-                if let sandbox = command.sandboxProfile, !pifBuilder.delegate.isPluginExecutionSandboxingDisabled {
+-                    commandLine = try! sandbox.apply(to: commandLine, fileSystem: self.pifBuilder.fileSystem)
++    mutating func addPostProductExternalBuildCommands() throws {
++        for result in pifBuilder.externalBuilderResults {
++            for command in result.buildCommands {
++                guard case .postProduct(let productName) = command.externalBuildPlacement else {
++                    continue
+                 }
+-
 -                var environment = command.environment
 -                environment["SWIFT_CONFIGURATION"] = "$(CONFIGURATION)"
 -                environment["SWIFT_PLATFORM"] = "$(EFFECTIVE_PLATFORM_NAME)"
@@ -947,12 +975,6 @@ index 3a33c18a1..77751b04c 100644
 -                        preparesForIndexing: false,
 -                        alwaysOutOfDate: true
 -                    )
-+    mutating func addPostProductExternalBuildCommands() throws {
-+        for result in pifBuilder.externalBuilderResults {
-+            for command in result.buildCommands {
-+                guard case .postProduct(let productName) = command.externalBuildPlacement else {
-+                    continue
-+                }
 +                guard let product = self.package.products.first(where: { $0.name == productName }),
 +                      let productTargetKeyPath = self.project.findTarget(id: product.pifTargetGUID)
 +                else {
@@ -1022,7 +1044,7 @@ index 3a33c18a1..77751b04c 100644
 
      /// Processes the paths of plugin-generated files for a particular package target,
 diff --git a/Sources/SwiftBuildSupport/SwiftBuildSystem.swift b/Sources/SwiftBuildSupport/SwiftBuildSystem.swift
-index ae4374355..06f37cdae 100644
+index ae4374355..de3b20032 100644
 --- a/Sources/SwiftBuildSupport/SwiftBuildSystem.swift
 +++ b/Sources/SwiftBuildSupport/SwiftBuildSystem.swift
 @@ -950,8 +950,8 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
@@ -1061,7 +1083,15 @@ index ae4374355..06f37cdae 100644
          } else {
              // If the user did not explicitly specify a list of architectures, build only the active arch.
              // We may want to consider building universal binaries by default in Apple-platform release builds
-@@ -1357,7 +1357,8 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
+@@ -1349,6 +1349,7 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
+                 graph: graph,
+                 parameters: .init(
+                     buildParameters,
++                    hostToolchainRuntimeLibraryPaths: self.hostBuildParameters.toolchain.runtimeLibraryPaths,
+                     supportedSwiftVersions: supportedSwiftVersions(),
+                     pluginScriptRunner: self.pluginConfiguration.scriptRunner,
+                     disableSandbox: self.pluginConfiguration.disableSandbox,
+@@ -1357,7 +1358,8 @@ public final class SwiftBuildSystem: SPMBuildCore.BuildSystem {
                      addLocalRpaths: self.buildParameters.linkingParameters.shouldDisableLocalRpath ? .never : .always,
                      materializeStaticArchiveProductsForRootPackages: materializeStaticArchiveProductsForRootPackages,
                      createDynamicVariantsForLibraryProducts: false,
