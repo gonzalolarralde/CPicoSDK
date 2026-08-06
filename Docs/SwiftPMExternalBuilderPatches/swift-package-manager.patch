@@ -1,3 +1,74 @@
+diff --git a/Sources/PackageLoading/PackageBuilder.swift b/Sources/PackageLoading/PackageBuilder.swift
+index 387fe4d1b..8435ebdc7 100644
+--- a/Sources/PackageLoading/PackageBuilder.swift
++++ b/Sources/PackageLoading/PackageBuilder.swift
+@@ -622,9 +622,64 @@ public final class PackageBuilder {
+             )
+         }
+
+-        // Create potential targets.
++        // Create potential targets. External packages can use a private plugin
++        // from their parent package. Keep those plugins visible even when the
++        // parent is a dependency whose other targets are product-filtered.
++        let pluginProducts = Dictionary(
++            uniqueKeysWithValues: self.manifest.products.compactMap { product in
++                product.type == .plugin
++                    ? product.targets.first.map { (product.name, $0) }
++                    : nil
++            }
++        )
++        func localPluginTargetName(for name: String) -> String? {
++            self.manifest.targetMap[name] == nil ? pluginProducts[name] : name
++        }
++        let externalPluginNames = Set(self.manifest.externals.flatMap { external in
++            external.targets.flatMap { target in
++                target.pluginUsages?.compactMap { usage -> String? in
++                    guard case .plugin(let name, package: nil) = usage else {
++                        return nil
++                    }
++                    return localPluginTargetName(for: name)
++                } ?? []
++            }
++        })
++        var externalPluginRequiredNames = externalPluginNames
++        var unvisitedExternalPluginDependencies = Array(externalPluginNames)
++        while let name = unvisitedExternalPluginDependencies.popLast() {
++            guard let target = self.manifest.targetMap[name] else {
++                continue
++            }
++            var dependencyNames = target.dependencies.compactMap { dependency in
++                switch dependency {
++                case .target(let name, _), .byName(let name, _):
++                    self.manifest.targetMap[name] == nil ? nil : name
++                case .product:
++                    nil
++                }
++            }
++            dependencyNames += target.pluginUsages?.compactMap { usage in
++                guard case .plugin(let name, package: nil) = usage else {
++                    return nil
++                }
++                return localPluginTargetName(for: name)
++            } ?? []
++            for dependencyName in dependencyNames
++                where externalPluginRequiredNames.insert(dependencyName).inserted
++            {
++                unvisitedExternalPluginDependencies.append(dependencyName)
++            }
++        }
++        var requiredTargets = self.manifest.targetsRequired(for: self.productFilter)
++        let requiredTargetNames = Set(requiredTargets.map(\.name))
++        requiredTargets += self.manifest.targets.filter { target in
++            externalPluginRequiredNames.contains(target.name)
++                && !requiredTargetNames.contains(target.name)
++        }
++
+         let potentialTargets: [PotentialModule]
+-        potentialTargets = try self.manifest.targetsRequired(for: self.productFilter).map { target in
++        potentialTargets = try requiredTargets.map { target in
+             let path = try findPath(for: target)
+             if target.type != .binary && path.extension == "artifactbundle" {
+                 throw ModuleError.artifactBundleAsNormalTarget(target: target.name)
 diff --git a/Sources/Runtimes/PackagePlugin/Plugin.swift b/Sources/Runtimes/PackagePlugin/Plugin.swift
 index d76bfa0b9..a98ced545 100644
 --- a/Sources/Runtimes/PackagePlugin/Plugin.swift
