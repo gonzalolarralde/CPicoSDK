@@ -7,6 +7,54 @@ public struct ExternalBuildEnvironmentResolver {
         public var platformTriple: String?
         public var swiftBuildType: String?
         public var incremental: Bool?
+
+        public init(
+            combination: String? = nil,
+            environment: [String: String] = [:],
+            platformTriple: String? = nil,
+            swiftBuildType: String? = nil,
+            incremental: Bool? = nil
+        ) {
+            self.combination = combination
+            self.environment = environment
+            self.platformTriple = platformTriple
+            self.swiftBuildType = swiftBuildType
+            self.incremental = incremental
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case combination
+            case environment
+            case platformTriple
+            case swiftBuildType
+            case incremental
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(
+                combination: try container.decodeIfPresent(
+                    String.self,
+                    forKey: .combination
+                ),
+                environment: try container.decodeIfPresent(
+                    [String: String].self,
+                    forKey: .environment
+                ) ?? [:],
+                platformTriple: try container.decodeIfPresent(
+                    String.self,
+                    forKey: .platformTriple
+                ),
+                swiftBuildType: try container.decodeIfPresent(
+                    String.self,
+                    forKey: .swiftBuildType
+                ),
+                incremental: try container.decodeIfPresent(
+                    Bool.self,
+                    forKey: .incremental
+                )
+            )
+        }
     }
 
     public struct Resolution {
@@ -59,6 +107,7 @@ public struct ExternalBuildEnvironmentResolver {
         "BUILD_TYPE",
         "CC",
         "CMAKE_PATH",
+        "CPICOSDK_BUILD_CONFIGURATION",
         "CPICOSDK_COMBINATION",
         "CPICOSDK_CORE0_STACK_SIZE_BYTES",
         "CPICOSDK_CORE1_STACK_SIZE_BYTES",
@@ -105,12 +154,12 @@ public struct ExternalBuildEnvironmentResolver {
     ]
 
     private let processEnvironment: [String: String]
-    private let configurationURL: URL
+    private let configurationURL: URL?
     private let cpicoSDKDirectory: URL
 
     public init(
         processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
-        configurationURL: URL,
+        configurationURL: URL? = nil,
         cpicoSDKDirectory: URL
     ) {
         self.processEnvironment = processEnvironment
@@ -119,10 +168,15 @@ public struct ExternalBuildEnvironmentResolver {
     }
 
     public func resolve() throws -> Resolution {
-        let configuration = try JSONDecoder().decode(
-            Configuration.self,
-            from: Data(contentsOf: configurationURL)
-        )
+        let configuration: Configuration
+        if let configurationURL {
+            configuration = try JSONDecoder().decode(
+                Configuration.self,
+                from: Data(contentsOf: configurationURL)
+            )
+        } else {
+            configuration = Configuration()
+        }
         let cpicoEnvironment = try JSONDecoder().decode(
             CPicoEnvironment.self,
             from: Data(contentsOf: cpicoSDKDirectory.appendingPathComponent("env.json"))

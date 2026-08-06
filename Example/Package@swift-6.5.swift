@@ -49,28 +49,6 @@ let package = Package(
                 // .init(name: "Radio_CYW43439"),
             ]
         ),
-        .externalSource(
-            name: "CPicoNative",
-            path: "External/CPicoNativeSupport"
-        ),
-    ],
-    externals: [
-        Package(
-            name: "CPicoNative",
-            products: [
-                .library(
-                    name: "CPicoNativeSupport",
-                    type: .static,
-                    targets: ["CPicoNativeSupport"]
-                ),
-            ],
-            targets: [
-                .externalLibrary(
-                    name: "CPicoNativeSupport",
-                    plugins: ["CPicoNativeBuilderPlugin"]
-                ),
-            ]
-        ),
     ],
     targets: [
         .target(
@@ -79,35 +57,11 @@ let package = Package(
                 .product(name: "CPicoSDK", package: "CPicoSDK"),
                 .product(name: "CPicoConcurrency", package: "CPicoSDK"),
                 .product(name: "PSRAM", package: "CPicoSDK"),
-                .product(name: "CPicoNativeSupport", package: "CPicoNative"),
             ],
             plugins: [
                 .plugin(name: "PIOASM", package: "CPicoSDK"),
                 .plugin(name: "AssetCompiler", package: "CPicoSDK"),
-                "CPicoFirmwareFinalizerPlugin",
-            ]
-        ),
-        .target(name: "CPicoExternalBuildSupport"),
-        .executableTarget(
-            name: "CPicoNativeBuilder",
-            dependencies: ["CPicoExternalBuildSupport"]
-        ),
-        .executableTarget(
-            name: "CPicoFirmwareFinalizerAdapter",
-            dependencies: ["CPicoExternalBuildSupport"]
-        ),
-        .plugin(
-            name: "CPicoNativeBuilderPlugin",
-            capability: .externalBuilder,
-            dependencies: ["CPicoNativeBuilder"]
-        ),
-        .plugin(
-            name: "CPicoFirmwareFinalizerPlugin",
-            capability: .externalBuilder,
-            dependencies: [
-                "CPicoFirmwareFinalizerAdapter",
-                .product(name: "FirmwareFinalizerTool", package: "CPicoSDK"),
-                .product(name: "MemoryMapReportTool", package: "CPicoSDK"),
+                .plugin(name: "CPicoFirmwareBuilder", package: "CPicoSDK"),
             ]
         ),
     ]

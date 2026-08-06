@@ -13,7 +13,7 @@ enum BuilderError: Error, CustomStringConvertible {
         case .commandFailed(let command, let status):
             "command failed (\(status)): \(command.joined(separator: " "))"
         case .invalidExternalSource(let path):
-            "external source is not under Example/External: \(path)"
+            "external source is not under CPicoSDK/External: \(path)"
         case .missingArgument(let name):
             "missing argument: \(name)"
         case .missingEnvironment(let name):
@@ -45,18 +45,21 @@ struct CPicoNativeBuilder {
             isDirectory: true
         ).standardizedFileURL
         let externalDirectory = externalSource.deletingLastPathComponent()
-        let exampleDirectory = externalDirectory.deletingLastPathComponent()
         guard externalDirectory.lastPathComponent == "External" else {
             throw BuilderError.invalidExternalSource(externalSource.path)
         }
-        let derivedCPicoSDKDirectory = exampleDirectory.deletingLastPathComponent()
+        let derivedCPicoSDKDirectory = externalDirectory.deletingLastPathComponent()
         let cpicoSDKDirectory = processEnvironment["CPICOSDK_ROOT"].map {
             URL(fileURLWithPath: $0, isDirectory: true).standardizedFileURL
         } ?? derivedCPicoSDKDirectory
-        let buildConfiguration = externalSource.appendingPathComponent(
-            "build-configuration.json",
-            isDirectory: false
-        )
+        let buildConfiguration = processEnvironment["CPICOSDK_BUILD_CONFIGURATION"]
+            .flatMap { path -> URL? in
+                guard !path.isEmpty else {
+                    return nil
+                }
+                return URL(fileURLWithPath: path, isDirectory: false)
+                    .standardizedFileURL
+            }
         let resolution = try ExternalBuildEnvironmentResolver(
             processEnvironment: processEnvironment,
             configurationURL: buildConfiguration,

@@ -10,5 +10,6 @@
   },
   "incremental": true,
   "platformTriple": "armv7em-none-none-eabi",
+  "productName": "Example",
   "swiftBuildType": "release"
 }

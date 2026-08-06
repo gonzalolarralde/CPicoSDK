@@ -41,10 +41,18 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             )
         }
 
+        let packageDirectory = context.package.directoryURL
         try generatePackageSwiftFile(
             env: env,
-            template: context.package.directoryURL.appending(path: "Package.swift.template"),
-            destination: context.package.directoryURL.appending(path: "Package.swift")
+            template: packageDirectory.appending(path: "Package.swift.template"),
+            destination: packageDirectory.appending(path: "Package.swift")
+        )
+        try generatePackageSwiftFile(
+            env: env,
+            template: packageDirectory.appending(
+                path: "Package@swift-6.5.swift.template"
+            ),
+            destination: packageDirectory.appending(path: "Package@swift-6.5.swift")
         )
     }
 
@@ -234,7 +242,7 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
         }
 
         templateLines.insert(
-            "// THIS FILE IS GENERATED. DO NOT EDIT, OTHERWISE CHANGES WILL BE OVERWRITTEN. CHANGE Package.swift.template INSTEAD.",
+            "// THIS FILE IS GENERATED. DO NOT EDIT, OTHERWISE CHANGES WILL BE OVERWRITTEN. CHANGE \(template.lastPathComponent) INSTEAD.",
             at: headerIndex.advanced(by: 1)
         )
 

@@ -1,0 +1,291 @@
+// swift-tools-version: 6.5
+
+import PackageDescription
+
+// GENERATOR MARK: HEADER
+
+// Native `swift test` should exercise host-safe harness code without building
+// embedded Pico targets, which require prepared board headers and toolsets.
+let hostOnlyTests = Context.environment["CPICOSDK_HOST_TESTS"] == "1"
+
+let package = Package(
+    name: "CPicoSDK",
+    products: hostOnlyTests ? [
+        .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
+        .executable(name: "FirmwareFinalizerTool", targets: ["FirmwareFinalizerTool"]),
+        .executable(name: "MemoryMapReportTool", targets: ["MemoryMapReportTool"]),
+    ] : [
+        .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
+        .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
+        .library(name: "PSRAM", targets: ["PSRAM"]),
+        .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
+        .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
+        .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
+        .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
+        .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
+        .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
+        .plugin(name: "CPicoFirmwareBuilder", targets: ["CPicoFirmwareFinalizerPlugin"]),
+        .executable(name: "FirmwareFinalizerTool", targets: ["FirmwareFinalizerTool"]),
+        .executable(name: "MemoryMapReportTool", targets: ["MemoryMapReportTool"]),
+    ],
+    traits: [
+        .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
+        .trait(name: "GuardIRQAllocations", description: "Traps if malloc, calloc, realloc, or free are called from IRQ/exception context."),
+
+        // TODO: The generator needs to define traits. This needs to be implemented.
+        .trait(name: "Platform_RP2040"),
+        .trait(name: "Platform_RP2350"),
+        .trait(name: "Platform_RP2350_arm_s"),
+        .trait(name: "Platform_RP2350_riscv"),
+        .trait(name: "Platform_Host"),
+
+        .trait(name: "Variant_RP2040"),
+        .trait(name: "Variant_RP2350A"),
+        .trait(name: "Variant_RP2350B"),
+
+        .trait(name: "Radio_None"),
+        .trait(name: "Radio_CYW43439"),
+
+        .trait(name: "BootStage2_W25Q080"),
+        .trait(name: "BootStage2_GENERIC_03H"),
+        .trait(name: "BootStage2_W25X10CL"),
+        .trait(name: "BootStage2_IS25LP080"),
+        .trait(name: "BootStage2_AT25SF128A"),
+
+        .trait(name: "StdIO_Automatic", description: "Enables stdio through USB when using picotool and UART when using cortex-debug."),
+        .trait(name: "StdIO_UART", description: "Enables stdio operations through UART pins"),
+        .trait(name: "StdIO_USB", description: "Enables stdio operations through USB"),
+        .trait(name: "StdIO_RTT", description: "Enables stdio operations through the RTT debugging protocol"),
+
+        // GENERATOR MARK: TRAITS
+    ],
+    dependencies: [
+        .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.4"),
+    ] + (hostOnlyTests ? [] : [
+        .externalSource(name: "CPicoNative", path: "External/CPicoNativeSupport"),
+    ]),
+    externals: hostOnlyTests ? [] : [
+        Package(
+            name: "CPicoNative",
+            products: [
+                .library(
+                    name: "CPicoNativeSupport",
+                    type: .static,
+                    targets: ["CPicoNativeSupport"]
+                ),
+            ],
+            targets: [
+                .externalLibrary(
+                    name: "CPicoNativeSupport",
+                    plugins: ["CPicoNativeBuilderPlugin"]
+                ),
+            ]
+        ),
+    ],
+    targets: hostOnlyTests ? [
+        .target(name: "TestInDeviceCore"),
+        .target(
+            name: "FirmwareFinalizerCore",
+            swiftSettings: [
+                .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
+            ]
+        ),
+        .executableTarget(
+            name: "FirmwareFinalizerTool",
+            dependencies: ["FirmwareFinalizerCore"]
+        ),
+        .executableTarget(name: "MemoryMapReportTool"),
+        .testTarget(
+            name: "TestInDeviceCoreTests",
+            dependencies: ["TestInDeviceCore"]
+        ),
+        .testTarget(
+            name: "MemoryMapReportToolTests",
+            dependencies: ["MemoryMapReportTool"]
+        ),
+        .testTarget(
+            name: "FirmwareFinalizerCoreTests",
+            dependencies: ["FirmwareFinalizerCore"]
+        ),
+    ] : [
+        // GENERATOR MARK: TARGETS
+
+        // Mixed targets
+        .target(
+            name: "CPicoSDK",
+            dependencies: [
+                .target(name: "ARMClib"),
+                .target(name: "CShims"),
+                .product(name: "CPicoNativeSupport", package: "CPicoNative"),
+
+                // GENERATOR MARK: TARGET DEPENDENCIES
+            ],
+            swiftSettings: [
+                .enableExperimentalFeature("Extern"),
+                .enableExperimentalFeature("StaticExclusiveOnly"),
+            ]
+        ),
+
+        .target(
+            name: "CShims",
+            dependencies: [
+                // GENERATOR MARK: TARGET DEPENDENCIES
+            ]
+        ),
+
+        // Manually defined targets
+        .target(name: "ARMClib"),
+        .target(name: "TLSF"),
+
+        .target(
+            name: "PSRAM",
+            dependencies: [
+                .target(name: "CShims"),
+                .target(name: "CPicoSDK"),
+                .target(name: "TLSF")
+            ]
+        ),
+
+        .target(
+            name: "CPicoConcurrency",
+            dependencies: [
+                .target(name: "ConcurrencyShims"),
+                .target(name: "ConcurrencyCPUMetricsShims", condition: .when(traits: ["CPUMetrics"])),
+                .target(name: "CPicoSDK"),
+            ]
+        ),
+        .target(
+            name: "ConcurrencyShims",
+            cSettings: [
+                .define("CPUMetrics", .when(traits: ["CPUMetrics"])),
+            ]
+        ),
+        .target(
+            name: "ConcurrencyCPUMetricsShims",
+            cSettings: [
+                .define("CPUMetrics"),
+            ]
+        ),
+
+        .plugin(
+            name: "PIOASMPlugin",
+            capability: .buildTool,
+            dependencies: ["PIOASM", "pioasm-swift"]
+        ),
+        .binaryTarget(name: "PIOASM", path: "Sources/PIOASM/PIOASM.artifactbundle"),
+        .executableTarget(name: "pioasm-swift", path: "Sources/PIOASM/pioasm-swift"),
+
+        .plugin(
+            name: "AssetCompiler",
+            capability: .buildTool,
+            dependencies: ["AssetCompilerTool"]
+        ),
+        .executableTarget(name: "AssetCompilerTool"),
+
+        .target(name: "TestInDeviceCore"),
+        .executableTarget(
+            name: "TestInDeviceTool",
+            dependencies: ["TestInDeviceCore"],
+            // This executable is a host-side command-plugin tool. Do not add an
+            // Apple platform floor to CPicoSDK: its library targets are
+            // cross-compiled for bare-metal devices.
+            swiftSettings: [
+                .unsafeFlags([
+                    "-Xfrontend",
+                    "-disable-availability-checking",
+                ]),
+            ]
+        ),
+        .executableTarget(name: "MemoryMapReportTool"),
+        .target(
+            name: "FirmwareFinalizerCore",
+            swiftSettings: [
+                .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
+            ]
+        ),
+        .executableTarget(
+            name: "FirmwareFinalizerTool",
+            dependencies: ["FirmwareFinalizerCore"]
+        ),
+        .target(name: "CPicoExternalBuildSupport"),
+        .executableTarget(
+            name: "CPicoNativeBuilder",
+            dependencies: ["CPicoExternalBuildSupport"]
+        ),
+        .executableTarget(
+            name: "CPicoFirmwareFinalizerAdapter",
+            dependencies: ["CPicoExternalBuildSupport"]
+        ),
+        .plugin(
+            name: "CPicoNativeBuilderPlugin",
+            capability: .externalBuilder,
+            dependencies: ["CPicoNativeBuilder"]
+        ),
+        .plugin(
+            name: "CPicoFirmwareFinalizerPlugin",
+            capability: .externalBuilder,
+            dependencies: [
+                "CPicoFirmwareFinalizerAdapter",
+                "FirmwareFinalizerTool",
+                "MemoryMapReportTool",
+            ]
+        ),
+        .testTarget(
+            name: "TestInDeviceCoreTests",
+            dependencies: ["TestInDeviceCore"]
+        ),
+
+        .plugin(
+            name: "GenerateCPicoSDKPlugin",
+            capability: .command(
+                intent: .custom(verb: "generate-cpicosdk", description: "Generates CPicoSDK target files"),
+                permissions: [
+                    .writeToPackageDirectory(reason: "Needs to write CPicoSDK target files, can't generate using prebuildCommand yet because it's a .h header file."),
+                ]
+            )
+        ),
+        .plugin(
+            name: "PrepareEnvironmentPlugin",
+            capability: .command(
+                intent: .custom(verb: "prepare-rp2xxx-environment", description: "Ensure environment for CPicoSDK is in place"),
+                permissions: [
+                    .writeToPackageDirectory(reason: "Returns bash code that prepares the environment for building with CPicoSDK."),
+                    .allowNetworkConnections(scope: .all(), reason: "Downloads Pico SDK, ARM toolchain and other dependencies.")
+                ]
+            ),
+            dependencies: [
+                .product(name: "pico-bootstrap", package: "PicoSDKDownloader"),
+            ]
+        ),
+        .plugin(
+            name: "FinalizeBinaryPlugin",
+            capability: .command(
+                intent: .custom(verb: "finalize-rp2xxx-binary", description: "Generates CPicoSDK target files"),
+                permissions: [
+                    .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
+                ]
+            ),
+            dependencies: ["FirmwareFinalizerTool", "MemoryMapReportTool"]
+        ),
+        .plugin(
+            name: "TestInDevicePlugin",
+            capability: .command(
+                intent: .custom(verb: "test-in-device", description: "Builds and runs Tests/Device on a connected RP2xxx board"),
+                permissions: [
+                    .writeToPackageDirectory(reason: "Generates ephemeral embedded test packages and build artifacts."),
+                    .allowNetworkConnections(scope: .all(), reason: "May need to download CPicoSDK tool dependencies and connects to local OpenOCD RTT ports.")
+                ]
+            ),
+            dependencies: ["TestInDeviceTool", "MemoryMapReportTool"]
+        ),
+        .plugin(
+            name: "MemoryMapReportPlugin",
+            capability: .command(
+                intent: .custom(verb: "memory-map-report", description: "Reports flash/RAM ownership for an existing CPicoSDK ELF"),
+                permissions: []
+            ),
+            dependencies: ["MemoryMapReportTool"]
+        ),
+    ]
+)

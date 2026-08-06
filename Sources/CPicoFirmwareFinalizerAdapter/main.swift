@@ -35,7 +35,7 @@ struct CPicoFirmwareFinalizerAdapter {
         let workingDirectory: URL
         let finalizerTool: URL
         let memoryMapTool: URL
-        let configuration: URL
+        let configuration: URL?
         let embeddedResources: [EmbeddedResource]
 
         init(arguments: [String]) throws {
@@ -121,9 +121,6 @@ struct CPicoFirmwareFinalizerAdapter {
                 "--memory-map-tool",
                 isDirectory: false
             )
-            guard let configuration else {
-                throw AdapterError.missingOptionValue("--configuration")
-            }
             self.configuration = configuration
             self.embeddedResources = resources
         }
