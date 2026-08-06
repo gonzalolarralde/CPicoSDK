@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "4.0",
+  "targetTriples": {
+    "armv7em-none-none-eabi": {
+      "sdkRootPath": "../pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@/arm-none-eabi",
+      "swiftResourcesPath": "../swift-resources",
+      "swiftStaticResourcesPath": "../swift-resources",
+      "includeSearchPaths": [
+        "../generated/newlib_overlay"
+      ],
+      "librarySearchPaths": [
+        "../pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@/arm-none-eabi/lib"
+      ],
+      "toolsetPaths": [
+        "../toolsets/rp2xxx.json"
+      ]
+    }
+  }
+}

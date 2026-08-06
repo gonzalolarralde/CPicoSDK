@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "rootPath": "../pico-sdk-bundle/toolchain/@TOOLCHAIN_VERSION@/bin",
+  "swiftCompiler": {
+    "extraCLIOptions": [
+      "-Xfrontend",
+      "-disable-stack-protector",
+      "-enable-experimental-feature",
+      "Embedded",
+      "-wmo"
+    ]
+  },
+  "librarian": {
+    "path": "arm-none-eabi-ar"
+  },
+  "linker": {
+    "path": "arm-none-eabi-ld",
+    "extraCLIOptions": [
+      "-static"
+    ]
+  }
+}

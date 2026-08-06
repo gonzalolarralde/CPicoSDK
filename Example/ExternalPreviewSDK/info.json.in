@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "artifacts": {
+    "cpicosdk-rp2040": {
+      "type": "swiftSDK",
+      "version": "@BUNDLE_VERSION@",
+      "variants": [
+        {
+          "path": "rp2040",
+          "supportedTriples": [
+            "@HOST_TRIPLE@"
+          ]
+        }
+      ]
+    },
+    "cpicosdk-rp2350": {
+      "type": "swiftSDK",
+      "version": "@BUNDLE_VERSION@",
+      "variants": [
+        {
+          "path": "rp2350",
+          "supportedTriples": [
+            "@HOST_TRIPLE@"
+          ]
+        }
+      ]
+    }
+  }
+}
