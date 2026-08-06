@@ -6,7 +6,7 @@ set -euo pipefail
 # resulting SDK ID.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATE_DIR="$SCRIPT_DIR/ExternalPreviewSDK"
+TEMPLATE_DIR="$SCRIPT_DIR/SwiftSDK/ExternalPreviewSDK"
 STAGING_ROOT="${CPICOSDK_SWIFT_SDK_STAGING_ROOT:-$SCRIPT_DIR/.build/swift-sdk-staging}"
 TOOLCHAIN_PIN_FILE="$TEMPLATE_DIR/swift-toolchain.txt"
 if [[ ! -s "$TOOLCHAIN_PIN_FILE" ]]; then
@@ -42,7 +42,7 @@ Swift selection, in priority order:
   CPICOSDK_SWIFT=/absolute/path/to/swift
   CPICOSDK_SWIFT_TOOLCHAIN=<swiftly selector>
   SWIFTPM_PREVIEW_TOOLCHAIN=<swiftly selector>
-  ExternalPreviewSDK/swift-toolchain.txt
+  SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt
 
 The selected compiler supplies a verified, target-specific Embedded Swift
 resource subset that is copied into the bundle. CPICOSDK_PREPARE_SWIFT may
@@ -354,7 +354,7 @@ if [[ "$MODE" == "metadata" ]]; then
 fi
 
 # Package@swift-6.5.swift belongs to the PR experiment. Invoke the established
-# preparation command with the Example's released SwiftPM selection unless an
+# preparation command with the package's released SwiftPM selection unless an
 # explicit preparation compiler is supplied.
 if [[ -n "${CPICOSDK_PREPARE_SWIFT:-}" ]]; then
     PREPARE_SWIFT_BIN="$CPICOSDK_PREPARE_SWIFT"

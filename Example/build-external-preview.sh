@@ -5,16 +5,17 @@ set -euo pipefail
 # The established build.sh remains the released-toolchain build path.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CPICOSDK_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PREVIEW_BUILD="${SWIFTPM_PREVIEW_BUILD:-}"
 PREVIEW_SCRATCH_PATH="${SWIFTPM_PREVIEW_SCRATCH_PATH:-$SCRIPT_DIR/.build/swiftpm-external-preview}"
-TOOLCHAIN_PIN_FILE="$SCRIPT_DIR/ExternalPreviewSDK/swift-toolchain.txt"
+TOOLCHAIN_PIN_FILE="$CPICOSDK_ROOT/SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt"
 if [[ ! -s "$TOOLCHAIN_PIN_FILE" ]]; then
     echo "Missing preview toolchain pin: $TOOLCHAIN_PIN_FILE" >&2
     exit 1
 fi
 PREVIEW_TOOLCHAIN="${SWIFTPM_PREVIEW_TOOLCHAIN:-$(<"$TOOLCHAIN_PIN_FILE")}"
 SWIFT_SDK_ID="cpicosdk-rp2350"
-SWIFT_SDKS_PATH="${CPICOSDK_SWIFT_SDKS_PATH:-$SCRIPT_DIR/.build/swift-sdk-staging}"
+SWIFT_SDKS_PATH="${CPICOSDK_SWIFT_SDKS_PATH:-$CPICOSDK_ROOT/.build/swift-sdk-staging}"
 
 if [[ -z "$PREVIEW_BUILD" || ! -x "$PREVIEW_BUILD" ]]; then
     echo "SWIFTPM_PREVIEW_BUILD must name swift-build built from the patched swift-package-manager#10198 checkout." >&2
@@ -48,18 +49,18 @@ if ! "$PREVIEW_SWIFT" sdk list --swift-sdks-path "$SWIFT_SDKS_PATH" \
     | grep -Fxq "$SWIFT_SDK_ID"
 then
     echo "Swift SDK '$SWIFT_SDK_ID' is not staged under $SWIFT_SDKS_PATH." >&2
-    echo "Run: SWIFTPM_PREVIEW_TOOLCHAIN=$PREVIEW_TOOLCHAIN ./setup-external-preview-sdk.sh --stage-only" >&2
+    echo "Run: SWIFTPM_PREVIEW_TOOLCHAIN=$PREVIEW_TOOLCHAIN $CPICOSDK_ROOT/setup-external-preview-sdk.sh --stage-only" >&2
     exit 1
 fi
 STAGED_COMPILER_VERSION_FILE="$SWIFT_SDKS_PATH/cpicosdk-rp2xxx.artifactbundle/swift-compiler-version.txt"
 if [[ ! -f "$STAGED_COMPILER_VERSION_FILE" ]]; then
     echo "The staged CPicoSDK Swift SDK does not record its compiler version." >&2
-    echo "Re-run ./setup-external-preview-sdk.sh --stage-only." >&2
+    echo "Re-run $CPICOSDK_ROOT/setup-external-preview-sdk.sh --stage-only." >&2
     exit 1
 fi
 if [[ "$(<"$STAGED_COMPILER_VERSION_FILE")" != "$($PREVIEW_SWIFT --version)" ]]; then
     echo "The staged Embedded Swift runtime does not match $PREVIEW_TOOLCHAIN." >&2
-    echo "Re-run: SWIFTPM_PREVIEW_TOOLCHAIN=$PREVIEW_TOOLCHAIN ./setup-external-preview-sdk.sh --stage-only" >&2
+    echo "Re-run: SWIFTPM_PREVIEW_TOOLCHAIN=$PREVIEW_TOOLCHAIN $CPICOSDK_ROOT/setup-external-preview-sdk.sh --stage-only" >&2
     exit 1
 fi
 
@@ -86,6 +87,8 @@ esac
 # Pico 2. Keep the experiment internally consistent instead of accepting an
 # ambient board override that SwiftPM cannot apply to manifest traits.
 export CPICOSDK_COMBINATION=pico2
+export CPICOSDK_BUILD_CONFIGURATION="$SCRIPT_DIR/cpicosdk-build.json"
+export CPICOSDK_ROOT
 export SWIFT_EXEC="$PREVIEW_TOOLCHAIN_ROOT/usr/bin/swiftc"
 export SWIFT_EXEC_MANIFEST="$SWIFT_EXEC"
 
