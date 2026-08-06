@@ -189,6 +189,20 @@ struct CPicoNativeBuilder {
                 encoding: .utf8
             )
         }
+
+        // CMake and Ninja deliberately preserve an output's timestamp when a
+        // successful invocation finds no content to rebuild. Swift Build's
+        // custom-task dependency checking is timestamp based, so acknowledge
+        // this completed invocation by making every declared output newer than
+        // its inputs. Otherwise a touched configuration file would schedule
+        // this wrapper forever even after the first successful no-op.
+        let completionDate = Date()
+        for output in [expectedArchive, pioasmPackagePathFile] {
+            try FileManager.default.setAttributes(
+                [.modificationDate: completionDate],
+                ofItemAtPath: output.path
+            )
+        }
         print("[CPicoSDK] External native archive: \(expectedArchive.path)")
         print("[CPicoSDK] Host pioasm package: \(pioasmPackageDirectory.path)")
     }

@@ -1,15 +1,8 @@
 {
   "combination": "pico2",
   "environment": {
-    "AUTO_STDIO": "usb",
     "CPICOSDK_CORE0_STACK_SIZE_BYTES": "8192",
-    "CPICOSDK_CORE1_STACK_SIZE_BYTES": "8192",
-    "CPICO_EXTERNAL_STDIO_RTT": "0",
-    "CPICO_EXTERNAL_STDIO_UART": "0",
-    "CPICO_EXTERNAL_STDIO_USB": "1"
+    "CPICOSDK_CORE1_STACK_SIZE_BYTES": "8192"
   },
-  "incremental": true,
-  "platformTriple": "armv7em-none-none-eabi",
-  "productName": "Example",
-  "swiftBuildType": "release"
+  "incremental": true
 }

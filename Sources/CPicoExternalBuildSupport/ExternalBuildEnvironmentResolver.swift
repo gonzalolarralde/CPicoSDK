@@ -181,8 +181,9 @@ public struct ExternalBuildEnvironmentResolver {
             CPicoEnvironment.self,
             from: Data(contentsOf: cpicoSDKDirectory.appendingPathComponent("env.json"))
         )
-        guard let combination = configuration.combination
-            ?? processEnvironment["CPICOSDK_COMBINATION"]
+        guard let combination = processEnvironment["CPICOSDK_COMBINATION"]
+            ?? configuration.combination
+            ?? processEnvironment["BOARD"]
         else {
             throw Error.missingCombination
         }

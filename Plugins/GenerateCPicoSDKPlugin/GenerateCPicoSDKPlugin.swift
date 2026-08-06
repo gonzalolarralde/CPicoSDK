@@ -47,13 +47,6 @@ struct GenerateCPicoSDKPlugin: CommandPlugin {
             template: packageDirectory.appending(path: "Package.swift.template"),
             destination: packageDirectory.appending(path: "Package.swift")
         )
-        try generatePackageSwiftFile(
-            env: env,
-            template: packageDirectory.appending(
-                path: "Package@swift-6.5.swift.template"
-            ),
-            destination: packageDirectory.appending(path: "Package@swift-6.5.swift")
-        )
     }
 
     func headerFileEligible(fileName: String) -> Bool {

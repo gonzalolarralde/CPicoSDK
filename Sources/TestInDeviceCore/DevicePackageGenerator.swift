@@ -22,6 +22,17 @@ public enum DevicePackageGenerator {
             packageManifest(for: source, cpicoSDKPath: cpicoSDKPath, target: target),
             to: packageDirectory.appendingPathComponent("Package.swift")
         )
+        let resolvedCacheChanged = try discardIncompatibleResolvedCache(
+            in: packageDirectory
+        )
+        let configurationChanged = try FileManager.default.writeIfChanged(
+            buildConfiguration(for: source, target: target),
+            to: packageDirectory.appendingPathComponent("cpicosdk-build.json")
+        )
+        let swiftVersionChanged = try FileManager.default.writeIfChanged(
+            swiftVersion(cpicoSDKPath: cpicoSDKPath),
+            to: packageDirectory.appendingPathComponent(".swift-version")
+        )
         let sourceChanged = try FileManager.default.writeIfChanged(
             source.source,
             to: sourcesDirectory.appendingPathComponent("DeviceTest.swift")
@@ -31,12 +42,21 @@ public enum DevicePackageGenerator {
             to: sourcesDirectory.appendingPathComponent("Runner.swift")
         )
 
-        let elfURL = packageDirectory.appendingPathComponent(".build/\(target.swiftPMTriple)/\(source.metadata.buildType.swiftConfiguration)/\(productName).elf")
+        let productsConfiguration = source.metadata.buildType.swiftConfiguration == "debug"
+            ? "Debug"
+            : "Release"
+        let targetArchitecture = target.swiftPMTriple.split(separator: "-").first
+            .map(String.init) ?? target.swiftPMTriple
+        let elfURL = packageDirectory.appendingPathComponent(
+            ".build/out/Products/\(productsConfiguration)-none-\(targetArchitecture)/\(productName).elf"
+        )
         return GeneratedPackage(
             packageDirectory: packageDirectory,
             elfURL: elfURL,
             productName: productName,
-            inputsChanged: manifestChanged || sourceChanged || runnerChanged
+            inputsChanged: manifestChanged || resolvedCacheChanged
+                || configurationChanged
+                || swiftVersionChanged || sourceChanged || runnerChanged
         )
     }
 
@@ -66,7 +86,7 @@ public enum DevicePackageGenerator {
         """
 
         return """
-        // swift-tools-version: 6.2
+        // swift-tools-version: 6.5
 
         import PackageDescription
 
@@ -89,11 +109,73 @@ public enum DevicePackageGenerator {
                     name: "\(productName)",
                     dependencies: [
         \(dependencyLines.joined(separator: "\n"))
-                    ]\(swiftSettingsArgument)
+                    ]\(swiftSettingsArgument),
+                    plugins: [
+                        .plugin(
+                            name: "CPicoFirmwareBuilder",
+                            package: "CPicoSDK"
+                        ),
+                    ]
                 ),
             ]
         )
         """
+    }
+
+    public static func buildConfiguration(
+        for _: DeviceTestSource,
+        target: DeviceTestTarget = .rp2350
+    ) -> String {
+        """
+        {
+          "combination": "\(target.board)",
+          "environment": {
+            "CPICOSDK_CORE0_STACK_SIZE_BYTES": "8192",
+            "CPICOSDK_CORE1_STACK_SIZE_BYTES": "8192"
+          },
+          "incremental": true
+        }
+        """
+    }
+
+    private static func swiftVersion(cpicoSDKPath: URL) throws -> String {
+        let pinURL = cpicoSDKPath.appendingPathComponent(
+            "SwiftSDK/ExternalPreviewSDK/swift-toolchain.txt",
+            isDirectory: false
+        )
+        let pin = try String(contentsOf: pinURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !pin.isEmpty else {
+            throw DeviceTestHarnessError.invalidMetadata(
+                "empty Swift toolchain pin at \(pinURL.path)"
+            )
+        }
+        return pin + "\n"
+    }
+
+    private static func discardIncompatibleResolvedCache(
+        in packageDirectory: URL
+    ) throws -> Bool {
+        let resolvedURL = packageDirectory.appendingPathComponent(
+            "Package.resolved",
+            isDirectory: false
+        )
+        guard FileManager.default.fileExists(atPath: resolvedURL.path) else {
+            return false
+        }
+        let data = try Data(contentsOf: resolvedURL)
+        guard let object = (try? JSONSerialization.jsonObject(with: data))
+            as? [String: Any],
+              let pins = object["pins"] as? [[String: Any]]
+        else {
+            try FileManager.default.removeItem(at: resolvedURL)
+            return true
+        }
+        guard pins.contains(where: { $0["identity"] is String }) else {
+            return false
+        }
+        try FileManager.default.removeItem(at: resolvedURL)
+        return true
     }
 
     public static func runnerSource(for source: DeviceTestSource) -> String {

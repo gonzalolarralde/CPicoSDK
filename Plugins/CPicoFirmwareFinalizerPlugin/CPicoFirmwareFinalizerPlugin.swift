@@ -71,7 +71,7 @@ struct CPicoFirmwareFinalizerPlugin: ExternalBuilderPlugin {
         let memoryMap = try context.tool(named: "MemoryMapReportTool")
         let cpicoSDKDirectory = cpicoSDKPackage.directoryURL
         let harnessDirectory = cpicoSDKDirectory.appending(
-            path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness",
+            path: "Support/FirmwareFinalizer/CMakeHarness",
             directoryHint: .isDirectory
         )
         let workingDirectory = context.pluginWorkDirectoryURL.appending(

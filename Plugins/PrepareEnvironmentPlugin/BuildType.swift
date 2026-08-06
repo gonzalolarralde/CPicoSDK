@@ -11,15 +11,4 @@ enum BuildType: String {
         }
     }
 
-    var extraConfigParams: String {
-        switch self {
-        case .debug, .release: ""
-        case .releaseWithDebugInfo: "-Xswiftc -g -Xswiftc -debug-info-format=dwarf -Xcc -g"
-        case .minimumSizeRelease: "-Xswiftc -Osize"
-        }
-    }
-
-    var cmakeBuildType: String {
-        self.rawValue
-    }
 }

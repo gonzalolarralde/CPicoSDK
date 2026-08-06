@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(PICO_BOARD "${BOARD_TYPE}" CACHE STRING "Board type" FORCE)
 set(SKIP_PICO_MALLOC 1)
 
-include("${CPICOSDK_ROOT}/Plugins/FinalizeBinaryPluginTool/CMakeHarness/pico_sdk_import.cmake")
+include("${CPICOSDK_ROOT}/Support/FirmwareFinalizer/CMakeHarness/pico_sdk_import.cmake")
 
 project(CPicoNativeSupport C CXX ASM)
 pico_sdk_init()
@@ -20,7 +20,7 @@ pico_sdk_init()
 set_property(TARGET pico_standard_binary_info PROPERTY INTERFACE_SOURCES "")
 
 add_library(CPicoNativeSupport STATIC
-    "${CPICOSDK_ROOT}/Plugins/FinalizeBinaryPluginTool/CMakeHarness/runtime_coprocessors.c"
+    "${CPICOSDK_ROOT}/Support/FirmwareFinalizer/CMakeHarness/runtime_coprocessors.c"
 )
 
 pico_enable_stdio_uart(CPicoNativeSupport ${STDIO_UART})
@@ -41,7 +41,7 @@ target_compile_options(CPicoNativeSupport PRIVATE
     -fdata-sections
 )
 target_include_directories(CPicoNativeSupport PRIVATE
-    "${CPICOSDK_ROOT}/Plugins/FinalizeBinaryPluginTool/CMakeHarness"
+    "${CPICOSDK_ROOT}/Support/FirmwareFinalizer/CMakeHarness"
 )
 
 string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")

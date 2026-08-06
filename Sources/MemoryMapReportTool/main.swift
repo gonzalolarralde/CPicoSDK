@@ -200,8 +200,7 @@ func resolveArtifact(options: Options, packageDir: URL, env: [String: String]) t
         url.pathExtension == "elf" && (product == nil || url.lastPathComponent == "\(product!).elf")
     }
     guard let newest = newestFile(candidates) else {
-        let buildHint = product.map { "./build.sh or swift package finalize-rp2xxx-binary \($0)" } ?? "./build.sh"
-        throw ToolError.message("No existing CPicoSDK ELF found under \(packageDir.path)/.build. Build first with \(buildHint), then rerun memory-map-report.")
+        throw ToolError.message("No existing CPicoSDK ELF found under \(packageDir.path)/.build. Build first with ./build.sh, then rerun memory-map-report.")
     }
     return Artifact(elf: newest, map: try resolveMap(explicit: options.mapPath, elf: newest, packageDir: packageDir, productName: product))
 }
@@ -220,22 +219,6 @@ func resolveMap(explicit: URL?, elf: URL, packageDir: URL, productName: String?)
         }
     }
 
-    if let productName {
-        let finalizerRoot = packageDir
-            .appendingPathComponent(".build")
-            .appendingPathComponent("plugins")
-            .appendingPathComponent("FinalizeBinaryPlugin")
-            .appendingPathComponent("outputs")
-            .appendingPathComponent("CMakeHarness")
-        if let board = loadPreparedEnvironment(packageDir: packageDir)["BOARD"] {
-            let exact = finalizerRoot
-                .appendingPathComponent("build_\(board)")
-                .appendingPathComponent("\(productName).elf.map")
-            if FileManager.default.fileExists(atPath: exact.path) {
-                return exact
-            }
-        }
-    }
     let maps = findFiles(under: packageDir.appendingPathComponent(".build")) { url in
         guard url.pathExtension == "map" else { return false }
         if let productName {

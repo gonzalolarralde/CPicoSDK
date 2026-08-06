@@ -157,9 +157,20 @@ import Testing
     )
 
     let manifest = DevicePackageGenerator.packageManifest(for: source, cpicoSDKPath: URL(fileURLWithPath: "/repo/CPicoSDK"))
+    #expect(manifest.contains("// swift-tools-version: 6.5"))
     #expect(manifest.contains(".product(name: \"CPicoConcurrency\""))
     #expect(manifest.contains("path: \"/repo/CPicoSDK\""))
     #expect(manifest.contains(".init(name: \"Platform_RP2350\")"))
+    #expect(manifest.contains("name: \"CPicoFirmwareBuilder\""))
+    #expect(manifest.contains("package: \"CPicoSDK\""))
+
+    let configuration = DevicePackageGenerator.buildConfiguration(for: source)
+    #expect(configuration.contains(#""combination": "pico2""#))
+    #expect(!configuration.contains("productName"))
+    #expect(!configuration.contains("platformTriple"))
+    #expect(!configuration.contains("swiftBuildType"))
+    #expect(!configuration.contains(#""BOARD""#))
+    #expect(!configuration.contains(#""BUILD_TYPE""#))
 
     let runner = DevicePackageGenerator.runnerSource(for: source)
     #expect(runner.contains("EmbeddedAsyncApp"))
@@ -191,6 +202,88 @@ import Testing
     #expect(manifest.contains(#"name: "CPicoSDK","#))
     #expect(manifest.contains(#"path: "/work/clone-5","#))
     #expect(manifest.contains(#"package: "CPicoSDK""#))
+}
+
+@Test func generatedPackageWritesPreviewBuildInputsIncrementally() throws {
+    let temporaryRoot = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: temporaryRoot) }
+
+    let cpicoSDK = temporaryRoot.appendingPathComponent(
+        "CPicoSDK",
+        isDirectory: true
+    )
+    let pinDirectory = cpicoSDK.appendingPathComponent(
+        "SwiftSDK/ExternalPreviewSDK",
+        isDirectory: true
+    )
+    try FileManager.default.createDirectory(
+        at: pinDirectory,
+        withIntermediateDirectories: true
+    )
+    try "main-snapshot-test\n".write(
+        to: pinDirectory.appendingPathComponent("swift-toolchain.txt"),
+        atomically: true,
+        encoding: .utf8
+    )
+
+    let source = DeviceTestSource(
+        fileURL: temporaryRoot.appendingPathComponent("Input.swift"),
+        source: "func generatedInputTest() {}",
+        metadata: DeviceTestMetadata(name: "GeneratedInput"),
+        functions: [
+            DeviceTestFunction(
+                name: "generatedInputTest",
+                isAsync: false,
+                isThrowing: false
+            ),
+        ]
+    )
+    let outputRoot = temporaryRoot.appendingPathComponent(
+        "Generated",
+        isDirectory: true
+    )
+    let generatedPackageDirectory = outputRoot
+        .appendingPathComponent("rp2350", isDirectory: true)
+        .appendingPathComponent("GeneratedInput", isDirectory: true)
+    try FileManager.default.createDirectory(
+        at: generatedPackageDirectory,
+        withIntermediateDirectories: true
+    )
+    let resolvedURL = generatedPackageDirectory.appendingPathComponent(
+        "Package.resolved"
+    )
+    try #"{"version":3,"pins":[{"identity":"cpicosdk"}]}"#.write(
+        to: resolvedURL,
+        atomically: true,
+        encoding: .utf8
+    )
+    let first = try DevicePackageGenerator.generate(
+        source: source,
+        cpicoSDKPath: cpicoSDK,
+        outputRoot: outputRoot
+    )
+    #expect(first.inputsChanged)
+    #expect(!FileManager.default.fileExists(atPath: resolvedURL.path))
+    #expect(try String(
+        contentsOf: first.packageDirectory.appendingPathComponent(
+            ".swift-version"
+        ),
+        encoding: .utf8
+    ) == "main-snapshot-test\n")
+    #expect(try String(
+        contentsOf: first.packageDirectory.appendingPathComponent(
+            "cpicosdk-build.json"
+        ),
+        encoding: .utf8
+    ).contains(#""combination": "pico2""#))
+
+    let second = try DevicePackageGenerator.generate(
+        source: source,
+        cpicoSDKPath: cpicoSDK,
+        outputRoot: outputRoot
+    )
+    #expect(!second.inputsChanged)
 }
 
 @Test func generatedPackageIncludesSwiftDefines() throws {
@@ -229,6 +322,12 @@ import Testing
     #expect(manifest.contains(".init(name: \"Variant_RP2040\")"))
     #expect(!manifest.contains(".init(name: \"Platform_RP2350\")"))
     #expect(!manifest.contains(".init(name: \"Variant_RP2350A\")"))
+
+    let configuration = DevicePackageGenerator.buildConfiguration(
+        for: source,
+        target: .rp2040
+    )
+    #expect(configuration.contains(#""combination": "pico""#))
 }
 
 @Test func asyncFunctionsAutomaticallySelectConcurrency() throws {

@@ -1,6 +1,6 @@
 import Foundation
 
-// TODO: Figure out how to share or keep synchronized between GenerateCPicoSDKPlugin and FinalizeBinaryPlugin
+// TODO: Share this environment model with PrepareEnvironmentPlugin.
 
 struct Env: Codable, Hashable {
     enum Error: Swift.Error {

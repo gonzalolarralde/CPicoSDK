@@ -6,6 +6,7 @@ extension PrepareEnvironmentPlugin {
     
     func generateEnvVars(
         given givenEnvVars: [String: String],
+        configured configuredEnvVars: [String: String],
         packageEnv: Env,
         context: PackagePlugin.PluginContext,
         libraryProductName: String?,
@@ -14,6 +15,10 @@ extension PrepareEnvironmentPlugin {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
+        )
+        let configuredEnvVars = Dictionary(
+            uniqueKeysWithValues: configuredEnvVars
+                .filter { key, _ in Env.relevantEnvVars.contains(key) }
         )
 
         // Starts with user-given
@@ -25,7 +30,7 @@ extension PrepareEnvironmentPlugin {
             uniquingKeysWith: { old, _ in old }
         )
 
-        let selectedCombinationName = await self.resolveSelectedCombination(
+        let selectedCombinationName = self.resolveSelectedCombination(
             givenEnvVars: givenEnvVars,
             packageEnv: packageEnv,
             context: context
@@ -35,6 +40,14 @@ extension PrepareEnvironmentPlugin {
             .filter { !givenEnvVars.keys.contains($0.key) }
         newEnvVars.merge(selectedCombinationVars, uniquingKeysWith: { _, new in new })
 
+        // Consumer configuration overrides package and board defaults, while
+        // an explicitly exported process value remains highest precedence.
+        newEnvVars.merge(
+            configuredEnvVars.filter { !givenEnvVars.keys.contains($0.key) },
+            uniquingKeysWith: { _, configuredValue in configuredValue }
+        )
+        newEnvVars["CPICOSDK_COMBINATION"] = selectedCombinationName
+
         // Some basic checks
         guard let buildType = BuildType(rawValue: newEnvVars["BUILD_TYPE"] ?? "") else {
             fatalError("[CPicoSDK] Couldn't find a valid BUILD_TYPE. Supported types are: 'Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel', got \(newEnvVars["BUILD_TYPE"] ?? "null")")
@@ -43,27 +56,6 @@ extension PrepareEnvironmentPlugin {
         // Some dynamically generated vars are provided
         if newEnvVars["SWIFT_BUILD_TYPE"] == nil {
             newEnvVars["SWIFT_BUILD_TYPE"] = buildType.swiftBuildType
-        }
-
-        if newEnvVars["EXTRA_CONFIG_PARAMS"] == nil {
-            newEnvVars["EXTRA_CONFIG_PARAMS"] = buildType.extraConfigParams
-        }
-
-        // TODO: Remove this when upgrading to Swift 6.3
-        // https://github.com/swiftlang/swift/issues/81272
-        #if os(Linux)
-        let linuxSwiftPMFlags = "--disable-sandbox --disable-build-manifest-caching --manifest-cache none"
-        if let extra = newEnvVars["EXTRA_CONFIG_PARAMS"] {
-            if !extra.contains("--disable-sandbox") {
-                newEnvVars["EXTRA_CONFIG_PARAMS"] = extra + " " + linuxSwiftPMFlags
-            }
-        } else {
-            newEnvVars["EXTRA_CONFIG_PARAMS"] = linuxSwiftPMFlags
-        }
-        #endif
-
-        if newEnvVars["TOOLSET_PATH"] == nil {
-            newEnvVars["TOOLSET_PATH"] = context.package.directoryURL.relativePath.appending("/toolset.json")
         }
 
         if newEnvVars["PACKAGE_PATH"] == nil {
@@ -94,16 +86,8 @@ extension PrepareEnvironmentPlugin {
             newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"] = "8192"
         }
 
-        let core1StackDefine = "-Xcc -DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"]!)"
-        if let extra = newEnvVars["EXTRA_CONFIG_PARAMS"] {
-            if !extra.contains("CPICOSDK_CORE1_STACK_SIZE_BYTES=") {
-                newEnvVars["EXTRA_CONFIG_PARAMS"] = extra + " " + core1StackDefine
-            }
-        } else {
-            newEnvVars["EXTRA_CONFIG_PARAMS"] = core1StackDefine
-        }
-
-        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
+        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] == "1",
+           newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
            let swiftVersion = newEnvVars["SWIFT_VERSION"] 
         {
             let fallbackPath = embeddedSwiftRuntimeVendorPath
@@ -131,9 +115,12 @@ extension PrepareEnvironmentPlugin {
 
         newEnvVars = self.resolve(envVars: newEnvVars)
 
-        for (envVar, value) in newEnvVars.filter({ !givenEnvVars.keys.contains($0.key) }) {
+        for (envVar, value) in newEnvVars
+            .filter({ !givenEnvVars.keys.contains($0.key) })
+            .sorted(by: { $0.key < $1.key })
+        {
             print("[CPicoSDK] Using default env var \(envVar): \(value)")
-            output += "export \(envVar)=\"\(value)\"\n"
+            self.appendExport(envVar, value: value)
         }
 
         var combinationsWithErrors = false
@@ -153,15 +140,25 @@ extension PrepareEnvironmentPlugin {
             )
             
             // Print and dump vars after resolving
-            for envVar in combinationSpecializedVars.keys {
+            for envVar in combinationSpecializedVars.keys.sorted() {
                 print(
                     "[CPicoSDK] \(newEnvVars.keys.contains(envVar) ? "Overriding" : "Using") specialized env var CPICOSDK_\(name)_\(envVar): \(resolvedCombinationSpecializedVars[envVar]!)"
                 )
-                output += "export CPICOSDK_\(name)_\(envVar)=\"\(resolvedCombinationSpecializedVars[envVar]!)\"\n"
+                self.appendExport(
+                    "CPICOSDK_\(name)_\(envVar)",
+                    value: resolvedCombinationSpecializedVars[envVar]!
+                )
             }
             
             // Make sure all relevant env vars are complete for this combination.
-            let missingEnvVars = Env.relevantEnvVars.filter { !resolvedCombinationSpecializedVars.keys.contains($0) }
+            let missingEnvVars = Env.relevantEnvVars.filter { name in
+                if name == "SWIFT_EMBEDDED_FALLBACK_PATH",
+                   resolvedCombinationSpecializedVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] != "1"
+                {
+                    return false
+                }
+                return !resolvedCombinationSpecializedVars.keys.contains(name)
+            }
             if missingEnvVars.count > 0 {
                 print("[CPicoSDK] ERROR: Missing env variables: [\(missingEnvVars.joined(separator: ", "))] - (Combination: \(name))")
                 combinationsWithErrors = true
@@ -173,157 +170,17 @@ extension PrepareEnvironmentPlugin {
         return newEnvVars
     }
     
-    // MARK: - Bash Functions
-    
-    func generateBashFunctions() {
-        self.output += """
-        function finalize_rp2xxx_binary {
-            if [[ "${1:-}" == "--flash" || "${1:-}" == "--picotool" ]]; then
-                export AUTO_STDIO="usb"
-            elif [[ "${1:-}" == "--cortex-debug" ]]; then
-                export AUTO_STDIO="uart"
-            else
-                echo "[CPicoSDK] Warning: Launcher not specified. Defaulting to USB stdio." >&2
-                export AUTO_STDIO="usb"
-            fi
-
-            "$SWIFTLY_PATH" run swift package finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
-                "$@" \\
-                --allow-writing-to-package-directory
-        }
-
-        function flash_if_needed {
-            if [[ "${1:-}" == "--flash" ]]; then
-                while true; do
-                    if "$PICOTOOL_PATH" info >/dev/null 2>&1; then
-                        echo "Device found!"
-                        break
-                    fi
-
-                    echo "Waiting for device in BOOTSEL mode to become available. Connect the device while pushing the BOOT button... (trying again in 2 seconds)"
-                    sleep 2
-                done
-
-                "$PICOTOOL_PATH" load ".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/${SWIFTPM_PRODUCT}.uf2"
-                "$PICOTOOL_PATH" reboot
-            fi
-        }
-        """ + "\n"
-    }
-
-    // MARK: - toolset.json
-
-    private func embeddedFallbackSwiftCompilerFlags(envVars: [String: String]) -> [String] {
-        guard envVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] == "1" else {
-            return []
-        }
-
-        if let fallbackPath = envVars["SWIFT_EMBEDDED_FALLBACK_PATH"],
-           !fallbackPath.isEmpty,
-           FileManager.default.fileExists(atPath: fallbackPath)
-        {
-            return ["-I", fallbackPath]
-        }
-
-        return []
-    }
-
-    private func jsonArrayString(_ values: [String], indentation: String = "                    ") throws -> String {
-        let data = try JSONSerialization.data(withJSONObject: values, options: [.prettyPrinted])
-        guard var json = String(data: data, encoding: .utf8) else {
-            fatalError("[CPicoSDK] Failed to encode JSON array.")
-        }
-
-        json = json.replacingOccurrences(of: "\n", with: "\n\(indentation)")
-        return json
-    }
-
-    // MARK: - Generated newlib overlay
-
-    func generateNewlibOverlayHeader(envVars: [String: String]) throws -> String {
-        let overlayDir = URL(fileURLWithPath: envVars["PLUGIN_OUTPUT_PATH"]!)
-            .appending(path: "generated/newlib_overlay")
-            .path
-        let overlayHeaderPath = overlayDir + "/stdatomic.h"
-        let newlibIncludeDir = "\(envVars["SDK_PATH"]!)/include"
-        let overlayHeader = """
-        #pragma once
-        
-        #include "\(newlibIncludeDir)/stdint.h"
-        #include "\(newlibIncludeDir)/inttypes.h"
-        #include "\(newlibIncludeDir)/stdatomic.h"
-        """
-
-        if try self.overwriteOrCreateIfNeeded(path: overlayHeaderPath, matchingContent: overlayHeader.data(using: .utf8)) {
-            print("[CPicoSDK] Generated/Updated newlib overlay header at \(overlayHeaderPath).")
-        } else {
-            print("[CPicoSDK] Not updating newlib overlay header as existing one is up-to-date.")
-        }
-
-        return overlayDir
-    }
-    
-    func generateToolset(envVars: [String: String], newlibOverlayDir: String) throws {
-        let toolsetPath = envVars["TOOLSET_PATH"]!
-
-        let swiftCompilerFlags = [
-            "-Xfrontend", "-disable-stack-protector",
-            "-enable-experimental-feature", "Embedded",
-            "-sdk", envVars["SDK_PATH"]!,
-            "-Xcc", "-isystem",
-            "-Xcc", newlibOverlayDir,
-        ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars) + [
-            "-wmo",
-        ]
-        let swiftCompilerFlagsJSON = try jsonArrayString(swiftCompilerFlags)
-
-        let toolsetJSON = """
-        {
-            "schemaVersion": "1.0",
-            "swiftCompiler": {
-                "extraCLIOptions": \(swiftCompilerFlagsJSON)
-            },
-            "cCompiler": {
-                "extraCLIOptions": [
-                    "--sysroot", "\(envVars["SDK_PATH"]!)",
-                    "-isystem", "\(newlibOverlayDir)"
-                ]
-            },
-            "librarian": {
-                "path": "\(envVars["PICO_TOOLCHAIN_PATH"]!)/bin/arm-none-eabi-ar"
-            },
-            "linker": {
-                "path": "\(envVars["LD_PATH"]!)",
-                "extraCLIOptions": [
-                    "-static", "-L\(envVars["SDK_PATH"]!)/lib"
-                ]
-            }
-        }
-        """.data(using: .utf8)
-
-        if try self.overwriteOrCreateIfNeeded(path: toolsetPath, matchingContent: toolsetJSON) {
-            print("[CPicoSDK] Generated/Updated toolset.json at \(toolsetPath). Disable this generation with --disable-toolset.")
-        } else {
-            print("[CPicoSDK] Not generating new toolset.json as existing one is up-to-date.")
-        }
-    }
-
-    // MARK: - .swift-version
-    
-    func syncSwiftVersion(packageURL: String, envVars: [String: String]) throws {
-        let swiftVersionFilePath = packageURL.appending("/.swift-version")
-        let swiftVersion = envVars["SWIFT_VERSION"]!
-
-        if try self.overwriteOrCreateIfNeeded(path: swiftVersionFilePath, matchingContent: swiftVersion.data(using: .utf8)!) {
-            print("[CPicoSDK] Generated/Updated .swift-version to \(swiftVersion). Disable this generation with --disable-swift-version.")
-        } else {
-            print("[CPicoSDK] Not updating .swift-version as existing one is up-to-date.")
-        }
-    }
-
     // MARK: - .vscode
 
     func generateVSCodeSettings(context: PackagePlugin.PluginContext, envVars: [String: String]) throws {
+        let productsConfiguration = envVars["SWIFT_BUILD_TYPE"] == "debug"
+            ? "Debug"
+            : "Release"
+        let targetArchitecture = envVars["SWIFTPM_TRIPLE"]!
+            .split(separator: "-")
+            .first
+            .map(String.init)!
+        let firmwareELF = "${workspaceFolder}/.build/out/Products/\(productsConfiguration)-none-\(targetArchitecture)/\(envVars["SWIFTPM_PRODUCT"]!).elf"
         let vscodeTasksFilePath = ".vscode/tasks.json"
         let vscodeTasksSettings = """
         {
@@ -397,7 +254,7 @@ extension PrepareEnvironmentPlugin {
                     "preLaunchTask": "Compile and Flash Project (cortex-debug) [CPicoSDK]",
                     "name": "SwiftPM: \(envVars["SWIFTPM_PRODUCT"]!) - Debug (Cortex-Debug) [CPicoSDK]",
                     "cwd": "\(envVars["OPENOCD_PATH"]!)/scripts",
-                    "executable": "${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf",
+                    "executable": "\(firmwareELF)",
                     "request": "launch",
                     "type": "cortex-debug",
                     "servertype": "openocd",
@@ -414,7 +271,7 @@ extension PrepareEnvironmentPlugin {
                     // also works fine for flash binaries
                     "overrideLaunchCommands": [
                         "monitor reset init",
-                        "load \\"${workspaceFolder}/.build/\(envVars["SWIFTPM_TRIPLE"]!)/\(envVars["SWIFT_BUILD_TYPE"]!)/\(envVars["SWIFTPM_PRODUCT"]!).elf\\""
+                        "load \\"\(firmwareELF)\\""
                     ],
                     "openOCDLaunchCommands": [
                         "adapter speed 5000"
@@ -448,33 +305,6 @@ extension PrepareEnvironmentPlugin {
             print("[CPicoSDK] Generated/Updated .vscode/launch.json. Disable this generation with --disable-vscode-settings.")
         } else {
             print("[CPicoSDK] Not updating .vscode/launch.json as existing one is up-to-date.")
-        }
-    }
-
-    // MARK: - .sourcekit-lsp/config.json
-    
-    func generateSourceKitLSPSettings(packageURL: String, envVars: [String: String]) throws {
-        let sourceKitLSPFilePath = packageURL.appending("/.sourcekit-lsp/config.json")
-        let swiftCompilerFlags = [
-            "-enable-experimental-feature", "Embedded",
-        ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars)
-        let swiftCompilerFlagsJSON = try jsonArrayString(swiftCompilerFlags)
-
-        let sourceKitLSPSettings = """
-        {
-            "swiftPM": {
-                "configuration": "\(envVars["SWIFT_BUILD_TYPE"]!)",
-                "triple": "\(envVars["SWIFTPM_TRIPLE"]!)",
-                "toolsets": ["\(envVars["TOOLSET_PATH"]!)"],
-                "swiftCompilerFlags": \(swiftCompilerFlagsJSON)
-            }
-        }
-        """.data(using: .utf8)
-
-        if try self.overwriteOrCreateIfNeeded(path: sourceKitLSPFilePath, matchingContent: sourceKitLSPSettings) {
-            print("[CPicoSDK] Generated/Updated .sourcekit-lsp/config.json. Disable this generation with --disable-sourcekit-lsp-settings.")
-        } else {
-            print("[CPicoSDK] Not updating .sourcekit-lsp/config.json as existing one is up-to-date.")
         }
     }
 

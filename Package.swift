@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.5
 
 import PackageDescription
 
@@ -23,11 +23,10 @@ let package = Package(
         .plugin(name: "PIOASM", targets: ["PIOASMPlugin"]),
         .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
-        .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
         .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
-        .executable(name: "FirmwareFinalizerTool", targets: ["FirmwareFinalizerTool"]),
-        .executable(name: "MemoryMapReportTool", targets: ["MemoryMapReportTool"]),
+        .plugin(name: "CPicoFirmwareBuilder", targets: ["CPicoFirmwareFinalizerPlugin"]),
+        .plugin(name: "FlashFirmware", targets: ["FlashFirmwarePlugin"]),
     ],
     traits: [
         .trait(name: "CPUMetrics", description: "Enables collection of CPU usage metrics in the runtime scheduler. This may have a small performance impact, but can be useful for debugging and optimization. Metrics are available through `CPUStats`."),
@@ -62,6 +61,26 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/sympatito/PicoSDKDownloader", from: "0.0.4"),
+    ] + (hostOnlyTests ? [] : [
+        .externalSource(name: "CPicoNative", path: "External/CPicoNativeSupport"),
+    ]),
+    externals: hostOnlyTests ? [] : [
+        Package(
+            name: "CPicoNative",
+            products: [
+                .library(
+                    name: "CPicoNativeSupport",
+                    type: .static,
+                    targets: ["CPicoNativeSupport"]
+                ),
+            ],
+            targets: [
+                .externalLibrary(
+                    name: "CPicoNativeSupport",
+                    plugins: ["CPicoNativeBuilderPlugin"]
+                ),
+            ]
+        ),
     ],
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
@@ -103,6 +122,7 @@ let package = Package(
             dependencies: [
                 .target(name: "ARMClib"),
                 .target(name: "CShims"),
+                .product(name: "CPicoNativeSupport", package: "CPicoNative"),
 
                 // GENERATOR MARK: TARGET DEPENDENCIES
                 .target(name: "_CPicoSDK_pico", condition: .when(traits: ["Platform_RP2040", "Variant_RP2040", "Radio_None"])),
@@ -136,7 +156,7 @@ let package = Package(
         .target(name: "TLSF"),
 
         .target(
-            name: "PSRAM", 
+            name: "PSRAM",
             dependencies: [
                 .target(name: "CShims"),
                 .target(name: "CPicoSDK"),
@@ -166,7 +186,7 @@ let package = Package(
         ),
 
         .plugin(
-            name: "PIOASMPlugin", 
+            name: "PIOASMPlugin",
             capability: .buildTool,
             dependencies: ["PIOASM", "pioasm-swift"]
         ),
@@ -174,7 +194,7 @@ let package = Package(
         .executableTarget(name: "pioasm-swift", path: "Sources/PIOASM/pioasm-swift"),
 
         .plugin(
-            name: "AssetCompiler", 
+            name: "AssetCompiler",
             capability: .buildTool,
             dependencies: ["AssetCompilerTool"]
         ),
@@ -205,6 +225,42 @@ let package = Package(
             name: "FirmwareFinalizerTool",
             dependencies: ["FirmwareFinalizerCore"]
         ),
+        .target(name: "CPicoExternalBuildSupport"),
+        .executableTarget(
+            name: "CPicoNativeBuilder",
+            dependencies: ["CPicoExternalBuildSupport"]
+        ),
+        .executableTarget(
+            name: "CPicoFirmwareFinalizerAdapter",
+            dependencies: ["CPicoExternalBuildSupport"]
+        ),
+        .executableTarget(name: "CPicoSDKEnvironmentTool"),
+        .plugin(
+            name: "CPicoNativeBuilderPlugin",
+            capability: .externalBuilder,
+            dependencies: ["CPicoNativeBuilder"]
+        ),
+        .plugin(
+            name: "CPicoFirmwareFinalizerPlugin",
+            capability: .externalBuilder,
+            dependencies: [
+                "CPicoFirmwareFinalizerAdapter",
+                "FirmwareFinalizerTool",
+                "MemoryMapReportTool",
+            ]
+        ),
+        .executableTarget(name: "CPicoFlashTool"),
+        .plugin(
+            name: "FlashFirmwarePlugin",
+            capability: .command(
+                intent: .custom(
+                    verb: "flash-rp2xxx-binary",
+                    description: "Programs a finalized CPicoSDK firmware artifact"
+                ),
+                permissions: []
+            ),
+            dependencies: ["CPicoFlashTool"]
+        ),
         .testTarget(
             name: "TestInDeviceCoreTests",
             dependencies: ["TestInDeviceCore"]
@@ -229,18 +285,9 @@ let package = Package(
                 ]
             ),
             dependencies: [
+                "CPicoSDKEnvironmentTool",
                 .product(name: "pico-bootstrap", package: "PicoSDKDownloader"),
             ]
-        ),
-        .plugin(
-            name: "FinalizeBinaryPlugin",
-            capability: .command(
-                intent: .custom(verb: "finalize-rp2xxx-binary", description: "Generates CPicoSDK target files"),
-                permissions: [
-                    .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
-                ]
-            ),
-            dependencies: ["FirmwareFinalizerTool", "MemoryMapReportTool"]
         ),
         .plugin(
             name: "TestInDevicePlugin",

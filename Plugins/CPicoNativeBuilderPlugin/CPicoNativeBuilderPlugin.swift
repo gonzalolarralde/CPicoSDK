@@ -28,7 +28,7 @@ struct CPicoNativeBuilderPlugin: ExternalBuilderPlugin {
         var inputFiles = regularFiles(in: externalSource)
         inputFiles.append(cpicoSDKDirectory.appending(path: "env.json"))
         inputFiles += regularFiles(in: cpicoSDKDirectory.appending(
-            path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness",
+            path: "Support/FirmwareFinalizer/CMakeHarness",
             directoryHint: .isDirectory
         ))
         if let configurationPath = environment["CPICOSDK_BUILD_CONFIGURATION"],
