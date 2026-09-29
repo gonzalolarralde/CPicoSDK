@@ -50,6 +50,14 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "Firmware",
+            dependencies: [.target(name: "Example")],
+            path: ".",
+            exclude: ["Sources"],
+            sources: [],
+            plugins: [.plugin(name: "PicoFirmware", package: "CPicoSDK")]
+        ),
+        .target(
             name: "Example",
             dependencies: [
                 .product(name: "CPicoSDK", package: "CPicoSDK"),
