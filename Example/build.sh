@@ -1,14 +1,15 @@
 #!/usr/bin/env /bin/bash
 set -euo pipefail
+cd "$(dirname "$0")"
 
 # Set the swift build configuration.
-export BUILD_TYPE="RelWithDebInfo" # Options: Debug, Release, RelWithDebInfo, MinSizeRel
+export BUILD_TYPE=${BUILD_TYPE:-RelWithDebInfo}
 
 ### Uncommenting the next line could help to debug issues or better understand the pipeline.
 # set -x
 
 export BUILD_SCRIPT_VERSION=1 # Helps the preparation script to warn in case of future changes.
-export PREPARATION_SCRIPT_PATH="$(dirname "$0")/.env_prep"
+export PREPARATION_SCRIPT_PATH="$PWD/.env_prep"
 
 if command -v swiftly >/dev/null 2>&1; then
   export SWIFTLY_PATH="$(command -v swiftly)"
@@ -22,18 +23,14 @@ else
   exit 1
 fi
 
-# This command will prepare the environment and create a swiftpm and a vscode basic configuration.
-# On doing so, it might opt to overwrite some of the existing files. If you are customizing your
-# environment, please inspect the preparation script dumped at PREPARATION_SCRIPT_PATH and source it
-# manually after inspection. You can also use the following flags to disable parts of the preparation:
-    #--disable-vscode-settings \
-    #--disable-sourcekit-lsp-settings \
-    #--disable-toolset \
-    #--disable-swift-version \
-    #--disable-install-dependencies \
-"$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \
+# Host plugins use the PR's SwiftPM; firmware uses the pinned embedded compiler.
+export CPICOSDK_SWIFT_EXEC=${CPICOSDK_SWIFT_EXEC:-$("$SWIFTLY_PATH" run which swiftc)}
+swiftpm() { sh ../utils/swiftpm-experimental.sh "$@"; }
+
+swiftpm package --disable-sandbox prepare-rp2xxx-environment \
     "$@" \
     --dump-prep-script "$PREPARATION_SCRIPT_PATH" \
+    --disable-vscode-settings --disable-sourcekit-lsp-settings \
     --allow-writing-to-package-directory \
     --allow-network-connections all  # Used to download PicoSDK, toolchain and other dependencies.
 
@@ -41,21 +38,20 @@ fi
 # Users can opt to place the output in a different location and source it here once inspected if preferred.
 source "$PREPARATION_SCRIPT_PATH"
 
-# Make sure the selected swift toolchain is installed.
-"$SWIFTLY_PATH" install
+case "${1:-}" in
+    --cortex-debug) export AUTO_STDIO=uart ;;
+    *) export AUTO_STDIO=${AUTO_STDIO:-usb} ;;
+esac
 
-# Builds the library using swiftpm. This is where the application code is compiled.
-"$SWIFTLY_PATH" run swift build \
-    --build-system native \
-    --configuration $SWIFT_BUILD_TYPE \
-    --toolset $TOOLSET_PATH \
-    --triple $SWIFTPM_TRIPLE \
-    $EXTRA_CONFIG_PARAMS            # This allows passing extra parameters from the command line.
-                                    # Used for adding debugging flags based on the cmake configuration.
-
-# Here the application code is linked with the PicoSDK and other imported libraries to produce
-# the final binary that can be flashed to the target device. An UF2 and ELF file are produced.
-finalize_rp2xxx_binary "$@"
+build_options=(
+    --package-path Firmware --build-system swiftbuild --target Firmware
+    --configuration "$SWIFT_BUILD_TYPE" --toolset "$TOOLSET_PATH"
+    --triple "$SWIFTPM_TRIPLE"
+)
+# EXTRA_CONFIG_PARAMS is the preparation plugin's list of compiler flags.
+swiftpm build "${build_options[@]}" $EXTRA_CONFIG_PARAMS
+export CPICOSDK_FIRMWARE_PRODUCTS="$(swiftpm build "${build_options[@]}" --show-bin-path)"
+printf 'Firmware: %s/%s.{elf,uf2}\n' "$CPICOSDK_FIRMWARE_PRODUCTS" "$SWIFTPM_PRODUCT"
 
 # Flash the produced binary to the target device if requested.
 flash_if_needed "$@"

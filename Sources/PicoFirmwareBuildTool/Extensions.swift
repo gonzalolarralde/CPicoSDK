@@ -3,7 +3,7 @@ import Foundation
 import Glibc
 #endif
 
-// TODO: Figure out how to share or keep synchronized between GenerateCPicoSDKPlugin and FinalizeBinaryPlugin
+// Process helpers used by the firmware build tool.
 
 extension Process {
     // TODO: Remove this workaround when upgrading to Swift 6.3+

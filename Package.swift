@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.5
 
 import PackageDescription
 
@@ -11,6 +11,7 @@ let hostOnlyTests = Context.environment["CPICOSDK_HOST_TESTS"] == "1"
 
 let package = Package(
     name: "CPicoSDK",
+    platforms: [.macOS(.v13)],
     products: hostOnlyTests ? [
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
     ] : [
@@ -22,6 +23,7 @@ let package = Package(
         .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "PicoFirmware", targets: ["PicoFirmwarePlugin"]),
         .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
     ],
@@ -62,6 +64,8 @@ let package = Package(
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
         .executableTarget(name: "MemoryMapReportTool"),
+        .executableTarget(name: "PicoFirmwareBuildTool"),
+        .testTarget(name: "PicoFirmwareBuildToolTests", dependencies: ["PicoFirmwareBuildTool"]),
         .testTarget(
             name: "TestInDeviceCoreTests",
             dependencies: ["TestInDeviceCore"]
@@ -161,6 +165,8 @@ let package = Package(
             dependencies: ["AssetCompilerTool"]
         ),
         .executableTarget(name: "AssetCompilerTool"),
+        .executableTarget(name: "PicoFirmwareBuildTool"),
+        .plugin(name: "PicoFirmwarePlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool", "MemoryMapReportTool"]),
 
         .target(name: "TestInDeviceCore"),
         .executableTarget(
@@ -212,7 +218,7 @@ let package = Package(
                     .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
                 ]
             ),
-            dependencies: ["MemoryMapReportTool"]
+            dependencies: ["PicoFirmwareBuildTool", "MemoryMapReportTool"]
         ),
         .plugin(
             name: "TestInDevicePlugin",

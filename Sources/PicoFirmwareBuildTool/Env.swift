@@ -1,6 +1,6 @@
 import Foundation
 
-// TODO: Figure out how to share or keep synchronized between GenerateCPicoSDKPlugin and FinalizeBinaryPlugin
+// Environment shared by the legacy command and custom-target build paths.
 
 struct Env: Codable, Hashable {
     enum Error: Swift.Error {

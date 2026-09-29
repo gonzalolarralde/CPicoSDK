@@ -2,6 +2,10 @@
 
 A SwiftPM package that enables seamless Swift development for the Raspberry Pi Pico SDK, targeting the RP2xxx device family with a streamlined developer experience.
 
+This experimental branch uses SwiftPM PR #10374 for the firmware build pipeline.
+See [Custom-target firmware](Docs/CustomTargetFirmware.md) for the required local
+toolchain patches, build instructions, and current limitations.
+
 ## License
 
 This project is licensed under the MIT License. 

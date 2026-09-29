@@ -161,7 +161,9 @@ extension PrepareEnvironmentPlugin {
             }
             
             // Make sure all relevant env vars are complete for this combination.
-            let missingEnvVars = Env.relevantEnvVars.filter { !resolvedCombinationSpecializedVars.keys.contains($0) }
+            let missingEnvVars = Env.relevantEnvVars.filter {
+                $0 != "CPICOSDK_SWIFT_EXEC" && !resolvedCombinationSpecializedVars.keys.contains($0)
+            }
             if missingEnvVars.count > 0 {
                 print("[CPicoSDK] ERROR: Missing env variables: [\(missingEnvVars.joined(separator: ", "))] - (Combination: \(name))")
                 combinationsWithErrors = true
@@ -204,7 +206,7 @@ extension PrepareEnvironmentPlugin {
                     sleep 2
                 done
 
-                "$PICOTOOL_PATH" load ".build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}/${SWIFTPM_PRODUCT}.uf2"
+                "$PICOTOOL_PATH" load "${CPICOSDK_FIRMWARE_PRODUCTS:-.build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}}/${SWIFTPM_PRODUCT}.uf2"
                 "$PICOTOOL_PATH" reboot
             fi
         }
@@ -272,15 +274,25 @@ extension PrepareEnvironmentPlugin {
             "-sdk", envVars["SDK_PATH"]!,
             "-Xcc", "-isystem",
             "-Xcc", newlibOverlayDir,
+            "-Xcc", "-isystem",
+            "-Xcc", "\(envVars["SDK_PATH"]!)/include",
         ] + embeddedFallbackSwiftCompilerFlags(envVars: envVars) + [
             "-wmo",
         ]
         let swiftCompilerFlagsJSON = try jsonArrayString(swiftCompilerFlags)
+        let compilerPath: String
+        if let path = envVars["CPICOSDK_SWIFT_EXEC"] {
+            let data = try JSONEncoder().encode(path)
+            compilerPath = "\"path\": \(String(decoding: data, as: UTF8.self)),"
+        } else {
+            compilerPath = ""
+        }
 
         let toolsetJSON = """
         {
             "schemaVersion": "1.0",
             "swiftCompiler": {
+                \(compilerPath)
                 "extraCLIOptions": \(swiftCompilerFlagsJSON)
             },
             "cCompiler": {
@@ -294,6 +306,9 @@ extension PrepareEnvironmentPlugin {
                 "extraCLIOptions": [
                     "-static", "-L\(envVars["SDK_PATH"]!)/lib"
                 ]
+            },
+            "librarian": {
+                "path": "\(envVars["PICO_TOOLCHAIN_PATH"]!)/bin/arm-none-eabi-ar"
             }
         }
         """.data(using: .utf8)

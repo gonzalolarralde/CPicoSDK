@@ -644,6 +644,15 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- With a locally built SwiftPM, route nested `swift package` invocations to the
+  same checkout and manifest/plugin libraries. Otherwise a command plugin can
+  launch the installed SwiftPM and reject a tools version accepted by its parent.
+  This branch's `utils/swiftpm-experimental.sh` provides that routing.
+- When testing cross-compilation with Swift Build, inspect the compiler triple
+  separately for host plugin tools and destination modules. An ARM architecture
+  paired with a macOS SDK indicates leaked destination overrides, not a missing
+  embedded runtime. Keep destination-only settings qualified accordingly.
+
 - Build the device example from `Example/` with `./build.sh`. Do not use a
   repo-root `./build`.
 - If local package edits appear to have no effect, check
