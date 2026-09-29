@@ -5,16 +5,14 @@ struct FirmwareRequest {
     let archive: URL
     let outputDirectory: URL
     let workDirectory: URL
-    let packageDirectory: URL
     let sdkDirectory: URL
-    let memoryMapTool: URL
     let resources: [URL]
     let clean: Bool
 
     init(arguments: [String]) throws {
         let options: Set<String> = [
             "--product", "--archive", "--output-directory", "--work-directory",
-            "--package-directory", "--sdk-directory", "--memory-map-tool",
+            "--sdk-directory",
         ]
         var values: [String: String] = [:]
         var resources: [URL] = []
@@ -45,9 +43,7 @@ struct FirmwareRequest {
         archive = URL(fileURLWithPath: try required("--archive"))
         outputDirectory = URL(fileURLWithPath: try required("--output-directory"))
         workDirectory = URL(fileURLWithPath: try required("--work-directory"))
-        packageDirectory = URL(fileURLWithPath: try required("--package-directory"))
         sdkDirectory = URL(fileURLWithPath: try required("--sdk-directory"))
-        memoryMapTool = URL(fileURLWithPath: try required("--memory-map-tool"))
         self.resources = resources
         self.clean = clean
     }

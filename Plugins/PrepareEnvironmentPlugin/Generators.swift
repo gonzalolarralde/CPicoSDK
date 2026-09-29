@@ -194,6 +194,31 @@ extension PrepareEnvironmentPlugin {
                 --allow-writing-to-package-directory
         }
 
+        function firmware_products_directory {
+            local configuration
+            case "$SWIFT_BUILD_TYPE" in
+                debug) configuration=Debug ;;
+                release) configuration=Release ;;
+                *) echo "Unsupported Swift build configuration: $SWIFT_BUILD_TYPE" >&2; return 1 ;;
+            esac
+
+            # Published outputs of this experiment's Firmware wrapper package.
+            printf '%s\\n' "Firmware/.build/out/Products/${configuration}-none-${SWIFTPM_TRIPLE%%-*}"
+        }
+
+        function memory_map_report {
+            local products_directory
+            if products_directory="$(firmware_products_directory)" &&
+                sh ../utils/swiftpm-experimental.sh package memory-map-report \\
+                --elf "$products_directory/$SWIFTPM_PRODUCT.elf" \\
+                --artifact-stats --no-sections; then
+                return 0
+            fi
+
+            echo "[CPicoSDK] Warning: Memory map report failed; firmware build is unaffected. See diagnostics above." >&2
+            return 0
+        }
+
         function flash_if_needed {
             if [[ "${1:-}" == "--flash" ]]; then
                 while true; do
@@ -206,7 +231,7 @@ extension PrepareEnvironmentPlugin {
                     sleep 2
                 done
 
-                "$PICOTOOL_PATH" load "${CPICOSDK_FIRMWARE_PRODUCTS:-.build/${SWIFTPM_TRIPLE}/${SWIFT_BUILD_TYPE}}/${SWIFTPM_PRODUCT}.uf2"
+                "$PICOTOOL_PATH" load "$(firmware_products_directory)/${SWIFTPM_PRODUCT}.uf2"
                 "$PICOTOOL_PATH" reboot
             fi
         }

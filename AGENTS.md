@@ -644,6 +644,12 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- When validating a build-graph fix, use a fresh build-output directory while
+  retaining downloaded SDK bundles. A warm cache can supply undeclared archives
+  or module maps and hide missing dependency edges. After a successful cold
+  build, rerun unchanged and compare artifact hashes and modification times to
+  check that plugin publication remains incremental.
+
 - Retained CMake build directories must be invalidated when the Pico SDK or ARM
   toolchain location changes. A typical symptom is `add_subdirectory not given
   a binary directory` with source paths from two SDK bundles. CMake caches

@@ -27,9 +27,7 @@ struct FinalizeBinaryPlugin: CommandPlugin {
             "--archive", output.appending(path: "lib\(name).a").path,
             "--output-directory", output.path,
             "--work-directory", context.pluginWorkDirectoryURL.path,
-            "--package-directory", context.package.directoryURL.path,
             "--sdk-directory", sdk.package.directoryURL.path,
-            "--memory-map-tool", report.url.path,
         ]
         for module in product.sourceModules {
             for file in module.sourceFiles where file.url.pathExtension == "codeasset" {
@@ -42,5 +40,24 @@ struct FinalizeBinaryPlugin: CommandPlugin {
         guard process.terminationStatus == 0 else {
             throw NSError(domain: "CPicoSDK.FirmwareBuild", code: Int(process.terminationStatus))
         }
+
+        let reportProcess = Process()
+        reportProcess.executableURL = report.url
+        reportProcess.arguments = [
+            "--package-dir", context.package.directoryURL.path,
+            "--cpicosdk-path", sdk.package.directoryURL.path,
+            "--elf", output.appending(path: "\(name).elf").path,
+            "--artifact-stats", "--no-sections",
+        ]
+        do {
+            try reportProcess.run()
+            reportProcess.waitUntilExit()
+            if reportProcess.terminationStatus != 0 {
+                Diagnostics.warning("Memory map report unavailable (exit code \(reportProcess.terminationStatus)).")
+            }
+        } catch {
+            Diagnostics.warning("Memory map report unavailable (\(error)).")
+        }
+        print("[CPicoSDK] Build completed successfully!")
     }
 }

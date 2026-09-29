@@ -25,7 +25,6 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
             .union(["RELEVANT_ENV_VARS", "PATH", "AUTO_STDIO", "DEVELOPER_DIR"])
         let buildEnvironment = environment.filter { keys.contains($0.key) || $0.key.hasPrefix("CPICOSDK_") }
         let tool = try context.tool(named: "PicoFirmwareBuildTool")
-        let report = try context.tool(named: "MemoryMapReportTool")
         let productsDirectory = URL(string: "file:/$(PRODUCTS_DIR)")!
         let archive = productsDirectory.appending(path: "lib\(product.name).a")
         let work = context.pluginWorkDirectoryURL.appending(path: "$(BUILD_SUBDIR)")
@@ -35,37 +34,24 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
         ).sorted { $0.path < $1.path }
         let resources = product.sourceModules.flatMap { $0.sourceFiles.map(\.url) }
             .filter { $0.pathExtension == "codeasset" }.sorted { $0.path < $1.path }
-        let outputs = ["elf", "uf2"].map { work.appending(path: "\(product.name).\($0)") }
+        let outputs = ["elf", "uf2", "bin", "elf.map"].map { work.appending(path: "\(product.name).\($0)") }
         var arguments = [
             "--product", product.name,
             "--archive", archive.path,
             "--output-directory", work.path,
             "--work-directory", work.path,
-            "--package-directory", context.package.directoryURL.path,
             "--sdk-directory", sdk.package.directoryURL.path,
-            "--memory-map-tool", report.url.path,
         ]
         for resource in resources { arguments += ["--resource", resource.path] }
-        var commands: [Command] = [.buildCommand(
+        return [.buildCommand(
             displayName: "Link \(product.name) firmware and generate UF2",
             executable: tool.url,
             arguments: arguments,
             environment: buildEnvironment,
-            inputFiles: [archive, tool.url, report.url, sdk.package.directoryURL.appending(path: "env.json")]
+            inputFiles: [archive, tool.url, sdk.package.directoryURL.appending(path: "env.json")]
                 + harnessInputs + resources,
-            outputFiles: outputs
+            outputFiles: outputs,
+            productFiles: outputs.map { BuildProduct($0) }
         )]
-        // The prototype's copy command can publish outputs outside the plugin sandbox.
-        for output in outputs {
-            let destination = productsDirectory.appending(path: output.lastPathComponent)
-            commands.append(.buildCommand(
-                displayName: "Publish \(output.lastPathComponent)",
-                executable: URL(string: "file:/$(COPY_CMD)")!,
-                arguments: [output.path, destination.path],
-                inputFiles: [output],
-                outputFiles: [destination]
-            ))
-        }
-        return commands
     }
 }

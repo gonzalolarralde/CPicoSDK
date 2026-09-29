@@ -1,5 +1,24 @@
+import Foundation
 import Testing
 @testable import MemoryMapReportTool
+
+@Test func artifactStatsUsePublishedSiblingFiles() throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let elf = directory.appendingPathComponent("Example.elf")
+    try Data(repeating: 0, count: 2048).write(to: elf)
+    try Data(repeating: 0, count: 1024).write(to: directory.appendingPathComponent("Example.bin"))
+    try Data(repeating: 0, count: 1536).write(to: directory.appendingPathComponent("Example.uf2"))
+    #expect(artifactStats(elf: elf) == [
+        "[CPicoSDK] Artifact stats:",
+        "[CPicoSDK]   - BIN payload size: 1024 B (1.00 KiB) (BIN)",
+        "[CPicoSDK]   - UF2 file size: 1536 B (1.50 KiB) (UF2)",
+        "[CPicoSDK]   - Host Debug Binary Size: 2048 B (2.00 KiB) (ELF)",
+    ])
+    try FileManager.default.removeItem(at: directory.appendingPathComponent("Example.bin"))
+    #expect(artifactStats(elf: elf).count == 3)
+}
 
 @Test func ownershipTotalsMatchReportedFlashAndStaticRAMSections() {
     let sections = [

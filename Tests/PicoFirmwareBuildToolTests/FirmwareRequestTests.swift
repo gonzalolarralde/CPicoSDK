@@ -6,8 +6,7 @@ struct FirmwareRequestTests {
     let arguments = [
         "--product", "Example", "--archive", "/tmp/with spaces/libExample.a",
         "--output-directory", "/tmp/output", "--work-directory", "/tmp/work",
-        "--package-directory", "/tmp/package", "--sdk-directory", "/tmp/sdk",
-        "--memory-map-tool", "/tmp/report",
+        "--sdk-directory", "/tmp/sdk",
     ]
 
     @Test func incrementalByDefault() throws {

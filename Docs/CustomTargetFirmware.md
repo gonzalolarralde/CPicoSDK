@@ -4,6 +4,108 @@ This branch experiments with [SwiftPM PR #10374](https://github.com/swiftlang/sw
 and [Swift Build PR #1740](https://github.com/swiftlang/swift-build/pull/1740).
 It requires the modified local SwiftPM build, not a released Swift toolchain.
 
+## Current verified state
+
+The wrapper package is restored by explicit revert commit `5182dd0`; the failed
+same-package experiment remains in history as `9152594`.
+
+With the refreshed PR checkouts and the SwiftPM fixes listed below:
+
+- Plain `bash build.sh` from `Example` succeeds from a fresh
+  `Example/Firmware/.build` directory, reusing the downloaded SDK bundle.
+- The plugin produces and publishes an ARM EABI5 ELF, UF2, BIN, and linker map
+  through `productFiles`, with its build-command sandbox enabled. Reporting is
+  a separate launcher step using these published files, not plugin internals.
+- A no-change rebuild takes 1.70 seconds for the firmware build stage and
+  preserves the hashes and modification times of both published files.
+- All 60 CPicoSDK host tests pass, including published-artifact size reporting.
+- The focused SwiftPM regressions pass: destination-only bare-metal overrides,
+  header-only module dependencies, and static versus automatic dependency
+  product handling (two parameterized cases).
+- The broader PIF/CGen and bare-metal regression selection passes all 57 tests
+  across five suites.
+
+Artifacts are in `Example/Firmware/.build/out/Products/Release-none-armv7em/`.
+Logs are in `../build-investigation-logs/restored-wrapper-*.log`. No hardware
+was programmed. The April embedded compiler still emits package-module and
+dependency-scanner compatibility warnings; they do not prevent this build.
+
+SwiftPM's full test bundle has unrelated stale call sites in `BuildTests` and
+`SBOMModelTests`. The focused regressions were run with the manifest temporarily
+selecting only `SwiftBuildSupportTests`; that manifest edit is not retained.
+The missing `productFiles: []` argument in that suite's existing CGen test mock
+was updated to match the PR API.
+
+## Reverted local-target experiment
+
+Commit `9152594` moved `Firmware` into `Example/Package.swift`, depending on the
+local `Example` target. Commit `5182dd0` explicitly reverts that experiment and
+restores `Example/Firmware` and the product dependency. The investigation below
+records why the single-package version was not sufficient.
+
+The initial run of `bash build.sh` from `Example` failed with `Build input file cannot be
+found` for `libExample.a`. The plugin can find the local static product's
+metadata, but a target dependency does not build that product's archive.
+The preserved reproducer log is
+`../build-investigation-logs/custom-target-missing-archive.log`.
+
+After refreshing both PRs and upstream main on September 28, all local SwiftPM
+tools and runtime APIs rebuilt successfully. Running `bash build.sh` with those
+tools recognizes the bare-metal triple and reaches ARM compilation, but fails
+earlier on missing `ARMClib` and `_CPicoSDK_*` module maps. The retained
+header-only module workaround below does not generate these maps with cold
+Swift Build outputs; this is not evidence of a new upstream regression. This
+run does not reach the archive dependency failure above. Logs are preserved in
+`../build-investigation-logs/latest-prs-all-tools.log` and
+`../build-investigation-logs/latest-prs-cpicosdk.log`.
+
+The architecture and successful verification below describe the earlier
+wrapper-package implementation, before this experiment.
+
+## Reassessment before the revert
+
+The old SwiftPM patches were stashed and tested independently on September 28.
+Swift Build has no local source patches beyond merging upstream main into the PR.
+
+- With no SwiftPM patches, the build tries to compile host plugin tools for
+  `armv7em-none-macos13.0-eabi`. The destination-only triple override fix is
+  still required.
+- With only that fix, ARM compilation and generated module maps succeed.
+  Building `--target Firmware` fails because the target dependency builds
+  `Example.o`, not the `Example` static product's `libExample.a`.
+- Building `--product Example` explicitly reaches the archiver, but its input
+  list contains nonexistent objects for header-only targets such as `ARMClib`.
+  The fix should preserve module-map generation while excluding nonexistent
+  link inputs; the old `.packageProduct` workaround is not retained.
+- The static dependency-product materialization patch is also not retained:
+  it does not address the same-package dependency edge.
+- The firmware plugin now uses `productFiles` to publish ELF/UF2 outputs. The
+  generated build graph has native file-copy tasks, replacing the two manual
+  `COPY_CMD` commands. Publication has not run successfully in this layout.
+
+The intended graph remains `Firmware -> Example static product -> source
+targets`. PR #10374 still exposes target dependencies and products from other
+packages, not same-package product dependencies. Matching a local product by
+its source targets only finds metadata; it does not create a build edge.
+Keep that missing capability explicit rather than making arbitrary target
+dependencies materialize every matching static product. A two-invocation
+launcher would be a temporary workaround, not a single-graph solution, and
+would still need the header-only archive-input issue fixed. The explicit revert
+restores the wrapper package instead of adding a second build invocation.
+
+A regression test was added for destination-only bare-metal overrides. Running
+it is blocked by existing test compilation errors in this PR: a missing
+`productFiles` argument in `CGenPIFTests.swift` and an obsolete
+`platformConstraint` argument in `SBOMTestModulesGraphHelpers.swift`. Those
+unrelated test call sites have not been changed.
+
+Logs under `../build-investigation-logs/`:
+`rethink-baseline-demo.log`, `rethink-scoped-demo.log`,
+`rethink-explicit-product.log`, and `rethink-scoped-test.log`.
+The previous Swift Build output directory was moved to
+`../build-investigation-logs/pre-rethink-swiftbuild-out` before the baseline;
+the downloaded SDK bundle was retained.
+
 ## Build graph
 
 ```text
@@ -16,16 +118,19 @@ Firmware custom target / PicoFirmware plugin
     detect board and stdio traits from archive
     select embedded Swift runtime archives
     configure and build Pico SDK with CMake/Ninja
-    link firmware, embed assets, generate ELF/UF2, report memory use
+    link firmware, embed assets, generate ELF/UF2/BIN/map
        |
        v
-COPY_CMD publishes Example.elf and Example.uf2 to PRODUCTS_DIR
+productFiles publishes ELF/UF2/BIN/map to PRODUCTS_DIR
+       |
+       v
+build.sh reports artifact sizes/memory use, then optionally flashes
 ```
 
 The finalizer is now a build-tool executable shared by the new build plugin and
 the existing `finalize-rp2xxx-binary` command plugin. The build plugin declares
 the application archive, tool binaries, CMake harness, SDK configuration, and
-assets as inputs. ELF and UF2 are explicit outputs. CMake's build directory is
+assets as inputs. ELF, UF2, BIN, and the linker map are explicit outputs. CMake's build directory is
 retained between runs; the legacy command still cleans unless `--incremental`
 is supplied.
 
@@ -43,8 +148,12 @@ Swift Regex APIs. The firmware still targets bare-metal ARM.
 Checkouts are siblings under `src/swift-contrib`:
 
 - `CPicoSDK`, based on `a1aa863645122f9a985a0b6de4f63c5e04853a73`.
-- `swiftpm-pr-10374`, PR head `f9eefb1d0e29c4543fd97aee87851b1c7d3d6f44`.
-- `swift-build-pr-1740`, PR head `7df50450b485ca888cc941d71180b5fa932c1f04`.
+- `swiftpm-pr-10374`, PR head `3f825ab250c7fbc531ce1c161261a108ea44c7e4`,
+  including upstream main `24a8a7b071d9fc92540ce464f648bd01f91428cd`.
+- `swift-build-pr-1740`, PR head `b96a0096dc0c9dafed112ab4ed2b2961adb0633d`,
+  merged with upstream main `96738a4ea719569905422fab7ef65c6d1aa68bee`.
+  The local merge is `09f7ca75`. Both remote PR heads and main branches were
+  checked on September 28, 2026.
 - `swift-build` points to the PR #1740 checkout. Other local SwiftPM dependency
   paths point to the existing SwiftCompiler dependency checkouts.
 
@@ -71,10 +180,17 @@ destination toolset and runtime selection, not host manifest/plugin compilation.
 `PICO_SDK_BUNDLE_PATH` can reuse an existing SDK bundle; in that case pass
 `--disable-install-dependencies` to avoid downloading tools again.
 
-The launcher prepares the toolset, then runs one Swift Build invocation for
-`Firmware`. It prints the products directory returned by `--show-bin-path`.
-It no longer invokes the finalization command separately. Flashing remains
-explicit (`--flash`); ordinary builds do not access a device.
+The launcher preserves the original straight-line preparation/build/flash
+structure, using the experimental SwiftPM wrapper where required. It runs one
+Swift Build invocation for `Firmware`, then calls the generated `memory_map_report`
+shell function. Reporting and flashing share the generated
+`firmware_products_directory` helper, which assumes this experiment's wrapper
+layout: `Firmware/.build/out/Products/<Debug|Release>-none-<architecture>`.
+There is no extra build invocation to query the path and no fallback to stale
+artifacts in the native build directory. The report command still uses the
+experimental SwiftPM wrapper to run `memory-map-report --artifact-stats`.
+Reporting runs even on a no-change build; a reporting failure remains nonfatal.
+Flashing remains explicit (`--flash`); ordinary builds do not access a device.
 
 Host tests, from the repository root:
 
@@ -84,32 +200,35 @@ CPICOSDK_HOST_TESTS=1 sh utils/swiftpm-experimental.sh test --build-system nativ
 
 ## Required local upstream patches
 
-These are experimental changes in the isolated upstream checkouts, **not**
-changes already supplied by the referenced PRs:
+Three SwiftPM fixes are applied in the local checkout:
 
-1. SwiftPM `SwiftBuildSystem.swift`: qualify bare-metal architecture, vendor,
-   and environment overrides with `__destination_platform=YES`. Unqualified
-   overrides incorrectly compile macOS plugin tools for an ARM/macOS triple.
-2. Swift Build `SWBGenericUnixPlatform/Plugin.swift`: let the `none` platform
-   inherit the Unix linker and archiver specifications. Otherwise ARM `ld`
-   receives Darwin flags, such as `-reproducible`.
-3. SwiftPM `PackagePIFProjectBuilder+Products.swift`: materialize explicitly
-   static dependency products, not just root-package products. Otherwise the
-   custom target depends on a product group but there is no `libExample.a`.
-4. SwiftPM `PackagePIFProjectBuilder+Modules.swift`: represent source-free Clang
-   modules without plugins/resources as interface-only product groups. This
-   avoids archive inputs referring to nonexistent objects for header-only SDK
-   modules.
+1. `SwiftBuildSystem.swift` qualifies bare-metal architecture, vendor, and
+   environment overrides with `__destination_platform=YES`, keeping ARM settings
+   out of macOS host plugin-tool builds.
+2. `PackagePIFProjectBuilder+Products.swift` materializes explicitly static
+   dependency products when archive materialization is enabled. This is needed
+   now that `Example` is a product from a dependency of the wrapper package.
+   Automatic dependency products remain product groups.
+3. Header-only Clang modules retain their ordinary targets and module-map
+   generation, but consumers add them as build-only dependencies rather than
+   nonexistent object-file link inputs. The old `.packageProduct` replacement
+   workaround is not applied. Modules with sources, plugins, or resources are
+   not classified as header-only by this fix.
+
+Swift Build no longer needs the local `none` domain patch: upstream main
+provides triple recognition, generic-Unix spec inheritance, and a bare-metal
+linker spec under `SWBUniversalPlatform`. The April embedded compiler remains
+pinned, but the launcher uses the locally rebuilt SwiftPM and Swift Build,
+not the SwiftPM bundled with that April toolchain.
 
 The CPicoSDK toolset now specifies the ARM librarian and an explicit newlib
 header search path. Swift Build's placeholder bare-metal SDK otherwise wins
 over the toolset's `-sdk` argument.
 
-These patches need focused upstream regression tests and broader review before
-being proposed as contributions. In particular, dependency archive
-materialization is a policy choice, not merely plugin API plumbing.
+These patches remain local experiments, separate from output publication
+through `productFiles`, and need upstream review before contribution.
 
-## Verification
+## Original wrapper verification
 
 The local macOS/Apple Silicon run verified:
 
@@ -159,9 +278,14 @@ error and exit unsuccessfully rather than raising a top-level Swift fatal error.
   C `#embed` can be a separate, independently testable change.
 - SDK header/package generation remains a maintainer operation; this does not
   regenerate the checked-in SDK headers during application builds.
+- Artifact summaries, memory reports, and flashing are not build-plugin work.
+  The launcher requests the existing reporting command after the build finishes;
+  the build tool has no report-tool dependency or flashing code.
 - The wrapper is a macOS development helper. Linux, other Pico boards, device
   flashing, and the existing device-test launcher need separate validation.
 - Treat downloaded SDK/toolchain bundles as immutable versioned inputs. The
   plugin does not enumerate every source inside them for Swift Build invalidation.
-- IDE configurations are not regenerated by this launcher because their old
-  native-build artifact paths do not describe the new firmware products directory.
+- IDE generation retains the original launcher's defaults. Its native-build
+  artifact paths do not describe the new firmware products directory; use
+  `--disable-vscode-settings --disable-sourcekit-lsp-settings` to leave existing
+  IDE files untouched while testing this experiment.

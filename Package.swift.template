@@ -147,7 +147,7 @@ let package = Package(
         ),
         .executableTarget(name: "AssetCompilerTool"),
         .executableTarget(name: "PicoFirmwareBuildTool"),
-        .plugin(name: "PicoFirmwarePlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool", "MemoryMapReportTool"]),
+        .plugin(name: "PicoFirmwarePlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
 
         .target(name: "TestInDeviceCore"),
         .executableTarget(

@@ -64,10 +64,6 @@ struct FirmwareBuilder {
             buildArtifact: request.archive,
             productName: request.product,
             embeddedResources: resources,
-            packageDir: request.packageDirectory,
-            cpicoSDKPath: request.sdkDirectory,
-            memoryMapTool: request.memoryMapTool,
-            swiftBuildType: try Env.value("SWIFT_BUILD_TYPE").expected,
             clean: request.clean
         )
     }
@@ -230,7 +226,7 @@ struct FirmwareBuilder {
             .path
     }
 
-    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], packageDir: URL, cpicoSDKPath: URL, memoryMapTool: URL, swiftBuildType: String, clean: Bool) async throws {
+    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], clean: Bool) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
@@ -313,19 +309,12 @@ struct FirmwareBuilder {
         )
         print("[CPicoSDK] Copying \(buildDir.appending(path: "\(productName).uf2").path) to \(outputDir.appending(path: "\(productName).uf2").path)")
 
+        for suffix in ["bin", "elf.map"] {
+            let destination = outputDir.appending(path: "\(productName).\(suffix)")
+            try? fileManager.removeItem(at: destination)
+            try fileManager.copyItem(at: buildDir.appending(path: "\(productName).\(suffix)"), to: destination)
+        }
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
-        await printArtifactStats(
-            outputDir: outputDir,
-            buildDir: buildDir,
-            productName: productName,
-            packageDir: packageDir,
-            cpicoSDKPath: cpicoSDKPath,
-            memoryMapTool: memoryMapTool,
-            combination: combination,
-            swiftBuildType: swiftBuildType
-        )
-
-        print("[CPicoSDK] 🎉 Build completed successfully! 🎉")
     }
 
     private func makeEmbeddedResourceCMakeArguments(_ embeddedResources: [String: URL]) throws -> [String] {
@@ -353,79 +342,6 @@ struct FirmwareBuilder {
             "-DCPICOSDK_EMBEDDED_RESOURCE_NAMES=\(names.joined(separator: ";"))",
             "-DCPICOSDK_EMBEDDED_RESOURCE_PATHS=\(paths.joined(separator: ";"))",
         ]
-    }
-
-    private func printArtifactStats(outputDir: URL, buildDir: URL, productName: String, packageDir: URL, cpicoSDKPath: URL, memoryMapTool: URL, combination: String, swiftBuildType: String) async {
-        let fileManager = FileManager.default
-
-        func formatSize(_ bytes: Int64) -> String {
-            let kib = Double(bytes) / 1024.0
-            return "\(bytes) B (\(String(format: "%.2f", kib)) KiB)"
-        }
-
-        let artifactPaths = [
-            ("BIN payload size", "BIN", buildDir.appending(path: "\(productName).bin").path),
-            ("UF2 file size", "UF2", outputDir.appending(path: "\(productName).uf2").path),
-            ("Host Debug Binary Size", "ELF", outputDir.appending(path: "\(productName).elf").path),
-        ]
-
-        print("[CPicoSDK] Artifact stats:")
-        for (label, kind, path) in artifactPaths {
-            guard
-                let attrs = try? fileManager.attributesOfItem(atPath: path),
-                let fileSize = attrs[.size] as? NSNumber
-            else {
-                continue
-            }
-            print("[CPicoSDK]   - \(label): \(formatSize(fileSize.int64Value)) (\(kind))")
-        }
-
-        do {
-            let report = try await runMemoryMapReport(
-                memoryMapTool: memoryMapTool,
-                packageDir: packageDir,
-                cpicoSDKPath: cpicoSDKPath,
-                elfURL: buildDir.appending(path: "\(productName).elf"),
-                mapURL: buildDir.appending(path: "\(productName).elf.map"),
-                productName: productName,
-                combination: combination,
-                swiftBuildType: swiftBuildType
-            )
-            print("")
-            print(report)
-        } catch {
-            print("[CPicoSDK]   - Memory map report: unavailable (\(error))")
-        }
-    }
-
-    private func runMemoryMapReport(memoryMapTool: URL, packageDir: URL, cpicoSDKPath: URL, elfURL: URL, mapURL: URL, productName: String, combination: String, swiftBuildType: String) async throws -> String {
-        let reportProcess = Process()
-        reportProcess.executableURL = memoryMapTool
-        reportProcess.arguments = [
-            "--package-dir", packageDir.path,
-            "--cpicosdk-path", cpicoSDKPath.path,
-            "--elf", elfURL.path,
-            "--map", mapURL.path,
-            "--no-sections",
-        ]
-        var environment = ProcessInfo.processInfo.environment
-        environment["SWIFTPM_PRODUCT"] = productName
-        environment["BOARD"] = Env.value("BOARD", combination: combination)
-        environment["SWIFT_BUILD_TYPE"] = swiftBuildType
-        reportProcess.environment = environment
-
-        let (status, outputData, errorData) = try await reportProcess.asyncRun(captureStdout: true, captureStderr: true)
-        guard status == 0,
-              let outputData,
-              let output = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-              output.nonEmpty != nil
-        else {
-            let stderr = errorData.flatMap { String(data: $0, encoding: .utf8) }?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            throw NSError(domain: "CPicoSDK.MemoryMapReport", code: Int(status), userInfo: [
-                NSLocalizedDescriptionKey: stderr.nonEmpty ?? "memory-map-report exited with status \(status)",
-            ])
-        }
-        return output
     }
 
     private func runNM(on buildArtifact: URL) async throws -> String {
