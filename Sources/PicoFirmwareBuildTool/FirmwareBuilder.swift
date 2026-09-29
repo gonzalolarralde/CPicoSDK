@@ -1,7 +1,7 @@
 import Foundation
 
 struct FirmwareBuilder {
-    enum Error: Swift.Error {
+    enum Error: Swift.Error, LocalizedError {
         case nmFailed
         case swiftlyResolutionFailed
         case rsyncFailed
@@ -13,7 +13,7 @@ struct FirmwareBuilder {
         case invalidEmbeddedResourcePath(String, URL)
         case duplicateEmbeddedResourceName(String)
 
-        var localizedDescription: String {
+        var errorDescription: String? {
             switch self {
             case .nmFailed:
                 return "nm process failed"
@@ -246,8 +246,6 @@ struct FirmwareBuilder {
         let srcDir = workingDir.appending(path: "CMakeHarness")
         let buildDir = srcDir.appending(path: "build_\(combination)")
 
-        try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
-        print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
         let importedLibs = try Env.importedLibs(combination: combination)
         let embeddedResourceArguments = try makeEmbeddedResourceCMakeArguments(embeddedResources)
 
@@ -256,13 +254,11 @@ struct FirmwareBuilder {
             print("[CPicoSDK] Extra Swift archives: \(extraSwiftArchives)")
         }
 
-        if clean {
-            try? fileManager.removeItem(at: buildDir)
-            try fileManager.ensureDirectoryExists(at: buildDir.path, isDirectory: true)
-        }
-
         var env = try Env.combinedVars(for: combination)
         env["PATH"] = "\(cmakePath):\(ninjaPath):\(ProcessInfo.processInfo.environment["PATH"]!)"
+        let buildEnvironment = CMakeBuildEnvironment(env)
+        try buildEnvironment.prepare(buildDir, clean: clean)
+        print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
 
         print("[CPicoSDK] Running CMake configuration and build...")
 
@@ -291,6 +287,7 @@ struct FirmwareBuilder {
         ] + embeddedResourceArguments
 
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
+        try buildEnvironment.record(in: buildDir)
 
         let cmakeBuildProcess = Process()
         cmakeBuildProcess.executableURL = cmakeBin

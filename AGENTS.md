@@ -644,6 +644,14 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- Retained CMake build directories must be invalidated when the Pico SDK or ARM
+  toolchain location changes. A typical symptom is `add_subdirectory not given
+  a binary directory` with source paths from two SDK bundles. CMake caches
+  `PICO_PLATFORM_CMAKE_FILE` and compiler paths independently of `PICO_SDK_PATH`;
+  changing only the latter does not refresh them. The firmware tool records its
+  SDK/toolchain environment after configuration and resets only its own CMake
+  build directory when that identity changes or the stamp is missing.
+
 - With a locally built SwiftPM, route nested `swift package` invocations to the
   same checkout and manifest/plugin libraries. Otherwise a command plugin can
   launch the installed SwiftPM and reject a tools version accepted by its parent.

@@ -132,6 +132,22 @@ Build logs are under the root `.build/`: `host-tests.log`,
 `firmware-asset-change.log`, and `firmware-restored.log`.
 No firmware was flashed and no upstream test suite was run for the local patches.
 
+## CMake cache invalidation
+
+The firmware tool records SDK/toolchain paths and versions, CMake/Ninja paths
+and versions, and board selection after a successful CMake configuration. A
+change to those inputs resets the plugin's CMake build directory. Existing
+directories without a stamp are reset once; matching environments retain their
+incremental objects. Downloaded bundles and SwiftPM build caches are untouched.
+
+This fixes switching from a reused SDK bundle to the default bundle: CMake had
+retained platform files and compiler paths from the old bundle, causing
+`add_subdirectory` errors when combined with the new SDK path. Plain
+`bash build.sh` now builds successfully with the default bundle. All 59 host
+tests pass, including cache retention, environment changes, migration from an
+unstamped directory, and explicit clean requests. Tool failures now print an
+error and exit unsuccessfully rather than raising a top-level Swift fatal error.
+
 ## Boundaries
 
 - Preparation remains a command plugin. Downloads, compiler selection, and

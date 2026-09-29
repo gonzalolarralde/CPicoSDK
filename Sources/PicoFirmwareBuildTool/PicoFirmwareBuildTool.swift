@@ -67,9 +67,14 @@ struct FirmwareRequest {
 
 @main
 struct PicoFirmwareBuildTool {
-    static func main() async throws {
-        let request = try FirmwareRequest(arguments: Array(CommandLine.arguments.dropFirst()))
-        try FileManager.default.createDirectory(at: request.workDirectory, withIntermediateDirectories: true)
-        try await FirmwareBuilder().build(request)
+    static func main() async {
+        do {
+            let request = try FirmwareRequest(arguments: Array(CommandLine.arguments.dropFirst()))
+            try FileManager.default.createDirectory(at: request.workDirectory, withIntermediateDirectories: true)
+            try await FirmwareBuilder().build(request)
+        } catch {
+            FileHandle.standardError.write(Data("[CPicoSDK] \(error.localizedDescription)\n".utf8))
+            exit(EXIT_FAILURE)
+        }
     }
 }
