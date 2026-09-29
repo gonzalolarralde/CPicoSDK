@@ -4,20 +4,10 @@ import PackagePlugin
 @main
 struct PicoFirmwarePlugin: BuildToolPlugin {
     func createBuildCommands(context: PluginContext, target: Target) throws -> [Command] {
-        var products = target.dependencies.compactMap { dependency -> LibraryProduct? in
+        let products = target.dependencies.compactMap { dependency -> LibraryProduct? in
             guard case .product(let product) = dependency,
                   let library = product as? LibraryProduct, library.kind == .static else { return nil }
             return library
-        }
-        if products.isEmpty {
-            let moduleIDs = Set(target.dependencies.compactMap { dependency -> String? in
-                guard case .target(let module) = dependency else { return nil }
-                return module.id
-            })
-            products = context.package.products(ofType: LibraryProduct.self).filter {
-                $0.kind == .static && !$0.sourceModules.isEmpty
-                    && $0.sourceModules.allSatisfy { moduleIDs.contains($0.id) }
-            }
         }
         guard products.count == 1, let product = products.first else {
             Diagnostics.error("PicoFirmware requires a dependency on exactly one static library product.")

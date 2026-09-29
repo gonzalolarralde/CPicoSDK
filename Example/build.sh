@@ -1,5 +1,5 @@
 #!/usr/bin/env /bin/bash
-set -euxo pipefail
+set -euo pipefail
 cd "$(dirname "$0")"
 
 # Set the swift build configuration.
@@ -44,7 +44,7 @@ case "${1:-}" in
 esac
 
 build_options=(
-    --build-system swiftbuild --target Firmware
+    --package-path Firmware --build-system swiftbuild --target Firmware
     --configuration "$SWIFT_BUILD_TYPE" --toolset "$TOOLSET_PATH"
     --triple "$SWIFTPM_TRIPLE"
 )

@@ -4,21 +4,6 @@ This branch experiments with [SwiftPM PR #10374](https://github.com/swiftlang/sw
 and [Swift Build PR #1740](https://github.com/swiftlang/swift-build/pull/1740).
 It requires the modified local SwiftPM build, not a released Swift toolchain.
 
-## Current local-target experiment
-
-`Firmware` now lives in `Example/Package.swift` and depends on the local
-`Example` target. The nested `Example/Firmware` directory has been removed;
-the source-free target uses `path: ".", exclude: ["Sources"], sources: []`, and
-`build.sh` no longer passes `--package-path Firmware`.
-
-Running `bash build.sh` from `Example` fails with `Build input file cannot be
-found` for `libExample.a`. The plugin can find the local static product's
-metadata, but a target dependency does not build that product's archive.
-The reproducer log is `.build/local-target-launcher.log` at the repository root.
-
-The architecture and successful verification below describe the earlier
-wrapper-package implementation, before this experiment.
-
 ## Build graph
 
 ```text
