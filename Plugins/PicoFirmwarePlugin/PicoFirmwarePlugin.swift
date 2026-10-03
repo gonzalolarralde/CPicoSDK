@@ -35,6 +35,9 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
         let resources = product.sourceModules.flatMap { $0.sourceFiles.map(\.url) }
             .filter { $0.pathExtension == "codeasset" }.sorted { $0.path < $1.path }
         let outputs = ["elf", "uf2", "bin", "elf.map"].map { work.appending(path: "\(product.name).\($0)") }
+        let buildDirectory = work.appending(path: "CMakeHarness/build")
+        let sdkOutputs = ["libPicoSDK.a", "sdk-build.json", "build.ninja"]
+            .map { buildDirectory.appending(path: $0) }
         var arguments = [
             "--product", product.name,
             "--archive", archive.path,
@@ -43,13 +46,21 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
             "--sdk-directory", sdk.package.directoryURL.path,
         ]
         for resource in resources { arguments += ["--resource", resource.path] }
+        let configurationInputs = [archive, tool.url, sdk.package.directoryURL.appending(path: "env.json")]
+            + harnessInputs
         return [.buildCommand(
+            displayName: "Build Pico SDK for \(product.name)",
+            executable: tool.url,
+            arguments: arguments + ["--phase", "sdk"],
+            environment: buildEnvironment,
+            inputFiles: configurationInputs,
+            outputFiles: sdkOutputs
+        ), .buildCommand(
             displayName: "Link \(product.name) firmware and generate UF2",
             executable: tool.url,
-            arguments: arguments,
+            arguments: arguments + ["--phase", "link"],
             environment: buildEnvironment,
-            inputFiles: [archive, tool.url, sdk.package.directoryURL.appending(path: "env.json")]
-                + harnessInputs + resources,
+            inputFiles: configurationInputs + sdkOutputs + resources,
             outputFiles: outputs,
             productFiles: outputs.map { BuildProduct($0) }
         )]

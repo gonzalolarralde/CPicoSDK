@@ -15,6 +15,22 @@ struct FirmwareRequestTests {
         #expect(request.archive.path == "/tmp/with spaces/libExample.a")
         #expect(!request.clean)
         #expect(request.resources.isEmpty)
+        #expect(request.phase == .all)
+    }
+
+    @Test(arguments: FirmwareRequest.Phase.allCases)
+    func acceptsBuildPhase(phase: FirmwareRequest.Phase) throws {
+        let request = try FirmwareRequest(arguments: arguments + ["--phase", phase.rawValue])
+        #expect(request.phase == phase)
+    }
+
+    @Test func rejectsInvalidPhaseAndDestructiveLink() {
+        #expect(throws: FirmwareRequest.RequestError.self) {
+            try FirmwareRequest(arguments: arguments + ["--phase", "compile"])
+        }
+        #expect(throws: FirmwareRequest.RequestError.self) {
+            try FirmwareRequest(arguments: arguments + ["--phase", "link", "--clean"])
+        }
     }
 
     @Test func legacyResourcesAndClean() throws {

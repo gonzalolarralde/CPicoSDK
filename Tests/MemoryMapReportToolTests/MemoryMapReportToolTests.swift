@@ -2,6 +2,11 @@ import Foundation
 import Testing
 @testable import MemoryMapReportTool
 
+@Test(arguments: ["libPicoSDK.a(crt0.S.o)", "/build/libPicoSDK.a(stdio.c.o)"])
+func classifiesSeparateSDKArchive(object: String) {
+    #expect(classifyObject(object, productName: "Example", cpicoSDKPath: "/project/CPicoSDK") == .picoSDK)
+}
+
 @Test func artifactStatsUsePublishedSiblingFiles() throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

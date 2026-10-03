@@ -490,7 +490,7 @@ func classifyObject(_ object: String, productName: String?, cpicoSDKPath: String
     if lower.contains("libswift_concurrency") {
         return .swiftRuntime
     }
-    if lower.contains("/pico-sdk-bundle/sdk/") || lower.contains("/pico-sdk/") || lower.contains("/sdk/2.") || lower.contains("libpico_") || lower.contains("libhardware_") {
+    if lower.contains("/pico-sdk-bundle/sdk/") || lower.contains("/pico-sdk/") || lower.contains("/sdk/2.") || lower.contains("libpico_") || lower.contains("libhardware_") || lower.contains("libpicosdk.a(") {
         return .picoSDK
     }
     if lower.contains("libgcc.a") || lower.contains("libg.a") || lower.contains("libc.a") || lower.contains("libstdc++.a") || lower.contains("crt0.o") || lower.contains("crtbegin.o") {

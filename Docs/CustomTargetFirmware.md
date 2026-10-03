@@ -6,6 +6,56 @@ It requires the modified local SwiftPM build, not a released Swift toolchain.
 
 ## Current verified state
 
+The firmware plugin now returns two ordered build commands:
+
+1. `--phase sdk` configures CMake and builds the `cpicosdk_sdk` static library.
+   Its declared outputs are `CMakeHarness/build/libPicoSDK.a`, `build.ninja`,
+   and a successful-build configuration record, `sdk-build.json`.
+2. `--phase link` consumes those outputs plus the Swift archive and assets,
+   builds application-specific runtime/resource objects, links the firmware,
+   and publishes ELF/UF2/BIN/map through `productFiles`.
+
+Both commands belong to the same plugin and share its private working directory.
+The link command does not clean or configure CMake. It rejects a missing SDK
+build or mismatched configuration rather than silently rebuilding with different
+settings. The legacy command plugin retains its existing behavior: omitting
+`--phase` runs both stages, and `--clean` applies before SDK compilation only.
+
+The SDK archive privately consumes Pico's interface-library sources; the final
+executable receives their compile and link settings without recompiling those
+sources. Whole-archive linking preserves startup/vector-table objects, with
+section garbage collection still enabled. The harness requires CMake 3.17 or
+newer for CMP0099's transitive static-library link properties (the prepared
+bundle supplies CMake 3.31.5).
+
+Board/stdio traits are still discovered from the built Swift archive. This is
+an explicit staging split, not yet an independent SDK target that can compile
+in parallel with Swift. SDK artifacts are internal plugin outputs, not published
+products for sharing across packages. SDK headers remain pre-generated.
+
+Verified on October 3, 2026 using the existing prototype SwiftPM and pinned
+April embedded compiler, without rebuilding Swift/LLVM or programming hardware:
+
+- All 67 host tests pass, including phase parsing, SDK state validation, and
+  memory-map classification of `libPicoSDK.a` members.
+- A fresh SwiftPM scratch directory builds and publishes RP2350 firmware with
+  sandboxed plugin commands (23.79 seconds, reusing downloaded tools).
+- A no-change build takes 1.57 seconds and preserves SDK/ELF/UF2 timestamps.
+- A Swift-only edit relinks firmware without recompiling SDK objects or changing
+  the SDK archive. An asset-only edit runs resource embedding and linking only.
+  Both temporary edits were restored and rebuilt.
+- Link-only execution rejects changed stdio settings. A deliberately failed
+  SDK configuration removes the success record and prevents a subsequent link.
+- A separate RP2040 C smoke archive builds through `--phase all`, including
+  boot-stage selection and ELF/UF2 generation, with no embedded resources.
+
+Logs are in `Example/.build/two-step-*.log`; host test results are in
+`.build/two-step-host-tests.log`. The cold-build scratch directory is
+`Example/.build/two-step-swiftpm`. These are local build-only checks, not runtime
+or performance validation on a board. Other boards and Linux remain unverified.
+
+## Previous single-command baseline
+
 The wrapper package is restored by explicit revert commit `5182dd0`; the failed
 same-package experiment remains in history as `9152594`.
 
@@ -115,9 +165,13 @@ Example static library
        v
 Firmware custom target / PicoFirmware plugin
   PicoFirmwareBuildTool
-    detect board and stdio traits from archive
-    select embedded Swift runtime archives
-    configure and build Pico SDK with CMake/Ninja
+    sdk command:
+      detect board and stdio traits from archive
+      select embedded Swift runtime archives
+      configure CMake and build libPicoSDK.a
+       |
+       v
+    link command:
     link firmware, embed assets, generate ELF/UF2/BIN/map
        |
        v
@@ -129,8 +183,11 @@ build.sh reports artifact sizes/memory use, then optionally flashes
 
 The finalizer is now a build-tool executable shared by the new build plugin and
 the existing `finalize-rp2xxx-binary` command plugin. The build plugin declares
-the application archive, tool binaries, CMake harness, SDK configuration, and
-assets as inputs. ELF, UF2, BIN, and the linker map are explicit outputs. CMake's build directory is
+the application archive, tool binaries, CMake harness, and SDK configuration as
+SDK-command inputs. The linker also depends on SDK-command outputs and asset
+contents. Resource paths are passed to both commands so adding/removing an asset
+updates the CMake graph, while changing only asset contents does not directly
+invalidate the SDK command. ELF, UF2, BIN, and the linker map are explicit outputs. CMake's build directory is
 retained between runs; the legacy command still cleans unless `--incremental`
 is supplied.
 

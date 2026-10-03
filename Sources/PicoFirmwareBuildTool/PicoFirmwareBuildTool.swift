@@ -1,6 +1,13 @@
 import Foundation
 
 struct FirmwareRequest {
+    enum Phase: String, CaseIterable {
+        case all
+        case sdk
+        case link
+    }
+
+    let phase: Phase
     let product: String
     let archive: URL
     let outputDirectory: URL
@@ -12,7 +19,7 @@ struct FirmwareRequest {
     init(arguments: [String]) throws {
         let options: Set<String> = [
             "--product", "--archive", "--output-directory", "--work-directory",
-            "--sdk-directory",
+            "--sdk-directory", "--phase",
         ]
         var values: [String: String] = [:]
         var resources: [URL] = []
@@ -44,13 +51,20 @@ struct FirmwareRequest {
         outputDirectory = URL(fileURLWithPath: try required("--output-directory"))
         workDirectory = URL(fileURLWithPath: try required("--work-directory"))
         sdkDirectory = URL(fileURLWithPath: try required("--sdk-directory"))
+        guard let phase = Phase(rawValue: values["--phase"] ?? "all"),
+              phase != .link || !clean else {
+            throw RequestError.invalidOption("--phase (expected all, sdk, or link; link cannot use --clean)")
+        }
+        self.phase = phase
         self.resources = resources
         self.clean = clean
     }
 
-    enum RequestError: Error, CustomStringConvertible {
+    enum RequestError: Error, CustomStringConvertible, LocalizedError {
         case invalidOption(String)
         case missingOption(String)
+
+        var errorDescription: String? { description }
 
         var description: String {
             switch self {

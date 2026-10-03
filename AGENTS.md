@@ -644,6 +644,13 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- When moving Pico SDK interface sources into a static library, enable CMake
+  CMP0099 (CMake 3.17+) so private dependencies still propagate linker options.
+  Missing linker-script symbols such as `__StackTop` after the split can mean
+  the final link lost usage requirements, not that startup objects are absent.
+  Check the generated link command and avoid exporting `INTERFACE_SOURCES`,
+  which would compile the SDK again in the firmware target.
+
 - When validating a build-graph fix, use a fresh build-output directory while
   retaining downloaded SDK bundles. A warm cache can supply undeclared archives
   or module maps and hide missing dependency edges. After a successful cold

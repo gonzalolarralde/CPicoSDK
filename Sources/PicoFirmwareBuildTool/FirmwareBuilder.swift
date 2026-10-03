@@ -64,7 +64,8 @@ struct FirmwareBuilder {
             buildArtifact: request.archive,
             productName: request.product,
             embeddedResources: resources,
-            clean: request.clean
+            clean: request.clean,
+            phase: request.phase
         )
     }
 
@@ -226,21 +227,15 @@ struct FirmwareBuilder {
             .path
     }
 
-    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], clean: Bool) async throws {
+    func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], clean: Bool, phase: FirmwareRequest.Phase) async throws {
         let fileManager = FileManager.default
         let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
         let ninjaPath = try Env.value("NINJA_PATH", combination: combination).expected
 
-        print("[CPicoSDK] Copying CMake harness to working directory")
-
-        let rsyncProcess = Process()
-        rsyncProcess.executableURL = URL(filePath: try Env.value("RSYNC_PATH").expected, directoryHint: .notDirectory)
-        rsyncProcess.arguments = ["-r", "-u", "\(cmakeHarness.path)", "\(workingDir.path)"]
-        guard try await rsyncProcess.asyncRun() == 0 else { throw Error.rsyncFailed }
-
         let srcDir = workingDir.appending(path: "CMakeHarness")
-        let buildDir = srcDir.appending(path: "build_\(combination)")
+        // Stable paths let the plugin declare SDK artifacts before reading the Swift archive.
+        let buildDir = srcDir.appending(path: "build")
 
         let importedLibs = try Env.importedLibs(combination: combination)
         let embeddedResourceArguments = try makeEmbeddedResourceCMakeArguments(embeddedResources)
@@ -253,10 +248,6 @@ struct FirmwareBuilder {
         var env = try Env.combinedVars(for: combination)
         env["PATH"] = "\(cmakePath):\(ninjaPath):\(ProcessInfo.processInfo.environment["PATH"]!)"
         let buildEnvironment = CMakeBuildEnvironment(env)
-        try buildEnvironment.prepare(buildDir, clean: clean)
-        print("[CPicoSDK] Build directory prepared at \(buildDir.path)")
-
-        print("[CPicoSDK] Running CMake configuration and build...")
 
         let cmakeConfigProcess = Process()
         cmakeConfigProcess.executableURL = cmakeBin
@@ -282,14 +273,30 @@ struct FirmwareBuilder {
             "-DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE1_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
         ] + embeddedResourceArguments
 
-        guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
-        try buildEnvironment.record(in: buildDir)
+        let sdkState = SDKBuildState(arguments: cmakeConfigProcess.arguments!, environment: env)
+        if phase != .link {
+            let stateFile = SDKBuildState.file(in: buildDir)
+            if fileManager.fileExists(atPath: stateFile.path) {
+                try fileManager.removeItem(at: stateFile)
+            }
+            print("[CPicoSDK] Copying CMake harness to working directory")
+            let rsyncProcess = Process()
+            rsyncProcess.executableURL = URL(filePath: try Env.value("RSYNC_PATH").expected, directoryHint: .notDirectory)
+            rsyncProcess.arguments = ["-rc", "\(cmakeHarness.path)", "\(workingDir.path)"]
+            guard try await rsyncProcess.asyncRun() == 0 else { throw Error.rsyncFailed }
 
-        let cmakeBuildProcess = Process()
-        cmakeBuildProcess.executableURL = cmakeBin
-        cmakeBuildProcess.environment = env
-        cmakeBuildProcess.arguments = ["--build", buildDir.path]
-        guard try await cmakeBuildProcess.asyncRun() == 0 else { throw Error.cmakeBuildFailed }
+            try buildEnvironment.prepare(buildDir, clean: clean)
+            print("[CPicoSDK] Configuring and building Pico SDK...")
+            guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
+            try buildEnvironment.record(in: buildDir)
+            try await buildCMakeTarget("cpicosdk_sdk", in: buildDir, cmake: cmakeBin, environment: env)
+            try sdkState.record(in: buildDir)
+        }
+        if phase == .sdk { return }
+
+        try sdkState.validate(in: buildDir)
+        print("[CPicoSDK] Linking firmware and generating outputs...")
+        try await buildCMakeTarget(productName, in: buildDir, cmake: cmakeBin, environment: env)
 
         try fileManager.ensureDirectoryExists(at: outputDir.path, isDirectory: true)
 
@@ -315,6 +322,14 @@ struct FirmwareBuilder {
             try fileManager.copyItem(at: buildDir.appending(path: "\(productName).\(suffix)"), to: destination)
         }
         print("[CPicoSDK] Build artifacts copied to output directory at \(outputDir.path)")
+    }
+
+    private func buildCMakeTarget(_ target: String, in directory: URL, cmake: URL, environment: [String: String]) async throws {
+        let process = Process()
+        process.executableURL = cmake
+        process.environment = environment
+        process.arguments = ["--build", directory.path, "--target", target]
+        guard try await process.asyncRun() == 0 else { throw Error.cmakeBuildFailed }
     }
 
     private func makeEmbeddedResourceCMakeArguments(_ embeddedResources: [String: URL]) throws -> [String] {

@@ -6,7 +6,8 @@ set_target_properties(picotool PROPERTIES
 
 # Generated Cmake Pico project file
 
-cmake_minimum_required(VERSION 3.13)
+# CMP0099 propagates the SDK's link options through its private static dependencies.
+cmake_minimum_required(VERSION 3.17)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -40,8 +41,12 @@ target_sources("${PROJECT_NAME}" PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/runtime_coprocessors.c
 )
 
-pico_set_program_name("${PROJECT_NAME}" "${PROJECT_NAME}")
-pico_set_program_version("${PROJECT_NAME}" "0.1")
+# Pico's interface libraries contribute sources. Compile those exactly once in
+# an explicit archive, retaining their link requirements for the firmware target.
+add_library(cpicosdk_sdk STATIC)
+set_target_properties(cpicosdk_sdk PROPERTIES OUTPUT_NAME PicoSDK)
+pico_set_program_name(cpicosdk_sdk "${PROJECT_NAME}")
+pico_set_program_version(cpicosdk_sdk "0.1")
 
 set(CPICOSDK_HOT_MEMMAP_SOURCE "${PICO_SDK_PATH}/src/rp2_common/pico_crt0/${PICO_CHIP}/memmap_default.ld")
 set(CPICOSDK_HOT_MEMMAP "${CMAKE_CURRENT_BINARY_DIR}/memmap_cpicosdk_hot.ld")
@@ -130,16 +135,18 @@ file(WRITE "${CPICOSDK_HOT_MEMMAP}" "${CPICOSDK_HOT_MEMMAP_CONTENT}")
 pico_set_linker_script("${PROJECT_NAME}" "${CPICOSDK_HOT_MEMMAP}")
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart("${PROJECT_NAME}" ${STDIO_UART})
-pico_enable_stdio_usb("${PROJECT_NAME}" ${STDIO_USB})
-pico_enable_stdio_rtt("${PROJECT_NAME}" ${STDIO_RTT})
+foreach(CPICOSDK_TARGET cpicosdk_sdk "${PROJECT_NAME}")
+    pico_enable_stdio_uart(${CPICOSDK_TARGET} ${STDIO_UART})
+    pico_enable_stdio_usb(${CPICOSDK_TARGET} ${STDIO_USB})
+    pico_enable_stdio_rtt(${CPICOSDK_TARGET} ${STDIO_RTT})
+endforeach()
 
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=malloc")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=calloc")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=realloc")
 target_link_options("${PROJECT_NAME}" PRIVATE "LINKER:--wrap=free")
 
-target_compile_definitions("${PROJECT_NAME}" PRIVATE
+target_compile_definitions(cpicosdk_sdk PRIVATE
     PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1
     PICO_STDIO_USB_ENABLE_RESET_VIA_BAUD_RATE=1
     PICO_ENTER_USB_BOOT_ON_EXIT=1
@@ -155,14 +162,21 @@ set_target_properties(Output PROPERTIES
 )
 
 string(REPLACE "," ";" IMPORTED_LIBS_LIST "${IMPORTED_LIBS}")
+target_link_libraries(cpicosdk_sdk PRIVATE ${IMPORTED_LIBS_LIST} pico_async_context_poll)
+# Export compile settings for application-specific C sources, but not the SDK's
+# INTERFACE_SOURCES (which would compile the SDK a second time in the executable).
+foreach(CPICOSDK_PROPERTY INCLUDE_DIRECTORIES COMPILE_DEFINITIONS COMPILE_OPTIONS)
+    set_property(TARGET cpicosdk_sdk PROPERTY INTERFACE_${CPICOSDK_PROPERTY}
+        "$<TARGET_PROPERTY:cpicosdk_sdk,${CPICOSDK_PROPERTY}>")
+endforeach()
 target_link_libraries("${PROJECT_NAME}" "-Wl,--start-group")
 target_link_libraries("${PROJECT_NAME}" Output)
 if(EXTRA_SWIFT_ARCHIVES)
     target_link_libraries("${PROJECT_NAME}" "-Wl,--whole-archive" ${EXTRA_SWIFT_ARCHIVES} "-Wl,--no-whole-archive")
 endif()
-target_link_libraries("${PROJECT_NAME}" ${IMPORTED_LIBS_LIST})
+# Startup/vector-table objects must not depend on ordinary archive extraction.
+target_link_libraries("${PROJECT_NAME}" "-Wl,--whole-archive" cpicosdk_sdk "-Wl,--no-whole-archive")
 target_link_libraries("${PROJECT_NAME}" "-Wl,--end-group")
-target_link_libraries("${PROJECT_NAME}" pico_async_context_poll)
 
 # Add the standard include files to the build
 target_include_directories("${PROJECT_NAME}" PRIVATE
@@ -170,6 +184,10 @@ target_include_directories("${PROJECT_NAME}" PRIVATE
 )
 
 target_compile_options("${PROJECT_NAME}" PRIVATE
+    -ffunction-sections
+    -fdata-sections
+)
+target_compile_options(cpicosdk_sdk PRIVATE
     -ffunction-sections
     -fdata-sections
 )
