@@ -179,7 +179,7 @@ extension PrepareEnvironmentPlugin {
     
     func generateBashFunctions() {
         self.output += """
-        function finalize_rp2xxx_binary {
+        function configure_rp2xxx_stdio {
             if [[ "${1:-}" == "--flash" || "${1:-}" == "--picotool" ]]; then
                 export AUTO_STDIO="usb"
             elif [[ "${1:-}" == "--cortex-debug" ]]; then
@@ -188,7 +188,37 @@ extension PrepareEnvironmentPlugin {
                 echo "[CPicoSDK] Warning: Launcher not specified. Defaulting to USB stdio." >&2
                 export AUTO_STDIO="usb"
             fi
+        }
 
+        function configure_rp2xxx_build {
+            "$SWIFTLY_PATH" install || return
+            local compiler="${CPICOSDK_SWIFT_EXEC:-}"
+            if [[ -z "$compiler" ]]; then
+                compiler="$("$SWIFTLY_PATH" run which swiftc)" || return
+            fi
+            if [[ ! -x "$compiler" ]]; then
+                echo "[CPicoSDK] Swift compiler is not executable: $compiler" >&2
+                return 1
+            fi
+            export CPICOSDK_SWIFT_EXEC="$compiler"
+
+            # Bind the generated toolset only after swiftly install has run.
+            local toolchain="$PLUGIN_OUTPUT_PATH/generated/swift-toolchain"
+            local prefix="$(dirname -- "$(dirname -- "$compiler")")"
+            mkdir -p "$(dirname -- "$toolchain")" || return
+            if [[ -e "$toolchain" && ! -L "$toolchain" ]]; then
+                echo "[CPicoSDK] Expected a toolchain symlink: $toolchain" >&2
+                return 1
+            fi
+            if [[ "$(readlink "$toolchain" || true)" != "$prefix" ]]; then
+                ln -sfn "$prefix" "$toolchain" || return
+            fi
+
+            configure_rp2xxx_stdio "$@"
+        }
+
+        function finalize_rp2xxx_binary {
+            configure_rp2xxx_stdio "$@"
             "$SWIFTLY_PATH" run swift package \\
                 -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \\
                 finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
@@ -307,19 +337,15 @@ extension PrepareEnvironmentPlugin {
             "-wmo",
         ]
         let swiftCompilerFlagsJSON = try jsonArrayString(swiftCompilerFlags)
-        let compilerPath: String
-        if let path = envVars["CPICOSDK_SWIFT_EXEC"] {
-            let data = try JSONEncoder().encode(path)
-            compilerPath = "\"path\": \(String(decoding: data, as: UTF8.self)),"
-        } else {
-            compilerPath = ""
-        }
+        let compilerPath = envVars["CPICOSDK_SWIFT_EXEC"]
+            ?? "\(envVars["PLUGIN_OUTPUT_PATH"]!)/generated/swift-toolchain/bin/swiftc"
+        let compilerPathJSON = String(decoding: try JSONEncoder().encode(compilerPath), as: UTF8.self)
 
         let toolsetJSON = """
         {
             "schemaVersion": "1.0",
             "swiftCompiler": {
-                \(compilerPath)
+                "path": \(compilerPathJSON),
                 "extraCLIOptions": \(swiftCompilerFlagsJSON)
             },
             "cCompiler": {

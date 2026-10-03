@@ -712,7 +712,7 @@ struct DeviceHarnessRunner {
           exit 1
         fi
 
-        if [ "$PREPARATION_INPUTS_CHANGED" = "1" ] || [ ! -f "$PREPARATION_SCRIPT_PATH" ] || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) -nt "$PREPARATION_SCRIPT_PATH" ]; then
+        if [ "$PREPARATION_INPUTS_CHANGED" = "1" ] || [ ! -f "$PREPARATION_SCRIPT_PATH" ] || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) -nt "$PREPARATION_SCRIPT_PATH" ] || [ \(shellQuote(options.cpicoSDKPath.appendingPathComponent("Plugins/PrepareEnvironmentPlugin/Generators.swift").path)) -nt "$PREPARATION_SCRIPT_PATH" ]; then
           "$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \\
             --cpicosdk-envs-path \(shellQuote(options.cpicoSDKPath.appendingPathComponent("env.json").path)) \\
             --dump-prep-script "$PREPARATION_SCRIPT_PATH" \\
@@ -725,7 +725,7 @@ struct DeviceHarnessRunner {
           printf '%s' "$STACK_SIZE_SIGNATURE" > "$PREPARATION_STACK_SIZE_STAMP"
         fi
         source "$PREPARATION_SCRIPT_PATH"
-        "$SWIFTLY_PATH" install
+        configure_rp2xxx_build
         "$SWIFTLY_PATH" run swift build \\
           -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \\
           --build-system native \\

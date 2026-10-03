@@ -22,12 +22,6 @@ else
   exit 1
 fi
 
-# Make sure the selected swift toolchain is installed.
-"$SWIFTLY_PATH" install
-
-# Host plugins use the PR's SwiftPM; firmware uses the pinned embedded compiler.
-export CPICOSDK_SWIFT_EXEC=${CPICOSDK_SWIFT_EXEC:-$("$SWIFTLY_PATH" run which swiftc)}
-
 # This command will prepare the environment and create a swiftpm and a vscode basic configuration.
 # On doing so, it might opt to overwrite some of the existing files. If you are customizing your
 # environment, please inspect the preparation script dumped at PREPARATION_SCRIPT_PATH and source it
@@ -47,10 +41,7 @@ sh ../utils/swiftpm-experimental.sh package --disable-sandbox prepare-rp2xxx-env
 # Users can opt to place the output in a different location and source it here once inspected if preferred.
 source "$PREPARATION_SCRIPT_PATH"
 
-case "${1:-}" in
-    --cortex-debug) export AUTO_STDIO=uart ;;
-    *) export AUTO_STDIO=usb ;;
-esac
+configure_rp2xxx_build "$@"
 
 # Builds the application and links the firmware through the build plugin.
 sh ../utils/swiftpm-experimental.sh build \

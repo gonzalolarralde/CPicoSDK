@@ -644,6 +644,13 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- Keep `Example/build.sh` as a stable sequence of visible SwiftPM calls and
+  generated helper calls. Preparation owns `.swift-version`, so call
+  `configure_rp2xxx_build` after sourcing the preparation script; it installs
+  the selected toolchain and resolves its compiler. Keep stdio selection and
+  toolchain binding in the generated helpers rather than adding
+  launcher-specific shell logic.
+
 - When moving Pico SDK interface sources into a static library, enable CMake
   CMP0099 (CMake 3.17+) so private dependencies still propagate linker options.
   Missing linker-script symbols such as `__StackTop` after the split can mean

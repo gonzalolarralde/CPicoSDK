@@ -228,12 +228,20 @@ The existing SwiftCompiler checkout is not modified by this experiment.
 
 ## Run
 
-Install the embedded toolchain specified by `Example/.swift-version` with
-swiftly first. Then, from `Example`:
+Start with an installed Swift toolchain and swiftly. From `Example`:
 
 ```sh
 bash build.sh
 ```
+
+Preparation writes `Example/.swift-version` from `env.json`. The generated
+`configure_rp2xxx_build` helper runs `swiftly install`, then resolves the selected
+compiler and configures automatic stdio. The generated
+toolset uses a stable `generated/swift-toolchain` link in the preparation
+plugin's output directory, bound by that helper after installation; it does not
+capture the previously selected Swift compiler. Manual build scripts must call
+the helper after sourcing the preparation script and before building. The
+legacy finalizer shares the same generated stdio selector.
 
 `SWIFTPM_CHECKOUT` can select another build of the patched SwiftPM.
 `CPICOSDK_SWIFT_EXEC` can select an explicit embedded `swiftc`. It affects the
@@ -258,6 +266,13 @@ Host tests, from the repository root:
 ```sh
 CPICOSDK_HOST_TESTS=1 sh utils/swiftpm-experimental.sh test --build-system swiftbuild \
   -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking
+```
+
+After generating `Example/.env_prep`, check launcher ordering and the generated
+helpers without installing toolchains or accessing hardware:
+
+```sh
+bash Tests/BuildPreparation/verify.sh
 ```
 
 ## Required local upstream patches
