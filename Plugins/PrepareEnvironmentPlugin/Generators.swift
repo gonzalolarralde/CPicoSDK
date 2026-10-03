@@ -189,7 +189,9 @@ extension PrepareEnvironmentPlugin {
                 export AUTO_STDIO="usb"
             fi
 
-            "$SWIFTLY_PATH" run swift package finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
+            "$SWIFTLY_PATH" run swift package \\
+                -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \\
+                finalize-rp2xxx-binary "$SWIFTPM_PRODUCT" \\
                 "$@" \\
                 --allow-writing-to-package-directory
         }

@@ -727,6 +727,7 @@ struct DeviceHarnessRunner {
         source "$PREPARATION_SCRIPT_PATH"
         "$SWIFTLY_PATH" install
         "$SWIFTLY_PATH" run swift build \\
+          -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \\
           --build-system native \\
           --configuration $SWIFT_BUILD_TYPE \\
           --toolset "$TOOLSET_PATH" \\

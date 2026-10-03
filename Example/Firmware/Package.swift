@@ -3,7 +3,6 @@ import PackageDescription
 
 let package = Package(
     name: "ExampleFirmware",
-    platforms: [.macOS(.v13)],
     dependencies: [
         .package(path: ".."),
         .package(path: "../..", traits: []),

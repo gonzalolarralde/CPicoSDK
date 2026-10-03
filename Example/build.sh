@@ -54,6 +54,7 @@ esac
 
 # Builds the application and links the firmware through the build plugin.
 sh ../utils/swiftpm-experimental.sh build \
+    -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \
     --package-path Firmware --target Firmware \
     --build-system swiftbuild \
     --configuration "$SWIFT_BUILD_TYPE" \

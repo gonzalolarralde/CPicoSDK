@@ -11,7 +11,6 @@ let hostOnlyTests = Context.environment["CPICOSDK_HOST_TESTS"] == "1"
 
 let package = Package(
     name: "CPicoSDK",
-    platforms: [.macOS(.v13)],
     products: hostOnlyTests ? [
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
     ] : [

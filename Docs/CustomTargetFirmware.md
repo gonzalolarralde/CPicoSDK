@@ -197,8 +197,12 @@ yet provide same-package product dependencies to express that relationship.
 Build `--target Firmware` explicitly: the prototype does not include otherwise
 unreferenced custom targets in its default aggregate build.
 
-The manifest's macOS 13 minimum is for host build tools using Foundation and
-Swift Regex APIs. The firmware still targets bare-metal ARM.
+The manifests do not declare an Apple platform minimum. Build commands pass
+`-Xswiftc -Xfrontend -Xswiftc -disable-availability-checking` so host build tools
+can use modern Foundation and Swift Regex APIs without imposing a macOS floor
+on the firmware packages. This suppresses compiler availability diagnostics;
+the host running those tools must still support their APIs (macOS 13 or newer).
+The firmware still targets bare-metal ARM.
 
 ## Local setup
 
@@ -252,7 +256,8 @@ Flashing remains explicit (`--flash`); ordinary builds do not access a device.
 Host tests, from the repository root:
 
 ```sh
-CPICOSDK_HOST_TESTS=1 sh utils/swiftpm-experimental.sh test --build-system native
+CPICOSDK_HOST_TESTS=1 sh utils/swiftpm-experimental.sh test --build-system swiftbuild \
+  -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking
 ```
 
 ## Required local upstream patches
