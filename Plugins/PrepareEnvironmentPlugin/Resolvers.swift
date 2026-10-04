@@ -24,32 +24,4 @@ extension PrepareEnvironmentPlugin {
         return libraryProducts.first
     }
 
-    func resolve(envVars: [String: String]) -> [String: String] {
-        var resolvedEnvVars = envVars
-
-        var iterations = 10
-        let regex = /\$\{(.*?)\}/
-
-        var varsToResolve = resolvedEnvVars.filter { $0.value.contains("$") }
-        repeat {
-            for (key, value) in varsToResolve {
-                resolvedEnvVars[key] = value.replacing(regex) { match in
-                    if let replacement = resolvedEnvVars[String(match.1)] {
-                        replacement
-                    } else {
-                        String(match.0)
-                    }
-                }
-            }
-            varsToResolve = resolvedEnvVars.filter { $0.value.contains("$") }
-            iterations -= 1
-        } while iterations > 0 && varsToResolve.count > 0
-
-        if varsToResolve.count > 0 {
-            let unresolvedVars = varsToResolve.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
-            fatalError("[CPicoSDK] Couldn't resolve all env variables. The only var replacement format accepted is ${VAR}. Remaining: [\(unresolvedVars)]")
-        }
-
-        return resolvedEnvVars
-    }
 }

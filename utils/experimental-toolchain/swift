@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    build|package|test)
+        exec sh "$(dirname -- "$0")/../swiftpm-experimental.sh" "$@"
+        ;;
+    *) exec xcrun swift "$@" ;;
+esac

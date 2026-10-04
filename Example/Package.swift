@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.5
 
 import PackageDescription
 
@@ -9,8 +9,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/gonzalolarralde/CPicoSDK",
-            exact: "2.2.7",
+            path: "..",
             traits: [
                 .init(name: "BootStage2_W25Q080"),
                 .init(name: "StdIO_Automatic"),

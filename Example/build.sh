@@ -31,7 +31,7 @@ fi
     #--disable-toolset \
     #--disable-swift-version \
     #--disable-install-dependencies \
-"$SWIFTLY_PATH" run swift package prepare-rp2xxx-environment \
+sh ../utils/swiftpm-experimental.sh package --disable-sandbox prepare-rp2xxx-environment \
     "$@" \
     --dump-prep-script "$PREPARATION_SCRIPT_PATH" \
     --allow-writing-to-package-directory \
@@ -41,21 +41,21 @@ fi
 # Users can opt to place the output in a different location and source it here once inspected if preferred.
 source "$PREPARATION_SCRIPT_PATH"
 
-# Make sure the selected swift toolchain is installed.
-"$SWIFTLY_PATH" install
+configure_rp2xxx_build "$@"
 
-# Builds the library using swiftpm. This is where the application code is compiled.
-"$SWIFTLY_PATH" run swift build \
-    --build-system native \
-    --configuration $SWIFT_BUILD_TYPE \
-    --toolset $TOOLSET_PATH \
-    --triple $SWIFTPM_TRIPLE \
+# Builds the application and links the firmware through the build plugin.
+sh ../utils/swiftpm-experimental.sh build \
+    -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \
+    --package-path Firmware --target Firmware \
+    --build-system swiftbuild \
+    --configuration "$SWIFT_BUILD_TYPE" \
+    --toolset "$TOOLSET_PATH" \
+    --triple "$SWIFTPM_TRIPLE" \
     $EXTRA_CONFIG_PARAMS            # This allows passing extra parameters from the command line.
                                     # Used for adding debugging flags based on the cmake configuration.
 
-# Here the application code is linked with the PicoSDK and other imported libraries to produce
-# the final binary that can be flashed to the target device. An UF2 and ELF file are produced.
-finalize_rp2xxx_binary "$@"
+# Report on the published artifacts, even when the build is already up to date.
+memory_map_report
 
 # Flash the produced binary to the target device if requested.
 flash_if_needed "$@"

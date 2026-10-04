@@ -43,6 +43,7 @@ struct Options {
     var mapPath: URL?
     var verbose = false
     var showSections = true
+    var showArtifactStats = false
 }
 
 @main
@@ -66,6 +67,10 @@ struct MemoryMapReportTool {
             } ?? []
             let contributions = reconcileOwnershipTotals(rawContributions, sections: sections)
 
+            if options.showArtifactStats {
+                print(artifactStats(elf: artifact.elf).joined(separator: "\n"))
+                print("")
+            }
             printReport(
                 packageDir: packageDir,
                 env: env,
@@ -106,6 +111,8 @@ func parseOptions() throws -> Options {
             options.verbose = true
         case "--no-sections":
             options.showSections = false
+        case "--artifact-stats":
+            options.showArtifactStats = true
         case "--help", "-h":
             printUsage()
             Foundation.exit(0)
@@ -143,13 +150,27 @@ func takeValue(_ args: inout [String], for flag: String) throws -> String {
 
 func printUsage() {
     print("""
-    Usage: swift package memory-map-report [elf] [map] [--elf path] [--map path] [--verbose] [--no-sections]
+    Usage: swift package memory-map-report [elf] [map] [--elf path] [--map path] [--verbose] [--no-sections] [--artifact-stats]
 
     Reports flash/RAM section sizes and ownership for an existing CPicoSDK ELF.
     If an ELF path is provided without a map path, the tool first looks for a
     sibling .map file, such as app.elf.map or app.map.
     This command does not build. Run your project build first if no ELF exists.
     """)
+}
+
+func artifactStats(elf: URL) -> [String] {
+    let stem = elf.deletingPathExtension()
+    let paths = [
+        ("BIN payload size", "BIN", stem.appendingPathExtension("bin")),
+        ("UF2 file size", "UF2", stem.appendingPathExtension("uf2")),
+        ("Host Debug Binary Size", "ELF", elf),
+    ]
+    return ["[CPicoSDK] Artifact stats:"] + paths.compactMap { label, kind, url in
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attributes[.size] as? NSNumber else { return nil }
+        return "[CPicoSDK]   - \(label): \(size.uint64Value) B (\(formatKiB(size.uint64Value))) (\(kind))"
+    }
 }
 
 func loadPreparedEnvironment(packageDir: URL) -> [String: String] {
@@ -469,7 +490,7 @@ func classifyObject(_ object: String, productName: String?, cpicoSDKPath: String
     if lower.contains("libswift_concurrency") {
         return .swiftRuntime
     }
-    if lower.contains("/pico-sdk-bundle/sdk/") || lower.contains("/pico-sdk/") || lower.contains("/sdk/2.") || lower.contains("libpico_") || lower.contains("libhardware_") {
+    if lower.contains("/pico-sdk-bundle/sdk/") || lower.contains("/pico-sdk/") || lower.contains("/sdk/2.") || lower.contains("libpico_") || lower.contains("libhardware_") || lower.contains("libpicosdk.a(") {
         return .picoSDK
     }
     if lower.contains("libgcc.a") || lower.contains("libg.a") || lower.contains("libc.a") || lower.contains("libstdc++.a") || lower.contains("crt0.o") || lower.contains("crtbegin.o") {

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.5
 
 import PackageDescription
 
@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
     ] : [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
+        .library(name: "CPicoSDKConfiguration", type: .static, targets: ["CPicoSDKConfiguration"]),
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .library(name: "PSRAM", targets: ["PSRAM"]),
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
@@ -22,6 +23,9 @@ let package = Package(
         .plugin(name: "AssetCompiler", targets: ["AssetCompiler"]),
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
+        .plugin(name: "PicoFirmware", targets: ["PicoFirmwarePlugin"]),
+        .plugin(name: "PicoSDKBuild", targets: ["PicoSDKBuildPlugin"]),
+        .plugin(name: "PicoBuildConfiguration", targets: ["PicoBuildConfigurationPlugin"]),
         .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
     ],
@@ -61,7 +65,12 @@ let package = Package(
     ],
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
+        .target(name: "PicoBuildConfigurationCore"),
+        .executableTarget(name: "PicoBuildConfigurationTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .testTarget(name: "PicoBuildConfigurationCoreTests", dependencies: ["PicoBuildConfigurationCore"]),
         .executableTarget(name: "MemoryMapReportTool"),
+        .executableTarget(name: "PicoFirmwareBuildTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .testTarget(name: "PicoFirmwareBuildToolTests", dependencies: ["PicoFirmwareBuildTool"]),
         .testTarget(
             name: "TestInDeviceCoreTests",
             dependencies: ["TestInDeviceCore"]
@@ -83,6 +92,7 @@ let package = Package(
         .target(
             name: "CPicoSDK",
             dependencies: [
+                .target(name: "CPicoSDKConfiguration"),
                 .target(name: "ARMClib"),
                 .target(name: "CShims"),
 
@@ -114,6 +124,7 @@ let package = Package(
         ),
 
         // Manually defined targets
+        .target(name: "CPicoSDKConfiguration"),
         .target(name: "ARMClib"),
         .target(name: "TLSF"),
 
@@ -161,6 +172,12 @@ let package = Package(
             dependencies: ["AssetCompilerTool"]
         ),
         .executableTarget(name: "AssetCompilerTool"),
+        .target(name: "PicoBuildConfigurationCore"),
+        .executableTarget(name: "PicoBuildConfigurationTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .executableTarget(name: "PicoFirmwareBuildTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .plugin(name: "PicoBuildConfigurationPlugin", capability: .buildTool, dependencies: ["PicoBuildConfigurationTool"]),
+        .plugin(name: "PicoFirmwarePlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
+        .plugin(name: "PicoSDKBuildPlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
 
         .target(name: "TestInDeviceCore"),
         .executableTarget(
@@ -202,6 +219,7 @@ let package = Package(
             ),
             dependencies: [
                 .product(name: "pico-bootstrap", package: "PicoSDKDownloader"),
+                .target(name: "PicoBuildConfigurationTool"),
             ]
         ),
         .plugin(
@@ -212,7 +230,7 @@ let package = Package(
                     .writeToPackageDirectory(reason: "Finalizes build by linking with pico-sdk and generates UF2 and ELF binaries."),
                 ]
             ),
-            dependencies: ["MemoryMapReportTool"]
+            dependencies: ["PicoFirmwareBuildTool", "MemoryMapReportTool"]
         ),
         .plugin(
             name: "TestInDevicePlugin",

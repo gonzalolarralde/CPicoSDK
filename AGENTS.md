@@ -644,6 +644,63 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- Preparation also bootstraps root header generation from `Package.swift.template`
+  before generated SDK headers exist. Keep its all-board shell exports and
+  `--disable-toolset --disable-swift-version --dont-force-product-name` behavior.
+  Share header-independent configuration logic through the host tool, not by
+  making header generation depend on a compiled firmware/configuration archive.
+  Use `Tests/BuildPreparation/verify-header-generation.sh <installed-sdk-bundle>`
+  for an isolated all-board check; root `build.sh` deletes generated source and
+  build files and must not be used as a routine regression command in this checkout.
+
+- If a custom-target published ARM archive fails with `member ... (/) in archive
+  is not an object`, compare the original plugin output and published file with
+  `shasum` and inspect their archive headers. Swift Build release copy phases can
+  invoke host stripping and rewrite GNU archive symbol tables on macOS. Confirm
+  with a link against the original archive before changing SDK compilation.
+  The experimental `BuildProduct` API currently has no per-product strip option.
+  The local SwiftPM fix sets `COPY_PHASE_STRIP=NO` on custom targets in both
+  configurations; their producers own binary finalization. Check byte equality
+  of the source and published archive, then verify a cold full link and no-op
+  artifact timestamps rather than relying only on an SDK-only build.
+
+- Keep `Example/build.sh` as a stable sequence of visible SwiftPM calls and
+  generated helper calls. Preparation owns `.swift-version`, so call
+  `configure_rp2xxx_build` after sourcing the preparation script; it installs
+  the selected toolchain and resolves its compiler. Keep stdio selection and
+  toolchain binding in the generated helpers rather than adding
+  launcher-specific shell logic.
+
+- When moving Pico SDK interface sources into a static library, enable CMake
+  CMP0099 (CMake 3.17+) so private dependencies still propagate linker options.
+  Missing linker-script symbols such as `__StackTop` after the split can mean
+  the final link lost usage requirements, not that startup objects are absent.
+  Check the generated link command and avoid exporting `INTERFACE_SOURCES`,
+  which would compile the SDK again in the firmware target.
+
+- When validating a build-graph fix, use a fresh build-output directory while
+  retaining downloaded SDK bundles. A warm cache can supply undeclared archives
+  or module maps and hide missing dependency edges. After a successful cold
+  build, rerun unchanged and compare artifact hashes and modification times to
+  check that plugin publication remains incremental.
+
+- Retained CMake build directories must be invalidated when the Pico SDK or ARM
+  toolchain location changes. A typical symptom is `add_subdirectory not given
+  a binary directory` with source paths from two SDK bundles. CMake caches
+  `PICO_PLATFORM_CMAKE_FILE` and compiler paths independently of `PICO_SDK_PATH`;
+  changing only the latter does not refresh them. The firmware tool records its
+  SDK/toolchain environment after configuration and resets only its own CMake
+  build directory when that identity changes or the stamp is missing.
+
+- With a locally built SwiftPM, route nested `swift package` invocations to the
+  same checkout and manifest/plugin libraries. Otherwise a command plugin can
+  launch the installed SwiftPM and reject a tools version accepted by its parent.
+  This branch's `utils/swiftpm-experimental.sh` provides that routing.
+- When testing cross-compilation with Swift Build, inspect the compiler triple
+  separately for host plugin tools and destination modules. An ARM architecture
+  paired with a macOS SDK indicates leaked destination overrides, not a missing
+  embedded runtime. Keep destination-only settings qualified accordingly.
+
 - Build the device example from `Example/` with `./build.sh`. Do not use a
   repo-root `./build`.
 - If local package edits appear to have no effect, check

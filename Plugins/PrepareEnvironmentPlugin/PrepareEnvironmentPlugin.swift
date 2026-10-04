@@ -5,6 +5,7 @@ import PackagePlugin
 class PrepareEnvironmentPlugin: CommandPlugin {
     var verbose = false
     var output = ""
+    var installationConfiguration: Data?
 
     required init() {}
 
@@ -60,7 +61,7 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         }
         cPicoSDKPackageEnv.validateCombinations()
 
-        let consolidatedEnvVars = await self.generateEnvVars(
+        let consolidatedEnvVars = try await self.generateEnvVars(
             given: givenEnvVars, 
             packageEnv: cPicoSDKPackageEnv,
             context: context,
@@ -78,6 +79,10 @@ class PrepareEnvironmentPlugin: CommandPlugin {
         if generateToolset {
             let generatedNewlibOverlayDir = try self.generateNewlibOverlayHeader(envVars: consolidatedEnvVars)
             try self.generateToolset(envVars: consolidatedEnvVars, newlibOverlayDir: generatedNewlibOverlayDir)
+            _ = try overwriteOrCreateIfNeeded(
+                path: context.package.directoryURL.appending(path: ".cpicosdk-installation.json").path,
+                matchingContent: installationConfiguration
+            )
         }
 
         if syncSwiftVersion {

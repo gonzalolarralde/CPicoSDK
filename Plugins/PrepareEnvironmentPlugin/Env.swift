@@ -19,6 +19,7 @@ struct Env: Codable, Hashable {
         "SWIFTPM_PRODUCT",
         "PICO_SDK_BUNDLE_PATH",
         "SWIFT_VERSION",
+        "CPICOSDK_SWIFT_EXEC",
         "SDK_VERSION",
         "TOOLCHAIN_VERSION",
         "CMAKE_VERSION",
