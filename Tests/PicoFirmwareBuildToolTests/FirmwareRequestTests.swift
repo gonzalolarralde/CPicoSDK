@@ -17,6 +17,7 @@ struct FirmwareRequestTests {
         #expect(request.resources.isEmpty)
         #expect(request.phase == .all)
         #expect(request.configurationArchive == request.archive)
+        #expect(request.buildConfiguration == nil)
         #expect(request.sdkArtifactsDirectory == nil)
     }
 
@@ -31,10 +32,12 @@ struct FirmwareRequestTests {
         let request = try FirmwareRequest(arguments: arguments + [
             "--phase", "link", "--configuration-archive", "/tmp/libCPicoSDKConfiguration.a",
             "--sdk-artifacts-directory", "/tmp/sdk artifacts",
+            "--build-configuration", "/tmp/build configuration.json",
         ])
         #expect(request.configurationArchive.path == "/tmp/libCPicoSDKConfiguration.a")
         #expect(request.archive.path == "/tmp/with spaces/libExample.a")
         #expect(request.sdkArtifactsDirectory?.path == "/tmp/sdk artifacts")
+        #expect(request.buildConfiguration?.path == "/tmp/build configuration.json")
     }
 
     @Test func linkRequiresPublishedSDK() {

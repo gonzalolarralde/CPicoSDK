@@ -4,42 +4,63 @@ This branch experiments with [SwiftPM PR #10374](https://github.com/swiftlang/sw
 and [Swift Build PR #1740](https://github.com/swiftlang/swift-build/pull/1740).
 It requires the modified local SwiftPM build, not a released Swift toolchain.
 
-## Current implementation and remaining blocker
+## Current implementation and verification
 
 Board/stdio markers and their compile-time validation now live in the independent
 `CPicoSDKConfiguration` target. `CPicoSDK` re-exports it, preserving metadata in
-the application archive for the legacy finalizer. The wrapper has two custom
-targets: `PicoSDK` depends only on the configuration static product and publishes
+the application archive for the legacy finalizer. The wrapper has three custom
+targets: `PicoBuildConfiguration` resolves native-build settings from the metadata;
+`PicoSDK` consumes that configuration and publishes
 `libPicoSDK.a` plus `sdk-build.json`; `Firmware` depends on that target, the
 configuration product, and the Example static product.
 
-Each plugin owns its own CMake working directory. The link phase configures an
+Each native-build plugin owns its own CMake working directory. The link phase configures an
 imported SDK archive, using the same Pico interface compile/link requirements
 without rebuilding SDK sources. It validates the SDK configuration record before
 changing its working directory. Runtime selection and asset embedding remain
 application work. The legacy default `--phase all` still builds and links in one
 directory. `Example/build.sh` is unchanged.
 
-Verified locally on October 3, 2026:
+Verified locally on October 3-4, 2026:
 
-- All 69 host tests pass.
+- All 78 host tests pass, including shared configuration resolution.
 - `bash Tests/BuildPreparation/verify-configuration.sh` checks the six board
   markers, stdio markers, and invalid trait diagnostics without any SDK headers.
 - `bash Tests/BuildPreparation/verify.sh` passes.
 - Building only `PicoSDK` with a fresh scratch directory succeeds without
-  producing an Example archive or Example/CPicoSDK object.
+  running preparation or sourcing `.env_prep`, using the installed toolset and
+  explicit triple/configuration flags. No application archive is needed.
+- A no-change SDK build takes 0.94 seconds and preserves configuration/archive
+  timestamps. `AUTO_STDIO=uart` updates the native build, while a core1 stack
+  override incompatible with the prepared compiler flags fails with a diagnostic.
+- The legacy preparation exports match the previous implementation exactly.
+  An isolated root bootstrap with no generated SDK headers regenerates all six
+  compound headers/module maps and a valid `Package.swift`, without an application
+  product, Swiftly installation, toolset generation, or Swift-version edits.
 - A diagnostic link against the original SDK archive produces ELF/UF2 without
   recompiling the native SDK.
+- A cold full firmware build with a fresh scratch directory succeeds in 48.59
+  seconds without preparation or sourcing `.env_prep`. It publishes ELF, UF2,
+  BIN, and the linker map. The published SDK archive is byte-for-byte identical
+  to its plugin-produced input.
+- The unchanged full build takes 1.97 seconds and preserves hashes and
+  modification times of all eight published SDK/configuration/application files.
+- A native-only `AUTO_STDIO=uart` change builds and links successfully in 7.96
+  seconds without changing `libExample.a`; restoring USB also succeeds.
+- A temporary application print-string edit rebuilds and links in 8.85 seconds
+  without changing the SDK archive or either configuration record. The example
+  source was restored and rebuilt successfully.
+- The unchanged ordinary launcher completes preparation, build, and its memory
+  report. Both launchers remain unmodified. No hardware was programmed.
 
-**The normal full build is not passing yet.** SwiftPM's custom-target product
-copy phase inherits release stripping, which invokes the macOS strip tool on
-the ARM GNU archive. The published archive then contains a BSD symbol table and
-a spurious GNU `/` member; the ARM linker rejects it. The original archive links
-successfully. The prototype's `BuildProduct` API has no copy-processing setting,
-and its Swift Build backend does not forward `-Xxcbuild` overrides. A fix to the
-local SwiftPM prototype is pending approval. No compiler/LLVM checkout has been
-changed. Cold full-build overlap and incremental behavior remain unverified for
-this new graph until publication is fixed.
+**The archive-publication blocker is fixed in the local SwiftPM prototype.**
+Previously, custom-target product copies inherited release stripping and ran
+the macOS strip tool on the ARM GNU archive. That rewrote its symbol table and
+introduced a spurious `/` archive member. Custom targets now set
+`COPY_PHASE_STRIP=NO` for both configurations: their producers own finalization,
+and publication must not process them with host tools. Their Release build
+configuration also correctly uses `releaseSettings` instead of `debugSettings`.
+No Swift Build, compiler, or LLVM source changes were needed for this fix.
 
 Logs: `Example/.build/configuration-target-build.log`,
 `Example/.build/configuration-sdk-only.log`,
@@ -47,6 +68,85 @@ Logs: `Example/.build/configuration-target-build.log`,
 `.build/configuration-target-host-tests.log`. The SDK-only scratch directory is
 `.build/configuration-sdk-only`; diagnostic firmware is under
 `Example/.build/configuration-link-diagnostic`. No hardware was programmed.
+
+Configuration-plugin verification logs are `.build/build-configuration-host-tests.log`,
+`.build/build-configuration-header-tests.log`, and
+`Example/.build/build-configuration-{launcher,no-prepare,noop,stdio,invalid-override,restored,firmware-no-prepare,direct-link}.log`.
+End-to-end verification logs are
+`Example/.build/end-to-end-publication-{cold,noop,stdio,restored,app-edit,app-restored,launcher}.log`
+and `.build/end-to-end-host-tests.log`. The final all-six-board bootstrap rerun
+also passes (`.build/end-to-end-header-generation.log`). The clean-build artifacts are under
+`Example/.build/end-to-end-publication/out/Products/Release-none-armv7em`;
+the ordinary launcher publishes under `Example/Firmware/.build/out/Products/Release-none-armv7em`.
+These are compile/link/publication checks, not hardware runtime validation.
+Existing embedded-runtime enum-size and dependency-scanner fallback warnings
+remain outside this change.
+
+## Configuration versus installation
+
+`PicoBuildConfigurationCore` is a header-independent host library shared through
+`PicoBuildConfigurationTool`. The existing preparation command invokes it for
+global and per-board values, keeping its shell-export contract for header
+generation and the legacy finalizer. Preparation still owns downloads, the
+newlib overlay, toolset generation, Swift-version selection, and editor files.
+Neither launcher has changed.
+
+When toolset generation is enabled, preparation also writes the ignored,
+machine-local `.cpicosdk-installation.json`. This records explicit overrides,
+installation context, compiler location, target triple, and compile-bound
+settings. The existing `configure_rp2xxx_build` helper must bind the compiler
+after explicit installation, as before. Do not commit this file or hand-edit it
+to change an already-planned compiler invocation.
+
+`PicoBuildConfigurationPlugin` reads that installation record, current `env.json`,
+and the configuration archive. It writes `pico-build-configuration.json` inside
+its work directory and publishes it through `productFiles`. The SDK and firmware
+tools consume the JSON directly; they no longer require the preparation shell
+environment. The configuration tool checks installed native tools, resolves
+board/stdio settings, and rejects disagreement with the actual SwiftPM triple,
+build configuration, or prepared compile-bound settings. It does not download,
+install, edit the repository, or inspect connected devices.
+
+The installation record is discovered in the wrapper or its direct dependencies.
+Set `CPICOSDK_INSTALLATION_PATH` to select a different record or disambiguate
+multiple records. Per-build environment overrides are intentionally limited to
+`AUTO_STDIO`, `BUILD_TYPE`, and `CPICOSDK_CORE{0,1}_STACK_SIZE_BYTES`; core1 changes
+require regenerating the compiler configuration. Other installation overrides
+remain inputs to the explicit preparation command. Legacy derived exports are
+not treated as fresh board/tool overrides by the build plugin.
+
+After setup and compiler binding, the equivalent RP2350 release build can run
+from a fresh shell in `Example/`, without preparation or sourcing `.env_prep`:
+
+```sh
+sh ../utils/swiftpm-experimental.sh build \
+  --package-path Firmware --target Firmware --build-system swiftbuild \
+  --configuration release --toolset "$PWD/toolset.json" \
+  --triple armv7em-none-none-eabi \
+  -Xswiftc -Xfrontend -Xswiftc -disable-availability-checking \
+  -Xswiftc -g -Xswiftc -debug-info-format=dwarf -Xcc -g \
+  -Xcc -DCPICOSDK_CORE1_STACK_SIZE_BYTES=8192
+```
+
+This completes the full firmware build with the patched local SwiftPM.
+Use `--target PicoSDK` to build only the independent configuration/SDK branch.
+Compiler/toolset selection must precede planning; the new plugin cannot change it.
+
+Root header generation uses the same resolver through the command adapter, not
+the build plugin: it needs every board and must work before headers or metadata
+archives exist. Its existing `--disable-toolset --disable-swift-version
+--dont-force-product-name` behavior is preserved. Run its isolated regression
+against an already installed SDK bundle:
+
+```sh
+bash Tests/BuildPreparation/verify-header-generation.sh \
+  Example/.build/plugins/PrepareEnvironmentPlugin/outputs/pico-sdk-bundle
+```
+
+This test copies the package template and sources into a disposable fixture,
+omits generated SDK headers, prepares all boards, generates headers, and validates
+the resulting manifest. It does not run the destructive root `build.sh` in the
+working checkout or program hardware.
 
 ## Previous ordered-command baseline
 
@@ -206,8 +306,13 @@ the downloaded SDK bundle was retained.
 CPicoSDKConfiguration static product (board/stdio metadata, no SDK headers)
        |                                      |
        v                                      v
-PicoSDK custom target / PicoSDKBuild       CPicoSDK -> Example static product
-  configure CMake, compile native SDK         Swift/C + PIOASM + AssetCompiler
+PicoBuildConfiguration                    CPicoSDK -> Example static product
+  installed tools + env.json + metadata       Swift/C + PIOASM + AssetCompiler
+  publish pico-build-configuration.json       |
+       |                                      |
+       v                                      |
+PicoSDK custom target / PicoSDKBuild           |
+  configure CMake, compile native SDK          |
   publish libPicoSDK.a + sdk-build.json        |
        |                                      |
        +-------------------+------------------+
@@ -225,7 +330,7 @@ build.sh reports artifact sizes/memory use, then optionally flashes
 
 The finalizer executable is shared by both build plugins and the existing
 `finalize-rp2xxx-binary` command plugin. SDK inputs are the configuration archive,
-tool binary, CMake harness, and environment configuration. Application archives,
+tool binary, CMake harness, and published build configuration. Application archives,
 Swift runtime selection, and resources belong only to the link phase. ELF, UF2,
 BIN, and the linker map are explicit outputs. Each CMake build directory is
 retained between runs; the legacy command still cleans unless `--incremental`
@@ -317,7 +422,7 @@ bash Tests/BuildPreparation/verify.sh
 
 ## Required local upstream patches
 
-Three SwiftPM fixes are applied in the local checkout:
+The following SwiftPM fixes are applied in the local checkout:
 
 1. `SwiftBuildSystem.swift` qualifies bare-metal architecture, vendor, and
    environment overrides with `__destination_platform=YES`, keeping ARM settings
@@ -331,6 +436,14 @@ Three SwiftPM fixes are applied in the local checkout:
    nonexistent object-file link inputs. The old `.packageProduct` replacement
    workaround is not applied. Modules with sources, plugins, or resources are
    not classified as header-only by this fix.
+4. `PackagePIFProjectBuilder+Modules.swift` disables copy-phase stripping on
+   custom targets so plugin products survive publication unchanged, including
+   cross-toolchain archives. It also uses the correct Release-specific settings.
+   `customTargetPreservesPublishedProducts` covers the copy phase and both
+   configurations. This regression passes in an isolated Swift Testing runner,
+   and the `SwiftBuildSupportTests` target builds independently;
+   the full upstream test command still encounters unrelated prototype API
+   mismatches in `BuildTests` (prebuilt libraries and plugin-command arguments).
 
 Swift Build no longer needs the local `none` domain patch: upstream main
 provides triple recognition, generic-Unix spec inheritance, and a bare-metal
@@ -342,8 +455,8 @@ The CPicoSDK toolset now specifies the ARM librarian and an explicit newlib
 header search path. Swift Build's placeholder bare-metal SDK otherwise wins
 over the toolset's `-sdk` argument.
 
-These patches remain local experiments, separate from output publication
-through `productFiles`, and need upstream review before contribution.
+These patches remain local experiments and need upstream review before
+contribution. They have not been pushed or posted publicly.
 
 ## Original wrapper verification
 

@@ -10,19 +10,10 @@ extension PrepareEnvironmentPlugin {
         context: PackagePlugin.PluginContext,
         libraryProductName: String?,
         embeddedSwiftRuntimeVendorPath: String
-    ) async -> [String: String] {
+    ) async throws -> [String: String] {
         let givenEnvVars = Dictionary(
             uniqueKeysWithValues: givenEnvVars
                 .filter { key, value in Env.relevantEnvVars.contains(key) }
-        )
-
-        // Starts with user-given
-        var newEnvVars: [String: String] = givenEnvVars
-        
-        // Then merges in global vars from env.json
-        newEnvVars.merge(
-            packageEnv.vars.filter { key, _ in key != "BOARD" },
-            uniquingKeysWith: { old, _ in old }
         )
 
         let selectedCombinationName = await self.resolveSelectedCombination(
@@ -31,148 +22,76 @@ extension PrepareEnvironmentPlugin {
             context: context
         )
 
-        let selectedCombinationVars = packageEnv.combinations[selectedCombinationName]!.vars
-            .filter { !givenEnvVars.keys.contains($0.key) }
-        newEnvVars.merge(selectedCombinationVars, uniquingKeysWith: { _, new in new })
-
-        // Some basic checks
-        guard let buildType = BuildType(rawValue: newEnvVars["BUILD_TYPE"] ?? "") else {
-            fatalError("[CPicoSDK] Couldn't find a valid BUILD_TYPE. Supported types are: 'Debug', 'Release', 'RelWithDebInfo', 'MinSizeRel', got \(newEnvVars["BUILD_TYPE"] ?? "null")")
+        var supplied = givenEnvVars
+        supplied["SWIFTPM_PRODUCT"] = supplied["SWIFTPM_PRODUCT"] ?? libraryProductName ?? ""
+        let sdkPackagePath = URL(fileURLWithPath: embeddedSwiftRuntimeVendorPath)
+            .deletingLastPathComponent().deletingLastPathComponent().path
+        let request: [String: Any] = [
+            "defaults": try JSONSerialization.jsonObject(with: JSONEncoder().encode(packageEnv)),
+            "given": supplied,
+            "board": selectedCombinationName,
+            "context": [
+                "packagePath": context.package.directoryURL.path,
+                "pluginOutputPath": context.pluginWorkDirectoryURL.path,
+                "sdkPackagePath": sdkPackagePath,
+            ],
+        ]
+        let input = context.pluginWorkDirectoryURL.appending(path: "configuration-request.json")
+        let result = context.pluginWorkDirectoryURL.appending(path: "configuration-result.json")
+        let requestData = try JSONSerialization.data(withJSONObject: request, options: [.prettyPrinted, .sortedKeys])
+        _ = try overwriteOrCreateIfNeeded(path: input.path, matchingContent: requestData)
+        let process = Process()
+        process.executableURL = try context.tool(named: "PicoBuildConfigurationTool").url
+        process.arguments = ["prepare", "--request", input.path, "--output", result.path]
+        guard try await process.asyncRun() == 0 else {
+            throw NSError(domain: "CPicoSDK.Configuration", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Unable to resolve preparation configuration.",
+            ])
         }
-
-        // Some dynamically generated vars are provided
-        if newEnvVars["SWIFT_BUILD_TYPE"] == nil {
-            newEnvVars["SWIFT_BUILD_TYPE"] = buildType.swiftBuildType
+        let resultData = try Data(contentsOf: result)
+        let response = try JSONDecoder().decode(ResolvedPreparation.self, from: resultData)
+        let newEnvVars = response.variables
+        guard let resultObject = try JSONSerialization.jsonObject(with: resultData) as? [String: Any],
+              let installation = resultObject["installation"] as? [String: Any] else {
+            throw NSError(domain: "CPicoSDK.Configuration", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Configuration resolver did not return an installation record.",
+            ])
         }
-
-        if newEnvVars["EXTRA_CONFIG_PARAMS"] == nil {
-            newEnvVars["EXTRA_CONFIG_PARAMS"] = buildType.extraConfigParams
-        }
-
-        // TODO: Remove this when upgrading to Swift 6.3
-        // https://github.com/swiftlang/swift/issues/81272
-        #if os(Linux)
-        let linuxSwiftPMFlags = "--disable-sandbox --disable-build-manifest-caching --manifest-cache none"
-        if let extra = newEnvVars["EXTRA_CONFIG_PARAMS"] {
-            if !extra.contains("--disable-sandbox") {
-                newEnvVars["EXTRA_CONFIG_PARAMS"] = extra + " " + linuxSwiftPMFlags
-            }
-        } else {
-            newEnvVars["EXTRA_CONFIG_PARAMS"] = linuxSwiftPMFlags
-        }
-        #endif
-
-        if newEnvVars["TOOLSET_PATH"] == nil {
-            newEnvVars["TOOLSET_PATH"] = context.package.directoryURL.relativePath.appending("/toolset.json")
-        }
-
-        if newEnvVars["PACKAGE_PATH"] == nil {
-            newEnvVars["PACKAGE_PATH"] = context.package.directoryURL.relativePath
-        }
-
-        if newEnvVars["PLUGIN_OUTPUT_PATH"] == nil {
-            newEnvVars["PLUGIN_OUTPUT_PATH"] = context.pluginWorkDirectoryURL.relativePath
-        }
-        
-        if newEnvVars["SWIFTPM_PRODUCT"] == nil {
-            newEnvVars["SWIFTPM_PRODUCT"] = libraryProductName ?? ""
-        }
-        
-        if newEnvVars["RELEVANT_ENV_VARS"] == nil {
-            newEnvVars["RELEVANT_ENV_VARS"] = Env.relevantEnvVars.joined(separator: ",")
-        }
-
-        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] == nil {
-            newEnvVars["SWIFT_EMBEDDED_FALLBACK_MODULES"] = "0"
-        }
-
-        if newEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] == nil {
-            newEnvVars["CPICOSDK_CORE0_STACK_SIZE_BYTES"] = "8192"
-        }
-
-        if newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"] == nil {
-            newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"] = "8192"
-        }
-
-        let core1StackDefine = "-Xcc -DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(newEnvVars["CPICOSDK_CORE1_STACK_SIZE_BYTES"]!)"
-        if let extra = newEnvVars["EXTRA_CONFIG_PARAMS"] {
-            if !extra.contains("CPICOSDK_CORE1_STACK_SIZE_BYTES=") {
-                newEnvVars["EXTRA_CONFIG_PARAMS"] = extra + " " + core1StackDefine
-            }
-        } else {
-            newEnvVars["EXTRA_CONFIG_PARAMS"] = core1StackDefine
-        }
-
-        if newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] == nil,
-           let swiftVersion = newEnvVars["SWIFT_VERSION"] 
-        {
-            let fallbackPath = embeddedSwiftRuntimeVendorPath
-                .appending("/\(swiftVersion)/usr/lib/swift/embedded")
-
-            if !FileManager.default.fileExists(atPath: fallbackPath) {
-                // Concurrency runtime needs to be included in the package. If this swift version is meant to be 
-                // used in distribution this needs to be fixed before shipping, otherwise Linux users won't have
-                // access to the Concurrency runtime.
-
-                #if os(Linux)
-                print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: No embedded Swift runtime found at \(fallbackPath). Swift doesn't ship the Concurrency runtime binaries for embedded targets on Linux, please extract the Concurrency runtime from another toolchain if you intend use concurrency.\u{001B}[0m")
-                #else
-                print("[CPicoSDK] ⚠️ \u{001B}[33mWARNING: No embedded Swift runtime found at \(fallbackPath). (This warning is only relevant to CPicoSDK maintainers, ignore otherwise)\u{001B}[0m")
-                #endif
-            }
-
-            newEnvVars["SWIFT_EMBEDDED_FALLBACK_PATH"] = fallbackPath
-        }
+        installationConfiguration = try JSONSerialization.data(
+            withJSONObject: installation, options: [.prettyPrinted, .sortedKeys]
+        )
 
         // Show some information about given vars first
         for (envVar, value) in givenEnvVars {
             print("[CPicoSDK] Using provided env var \(envVar): \(value)")
         }
 
-        newEnvVars = self.resolve(envVars: newEnvVars)
-
-        for (envVar, value) in newEnvVars.filter({ !givenEnvVars.keys.contains($0.key) }) {
+        for (envVar, value) in newEnvVars.filter({ !givenEnvVars.keys.contains($0.key) }).sorted(by: { $0.key < $1.key }) {
             print("[CPicoSDK] Using default env var \(envVar): \(value)")
-            output += "export \(envVar)=\"\(value)\"\n"
+            output += "export \(envVar)=\(shellQuote(value))\n"
         }
 
-        var combinationsWithErrors = false
-        
-        for (name, combination) in packageEnv.combinations {
+        for (name, specializedVars) in response.specializations.sorted(by: { $0.key < $1.key }) {
             print("[CPicoSDK] Specializing env vars for combination: \(name)")
             
-            let combinationSpecializedVars = combination.vars
-                .filter { !givenEnvVars.keys.contains($0.key) } // Don't override given vars, only globals.
-            
-            // Make sure overrides are resolved against globals + given.
-            let resolvedCombinationSpecializedVars = self.resolve(
-                envVars: newEnvVars.merging(
-                    combinationSpecializedVars,
-                    uniquingKeysWith: { _, new in new }
-                )
-            )
-            
-            // Print and dump vars after resolving
-            for envVar in combinationSpecializedVars.keys {
+            for envVar in specializedVars.keys.sorted() {
                 print(
-                    "[CPicoSDK] \(newEnvVars.keys.contains(envVar) ? "Overriding" : "Using") specialized env var CPICOSDK_\(name)_\(envVar): \(resolvedCombinationSpecializedVars[envVar]!)"
+                    "[CPicoSDK] \(newEnvVars.keys.contains(envVar) ? "Overriding" : "Using") specialized env var CPICOSDK_\(name)_\(envVar): \(specializedVars[envVar]!)"
                 )
-                output += "export CPICOSDK_\(name)_\(envVar)=\"\(resolvedCombinationSpecializedVars[envVar]!)\"\n"
-            }
-            
-            // Make sure all relevant env vars are complete for this combination.
-            let missingEnvVars = Env.relevantEnvVars.filter {
-                $0 != "CPICOSDK_SWIFT_EXEC" && !resolvedCombinationSpecializedVars.keys.contains($0)
-            }
-            if missingEnvVars.count > 0 {
-                print("[CPicoSDK] ERROR: Missing env variables: [\(missingEnvVars.joined(separator: ", "))] - (Combination: \(name))")
-                combinationsWithErrors = true
+                output += "export CPICOSDK_\(name)_\(envVar)=\(shellQuote(specializedVars[envVar]!))\n"
             }
         }
         
-        guard !combinationsWithErrors else { fatalError("[CPicoSDK] Some of the mandatory env variables are missing. Please check logs.")}
-        
         return newEnvVars
+    }
+
+    private struct ResolvedPreparation: Decodable {
+        let variables: [String: String]
+        let specializations: [String: [String: String]]
+    }
+
+    private func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
     }
     
     // MARK: - Bash Functions

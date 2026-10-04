@@ -14,13 +14,10 @@ struct PicoSDKBuildPlugin: BuildToolPlugin {
             Diagnostics.error("PicoSDKBuild requires the CPicoSDKConfiguration static product and a direct CPicoSDK dependency.")
             return []
         }
-        let environment = ProcessInfo.processInfo.environment
-        let keys = Set((environment["RELEVANT_ENV_VARS"] ?? "").split(separator: ",").map(String.init))
-            .union(["RELEVANT_ENV_VARS", "PATH", "AUTO_STDIO", "DEVELOPER_DIR"])
-        let buildEnvironment = environment.filter { keys.contains($0.key) || $0.key.hasPrefix("CPICOSDK_") }
         let tool = try context.tool(named: "PicoFirmwareBuildTool")
         let productsDirectory = URL(string: "file:/$(PRODUCTS_DIR)")!
         let archive = productsDirectory.appending(path: "lib\(configuration.name).a")
+        let buildConfiguration = productsDirectory.appending(path: "pico-build-configuration.json")
         let work = context.pluginWorkDirectoryURL.appending(path: "$(BUILD_SUBDIR)")
         let harness = sdk.package.directoryURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness")
         let harnessInputs = try FileManager.default.contentsOfDirectory(at: harness, includingPropertiesForKeys: nil)
@@ -31,13 +28,13 @@ struct PicoSDKBuildPlugin: BuildToolPlugin {
             displayName: "Build Pico SDK from CPicoSDKConfiguration",
             executable: tool.url,
             arguments: [
-                "--phase", "sdk", "--product", environment["SWIFTPM_PRODUCT"] ?? "Firmware",
+                "--phase", "sdk", "--product", "PicoSDK",
+                "--build-configuration", buildConfiguration.path,
                 "--archive", archive.path,
                 "--output-directory", work.path, "--work-directory", work.path,
                 "--sdk-directory", sdk.package.directoryURL.path,
             ],
-            environment: buildEnvironment,
-            inputFiles: [archive, tool.url, sdk.package.directoryURL.appending(path: "env.json")] + harnessInputs,
+            inputFiles: [archive, buildConfiguration, tool.url] + harnessInputs,
             outputFiles: artifacts + [build.appending(path: "build.ninja")],
             productFiles: artifacts.map { BuildProduct($0) }
         )]

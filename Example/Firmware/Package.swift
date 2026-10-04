@@ -9,8 +9,17 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PicoSDK",
+            name: "PicoBuildConfiguration",
             dependencies: [.product(name: "CPicoSDKConfiguration", package: "CPicoSDK")],
+            path: ".",
+            plugins: [.plugin(name: "PicoBuildConfiguration", package: "CPicoSDK")]
+        ),
+        .target(
+            name: "PicoSDK",
+            dependencies: [
+                .target(name: "PicoBuildConfiguration"),
+                .product(name: "CPicoSDKConfiguration", package: "CPicoSDK"),
+            ],
             path: ".",
             plugins: [.plugin(name: "PicoSDKBuild", package: "CPicoSDK")]
         ),

@@ -1,47 +1,30 @@
 import Foundation
 
-// Environment shared by the legacy command and custom-target build paths.
+// Explicit configuration for build plugins; process exports remain the legacy adapter.
+struct Env: Sendable {
+    let variables: [String: String]
 
-struct Env: Codable, Hashable {
-    enum Error: Swift.Error {
-        case fileNotFound(String)
-    }
-
-    struct Combination: Codable, Hashable {
-        let traits: [String]
-    }
-
-    let combinations: [String: Combination]
-
-    init(from file: String) throws {
-        let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: file),
-           let envsContent = fileManager.contents(atPath: file),
-           let envs = try? JSONDecoder().decode(Self.self, from: envsContent)
-        {
-            self = envs
-        } else {
-            throw Error.fileNotFound(file)
-        }
+    init(variables: [String: String] = ProcessInfo.processInfo.environment) {
+        self.variables = variables
     }
     
-    static func value(_ name: String, combination: String? = nil) -> String? {
-        if let combination, let specialized = ProcessInfo.processInfo.environment["CPICOSDK_\(combination)_\(name)"] {
+    func value(_ name: String, combination: String? = nil) -> String? {
+        if let combination, let specialized = variables["CPICOSDK_\(combination)_\(name)"] {
             specialized
-        } else if let global = ProcessInfo.processInfo.environment[name] {
+        } else if let global = variables[name] {
             global
         } else {
             nil
         }
     }
     
-    static func combinedVars(for combination: String) throws -> [String: String] {
-        let relevantEnvVars = Set(try Self.value("RELEVANT_ENV_VARS", combination: combination)
+    func combinedVars(for combination: String) throws -> [String: String] {
+        let relevantEnvVars = Set(try value("RELEVANT_ENV_VARS", combination: combination)
             .expected
             .split(separator: ",")
             .map(String.init))
 
-        let allVars = ProcessInfo.processInfo.environment
+        let allVars = variables
         let prefix = "CPICOSDK_\(combination)_"
         
         let globalizedSpecializations = allVars

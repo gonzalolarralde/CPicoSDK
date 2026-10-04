@@ -644,12 +644,25 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- Preparation also bootstraps root header generation from `Package.swift.template`
+  before generated SDK headers exist. Keep its all-board shell exports and
+  `--disable-toolset --disable-swift-version --dont-force-product-name` behavior.
+  Share header-independent configuration logic through the host tool, not by
+  making header generation depend on a compiled firmware/configuration archive.
+  Use `Tests/BuildPreparation/verify-header-generation.sh <installed-sdk-bundle>`
+  for an isolated all-board check; root `build.sh` deletes generated source and
+  build files and must not be used as a routine regression command in this checkout.
+
 - If a custom-target published ARM archive fails with `member ... (/) in archive
   is not an object`, compare the original plugin output and published file with
   `shasum` and inspect their archive headers. Swift Build release copy phases can
   invoke host stripping and rewrite GNU archive symbol tables on macOS. Confirm
   with a link against the original archive before changing SDK compilation.
   The experimental `BuildProduct` API currently has no per-product strip option.
+  The local SwiftPM fix sets `COPY_PHASE_STRIP=NO` on custom targets in both
+  configurations; their producers own binary finalization. Check byte equality
+  of the source and published archive, then verify a cold full link and no-op
+  artifact timestamps rather than relying only on an SDK-only build.
 
 - Keep `Example/build.sh` as a stable sequence of visible SwiftPM calls and
   generated helper calls. Preparation owns `.swift-version`, so call

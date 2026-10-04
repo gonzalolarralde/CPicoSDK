@@ -25,6 +25,7 @@ let package = Package(
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
         .plugin(name: "PicoFirmware", targets: ["PicoFirmwarePlugin"]),
         .plugin(name: "PicoSDKBuild", targets: ["PicoSDKBuildPlugin"]),
+        .plugin(name: "PicoBuildConfiguration", targets: ["PicoBuildConfigurationPlugin"]),
         .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
     ],
@@ -64,8 +65,11 @@ let package = Package(
     ],
     targets: hostOnlyTests ? [
         .target(name: "TestInDeviceCore"),
+        .target(name: "PicoBuildConfigurationCore"),
+        .executableTarget(name: "PicoBuildConfigurationTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .testTarget(name: "PicoBuildConfigurationCoreTests", dependencies: ["PicoBuildConfigurationCore"]),
         .executableTarget(name: "MemoryMapReportTool"),
-        .executableTarget(name: "PicoFirmwareBuildTool"),
+        .executableTarget(name: "PicoFirmwareBuildTool", dependencies: ["PicoBuildConfigurationCore"]),
         .testTarget(name: "PicoFirmwareBuildToolTests", dependencies: ["PicoFirmwareBuildTool"]),
         .testTarget(
             name: "TestInDeviceCoreTests",
@@ -168,7 +172,10 @@ let package = Package(
             dependencies: ["AssetCompilerTool"]
         ),
         .executableTarget(name: "AssetCompilerTool"),
-        .executableTarget(name: "PicoFirmwareBuildTool"),
+        .target(name: "PicoBuildConfigurationCore"),
+        .executableTarget(name: "PicoBuildConfigurationTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .executableTarget(name: "PicoFirmwareBuildTool", dependencies: ["PicoBuildConfigurationCore"]),
+        .plugin(name: "PicoBuildConfigurationPlugin", capability: .buildTool, dependencies: ["PicoBuildConfigurationTool"]),
         .plugin(name: "PicoFirmwarePlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
         .plugin(name: "PicoSDKBuildPlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
 
@@ -212,6 +219,7 @@ let package = Package(
             ),
             dependencies: [
                 .product(name: "pico-bootstrap", package: "PicoSDKDownloader"),
+                .target(name: "PicoBuildConfigurationTool"),
             ]
         ),
         .plugin(

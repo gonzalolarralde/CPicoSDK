@@ -1,4 +1,5 @@
 import Foundation
+import PicoBuildConfigurationCore
 
 struct FirmwareRequest {
     enum Phase: String, CaseIterable {
@@ -11,6 +12,7 @@ struct FirmwareRequest {
     let product: String
     let archive: URL
     let configurationArchive: URL
+    let buildConfiguration: URL?
     let sdkArtifactsDirectory: URL?
     let outputDirectory: URL
     let workDirectory: URL
@@ -22,6 +24,7 @@ struct FirmwareRequest {
         let options: Set<String> = [
             "--product", "--archive", "--output-directory", "--work-directory",
             "--sdk-directory", "--phase", "--configuration-archive", "--sdk-artifacts-directory",
+            "--build-configuration",
         ]
         var values: [String: String] = [:]
         var resources: [URL] = []
@@ -51,6 +54,7 @@ struct FirmwareRequest {
         }
         archive = URL(fileURLWithPath: try required("--archive"))
         configurationArchive = values["--configuration-archive"].map { URL(fileURLWithPath: $0) } ?? archive
+        buildConfiguration = values["--build-configuration"].map { URL(fileURLWithPath: $0) }
         sdkArtifactsDirectory = values["--sdk-artifacts-directory"].map { URL(fileURLWithPath: $0) }
         outputDirectory = URL(fileURLWithPath: try required("--output-directory"))
         workDirectory = URL(fileURLWithPath: try required("--work-directory"))
@@ -88,7 +92,14 @@ struct PicoFirmwareBuildTool {
         do {
             let request = try FirmwareRequest(arguments: Array(CommandLine.arguments.dropFirst()))
             try FileManager.default.createDirectory(at: request.workDirectory, withIntermediateDirectories: true)
-            try await FirmwareBuilder().build(request)
+            let configuration = try request.buildConfiguration.map {
+                try JSONDecoder().decode(ResolvedBuildConfiguration.self, from: Data(contentsOf: $0))
+            }
+            if let configuration, configuration.schemaVersion != 1 {
+                throw ConfigurationError("Unsupported resolved build configuration version.")
+            }
+            let env = Env(variables: configuration?.variables ?? ProcessInfo.processInfo.environment)
+            try await FirmwareBuilder(env: env, configuration: configuration).build(request)
         } catch {
             FileHandle.standardError.write(Data("[CPicoSDK] \(error.localizedDescription)\n".utf8))
             exit(EXIT_FAILURE)

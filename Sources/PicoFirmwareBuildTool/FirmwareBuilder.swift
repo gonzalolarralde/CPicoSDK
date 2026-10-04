@@ -1,6 +1,14 @@
 import Foundation
+import PicoBuildConfigurationCore
 
-struct FirmwareBuilder {
+struct FirmwareBuilder: Sendable {
+    let env: Env
+    let configuration: ResolvedBuildConfiguration?
+
+    init(env: Env = Env(), configuration: ResolvedBuildConfiguration? = nil) {
+        self.env = env
+        self.configuration = configuration
+    }
     enum Error: Swift.Error, LocalizedError {
         case nmFailed
         case swiftlyResolutionFailed
@@ -40,13 +48,21 @@ struct FirmwareBuilder {
     }
 
     func build(_ request: FirmwareRequest) async throws {
-        guard Env.value("RELEVANT_ENV_VARS") != nil else {
+        guard env.value("RELEVANT_ENV_VARS") != nil else {
             throw NSError(domain: "CPicoSDK.FirmwareBuild", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Run prepare-rp2xxx-environment and source its output before building firmware.",
             ])
         }
         let combination = try await getCombination(from: request.configurationArchive)
-        let stdioOptions = await getStdioOptions(from: request.configurationArchive, combination: combination)
+        if let configuration, configuration.board != combination {
+            throw ConfigurationError("Resolved configuration does not match the board metadata. Rebuild PicoBuildConfiguration.")
+        }
+        let stdioOptions: (uart: Bool, usb: Bool, rtt: Bool)
+        if let configuration {
+            stdioOptions = (configuration.stdio.uart, configuration.stdio.usb, configuration.stdio.rtt)
+        } else {
+            stdioOptions = await getStdioOptions(from: request.configurationArchive, combination: combination)
+        }
         let extraSwiftArchives = request.phase == .sdk ? [] : try await getExtraSwiftArchives(from: request.archive)
         var resources: [String: URL] = [:]
         for resource in request.resources {
@@ -62,7 +78,7 @@ struct FirmwareBuilder {
             cmakeHarness: request.sdkDirectory.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness"),
             outputDir: request.outputDirectory,
             buildArtifact: request.archive,
-            productName: request.product,
+            productName: request.phase == .sdk ? configuration?.variables["SWIFTPM_PRODUCT"]?.nonEmpty ?? request.product : request.product,
             embeddedResources: resources,
             clean: request.clean,
             phase: request.phase,
@@ -80,7 +96,7 @@ struct FirmwareBuilder {
             var (uart, usb, rtt) = (false, false, false)
 
             if try await getStaticTrait(from: buildArtifact, traitName: "stdio_automatic") {
-                switch Env.value("AUTO_STDIO") {
+                switch env.value("AUTO_STDIO") {
                     case .some("uart"):
                         uart = true
                         print("[CPicoSDK] StdIO automatically selected UART.")
@@ -137,10 +153,10 @@ struct FirmwareBuilder {
         let nmOutput = try await runNM(on: buildArtifact)
         var extraArchives: [String] = []
         let toolchainPath = try await resolveSwiftToolchainPath()
-        let platformTriple = try Env.value("SWIFTPM_TRIPLE").expected
+        let platformTriple = try env.value("SWIFTPM_TRIPLE").expected
 
         func appendEmbeddedArchive(_ archiveName: String, reason: String) {
-            if let fallbackRoot = Env.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
+            if let fallbackRoot = env.value("SWIFT_EMBEDDED_FALLBACK_PATH") {
                 let fallbackArchivePath = URL(filePath: fallbackRoot, directoryHint: .isDirectory)
                     .appending(path: "\(platformTriple)/\(archiveName)")
                 if FileManager.default.fileExists(atPath: fallbackArchivePath.path) {
@@ -201,14 +217,15 @@ struct FirmwareBuilder {
     }
 
     func resolveSwiftToolchainPath() async throws -> String {
-        if let compiler = Env.value("CPICOSDK_SWIFT_EXEC") {
+        if let compiler = env.value("CPICOSDK_SWIFT_EXEC") {
             return URL(fileURLWithPath: compiler)
+                .resolvingSymlinksInPath()
                 .deletingLastPathComponent()
                 .deletingLastPathComponent()
                 .deletingLastPathComponent().path
         }
         let swiftlyProcess = Process()
-        swiftlyProcess.executableURL = URL(filePath: try Env.value("SWIFTLY_PATH").expected, directoryHint: .notDirectory)
+        swiftlyProcess.executableURL = URL(filePath: try env.value("SWIFTLY_PATH").expected, directoryHint: .notDirectory)
         swiftlyProcess.arguments = ["run", "which", "swift"]
 
         let (status, outputData, _) = try await swiftlyProcess.asyncRun(captureStdout: true, captureStderr: false)
@@ -230,15 +247,15 @@ struct FirmwareBuilder {
 
     func runBuild(combination: String, stdioOptions: (uart: Bool, usb: Bool, rtt: Bool), extraSwiftArchives: [String], workingDir: URL, cmakeHarness: URL, outputDir: URL, buildArtifact: URL, productName: String, embeddedResources: [String: URL], clean: Bool, phase: FirmwareRequest.Phase, sdkArtifactsDirectory: URL?) async throws {
         let fileManager = FileManager.default
-        let cmakePath = try Env.value("CMAKE_PATH", combination: combination).expected
+        let cmakePath = try env.value("CMAKE_PATH", combination: combination).expected
         let cmakeBin = URL(filePath: cmakePath, directoryHint: .notDirectory).appending(path: "cmake")
-        let ninjaPath = try Env.value("NINJA_PATH", combination: combination).expected
+        let ninjaPath = try env.value("NINJA_PATH", combination: combination).expected
 
         let srcDir = workingDir.appending(path: "CMakeHarness")
         // Stable paths let the plugin declare SDK artifacts before reading the Swift archive.
         let buildDir = srcDir.appending(path: "build")
 
-        let importedLibs = try Env.importedLibs(combination: combination)
+        let importedLibs = try env.importedLibs(combination: combination)
         let embeddedResourceArguments = try makeEmbeddedResourceCMakeArguments(embeddedResources)
 
         print("[CPicoSDK] Imported libraries: \(importedLibs)")
@@ -246,27 +263,27 @@ struct FirmwareBuilder {
             print("[CPicoSDK] Extra Swift archives: \(extraSwiftArchives)")
         }
 
-        var env = try Env.combinedVars(for: combination)
-        env["PATH"] = "\(cmakePath):\(ninjaPath):\(ProcessInfo.processInfo.environment["PATH"]!)"
-        let buildEnvironment = CMakeBuildEnvironment(env)
+        var processEnvironment = try env.combinedVars(for: combination)
+        processEnvironment["PATH"] = "\(cmakePath):\(ninjaPath):\(ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin")"
+        let buildEnvironment = CMakeBuildEnvironment(processEnvironment)
 
         let cmakeConfigProcess = Process()
         cmakeConfigProcess.executableURL = cmakeBin
-        cmakeConfigProcess.environment = env
+        cmakeConfigProcess.environment = processEnvironment
         let sdkConfigurationArguments = [
-            "-DCMAKE_BUILD_TYPE=\(try Env.value("BUILD_TYPE", combination: combination).expected)",
-            "-DPICO_SDK_PATH=\(try Env.value("PICO_SDK_PATH", combination: combination).expected)",
-            "-DPICOTOOL_PATH=\(try Env.value("PICOTOOL_PATH", combination: combination).expected)",
-            "-DBOARD_TYPE=\(try Env.value("BOARD", combination: combination).expected)",
+            "-DCMAKE_BUILD_TYPE=\(try env.value("BUILD_TYPE", combination: combination).expected)",
+            "-DPICO_SDK_PATH=\(try env.value("PICO_SDK_PATH", combination: combination).expected)",
+            "-DPICOTOOL_PATH=\(try env.value("PICOTOOL_PATH", combination: combination).expected)",
+            "-DBOARD_TYPE=\(try env.value("BOARD", combination: combination).expected)",
             "-DPROJECT_NAME=\(productName)",
-            "-DTOOLCHAIN_VERSION=\(try Env.value("TOOLCHAIN_VERSION", combination: combination).expected)",
-            "-DSDK_VERSION=\(try Env.value("SDK_VERSION", combination: combination).expected)",
+            "-DTOOLCHAIN_VERSION=\(try env.value("TOOLCHAIN_VERSION", combination: combination).expected)",
+            "-DSDK_VERSION=\(try env.value("SDK_VERSION", combination: combination).expected)",
             "-DIMPORTED_LIBS=\(importedLibs.joined(separator: ","))",
             "-DSTDIO_UART=\(stdioOptions.uart ? "1" : "0")",
             "-DSTDIO_USB=\(stdioOptions.usb ? "1" : "0")",
             "-DSTDIO_RTT=\(stdioOptions.rtt ? "1" : "0")",
-            "-DCPICOSDK_CORE0_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE0_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
-            "-DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(Env.value("CPICOSDK_CORE1_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
+            "-DCPICOSDK_CORE0_STACK_SIZE_BYTES=\(env.value("CPICOSDK_CORE0_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
+            "-DCPICOSDK_CORE1_STACK_SIZE_BYTES=\(env.value("CPICOSDK_CORE1_STACK_SIZE_BYTES", combination: combination) ?? "8192")",
         ]
         cmakeConfigProcess.arguments = ["-S", srcDir.path, "-B", buildDir.path, "-G", "Ninja"]
             + sdkConfigurationArguments + [
@@ -275,7 +292,7 @@ struct FirmwareBuilder {
                 "-DPREBUILT_PICO_SDK_ARCHIVE=\(sdkArtifactsDirectory?.appending(path: "libPicoSDK.a").path ?? "")",
             ] + embeddedResourceArguments
 
-        let sdkState = SDKBuildState(arguments: sdkConfigurationArguments, environment: env)
+        let sdkState = SDKBuildState(arguments: sdkConfigurationArguments, environment: processEnvironment)
         if phase == .link {
             try sdkState.validate(in: try sdkArtifactsDirectory.expected)
         } else {
@@ -286,7 +303,7 @@ struct FirmwareBuilder {
         }
         print("[CPicoSDK] Copying CMake harness to working directory")
         let rsyncProcess = Process()
-        rsyncProcess.executableURL = URL(filePath: try Env.value("RSYNC_PATH").expected, directoryHint: .notDirectory)
+        rsyncProcess.executableURL = URL(filePath: try env.value("RSYNC_PATH").expected, directoryHint: .notDirectory)
         rsyncProcess.arguments = ["-rc", "\(cmakeHarness.path)", "\(workingDir.path)"]
         guard try await rsyncProcess.asyncRun() == 0 else { throw Error.rsyncFailed }
 
@@ -295,14 +312,14 @@ struct FirmwareBuilder {
         guard try await cmakeConfigProcess.asyncRun() == 0 else { throw Error.cmakeConfigurationFailed }
         try buildEnvironment.record(in: buildDir)
         if phase != .link {
-            try await buildCMakeTarget("cpicosdk_sdk", in: buildDir, cmake: cmakeBin, environment: env)
+            try await buildCMakeTarget("cpicosdk_sdk", in: buildDir, cmake: cmakeBin, environment: processEnvironment)
             try sdkState.record(in: buildDir)
         }
         if phase == .sdk { return }
 
         try sdkState.validate(in: sdkArtifactsDirectory ?? buildDir)
         print("[CPicoSDK] Linking firmware and generating outputs...")
-        try await buildCMakeTarget(productName, in: buildDir, cmake: cmakeBin, environment: env)
+        try await buildCMakeTarget(productName, in: buildDir, cmake: cmakeBin, environment: processEnvironment)
 
         try fileManager.ensureDirectoryExists(at: outputDir.path, isDirectory: true)
 
@@ -367,7 +384,7 @@ struct FirmwareBuilder {
 
     private func runNM(on buildArtifact: URL) async throws -> String {
         let nmProcess = Process()
-        nmProcess.executableURL = URL(filePath: try Env.value("NM_PATH").expected, directoryHint: .notDirectory)
+        nmProcess.executableURL = URL(filePath: try env.value("NM_PATH").expected, directoryHint: .notDirectory)
         nmProcess.arguments = [buildArtifact.path]
 
         let (status, outputData, _) = try await nmProcess.asyncRun(captureStdout: true, captureStderr: false)

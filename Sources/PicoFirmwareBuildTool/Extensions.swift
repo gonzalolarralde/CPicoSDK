@@ -99,13 +99,13 @@ extension Collection {
 }
 
 extension Env {
-    static func importedLibs(combination: String) throws -> [String] {
+    func importedLibs(combination: String) throws -> [String] {
         var importedLibs =
-            try Env.value("IMPORTED_LIBS", combination: combination).expected.split(separator: ",")
+            try value("IMPORTED_LIBS", combination: combination).expected.split(separator: ",")
                 .map(String.init)
 
         try importedLibs.append(
-            contentsOf: Env.value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
+            contentsOf: value("IMPORTED_LIBS_MORE", combination: combination).expected.split(separator: ",")
                 .compactMap(\.nonEmpty)
                 .map(String.init)
         )
