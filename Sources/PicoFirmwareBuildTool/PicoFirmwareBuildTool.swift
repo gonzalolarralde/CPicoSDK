@@ -10,6 +10,8 @@ struct FirmwareRequest {
     let phase: Phase
     let product: String
     let archive: URL
+    let configurationArchive: URL
+    let sdkArtifactsDirectory: URL?
     let outputDirectory: URL
     let workDirectory: URL
     let sdkDirectory: URL
@@ -19,7 +21,7 @@ struct FirmwareRequest {
     init(arguments: [String]) throws {
         let options: Set<String> = [
             "--product", "--archive", "--output-directory", "--work-directory",
-            "--sdk-directory", "--phase",
+            "--sdk-directory", "--phase", "--configuration-archive", "--sdk-artifacts-directory",
         ]
         var values: [String: String] = [:]
         var resources: [URL] = []
@@ -48,6 +50,8 @@ struct FirmwareRequest {
             throw RequestError.invalidOption("--product")
         }
         archive = URL(fileURLWithPath: try required("--archive"))
+        configurationArchive = values["--configuration-archive"].map { URL(fileURLWithPath: $0) } ?? archive
+        sdkArtifactsDirectory = values["--sdk-artifacts-directory"].map { URL(fileURLWithPath: $0) }
         outputDirectory = URL(fileURLWithPath: try required("--output-directory"))
         workDirectory = URL(fileURLWithPath: try required("--work-directory"))
         sdkDirectory = URL(fileURLWithPath: try required("--sdk-directory"))
@@ -56,6 +60,9 @@ struct FirmwareRequest {
             throw RequestError.invalidOption("--phase (expected all, sdk, or link; link cannot use --clean)")
         }
         self.phase = phase
+        if phase == .link && sdkArtifactsDirectory == nil {
+            throw RequestError.missingOption("--sdk-artifacts-directory")
+        }
         self.resources = resources
         self.clean = clean
     }

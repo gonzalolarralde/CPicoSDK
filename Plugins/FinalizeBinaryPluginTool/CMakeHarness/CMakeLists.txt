@@ -169,13 +169,31 @@ foreach(CPICOSDK_PROPERTY INCLUDE_DIRECTORIES COMPILE_DEFINITIONS COMPILE_OPTION
     set_property(TARGET cpicosdk_sdk PROPERTY INTERFACE_${CPICOSDK_PROPERTY}
         "$<TARGET_PROPERTY:cpicosdk_sdk,${CPICOSDK_PROPERTY}>")
 endforeach()
+
+# Keep the SDK target as a source of usage requirements in the link-only build,
+# but consume the archive published by the independent SwiftPM SDK target.
+set(CPICOSDK_LINK_TARGET cpicosdk_sdk)
+if(PREBUILT_PICO_SDK_ARCHIVE)
+    add_library(cpicosdk_prebuilt STATIC IMPORTED)
+    set_target_properties(cpicosdk_prebuilt PROPERTIES
+        IMPORTED_LOCATION "${PREBUILT_PICO_SDK_ARCHIVE}"
+        IMPORTED_LINK_INTERFACE_LANGUAGES "C;CXX;ASM"
+    )
+    foreach(CPICOSDK_PROPERTY INCLUDE_DIRECTORIES COMPILE_DEFINITIONS COMPILE_OPTIONS LINK_LIBRARIES LINK_OPTIONS LINK_DEPENDS)
+        get_target_property(CPICOSDK_USAGE cpicosdk_sdk INTERFACE_${CPICOSDK_PROPERTY})
+        if(CPICOSDK_USAGE)
+            set_property(TARGET cpicosdk_prebuilt PROPERTY INTERFACE_${CPICOSDK_PROPERTY} "${CPICOSDK_USAGE}")
+        endif()
+    endforeach()
+    set(CPICOSDK_LINK_TARGET cpicosdk_prebuilt)
+endif()
 target_link_libraries("${PROJECT_NAME}" "-Wl,--start-group")
 target_link_libraries("${PROJECT_NAME}" Output)
 if(EXTRA_SWIFT_ARCHIVES)
     target_link_libraries("${PROJECT_NAME}" "-Wl,--whole-archive" ${EXTRA_SWIFT_ARCHIVES} "-Wl,--no-whole-archive")
 endif()
 # Startup/vector-table objects must not depend on ordinary archive extraction.
-target_link_libraries("${PROJECT_NAME}" "-Wl,--whole-archive" cpicosdk_sdk "-Wl,--no-whole-archive")
+target_link_libraries("${PROJECT_NAME}" "-Wl,--whole-archive" ${CPICOSDK_LINK_TARGET} "-Wl,--no-whole-archive")
 target_link_libraries("${PROJECT_NAME}" "-Wl,--end-group")
 
 # Add the standard include files to the build

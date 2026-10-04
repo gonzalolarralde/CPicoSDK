@@ -9,7 +9,7 @@ struct SDKBuildStateTests {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        for name in ["build.ninja", "libPicoSDK.a"] {
+        for name in ["libPicoSDK.a"] {
             try Data().write(to: directory.appending(path: name))
         }
         try body(directory)
@@ -32,7 +32,7 @@ struct SDKBuildStateTests {
         }
     }
 
-    @Test(arguments: ["sdk-build.json", "build.ninja", "libPicoSDK.a"])
+    @Test(arguments: ["sdk-build.json", "libPicoSDK.a"])
     func rejectsMissingBuildOutput(name: String) throws {
         try withBuildDirectory { directory in
             try state.record(in: directory)

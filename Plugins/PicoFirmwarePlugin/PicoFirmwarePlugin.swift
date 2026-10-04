@@ -9,8 +9,10 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
                   let library = product as? LibraryProduct, library.kind == .static else { return nil }
             return library
         }
-        guard products.count == 1, let product = products.first else {
-            Diagnostics.error("PicoFirmware requires a dependency on exactly one static library product.")
+        let applications = products.filter { $0.name != "CPicoSDKConfiguration" }
+        guard applications.count == 1, let product = applications.first,
+              products.contains(where: { $0.name == "CPicoSDKConfiguration" }) else {
+            Diagnostics.error("PicoFirmware requires an application static product and CPicoSDKConfiguration.")
             return []
         }
         guard let sdk = context.package.dependencies.first(where: { $0.package.displayName == "CPicoSDK" }) else {
@@ -27,6 +29,7 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
         let tool = try context.tool(named: "PicoFirmwareBuildTool")
         let productsDirectory = URL(string: "file:/$(PRODUCTS_DIR)")!
         let archive = productsDirectory.appending(path: "lib\(product.name).a")
+        let configuration = productsDirectory.appending(path: "libCPicoSDKConfiguration.a")
         let work = context.pluginWorkDirectoryURL.appending(path: "$(BUILD_SUBDIR)")
         let harness = sdk.package.directoryURL.appending(path: "Plugins/FinalizeBinaryPluginTool/CMakeHarness")
         let harnessInputs = try FileManager.default.contentsOfDirectory(
@@ -35,27 +38,20 @@ struct PicoFirmwarePlugin: BuildToolPlugin {
         let resources = product.sourceModules.flatMap { $0.sourceFiles.map(\.url) }
             .filter { $0.pathExtension == "codeasset" }.sorted { $0.path < $1.path }
         let outputs = ["elf", "uf2", "bin", "elf.map"].map { work.appending(path: "\(product.name).\($0)") }
-        let buildDirectory = work.appending(path: "CMakeHarness/build")
-        let sdkOutputs = ["libPicoSDK.a", "sdk-build.json", "build.ninja"]
-            .map { buildDirectory.appending(path: $0) }
+        let sdkOutputs = ["libPicoSDK.a", "sdk-build.json"].map { productsDirectory.appending(path: $0) }
         var arguments = [
             "--product", product.name,
             "--archive", archive.path,
+            "--configuration-archive", configuration.path,
+            "--sdk-artifacts-directory", productsDirectory.path,
             "--output-directory", work.path,
             "--work-directory", work.path,
             "--sdk-directory", sdk.package.directoryURL.path,
         ]
         for resource in resources { arguments += ["--resource", resource.path] }
-        let configurationInputs = [archive, tool.url, sdk.package.directoryURL.appending(path: "env.json")]
+        let configurationInputs = [archive, configuration, tool.url, sdk.package.directoryURL.appending(path: "env.json")]
             + harnessInputs
         return [.buildCommand(
-            displayName: "Build Pico SDK for \(product.name)",
-            executable: tool.url,
-            arguments: arguments + ["--phase", "sdk"],
-            environment: buildEnvironment,
-            inputFiles: configurationInputs,
-            outputFiles: sdkOutputs
-        ), .buildCommand(
             displayName: "Link \(product.name) firmware and generate UF2",
             executable: tool.url,
             arguments: arguments + ["--phase", "link"],

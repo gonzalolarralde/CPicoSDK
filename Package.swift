@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
     ] : [
         .library(name: "CPicoSDK", targets: ["CPicoSDK"]),
+        .library(name: "CPicoSDKConfiguration", type: .static, targets: ["CPicoSDKConfiguration"]),
         .library(name: "CPicoConcurrency", targets: ["CPicoConcurrency"]),
         .library(name: "PSRAM", targets: ["PSRAM"]),
         .library(name: "TestInDeviceCore", targets: ["TestInDeviceCore"]),
@@ -23,6 +24,7 @@ let package = Package(
         .plugin(name: "PrepareEnvironment", targets: ["PrepareEnvironmentPlugin"]),
         .plugin(name: "FinalizeBinary", targets: ["FinalizeBinaryPlugin"]),
         .plugin(name: "PicoFirmware", targets: ["PicoFirmwarePlugin"]),
+        .plugin(name: "PicoSDKBuild", targets: ["PicoSDKBuildPlugin"]),
         .plugin(name: "MemoryMapReport", targets: ["MemoryMapReportPlugin"]),
         .plugin(name: "TestInDevice", targets: ["TestInDevicePlugin"]),
     ],
@@ -86,6 +88,7 @@ let package = Package(
         .target(
             name: "CPicoSDK",
             dependencies: [
+                .target(name: "CPicoSDKConfiguration"),
                 .target(name: "ARMClib"),
                 .target(name: "CShims"),
 
@@ -117,6 +120,7 @@ let package = Package(
         ),
 
         // Manually defined targets
+        .target(name: "CPicoSDKConfiguration"),
         .target(name: "ARMClib"),
         .target(name: "TLSF"),
 
@@ -166,6 +170,7 @@ let package = Package(
         .executableTarget(name: "AssetCompilerTool"),
         .executableTarget(name: "PicoFirmwareBuildTool"),
         .plugin(name: "PicoFirmwarePlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
+        .plugin(name: "PicoSDKBuildPlugin", capability: .buildTool, dependencies: ["PicoFirmwareBuildTool"]),
 
         .target(name: "TestInDeviceCore"),
         .executableTarget(

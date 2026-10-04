@@ -19,7 +19,6 @@ struct SDKBuildState: Codable, Equatable {
         let previous = (try? Data(contentsOf: Self.file(in: directory)))
             .flatMap { try? JSONDecoder().decode(Self.self, from: $0) }
         guard previous == self,
-              FileManager.default.fileExists(atPath: directory.appending(path: "build.ninja").path),
               FileManager.default.fileExists(atPath: directory.appending(path: "libPicoSDK.a").path) else {
             throw StateError.sdkBuildRequired
         }

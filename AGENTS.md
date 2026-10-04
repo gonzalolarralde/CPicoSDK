@@ -644,6 +644,13 @@ design notes, experiments, and failure analysis in `docs/`.
 
 ### Build And Package Wiring
 
+- If a custom-target published ARM archive fails with `member ... (/) in archive
+  is not an object`, compare the original plugin output and published file with
+  `shasum` and inspect their archive headers. Swift Build release copy phases can
+  invoke host stripping and rewrite GNU archive symbol tables on macOS. Confirm
+  with a link against the original archive before changing SDK compilation.
+  The experimental `BuildProduct` API currently has no per-product strip option.
+
 - Keep `Example/build.sh` as a stable sequence of visible SwiftPM calls and
   generated helper calls. Preparation owns `.swift-version`, so call
   `configure_rp2xxx_build` after sourcing the preparation script; it installs

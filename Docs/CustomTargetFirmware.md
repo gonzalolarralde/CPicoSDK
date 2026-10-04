@@ -4,7 +4,51 @@ This branch experiments with [SwiftPM PR #10374](https://github.com/swiftlang/sw
 and [Swift Build PR #1740](https://github.com/swiftlang/swift-build/pull/1740).
 It requires the modified local SwiftPM build, not a released Swift toolchain.
 
-## Current verified state
+## Current implementation and remaining blocker
+
+Board/stdio markers and their compile-time validation now live in the independent
+`CPicoSDKConfiguration` target. `CPicoSDK` re-exports it, preserving metadata in
+the application archive for the legacy finalizer. The wrapper has two custom
+targets: `PicoSDK` depends only on the configuration static product and publishes
+`libPicoSDK.a` plus `sdk-build.json`; `Firmware` depends on that target, the
+configuration product, and the Example static product.
+
+Each plugin owns its own CMake working directory. The link phase configures an
+imported SDK archive, using the same Pico interface compile/link requirements
+without rebuilding SDK sources. It validates the SDK configuration record before
+changing its working directory. Runtime selection and asset embedding remain
+application work. The legacy default `--phase all` still builds and links in one
+directory. `Example/build.sh` is unchanged.
+
+Verified locally on October 3, 2026:
+
+- All 69 host tests pass.
+- `bash Tests/BuildPreparation/verify-configuration.sh` checks the six board
+  markers, stdio markers, and invalid trait diagnostics without any SDK headers.
+- `bash Tests/BuildPreparation/verify.sh` passes.
+- Building only `PicoSDK` with a fresh scratch directory succeeds without
+  producing an Example archive or Example/CPicoSDK object.
+- A diagnostic link against the original SDK archive produces ELF/UF2 without
+  recompiling the native SDK.
+
+**The normal full build is not passing yet.** SwiftPM's custom-target product
+copy phase inherits release stripping, which invokes the macOS strip tool on
+the ARM GNU archive. The published archive then contains a BSD symbol table and
+a spurious GNU `/` member; the ARM linker rejects it. The original archive links
+successfully. The prototype's `BuildProduct` API has no copy-processing setting,
+and its Swift Build backend does not forward `-Xxcbuild` overrides. A fix to the
+local SwiftPM prototype is pending approval. No compiler/LLVM checkout has been
+changed. Cold full-build overlap and incremental behavior remain unverified for
+this new graph until publication is fixed.
+
+Logs: `Example/.build/configuration-target-build.log`,
+`Example/.build/configuration-sdk-only.log`,
+`Example/.build/configuration-link-diagnostic.log`, and
+`.build/configuration-target-host-tests.log`. The SDK-only scratch directory is
+`.build/configuration-sdk-only`; diagnostic firmware is under
+`Example/.build/configuration-link-diagnostic`. No hardware was programmed.
+
+## Previous ordered-command baseline
 
 The firmware plugin now returns two ordered build commands:
 
@@ -159,20 +203,18 @@ the downloaded SDK bundle was retained.
 ## Build graph
 
 ```text
-Example static library
-  Swift/C sources + PIOASM + AssetCompiler
-       |
-       v
-Firmware custom target / PicoFirmware plugin
-  PicoFirmwareBuildTool
-    sdk command:
-      detect board and stdio traits from archive
-      select embedded Swift runtime archives
-      configure CMake and build libPicoSDK.a
-       |
-       v
-    link command:
-    link firmware, embed assets, generate ELF/UF2/BIN/map
+CPicoSDKConfiguration static product (board/stdio metadata, no SDK headers)
+       |                                      |
+       v                                      v
+PicoSDK custom target / PicoSDKBuild       CPicoSDK -> Example static product
+  configure CMake, compile native SDK         Swift/C + PIOASM + AssetCompiler
+  publish libPicoSDK.a + sdk-build.json        |
+       |                                      |
+       +-------------------+------------------+
+                           v
+Firmware custom target / PicoFirmware
+  validate SDK configuration, select Swift runtime, configure imported SDK
+  embed assets, link firmware, generate ELF/UF2/BIN/map
        |
        v
 productFiles publishes ELF/UF2/BIN/map to PRODUCTS_DIR
@@ -181,13 +223,11 @@ productFiles publishes ELF/UF2/BIN/map to PRODUCTS_DIR
 build.sh reports artifact sizes/memory use, then optionally flashes
 ```
 
-The finalizer is now a build-tool executable shared by the new build plugin and
-the existing `finalize-rp2xxx-binary` command plugin. The build plugin declares
-the application archive, tool binaries, CMake harness, and SDK configuration as
-SDK-command inputs. The linker also depends on SDK-command outputs and asset
-contents. Resource paths are passed to both commands so adding/removing an asset
-updates the CMake graph, while changing only asset contents does not directly
-invalidate the SDK command. ELF, UF2, BIN, and the linker map are explicit outputs. CMake's build directory is
+The finalizer executable is shared by both build plugins and the existing
+`finalize-rp2xxx-binary` command plugin. SDK inputs are the configuration archive,
+tool binary, CMake harness, and environment configuration. Application archives,
+Swift runtime selection, and resources belong only to the link phase. ELF, UF2,
+BIN, and the linker map are explicit outputs. Each CMake build directory is
 retained between runs; the legacy command still cleans unless `--incremental`
 is supplied.
 
